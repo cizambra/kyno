@@ -1,0 +1,89 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 4rem 1.5rem 6rem; background: var(--bg); color: var(--fg);
+  font-family: var(--font);
+  font-size: 17px; line-height: 1.6; -webkit-text-size-adjust: 100%;
+}
+main { max-width: 40rem; margin: 0 auto; }
+.eyebrow {
+  margin: 0 0 1.25rem; font-size: 0.75rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted);
+}
+h1 {
+  margin: 0 0 2.5rem; font-size: clamp(1.55rem, 5vw, 2rem);
+  line-height: 1.25; font-weight: 600; letter-spacing: -0.01em;
+}
+h2 {
+  margin: 3rem 0 1rem; font-size: 0.75rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted); font-weight: 600;
+}
+/* The declaration is rendered markdown, so it brings elements the rest of
+   the page never uses. They are set to the page's own scale, and they undo
+   the label styling h2 carries and the page's bare ol/ul reset. */
+.declaration p { margin: 0 0 1.1rem; }
+.declaration > :last-child { margin-bottom: 0; }
+.declaration h1, .declaration h2, .declaration h3,
+.declaration h4, .declaration h5, .declaration h6 {
+  margin: 2rem 0 0.75rem; color: var(--fg); font-weight: 600;
+  text-transform: none; letter-spacing: -0.01em; line-height: 1.3;
+}
+.declaration h1 { font-size: 1.3rem; }
+.declaration h2 { font-size: 1.15rem; }
+.declaration h3, .declaration h4, .declaration h5, .declaration h6 { font-size: 1rem; }
+.declaration > :first-child { margin-top: 0; }
+.declaration ul, .declaration ol { margin: 0 0 1.1rem; padding-left: 1.5rem; }
+.declaration ul { list-style: disc; }
+.declaration ol { list-style: decimal; }
+.declaration li { margin: 0.3rem 0; }
+.declaration li::marker { color: var(--muted); }
+.declaration blockquote {
+  margin: 0 0 1.1rem; padding-left: 1rem;
+  border-left: 2px solid var(--rule); color: var(--muted);
+}
+.declaration code {
+  font-family: var(--mono); font-size: 0.85em;
+  background: var(--rule); padding: 0.1em 0.3em; border-radius: 3px;
+}
+.declaration pre {
+  margin: 0 0 1.1rem; padding: 0.9rem 1rem; overflow-x: auto;
+  border: 1px solid var(--rule); border-radius: 4px;
+}
+.declaration pre code { background: none; padding: 0; font-size: 0.8rem; }
+.declaration hr { border: 0; border-top: 1px solid var(--rule); margin: 2rem 0; }
+.declaration table { border-collapse: collapse; margin: 0 0 1.1rem; }
+.declaration th, .declaration td {
+  border-bottom: 1px solid var(--rule); padding: 0.4rem 0.8rem 0.4rem 0; text-align: left;
+}
+ol, ul { margin: 0; padding: 0; list-style: none; }
+.stamp { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); margin: 0; }
+/* Numbered because the order of principles is itself a priority hint. */
+.claims { counter-reset: claim; }
+.claims li {
+  counter-increment: claim; padding: 0.9rem 0; border-top: 1px solid var(--rule);
+  display: grid; grid-template-columns: 2.25rem 1fr; align-items: baseline;
+}
+.claims li:last-child { border-bottom: 1px solid var(--rule); }
+.claims li::before {
+  content: counter(claim, decimal-leading-zero);
+  font-family: var(--mono); font-size: 0.8rem; color: var(--accent);
+}
+.claim-title { margin: 0; }
+/* The description is the paragraph that disambiguates the title, so it is
+   set quieter than the handle it explains. */
+.claim-note { margin: 0.4rem 0 0; color: var(--muted); }
+.log li { padding: 1.1rem 0; border-top: 1px solid var(--rule); }
+.log li:last-child { border-bottom: 1px solid var(--rule); }
+.log p + p { margin: 0.35rem 0 0; }
+.provenance { margin-top: 3rem; }
+.directory li { padding: 1.25rem 0; border-top: 1px solid var(--rule); }
+.directory li:last-child { border-bottom: 1px solid var(--rule); }
+.directory h2 {
+  margin: 0 0 0.25rem; font-size: 1.05rem; font-weight: 600; color: var(--fg);
+  text-transform: none; letter-spacing: normal;
+}
+.directory p { margin: 0 0 0.4rem; }
+a {
+  color: inherit; text-decoration-color: var(--accent);
+  text-decoration-thickness: 1px; text-underline-offset: 3px;
+}
+a:hover { text-decoration-color: currentColor; }

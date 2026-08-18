@@ -1,0 +1,62 @@
+[project]
+name = "kyno"
+license = { text = "MIT" }
+version = "0.1.0"
+description = "A versioned coherence control plane for multi-agent orchestrators (control-plane core + MCP server)."
+requires-python = ">=3.11"
+dependencies = [
+    "sqlalchemy>=2.0,<3.0",
+    "alembic>=1.13,<2.0",
+    "mcp>=1.10,<2.0",
+    "typer>=0.12,<1.0",
+    "starlette>=0.40,<2.0",
+    "uvicorn>=0.30,<1.0",
+    # `kyno set --file`: a block scalar is the readable way to hold prose.
+    "pyyaml>=6.0,<7.0",
+    # The published page renders the declaration; CommonMark, pure Python.
+    "markdown-it-py>=3.0,<5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    # The packaging test builds a real wheel, offline.
+    "build>=1.0",
+    "hatchling>=1.20",
+    "pytest-asyncio>=0.23",
+    "hypothesis>=6.100",
+    "psycopg[binary]>=3.1",
+    "httpx>=0.27",
+]
+crewai = ["crewai>=1.15.3"]
+langgraph = ["langgraph>=0.4", "langchain-core>=0.3"]
+
+[project.scripts]
+kyno = "kyno.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient`:starlette.exceptions.StarletteDeprecationWarning"]
+markers = [
+    "integration: exercises a real orchestrator or a live Kyno; run with -m integration",
+]
+addopts = "-m 'not integration'"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["typer.Option"]
+
+[tool.ruff.lint.per-file-ignores]
+# imports follow the importorskip guard deliberately
+"tests/test_transports.py" = ["E402"]

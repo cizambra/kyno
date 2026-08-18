@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+*.sqlite3
+.pytest_cache/
+dist/
+*.egg-info/
+
+# Local agent scratch (brainstorm server state, execution ledgers)
+.superpowers/

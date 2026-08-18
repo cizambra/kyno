@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+import inspect
 
 from kyno.errors import ConfigError
 from kyno.mcp_server import build_server
@@ -81,7 +82,12 @@ def build_http_app(
     page = page or PageConfig()
 
     server = build_server(control_plane)
-    manager = StreamableHTTPSessionManager(app=server)
+    # Newer SDKs enforce their own body cap (default 4 MiB, below ours);
+    # align it with MAX_MCP_BODY_BYTES so the cap here is the single limit.
+    manager_kwargs = {}
+    if "max_request_body_size" in inspect.signature(StreamableHTTPSessionManager).parameters:
+        manager_kwargs["max_request_body_size"] = MAX_MCP_BODY_BYTES
+    manager = StreamableHTTPSessionManager(app=server, **manager_kwargs)
 
     async def handle(scope, receive, send):
         headers = {

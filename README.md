@@ -157,8 +157,10 @@ runner.start()
 binder = DirectionBinder(McpDirectionSource(runner))
 adapter = CrewAiKyno(binder, constitution=binding.constitution)
 adapter.register()  # injects the current direction before each model call
-crew = Crew(..., task_callback=adapter.task_callback)  # gates each finished task
 ```
+
+That is the whole integration. Every model call now carries the version in
+force, and a version published mid-run reaches the next step.
 
 Embedding Kyno in the same process instead? Swap the source:
 `DirectionBinder(LocalDirectionSource(control_plane))`.
@@ -177,7 +179,16 @@ Embedding Kyno in the same process instead? Swap the source:
 - **Push consumption** — `BackgroundSubscriber` turns an MCP
   `resources/updated` notification into a re-pull *by name*. A step already
   running is never interrupted; the next one binds the new direction.
-- **Realignment gate** — model-free, and reviewed **per finished task**
+- **What changed** — a pull carries the operator's change note *and* a
+  computed delta: which principle moved, quoted both ways, whether the mission
+  moved, what was added or dropped. The note says why, in whoever's words wrote
+  it; the delta says what, from the versions themselves. A consumer holding no
+  version gets no delta — the whole direction is already in front of them. This
+  matters most where a change is small: when one principle of four moves and
+  the mission holds, the block reads almost identically to the last one and a
+  note saying the direction changed points at nothing in particular.
+- **Realignment gate (optional)** — off unless you pass one. Model-free, and
+  reviewed **per finished task**
   (CrewAI's task-completion callback), not after every LLM call — cheaper and
   less noisy once a real judge is attached, and the finished task is already
   the reviewable unit. It calls a `VerdictSource` you supply and raises
@@ -190,16 +201,40 @@ Embedding Kyno in the same process instead? Swap the source:
   an operator/CLI action against Kyno, never something an adapter calls on a
   crew's or graph's behalf.
 
-On LangGraph, inherit `KynoState` in your graph's state schema. LangGraph
-carries only the keys a schema declares, so without it the direction a node
-pulls never reaches the gate node that judges against it:
+On LangGraph, inherit `KynoState` in your graph's state schema and put
+`direction_node` ahead of the work. LangGraph carries only the keys a schema
+declares, so without `KynoState` the direction a node pulls never reaches the
+nodes after it:
 
 ```python
-from kyno.adapters.langgraph import KynoState, direction_node, gate_node
+from kyno.adapters.langgraph import KynoState, direction_node
 
 
 class State(KynoState, total=False):
     output: str
+```
+
+### Acting on a change
+
+Kyno delivers direction; what a system does with a version bump is the
+operator's call, and all three of these are real choices:
+
+- **carry on** — the next step simply gets the new direction. Nothing else to
+  wire, and it costs nothing beyond the pull.
+- **reassess** — re-derive the remaining work under the new direction when the
+  version moves. A planning call, only when something changed.
+- **stop** — hand finished work to a judge you supply and halt on a bad
+  verdict. This is the gate below, and it costs a judge call per task.
+
+Kyno takes no position on which. It carries the direction, the version, and
+what changed; the response belongs to the system it serves.
+
+```python
+from kyno.adapters.core.gate import RealignmentGate
+from kyno.adapters.langgraph import gate_node  # LangGraph
+
+adapter = CrewAiKyno(binder, gate=RealignmentGate(source=your_judge))
+crew = Crew(..., task_callback=adapter.task_callback)  # CrewAI
 ```
 
 ## Storage

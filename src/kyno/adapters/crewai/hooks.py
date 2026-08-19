@@ -41,7 +41,10 @@ class CrewAiKyno:
         trace: RunTrace | None = None,
     ) -> None:
         self._binder = binder
-        self.gate = gate if gate is not None else RealignmentGate(can_pause=False)
+        # No gate unless one is handed in. Kyno carries direction; checking the
+        # work against it needs a judge Kyno does not ship, so a default gate
+        # would only ever answer "unchecked".
+        self.gate = gate
         self.constitution = constitution
         self.trace = trace
 
@@ -61,7 +64,7 @@ class CrewAiKyno:
     def task_callback(self, task_output: Any) -> None:
         direction = self._binder.cell.get(self.constitution) or Direction.empty(self.constitution)
         output = _output_text(task_output)
-        decision = self.gate.review(output=output, direction=direction)
+        decision = self.gate.review(output=output, direction=direction) if self.gate else None
         if self.trace is not None:
             self.trace.record_step(
                 agent=_name_of(getattr(task_output, "agent", "")),
@@ -70,7 +73,7 @@ class CrewAiKyno:
                 direction=direction,
                 decision=decision,
             )
-        if decision.action in (Action.BLOCK, Action.PAUSE):
+        if decision is not None and decision.action in (Action.BLOCK, Action.PAUSE):
             # A gate shared with LangGraph may be pause-capable. CrewAI cannot
             # resume, so a pause here degrades to a block rather than becoming
             # a verdict nobody acts on.

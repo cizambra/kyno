@@ -311,3 +311,21 @@ def test_the_injected_message_stays_compact_by_default(control_plane):
     assert "Be honest" in injected
     assert "The long form." not in injected
     assert "Say the hard number first." not in injected
+
+
+def test_an_adapter_with_no_gate_has_none(crew_kyno):
+    """Carrying direction is the whole product; checking the work against it is
+    a separate thing an operator opts into, with a judge Kyno does not ship. An
+    inert gate that always answers 'unchecked' is a worse story than no gate."""
+    adapter, _plane = crew_kyno
+    assert adapter.gate is None
+
+
+def test_a_gateless_adapter_still_records_the_step(crew_kyno):
+    adapter, _plane = crew_kyno
+
+    adapter.task_callback(FakeTaskOutput(raw="anything at all"))
+
+    assert len(adapter.trace.steps) == 1
+    assert adapter.trace.steps[0].verdict == Verdict.UNKNOWN.value
+    assert adapter.trace.steps[0].checked is False

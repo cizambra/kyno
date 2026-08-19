@@ -217,6 +217,9 @@ def _changes(payload: dict) -> ChangesSince:
         change_notes=tuple(
             _text(note) for note in _sequence(payload["change_notes"], "change_notes")
         ),
+        # Absent from a Kyno older than the delta: a pull that still answers
+        # with the direction is not a failure, it just says less.
+        delta=tuple(_text(line) for line in _sequence(payload.get("delta", []), "delta")),
     )
 
 

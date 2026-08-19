@@ -209,6 +209,9 @@ class ChangesSince(HoldsPrinciples):
     changed_principles: bool
     change_notes: tuple[str, ...]
     declaration: str = ""
+    # What actually moved, computed rather than written. A note says why the
+    # direction changed; only the delta says which line did.
+    delta: tuple[str, ...] = ()
 
     def to_dict(self, detail: str = FULL) -> dict:
         # The change metadata rides along at every level: it is small, and it
@@ -224,4 +227,5 @@ class ChangesSince(HoldsPrinciples):
         payload["changed_mission"] = self.changed_mission
         payload["changed_principles"] = self.changed_principles
         payload["change_notes"] = list(self.change_notes)
+        payload["delta"] = list(self.delta)
         return payload

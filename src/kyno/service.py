@@ -110,6 +110,29 @@ _EMPTY_CHANGES = ChangesSince(
 _SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 
 
+def _delta(before, after) -> tuple[str, ...]:
+    """What moved between two versions, in the wording of both.
+
+    Returns nothing when the consumer holds no version: there is no baseline
+    to compare against, and the whole direction is already in front of them.
+    """
+    if before is None or before.version >= after.version:
+        return ()
+    lines: list[str] = []
+    if before.mission != after.mission:
+        lines.append(f'The mission was "{before.mission}" and is now "{after.mission}".')
+    old = [p.title for p in before.principles]
+    new = [p.title for p in after.principles]
+    for i, title in enumerate(new):
+        if i < len(old) and old[i] != title:
+            lines.append(f'Principle {i + 1} was "{old[i]}" and is now "{title}".')
+        elif i >= len(old):
+            lines.append(f'Principle {i + 1} was added: "{title}".')
+    for i in range(len(new), len(old)):
+        lines.append(f'Principle {i + 1} was dropped: "{old[i]}".')
+    return tuple(lines)
+
+
 def _slugged(name: str) -> str:
     """The name the caller probably meant. For the error message only -- publishing
     never transforms a name, because the name in the URL has to be the one
@@ -178,6 +201,7 @@ class ControlPlane:
             changed_mission=any(v.changed_mission for v in newer),
             changed_principles=any(v.changed_principles for v in newer),
             change_notes=tuple(v.change_note for v in newer),
+            delta=_delta(self._store.get(name, known_version) if known_version else None, head),
         )
 
     def publication(self, constitution: str | None = None) -> Publication:

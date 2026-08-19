@@ -27,6 +27,7 @@ class Direction(HoldsPrinciples):
     mission: str
     principles: tuple[Principle, ...]
     change_notes: tuple[str, ...] = ()
+    delta: tuple[str, ...] = ()
     declaration: str = ""
     context: str = COMPACT
 
@@ -48,6 +49,7 @@ class Direction(HoldsPrinciples):
             mission=changes.mission,
             principles=changes.principles,
             change_notes=tuple(changes.change_notes),
+            delta=tuple(changes.delta),
             declaration=changes.declaration,
             context=context,
         )
@@ -75,6 +77,9 @@ class Direction(HoldsPrinciples):
         if self.change_notes:
             lines.append("Recent changes:")
             lines.extend(f"- {n}" for n in self.change_notes)
+        if self.delta:
+            lines.append("What changed:")
+            lines.extend(f"- {d}" for d in self.delta)
         return "\n".join(lines)
 
     def to_dict(self) -> dict:

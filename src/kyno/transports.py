@@ -81,7 +81,12 @@ def build_http_app(
     page = page or PageConfig()
 
     server = build_server(control_plane)
-    manager = StreamableHTTPSessionManager(app=server)
+    try:
+        # The MCP layer grew its own body cap (4 MiB by default) that would
+        # answer 413 below ours; one constant governs both layers.
+        manager = StreamableHTTPSessionManager(app=server, max_request_body_size=MAX_MCP_BODY_BYTES)
+    except TypeError:  # an mcp release before the cap existed
+        manager = StreamableHTTPSessionManager(app=server)
 
     async def handle(scope, receive, send):
         headers = {

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kyno — one versioned source of direction for multi-agent systems</title>
+<meta name="description" content="A coherence control plane for multi-agent systems: one versioned source of truth for your system's mission and principles, served over MCP.">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230a0e0b'/%3E%3Ctext x='8' y='12' font-family='monospace' font-size='11' fill='%2352f08d' text-anchor='middle'%3Ek%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <span class="marker">[kyno:direction constitution=default version=1]</span>
+    <nav>
+      <a href="#how">how it works</a>
+      <a href="#start">quick start</a>
+      <a href="constitution/">our constitution</a>
+      <a href="https://github.com/cizambra/kyno">github</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero wrap">
+    <h1>Your agents are playing a bad telephone game.</h1>
+    <p class="sub">One versioned source of direction, pulled before every step.
+    When the mission changes, <strong>every agent knows on the next pull.</strong></p>
+
+    <div class="install">
+      <span class="prompt">$</span>
+      <span id="pip-cmd">pip install kyno</span>
+      <button class="copy-btn" data-copy="pip install kyno">copy</button>
+    </div>
+
+    <div class="ticker" id="ticker" aria-label="When the direction changes, agents pick it up on their next pull.">
+      <div class="call"><span id="call-text"></span><span class="caret"></span></div>
+      <div class="chips" id="chips">
+        <span class="chip">researcher <span class="v">v8</span></span>
+        <span class="chip">planner <span class="v">v8</span></span>
+        <span class="chip">writer <span class="v">v8</span></span>
+        <span class="chip">reviewer <span class="v">v8</span></span>
+        <span class="chip">publisher <span class="v">v8</span></span>
+      </div>
+      <div class="legend">set_direction appends v9 — each agent picks it up on its next pull.</div>
+    </div>
+  </div>
+
+  <section id="problem">
+    <div class="wrap">
+      <p class="eyebrow">[kyno:problem stale_copies]</p>
+      <h2>Stale direction is worse than no direction</h2>
+      <p class="lede">When a multi-agent system's goals change, agents holding a stale
+      copy of the old direction keep producing work for it — and worse, quality
+      checks against the stale copy actively push work <em>back</em> toward the
+      obsolete goal. Kyno removes the stale copy: direction lives in one versioned
+      store, agents pull the current version at each step boundary, and
+      subscribers are notified the moment it changes.</p>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <p class="eyebrow">[kyno:mechanism three_paths]</p>
+      <h2>How it works</h2>
+      <div class="cols">
+        <div class="col">
+          <h3>Pull before every step</h3>
+          <p>An agent binds the direction in force at its step boundary. The
+          block below is what lands in its context — this site's header is the
+          same marker.</p>
+          <pre><span class="hl">[kyno:direction constitution=default version=1]</span>
+Mission: To help organizations keep
+multi-agent systems coherent.
+Principles:
+- Coherence is the goal
+- Stay simple, stay nimble
+- We don't judge
+…
+Recent changes:
+- Kyno adopts its own constitution</pre>
+        </div>
+        <div class="col">
+          <h3>Push when it changes</h3>
+          <p>Subscribers hear the moment a new version is appended — a hint to
+          pull, not a payload to trust.</p>
+          <pre>{
+  "jsonrpc": "2.0",
+  "method":
+    "notifications/resources/updated",
+  "params": {
+    "uri": <span class="hl">"kyno://constitution/current"</span>
+  }
+}</pre>
+        </div>
+        <div class="col">
+          <h3>Version-stamped answers</h3>
+          <p>Ask what changed since the version you knew, and get the delta —
+          so a transcript can always say which direction each step served.</p>
+          <pre>get_changes_since(known_version=0)
+→ {
+  "current_version": <span class="hl">1</span>,
+  "changed": true,
+  "mission": "To help organizations
+    keep multi-agent systems coherent.",
+  …
+}</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="start">
+    <div class="wrap">
+      <p class="eyebrow">[kyno:quick_start five_commands]</p>
+      <h2>Running in a minute</h2>
+      <div class="qs">
+        <button class="copy-btn" data-copy="pip install kyno
+kyno init-db
+kyno set --mission &quot;Ship a lending product people trust&quot; --note &quot;initial constitution&quot;
+kyno current
+kyno serve --transport stdio">copy</button>
+        <pre>pip install kyno
+kyno init-db
+kyno set --mission "Ship a lending product people trust" \
+         --note "initial constitution"
+kyno current
+kyno serve --transport stdio    <span class="comment"># or --transport http</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="constitution">
+    <div class="wrap">
+      <p class="eyebrow">[kyno:proof self_hosted]</p>
+      <a class="constitution-card" href="constitution/">
+        <span class="marker">[kyno:direction constitution=default version=1]</span>
+        <strong>We run on one too. Hold us to it.</strong>
+        <span class="tail">Kyno's own constitution — set through the same CLI any
+        operator uses, published through the same flow, rendered on the same
+        page. →</span>
+      </a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a href="https://github.com/cizambra/kyno">GitHub</a>
+    <span>MIT license</span>
+    <a href="https://github.com/cizambra/canon">Sibling project: Canon — coherence testing</a>
+  </div>
+</footer>
+
+<script src="ticker.js"></script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>To help organizations keep multi-agent systems coherent.</title>
+<style>:root {
+  --accent: #6d6d66; --bg: #fbfbf9; --fg: #1b1b19;
+  --muted: #6d6d66; --rule: #e4e3de;
+  --font: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #131312; --fg: #ecebe6; --muted: #97968e;
+          --rule: #2b2b28; --accent: #97968e; }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 4rem 1.5rem 6rem; background: var(--bg); color: var(--fg);
+  font-family: var(--font);
+  font-size: 17px; line-height: 1.6; -webkit-text-size-adjust: 100%;
+}
+main { max-width: 40rem; margin: 0 auto; }
+.eyebrow {
+  margin: 0 0 1.25rem; font-size: 0.75rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted);
+}
+h1 {
+  margin: 0 0 2.5rem; font-size: clamp(1.55rem, 5vw, 2rem);
+  line-height: 1.25; font-weight: 600; letter-spacing: -0.01em;
+}
+h2 {
+  margin: 3rem 0 1rem; font-size: 0.75rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted); font-weight: 600;
+}
+/* The declaration is rendered markdown, so it brings elements the rest of
+   the page never uses. They are set to the page's own scale, and they undo
+   the label styling h2 carries and the page's bare ol/ul reset. */
+.declaration p { margin: 0 0 1.1rem; }
+.declaration > :last-child { margin-bottom: 0; }
+.declaration h1, .declaration h2, .declaration h3,
+.declaration h4, .declaration h5, .declaration h6 {
+  margin: 2rem 0 0.75rem; color: var(--fg); font-weight: 600;
+  text-transform: none; letter-spacing: -0.01em; line-height: 1.3;
+}
+.declaration h1 { font-size: 1.3rem; }
+.declaration h2 { font-size: 1.15rem; }
+.declaration h3, .declaration h4, .declaration h5, .declaration h6 { font-size: 1rem; }
+.declaration > :first-child { margin-top: 0; }
+.declaration ul, .declaration ol { margin: 0 0 1.1rem; padding-left: 1.5rem; }
+.declaration ul { list-style: disc; }
+.declaration ol { list-style: decimal; }
+.declaration li { margin: 0.3rem 0; }
+.declaration li::marker { color: var(--muted); }
+.declaration blockquote {
+  margin: 0 0 1.1rem; padding-left: 1rem;
+  border-left: 2px solid var(--rule); color: var(--muted);
+}
+.declaration code {
+  font-family: var(--mono); font-size: 0.85em;
+  background: var(--rule); padding: 0.1em 0.3em; border-radius: 3px;
+}
+.declaration pre {
+  margin: 0 0 1.1rem; padding: 0.9rem 1rem; overflow-x: auto;
+  border: 1px solid var(--rule); border-radius: 4px;
+}
+.declaration pre code { background: none; padding: 0; font-size: 0.8rem; }
+.declaration hr { border: 0; border-top: 1px solid var(--rule); margin: 2rem 0; }
+.declaration table { border-collapse: collapse; margin: 0 0 1.1rem; }
+.declaration th, .declaration td {
+  border-bottom: 1px solid var(--rule); padding: 0.4rem 0.8rem 0.4rem 0; text-align: left;
+}
+ol, ul { margin: 0; padding: 0; list-style: none; }
+.stamp { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); margin: 0; }
+/* Numbered because the order of principles is itself a priority hint. */
+.claims { counter-reset: claim; }
+.claims li {
+  counter-increment: claim; padding: 0.9rem 0; border-top: 1px solid var(--rule);
+  display: grid; grid-template-columns: 2.25rem 1fr; align-items: baseline;
+}
+.claims li:last-child { border-bottom: 1px solid var(--rule); }
+.claims li::before {
+  content: counter(claim, decimal-leading-zero);
+  font-family: var(--mono); font-size: 0.8rem; color: var(--accent);
+}
+.claim-title { margin: 0; }
+/* The description is the paragraph that disambiguates the title, so it is
+   set quieter than the handle it explains. */
+.claim-note { margin: 0.4rem 0 0; color: var(--muted); }
+.log li { padding: 1.1rem 0; border-top: 1px solid var(--rule); }
+.log li:last-child { border-bottom: 1px solid var(--rule); }
+.log p + p { margin: 0.35rem 0 0; }
+.provenance { margin-top: 3rem; }
+.directory li { padding: 1.25rem 0; border-top: 1px solid var(--rule); }
+.directory li:last-child { border-bottom: 1px solid var(--rule); }
+.directory h2 {
+  margin: 0 0 0.25rem; font-size: 1.05rem; font-weight: 600; color: var(--fg);
+  text-transform: none; letter-spacing: normal;
+}
+.directory p { margin: 0 0 0.4rem; }
+a {
+  color: inherit; text-decoration-color: var(--accent);
+  text-decoration-thickness: 1px; text-underline-offset: 3px;
+}
+a:hover { text-decoration-color: currentColor; }
+</style>
+</head>
+<body>
+<main>
+<p class="eyebrow">default</p>
+<h1>To help organizations keep multi-agent systems coherent.</h1>
+<div class="declaration">
+<h2>What is Kyno</h2>
+<p>Kyno is what I call <em>Coherence-as-Infrastructure</em>.</p>
+<p>When a multi-agent system's goals change, agents holding a stale copy of
+the old direction keep producing work for it — and quality checks against
+the stale copy push the work back toward the obsolete goal. Direction
+needs to live in one place, versioned, where every agent can consult it
+before every step. Kyno is that place, kept deliberately small.</p>
+<h2>Why this project exists</h2>
+<p>Multi-agent architecture is quickly becoming a trend. With the same speed, this
+trend is uncovering another phenomenon that is silently permeating the direction that products, and
+in consequence businesses and organizations, are taking: <em>agentic drifting</em>. By agentic drifting,
+we understand it as &quot;the gradual, hidden process where an AI agent slowly loses alignment with
+its intended goals, policies, or workflows over time&quot;<a href="https://medium.com/@ravikumar.singi_16677/agentic-drift-keeping-ai-aligned-reliable-and-roi-driven-a099fa554d08">1</a>.</p>
+<p>But drift goes <em>beyond</em> that. Let me explain.</p>
+<p>I've been talking about drift for a while. Drift is not a phenomenon that only occurs in AI agents.
+It's a phenomenon that happens at a human level. Drift is a behavioral force that applies a pull on humans
+and makes them act out of coherence.</p>
+<p><strong>Drift is the default</strong>. A behavioral cousin of entropy. If you leave a room untouched, it tends to get cluttered over time.
+Same happens with our behavior. Bringing coherence, just like cleaning a room, demands energy and alignment.</p>
+<p>So...drift is human, <em>cool</em>. What does it have to do with <em>agents</em>?</p>
+<p>Well, turns out that every system built or composed by humans carries with it human conditions, human
+assumptions, and human flaws. This means that if humans experience drift, then the systems we build also
+experience drift: financial, technological, governmental, all of these systems experience drift in their own
+ways. So agents are nothing but another tech system built by humans that, you guessed it, also carry drift.</p>
+<p>Drift is also fractal. It happens at different scales. Humans drift, and when you
+assemble teams, the team itself experiences combined drift, along with the structure's own drift. So
+drift compounds, individually and fractally. Furthermore, drift spreads, in an effect I call <em>resonance</em>.
+Like the rotten apple principle. One apple rots, and the rot starts spreading to all the apples around.
+And because drift is the default, it doesn't take effort for that to happen. Like a bad telephone game.</p>
+<p>And because agents are built by humans, ta-da! Agents also experience this phenomenon.</p>
+<p>The literature has started to describe this problem <a href="https://arxiv.org/pdf/2601.04170">2</a>.
+Because drift is the default, you need to invest in coherence and alignment.</p>
+<p>Kyno is the product of applying my synthesis work, <a href="https://www.adaptable-discipline.com/cdt"><em>Coherence Dynamics Theory</em></a>,
+into solving this problem.</p>
+<h2>How we hold ourselves to our principles</h2>
+<p>This constitution is set through the same CLI any operator uses, published
+through the same publishing flow, and rendered on the same page. When our
+direction changes, the change note is public. If the project's behavior
+contradicts a principle here, that is a bug in the project.</p>
+</div>
+<h2>Operating principles</h2>
+<ol class="claims">
+<li><div class="claim"><p class="claim-title">Coherence is the goal</p>
+<p class="claim-note">When we make changes or add new features, we do them because they help support the mission, not personal interests. If a change serves a narrow edge case for a particular individual or organization, then it&#x27;s not a coherent one.</p></div></li>
+<li><div class="claim"><p class="claim-title">Stay simple, stay nimble</p>
+<p class="claim-note">We refuse to build complexity just for the sake of it, or features because they just look cool. Every feature must be justified by a material benefit to the common good. We focus on what matters, because it helps us bring coherence faster.</p></div></li>
+<li><div class="claim"><p class="claim-title">We don&#x27;t judge</p>
+<p class="claim-note">Our focus is on our mission. Not what consumers do with it. We won&#x27;t judge consumers&#x27; constitutions; our role is to help support direction, not to define, score or edit what is valuable for our consumers.</p></div></li>
+<li><div class="claim"><p class="claim-title">We favor two-way door decisions, we mitigate one-way door ones effectively</p>
+<p class="claim-note">When we decide, we put all the cards over the table and establish our tradeoffs transparently. We favor those decisions that are reversible. Sometimes that&#x27;s not an option, and we must choose between decisions that are not reversible. We choose the one we have the most control over during mitigation. We understand we will not always make the right decision, but we know ahead of time what to do in the case that happens.</p></div></li>
+<li><div class="claim"><p class="claim-title">What worked before, works now</p>
+<p class="claim-note">When we build, we build thinking about the future. When we fail to cover future cases and we address them, we make sure nothing that used to work breaks.</p></div></li>
+<li><div class="claim"><p class="claim-title">We are frugal</p>
+<p class="claim-note">Changes in Kyno are consumed by other systems. Mostly agentic AI systems. These systems might call Kyno for their purposes, so every piece of output we serve must have a purpose, otherwise it is dead weight that has financial impact on our consumers.</p></div></li>
+<li><div class="claim"><p class="claim-title">One PR, one meaningful unit of value</p>
+<p class="claim-note">Every PR must have one single responsibility; if it does two things, it&#x27;s already doing too much.</p></div></li>
+<li><div class="claim"><p class="claim-title">We don&#x27;t make promises</p>
+<p class="claim-note">While it is tempting to make guarantees about the product, we are serving stochastic systems where probabilities rule. Nothing is guaranteed. We can mention possibilities and likelihood, but guarantees can backfire. The only guarantee is that whatever change we make will be principled in our constitution.</p></div></li>
+<li><div class="claim"><p class="claim-title">We don&#x27;t assume understanding</p>
+<p class="claim-note">Nobody, not even AI, can hold the context of everything. So when we comment, discuss, review, we want to provide the relevant context in full, with no assumptions. Name who you mean (e.g. the consumers) rather than leave references around (e.g. they).</p></div></li>
+<li><div class="claim"><p class="claim-title">We own it</p>
+<p class="claim-note">When breaking changes happen, we communicate externally and internally with speed and transparency. We don&#x27;t point fingers. We focus on mitigating and supporting our consumers, and learn from what happened so it doesn&#x27;t happen again. In the same way, we own the risks of our decisions.</p></div></li>
+</ol>
+<p class="stamp provenance">v1 &middot; last changed 2026-08-21</p>
+<h2>History</h2>
+<ol class="log">
+<li><p class="stamp">v1 &middot; 2026-08-21</p><p>Kyno adopts its own constitution</p></li>
+</ol>
+</main>
+</body>
+</html>

@@ -2,6 +2,7 @@
 prose through command-line flags is misery."""
 
 import json
+import re
 
 import pytest
 from typer.testing import CliRunner
@@ -14,6 +15,17 @@ from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 
 runner = CliRunner()
+
+
+def plain(result):
+    """The output as a person reads it — styling stripped, wrapping unwrapped.
+
+    Assertions pin Kyno's message, not the CLI library's rendering; rich may
+    split a flag name across style spans or wrap it across box lines.
+    """
+    text = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+    return " ".join(line.strip("│╭╰─╮╯ ") for line in text.splitlines())
+
 
 FULL_FILE = """
 constitution: acme
@@ -178,20 +190,20 @@ def test_a_file_and_a_field_flag_together_are_refused(db, tmp_path, flags):
     # Two sources for one field is a question nobody should have to answer.
     result = runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE), *flags])
     assert result.exit_code != 0
-    assert "--file" in result.output
+    assert "--file" in plain(result)
 
 
 def test_a_file_with_no_note_and_no_flag_is_refused(db, tmp_path):
     path = write(tmp_path, "mission: M\n")
     result = runner.invoke(app, ["set", "--file", path])
     assert result.exit_code != 0
-    assert "note" in result.output.lower()
+    assert "note" in plain(result).lower()
 
 
 def test_a_missing_file_reports_a_clean_error(db, tmp_path):
     result = runner.invoke(app, ["set", "--file", str(tmp_path / "nowhere.yaml")])
     assert result.exit_code == 1
-    assert "error:" in result.output.lower()
+    assert "error:" in plain(result).lower()
     assert "Traceback" not in result.output
 
 
@@ -233,4 +245,4 @@ def test_an_empty_field_flag_still_conflicts_with_a_file(db, tmp_path):
     # `--mission ""` is a real instruction (clear it), not an absent flag.
     result = runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE), "--mission", ""])
     assert result.exit_code != 0
-    assert "--mission" in result.output
+    assert "--mission" in plain(result)

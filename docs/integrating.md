@@ -20,6 +20,11 @@ for each step:
     run_step(context = last_direction + step_context)     # block goes first
 ```
 
+One thing to be clear about: **your orchestrator code makes this call, not
+the model.** The agent never sees a Kyno tool it can choose to use — the
+adapter pulls before each step and places the finished block in the
+context. Direction is delivered, not offered.
+
 Three rules hold it together: ask before every step, put the answer first,
 and never let a failed ask break the step. The sections below give the
 details for each part.
@@ -122,6 +127,15 @@ remaining work against the new block. Completed steps stay as they are.
       version it ran under.
 - [ ] `delta` lines appear in the block whenever the server sends them.
 
-If you build one of these for a framework others use, we'd welcome a PR —
-the CrewAI and LangGraph adapters in `src/kyno/adapters/` implement the
-same contract in Python.
+## How the shipped adapters implement this page
+
+| this page | in the code |
+|---|---|
+| the loop (pull, build, failure rules) | `DirectionBinder.bind()` — `src/kyno/adapters/core/binder.py` |
+| the call, over MCP | `McpDirectionSource` — `src/kyno/adapters/core/client.py` (or `LocalDirectionSource` when Kyno runs in-process) |
+| the block | `Direction.render()` — `src/kyno/adapters/core/cell.py` |
+| failure rules | `PullPolicy` — `src/kyno/adapters/core/policy.py` |
+| pushes | `BackgroundSubscriber` — `src/kyno/adapters/core/subscriber.py` |
+| putting the block first | `CrewAiKyno.before_llm_call` — `src/kyno/adapters/crewai/hooks.py`; `direction_node` / `pull_before` — `src/kyno/adapters/langgraph/nodes.py` |
+
+If you build one of these for a framework others use, we'd welcome a PR.

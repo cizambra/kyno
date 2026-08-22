@@ -2,26 +2,38 @@
 
 Kyno ships adapters for CrewAI and LangGraph. If you use a different
 framework or language, this page describes everything the shipped adapters
-do, so you can build the same behavior on your stack: each step runs with
-the current version of the direction, and when the direction changes, every
-agent picks it up on its next step.
+do, so you can build the same behavior on your stack.
 
-An integration does three things: before each step it asks Kyno what
-changed, it puts the answer at the front of the step's context, and it
-never lets a failed request break the step. The sections below cover each
-one.
+The whole integration is this loop:
 
-## 1. Ask what changed
+```
+known = 0
+last_direction = None
 
-Kyno speaks [MCP](https://modelcontextprotocol.io). Before every step, call
-the `get_changes_since` tool with the last version you saw (`0` if you've
-never asked):
+for each step:
+    try:
+        changes = kyno.get_changes_since(known)          # MCP tool call
+        last_direction = build_block(changes)             # section 2
+        known = changes.current_version
+    except KynoUnreachable:
+        pass                                              # keep last_direction
+    run_step(context = last_direction + step_context)     # block goes first
+```
+
+Three rules hold it together: ask before every step, put the answer first,
+and never let a failed ask break the step. The sections below give the
+details for each part.
+
+## 1. The call
+
+Call the `get_changes_since` MCP tool with the last version you saw (`0` if
+you've never asked):
 
 ```json
 { "known_version": 0, "constitution": "default", "detail": "compact" }
 ```
 
-You get back the current version and the direction itself:
+Response:
 
 ```json
 {
@@ -34,23 +46,19 @@ You get back the current version and the direction itself:
 }
 ```
 
-Three things to know:
+- If no direction has been set yet, you get version `0` and empty fields.
+  That is a valid state, not an error.
+- `detail: "compact"` returns the mission and principle titles;  `"full"`
+  adds the declaration and each principle's description. Use compact unless
+  you need the rest — this call runs on every step.
+- Always include `delta` in your block when it's present. It lists what
+  changed, in plain sentences, and it is the single highest-impact part of
+  the payload.
 
-- **Reads never fail.** If no direction has been set yet, you get version
-  `0` and empty fields. Kyno treats that as a valid state, not an error.
-- **`detail` is how much you want to carry.** `"compact"` returns the
-  mission and principle titles; `"full"` adds the declaration and each
-  principle's description. Compact is the default because agents
-  consult direction constantly, and every read should stay small.
-- **`delta` matters most.** When the direction changed,
-  it lists what moved, in plain sentences. Don't drop it: in our benchmark,
-  telling agents *what* changed (not just the new text) was the difference
-  between 75% and 93% of post-change work serving the new direction.
+## 2. The block
 
-## 2. Build the block
-
-Turn the answer into a text block and put it at the **front** of the step's
-context — before the agent's identity, before the task. The exact shape:
+Format the response as text and put it at the **front** of the step's
+context — before the agent's identity, before the task:
 
 ```
 [kyno:direction constitution=default version=9]
@@ -64,69 +72,56 @@ What changed:
 - <delta line>
 ```
 
-Rules, in order:
-
-- The first line is always the marker:
-  `[kyno:direction constitution=<name> version=<N>]`. It's how a transcript
-  answers "which direction was this agent on" with no other context.
-- If the version is `0`, the block is the marker plus one line:
+- The first line is always the marker. It records which constitution and
+  version this step ran under, so any transcript can be audited later.
+- Version `0`: the block is the marker plus one line —
   `No direction has been set yet.`
-- With `"full"` detail, add `Declaration:` and its text after the mission,
-  and indent each principle's description under its title.
+- `"full"` detail: add `Declaration:` and its text after the mission, and
+  indent each principle's description under its title.
 - Skip `Recent changes:` and `What changed:` when they're empty.
-
-Send the block on **every** step, even when nothing changed. A constitution
-that's only in the opening prompt scrolls out of the context window as the
-session grows — in our long-run test it was in front of the model on 2 of 30
-turns, and by the session's final third the agents scored the same as having
-no constitution at all.
+- Send the block on **every** step, even when nothing changed. A
+  constitution sent only once scrolls out of the context window as the
+  session grows.
 
 ## 3. When Kyno is unreachable
 
-A failed pull should never break the step; the only thing you lose is
-freshness. Three rules:
+Never fail the step because the pull failed:
 
-- If you've seen a direction before, reuse the **last one you got** — its
-  marker still carries the version it came from, so the transcript stays
-  accurate.
-- If you've never reached Kyno, use the version-`0` block.
-- Log it. Serving stale direction silently is the same problem Kyno exists
-  to remove.
+- Have a previous response? Reuse it. Its marker still shows the version it
+  came from, so the transcript stays accurate.
+- Never reached Kyno at all? Use the version-`0` block.
+- Log the failure either way.
 
-(If your use case truly must halt when direction is unknowable — a
-compliance desk, for example — failing the step is a legitimate opt-in. Just
-make sure it's an explicit decision, not an accidental default.)
+If your use case must halt when the direction is unknowable (a compliance
+process, for example), failing the step is a valid choice — make it an
+explicit setting, not the default.
 
-## 4. Treat pushes as hints
+## 4. Pushes are optional
 
-Kyno's MCP server exposes one resource, `kyno://constitution/current`, and
-sends `notifications/resources/updated` when a new version is appended. If
-your MCP client supports subscriptions, use them — but only as a nudge to
-pull sooner. The pull is what you act on. Never inject direction from a
-push payload, and never rely on pushes arriving: an integration that only
-pulls works correctly; one that only listens does not.
+Kyno sends `notifications/resources/updated` on the resource
+`kyno://constitution/current` when a new version is appended. If your MCP
+client supports subscriptions, use them to pull sooner. They are an
+optimization only: an integration that just pulls works correctly; one that
+only listens does not. Never build the block from a push payload.
 
-## 5. Pull when you plan, too
+## 5. If your orchestrator plans first
 
-If your orchestrator plans before it executes, pull at planning time and
-plan against the block. And when a mid-run pull comes back with a **higher
-version than the plan was made under**, re-plan the remaining work against
-the new block instead of finishing the old plan. Whatever is already done
-stays done; the remaining work should follow the direction currently in
-force.
+Pull at planning time too, and plan against the block. If a later pull
+returns a higher version than the plan was made under, re-plan the
+remaining work against the new block. Completed steps stay as they are.
 
 ## You're done when
 
-- [ ] Every model call's context starts with the direction block, and the
-      block's version is the newest Kyno had at that moment.
-- [ ] A `set_direction` while your system is mid-run shows up in the very
+- [ ] Every model call's context starts with the block, carrying the newest
+      version Kyno had at that moment.
+- [ ] A `set_direction` while your system is mid-run appears in the very
       next step's marker.
 - [ ] Killing Kyno mid-run changes nothing except a log line — steps
       continue on the last-known block.
-- [ ] Your transcript can answer, for any past step, which constitution and
-      version it served — from the marker alone.
-- [ ] The `delta` lines appear in the block whenever the server sends them.
+- [ ] For any past step, the marker alone tells you which constitution and
+      version it ran under.
+- [ ] `delta` lines appear in the block whenever the server sends them.
 
-If you build one of these for a framework others use, we'd love a PR — the
-CrewAI and LangGraph adapters in `src/kyno/adapters/` are small and show the
-same contract implemented in Python.
+If you build one of these for a framework others use, we'd welcome a PR —
+the CrewAI and LangGraph adapters in `src/kyno/adapters/` implement the
+same contract in Python.

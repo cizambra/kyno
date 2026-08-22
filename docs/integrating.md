@@ -25,7 +25,7 @@ Start a local Kyno with the sample constitution:
 pip install kyno
 kyno init-db
 kyno set --file conformance/v1.yaml
-kyno serve --transport http --token test-token
+KYNO_TOKEN=test-token kyno serve --transport http
 ```
 
 Kyno speaks [MCP](https://modelcontextprotocol.io), a standard protocol
@@ -52,7 +52,7 @@ from mcp.client.streamable_http import streamablehttp_client
 
 async def main():
     headers = {"Authorization": "Bearer test-token"}
-    async with streamablehttp_client("http://localhost:8000/mcp/", headers=headers) as (
+    async with streamablehttp_client("http://localhost:8080/mcp/", headers=headers) as (
         read, write, _,
     ):
         async with ClientSession(read, write) as session:
@@ -75,7 +75,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 const transport = new StreamableHTTPClientTransport(
-  new URL("http://localhost:8000/mcp/"),
+  new URL("http://localhost:8080/mcp/"),
   { requestInit: { headers: { Authorization: "Bearer test-token" } } },
 );
 const client = new Client({ name: "my-adapter", version: "0.1" });
@@ -101,7 +101,7 @@ require "net/http"
 require "json"
 require "uri"
 
-URL = URI("http://localhost:8000/mcp/")
+URL = URI("http://localhost:8080/mcp/")
 HEADERS = {
   "Authorization" => "Bearer test-token",
   "Content-Type" => "application/json",

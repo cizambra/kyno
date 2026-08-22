@@ -1,0 +1,10 @@
+[kyno:direction constitution=default version=2]
+Mission: Ship a lending product people trust
+Principles:
+- Approve in minutes, not days
+- Explain every rejection
+- Two reviewers above $25,000
+Recent changes:
+- second reviewer required above $25,000
+What changed:
+- Principle 3 was "Never lend what someone cannot repay" and is now "Two reviewers above $25,000".

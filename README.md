@@ -137,6 +137,9 @@ constitution's; agents on another one pull it by name with `get_changes_since`.
 pip install "kyno[crewai]"      # or: pip install "kyno[langgraph]"
 ```
 
+On a different framework or language? The whole integration contract is one
+page: [docs/integrating.md](docs/integrating.md).
+
 An adapter binds a crew or a graph to one **named constitution** and re-binds
 every next step to the version in force right now:
 

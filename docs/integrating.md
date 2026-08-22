@@ -1,14 +1,15 @@
 # Building a Kyno integration
 
-Kyno ships adapters for CrewAI and LangGraph. If your stack is something
-else — another framework, another language — this page covers everything the
-shipped adapters do. Follow it and your agents get the same steering: every
-step acts on the direction in force *right now*, and a change reaches every
-agent on its next step.
+Kyno ships adapters for CrewAI and LangGraph. If you use a different
+framework or language, this page describes everything the shipped adapters
+do, so you can build the same behavior on your stack: each step runs with
+the current version of the direction, and when the direction changes, every
+agent picks it up on its next step.
 
-In a nutshell: **before each step, ask Kyno what changed, put the answer at
-the front of the step's context, and never let a failed ask break the
-step.** The rest of this page details those three moves.
+An integration does three things: before each step it asks Kyno what
+changed, it puts the answer at the front of the step's context, and it
+never lets a failed request break the step. The sections below cover each
+one.
 
 ## 1. Ask what changed
 

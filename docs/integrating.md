@@ -6,9 +6,9 @@ shipped adapters do. Follow it and your agents get the same steering: every
 step acts on the direction in force *right now*, and a change reaches every
 agent on its next step.
 
-The short version: **before each step, ask Kyno what changed, put the answer
-at the front of the step's context, and never let a failed ask kill the
-step.** Everything below is the detail of those three moves.
+In a nutshell: **before each step, ask Kyno what changed, put the answer at
+the front of the step's context, and never let a failed ask break the
+step.** The rest of this page details those three moves.
 
 ## 1. Ask what changed
 
@@ -36,11 +36,11 @@ You get back the current version and the direction itself:
 Three things to know:
 
 - **Reads never fail.** If no direction has been set yet, you get version
-  `0` and empty fields — that's an answer, not an error.
+  `0` and empty fields. Kyno treats that as a valid state, not an error.
 - **`detail` is how much you want to carry.** `"compact"` returns the
   mission and principle titles; `"full"` adds the declaration and each
-  principle's description. Compact is the default for a reason: agents
-  consult direction constantly, and a consult should cost what it answers.
+  principle's description. Compact is the default because agents
+  consult direction constantly, and every read should stay small.
 - **`delta` matters most.** When the direction changed,
   it lists what moved, in plain sentences. Don't drop it: in our benchmark,
   telling agents *what* changed (not just the new text) was the difference
@@ -82,17 +82,19 @@ no constitution at all.
 
 ## 3. When Kyno is unreachable
 
-A failed pull must cost freshness, never the step. Three rules:
+A failed pull should never break the step; the only thing you lose is
+freshness. Three rules:
 
 - If you've seen a direction before, reuse the **last one you got** — its
-  marker still names the version it was, so the record stays honest.
+  marker still carries the version it came from, so the transcript stays
+  accurate.
 - If you've never reached Kyno, use the version-`0` block.
-- Log it. An integration that silently serves stale direction for a week is
-  the exact problem Kyno exists to remove.
+- Log it. Serving stale direction silently is the same problem Kyno exists
+  to remove.
 
 (If your use case truly must halt when direction is unknowable — a
-compliance desk, say — failing the step is a legitimate opt-in. Just make it
-a choice someone made, not a default someone forgot.)
+compliance desk, for example — failing the step is a legitimate opt-in. Just
+make sure it's an explicit decision, not an accidental default.)
 
 ## 4. Treat pushes as hints
 
@@ -101,15 +103,16 @@ sends `notifications/resources/updated` when a new version is appended. If
 your MCP client supports subscriptions, use them — but only as a nudge to
 pull sooner. The pull is what you act on. Never inject direction from a
 push payload, and never rely on pushes arriving: an integration that only
-pulls is correct; an integration that only listens is not.
+pulls works correctly; one that only listens does not.
 
 ## 5. Pull when you plan, too
 
 If your orchestrator plans before it executes, pull at planning time and
 plan against the block. And when a mid-run pull comes back with a **higher
 version than the plan was made under**, re-plan the remaining work against
-the new block instead of finishing the old plan politely. Steps already
-done are done; what's left should serve the direction now in force.
+the new block instead of finishing the old plan. Whatever is already done
+stays done; the remaining work should follow the direction currently in
+force.
 
 ## You're done when
 

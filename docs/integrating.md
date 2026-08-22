@@ -227,6 +227,15 @@ All four match — stage 2 is done.
 
 ## Stage 3 — wire it into your orchestrator
 
+Before this stage, everything you have built is identical for every
+adapter, in every framework — the call and the block do not care what
+orchestrator they serve. This stage is the only framework-specific part,
+and it comes down to two things: where your framework's before-each-step
+hook lives, and what "the front of the context" means there (a messages
+list in some frameworks, a state object in others). If an adapter already
+exists in your language for a different framework, reuse its code for
+stages 1 and 2 as-is and rewrite only this stage.
+
 Now put the two pieces together. Find the place in your orchestrator that
 runs right before each agent step (most frameworks have a hook, callback,
 or middleware for this). In that place:

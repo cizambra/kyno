@@ -75,15 +75,13 @@ GOOD_V1 = expected("block_version1_compact.txt").rstrip("\n")
 GOOD_V2 = expected("block_version2_compact.txt").rstrip("\n")
 
 
-def test_a_correct_log_passes_and_reports_the_version_change():
-    report = check_log(log_of(GOOD_V1, GOOD_V1, GOOD_V2))
+def test_a_correct_log_passes_and_reports_the_version_changes():
+    # A full session: before any direction, a version arrives, a step where
+    # nothing changed, then a change.
+    report = check_log(log_of(GOOD_V0, GOOD_V1, GOOD_V1, GOOD_V2))
     assert report.ok
-    assert report.versions == [1, 1, 2]
-    assert report.version_changes() == [(3, 1, 2)]
-
-
-def test_the_empty_state_block_passes():
-    assert check_log(log_of(GOOD_V0, GOOD_V1)).ok
+    assert report.versions == [0, 1, 1, 2]
+    assert report.version_changes() == [(2, 0, 1), (4, 1, 2)]
 
 
 def test_a_block_without_the_marker_is_reported_with_its_position():

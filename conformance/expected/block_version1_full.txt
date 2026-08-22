@@ -1,0 +1,14 @@
+[kyno:direction constitution=default version=1]
+Mission: Ship a lending product people trust
+Declaration:
+We lend to people the big banks ignore, and we stay in business by being
+right about who to trust, not by charging for mistakes.
+Principles:
+- Approve in minutes, not days
+  A complete application gets a decision the same day. Waiting is a cost we put on the applicant, so we treat delay as a defect.
+- Explain every rejection
+  A rejected applicant is told which requirement was not met, in plain language, in the rejection message itself.
+- Never lend what someone cannot repay
+  Affordability is checked against verified income, not stated income.
+Recent changes:
+- initial constitution

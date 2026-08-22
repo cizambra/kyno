@@ -1,10 +1,10 @@
 # Building a Kyno integration
 
 Kyno ships adapters for CrewAI and LangGraph. If your stack is something
-else — another framework, another language — this page is the whole
-contract. Follow it and your agents get the same steering the shipped
-adapters give: every step acts on the direction in force *right now*, and a
-change reaches every agent on its next step.
+else — another framework, another language — this page covers everything the
+shipped adapters do. Follow it and your agents get the same steering: every
+step acts on the direction in force *right now*, and a change reaches every
+agent on its next step.
 
 The short version: **before each step, ask Kyno what changed, put the answer
 at the front of the step's context, and never let a failed ask kill the
@@ -41,7 +41,7 @@ Three things to know:
   mission and principle titles; `"full"` adds the declaration and each
   principle's description. Compact is the default for a reason: agents
   consult direction constantly, and a consult should cost what it answers.
-- **`delta` is the part that steers hardest.** When the direction changed,
+- **`delta` matters most.** When the direction changed,
   it lists what moved, in plain sentences. Don't drop it: in our benchmark,
   telling agents *what* changed (not just the new text) was the difference
   between 75% and 93% of post-change work serving the new direction.

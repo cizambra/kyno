@@ -1,0 +1,8 @@
+[kyno:direction constitution=default version=1]
+Mission: Ship a lending product people trust
+Principles:
+- Approve in minutes, not days
+- Explain every rejection
+- Never lend what someone cannot repay
+Recent changes:
+- initial constitution

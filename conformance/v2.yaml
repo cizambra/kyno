@@ -1,0 +1,23 @@
+# The second version. Stage 4 of the guide publishes this while the
+# builder's orchestrator is running, to test that the change arrives.
+mission: Ship a lending product people trust
+
+declaration: |
+  We lend to people the big banks ignore, and we stay in business by being
+  right about who to trust, not by charging for mistakes.
+
+principles:
+  - title: Approve in minutes, not days
+    description: >-
+      A complete application gets a decision the same day. Waiting is a cost
+      we put on the applicant, so we treat delay as a defect.
+  - title: Explain every rejection
+    description: >-
+      A rejected applicant is told which requirement was not met, in plain
+      language, in the rejection message itself.
+  - title: Two reviewers above $25,000
+    description: >-
+      Any loan over $25,000 needs a second reviewer before the offer goes
+      out.
+
+note: second reviewer required above $25,000

@@ -36,6 +36,7 @@ from kyno.sdk.gate import (
     Verdict,
     VerdictSource,
 )
+from kyno.sdk.plan import PlanTracker
 from kyno.sdk.policy import (
     GatePolicy,
     LogSink,
@@ -69,6 +70,7 @@ __all__ = [
     "LocalDirectionSource",
     "LogSink",
     "McpDirectionSource",
+    "PlanTracker",
     "PullPolicy",
     "RecordingSink",
     "RunTrace",

@@ -43,7 +43,7 @@ def test_the_core_exports_one_documented_surface():
 
 def test_nothing_public_leaks_in_beside_the_documented_surface():
     """__all__ is the public contract; anything else public is an accident."""
-    modules = {"binder", "cell", "client", "gate", "policy", "subscriber", "trace"}
+    modules = {"binder", "cell", "client", "gate", "plan", "policy", "subscriber", "trace"}
     public = {name for name in vars(core) if not name.startswith("_")} - modules
 
     assert public == set(core.__all__)

@@ -1,0 +1,22 @@
+{
+  "current_version": 1,
+  "changed": true,
+  "mission": "Ship a lending product people trust",
+  "principles": [
+    {
+      "title": "Approve in minutes, not days"
+    },
+    {
+      "title": "Explain every rejection"
+    },
+    {
+      "title": "Never lend what someone cannot repay"
+    }
+  ],
+  "changed_mission": true,
+  "changed_principles": true,
+  "change_notes": [
+    "initial constitution"
+  ],
+  "delta": []
+}

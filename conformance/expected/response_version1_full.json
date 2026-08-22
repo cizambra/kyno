@@ -1,0 +1,26 @@
+{
+  "current_version": 1,
+  "changed": true,
+  "mission": "Ship a lending product people trust",
+  "declaration": "We lend to people the big banks ignore, and we stay in business by being\nright about who to trust, not by charging for mistakes.",
+  "principles": [
+    {
+      "title": "Approve in minutes, not days",
+      "description": "A complete application gets a decision the same day. Waiting is a cost we put on the applicant, so we treat delay as a defect."
+    },
+    {
+      "title": "Explain every rejection",
+      "description": "A rejected applicant is told which requirement was not met, in plain language, in the rejection message itself."
+    },
+    {
+      "title": "Never lend what someone cannot repay",
+      "description": "Affordability is checked against verified income, not stated income."
+    }
+  ],
+  "changed_mission": true,
+  "changed_principles": true,
+  "change_notes": [
+    "initial constitution"
+  ],
+  "delta": []
+}

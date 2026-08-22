@@ -53,7 +53,9 @@ from mcp.client.streamable_http import streamablehttp_client
 async def main():
     headers = {"Authorization": "Bearer test-token"}
     async with streamablehttp_client("http://localhost:8080/mcp/", headers=headers) as (
-        read, write, _,
+        read,
+        write,
+        _,
     ):
         async with ClientSession(read, write) as session:
             await session.initialize()

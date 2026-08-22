@@ -46,6 +46,7 @@ def test_the_example_files_match_what_kyno_actually_produces(plane):
     )
     ch1 = plane.changes_since(0)
     assert json.loads(expected("response_version1_compact.json")) == ch1.to_dict(COMPACT)
+    assert json.loads(expected("response_version1_full.json")) == ch1.to_dict(FULL)
     assert expected("block_version1_compact.txt") == (
         Direction.from_changes(ch1, "default", COMPACT).render() + "\n"
     )

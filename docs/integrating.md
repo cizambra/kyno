@@ -39,6 +39,96 @@ with client libraries in most languages. From your language, call the tool
 `known_version` is the last version number you saw; `0` means "I haven't
 seen any yet".
 
+Here is that call in three languages. Every example on this page was run
+against a Kyno started exactly as above before being committed.
+
+**Python** (`pip install mcp`):
+
+```python
+import asyncio, json
+from mcp import ClientSession
+from mcp.client.streamable_http import streamablehttp_client
+
+
+async def main():
+    headers = {"Authorization": "Bearer test-token"}
+    async with streamablehttp_client("http://localhost:8000/mcp/", headers=headers) as (
+        read, write, _,
+    ):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool(
+                "get_changes_since",
+                {"known_version": 0, "constitution": "default", "detail": "compact"},
+            )
+            response = json.loads(result.content[0].text)
+            print(response["current_version"], response["mission"])
+
+
+asyncio.run(main())
+```
+
+**TypeScript** (`npm install @modelcontextprotocol/sdk`):
+
+```typescript
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+
+const transport = new StreamableHTTPClientTransport(
+  new URL("http://localhost:8000/mcp/"),
+  { requestInit: { headers: { Authorization: "Bearer test-token" } } },
+);
+const client = new Client({ name: "my-adapter", version: "0.1" });
+await client.connect(transport);
+
+const result = await client.callTool({
+  name: "get_changes_since",
+  arguments: { known_version: 0, constitution: "default", detail: "compact" },
+});
+const response = JSON.parse(result.content[0].text);
+console.log(response.current_version, response.mission);
+await client.close();
+```
+
+**Ruby, or any language without an MCP client library** — the protocol is
+three plain HTTP POSTs to the same URL: one to open a session, one to say
+you're ready, one to call the tool. The session id comes back in the
+`mcp-session-id` response header, and replies arrive as a server-sent
+event, so the JSON is on the line that starts with `data: `:
+
+```ruby
+require "net/http"
+require "json"
+require "uri"
+
+URL = URI("http://localhost:8000/mcp/")
+HEADERS = {
+  "Authorization" => "Bearer test-token",
+  "Content-Type" => "application/json",
+  "Accept" => "application/json, text/event-stream",
+}
+
+def post(body, session_id: nil)
+  headers = HEADERS.dup
+  headers["Mcp-Session-Id"] = session_id if session_id
+  Net::HTTP.post(URL, JSON.dump(body), headers)
+end
+
+init = post({ jsonrpc: "2.0", id: 1, method: "initialize",
+              params: { protocolVersion: "2025-06-18", capabilities: {},
+                        clientInfo: { name: "my-adapter", version: "0.1" } } })
+session_id = init["mcp-session-id"]
+post({ jsonrpc: "2.0", method: "notifications/initialized" }, session_id: session_id)
+
+reply = post({ jsonrpc: "2.0", id: 2, method: "tools/call",
+               params: { name: "get_changes_since",
+                         arguments: { known_version: 0, constitution: "default",
+                                      detail: "compact" } } }, session_id: session_id)
+data = reply.body.lines.find { |l| l.start_with?("data: ") }.delete_prefix("data: ")
+response = JSON.parse(JSON.parse(data).dig("result", "content", 0, "text"))
+puts "#{response["current_version"]} #{response["mission"]}"
+```
+
 **Check:** the response must equal the file
 `conformance/expected/response_version1_compact.json`, word for word. If it
 does, stage 1 is done.
@@ -85,6 +175,36 @@ The rules:
   line, and put each principle's description on an indented line under its
   title.
 
+The whole function, in TypeScript — a direct translation works in any
+language:
+
+```typescript
+export function buildBlock(response, constitution = "default", detail = "compact") {
+  const marker = `[kyno:direction constitution=${constitution} version=${response.current_version}]`;
+  if (response.current_version === 0) {
+    return `${marker}\nNo direction has been set yet.`;
+  }
+  const lines = [marker, `Mission: ${response.mission}`];
+  if (detail === "full" && response.declaration) {
+    lines.push("Declaration:", response.declaration);
+  }
+  if (response.principles.length > 0) {
+    lines.push("Principles:");
+    for (const p of response.principles) {
+      lines.push(`- ${p.title}`);
+      if (detail === "full" && p.description) lines.push(`  ${p.description}`);
+    }
+  }
+  if (response.change_notes.length > 0) {
+    lines.push("Recent changes:", ...response.change_notes.map((n) => `- ${n}`));
+  }
+  if (response.delta.length > 0) {
+    lines.push("What changed:", ...response.delta.map((d) => `- ${d}`));
+  }
+  return lines.join("\n");
+}
+```
+
 **Check:** run your function on the example responses and compare with the
 example blocks, character for character:
 
@@ -92,7 +212,7 @@ example blocks, character for character:
 |---|---|
 | `response_before_any_direction.json` | `block_before_any_direction.txt` |
 | `response_version1_compact.json` | `block_version1_compact.txt` |
-| the same, with `detail: "full"` | `block_version1_full.txt` |
+| `response_version1_full.json` (from `detail: "full"`) | `block_version1_full.txt` |
 | `response_version2_after_knowing_1.json` | `block_version2_compact.txt` |
 
 All four match — stage 2 is done.
@@ -111,6 +231,30 @@ or middleware for this). In that place:
 
 Do this on every step, even when nothing changed. A direction that is only
 sent once falls out of the context window as the conversation grows.
+
+In TypeScript, the whole thing — including the stage-5 rule that a failed
+fetch reuses the last block instead of crashing the step:
+
+```typescript
+let knownVersion = 0;
+let lastBlock = "[kyno:direction constitution=default version=0]\nNo direction has been set yet.";
+
+async function fetchBlock() {
+  try {
+    const response = await callGetChangesSince(knownVersion);  // stage 1
+    knownVersion = response.current_version;
+    lastBlock = buildBlock(response);                          // stage 2
+  } catch {
+    console.error("kyno unreachable — reusing the last block");
+  }
+  return lastBlock;
+}
+
+// in your orchestrator's before-each-step hook:
+const block = await fetchBlock();
+const context = block + "\n\n" + stepContext;
+appendFileSync("my_blocks.log", block + "\n---end---\n");   // for the checker
+```
 
 **Check:** while your orchestrator runs, append every block you inject to a
 log file, each followed by a line containing only `---end---`. Then run the

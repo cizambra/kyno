@@ -1,0 +1,24 @@
+{
+  "current_version": 2,
+  "changed": true,
+  "mission": "Ship a lending product people trust",
+  "principles": [
+    {
+      "title": "Approve in minutes, not days"
+    },
+    {
+      "title": "Explain every rejection"
+    },
+    {
+      "title": "Two reviewers above $25,000"
+    }
+  ],
+  "changed_mission": false,
+  "changed_principles": true,
+  "change_notes": [
+    "second reviewer required above $25,000"
+  ],
+  "delta": [
+    "Principle 3 was \"Never lend what someone cannot repay\" and is now \"Two reviewers above $25,000\"."
+  ]
+}

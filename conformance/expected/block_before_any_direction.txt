@@ -1,0 +1,2 @@
+[kyno:direction constitution=default version=0]
+No direction has been set yet.

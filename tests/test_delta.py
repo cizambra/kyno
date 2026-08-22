@@ -106,8 +106,8 @@ def test_the_delta_is_separate_from_the_operator_note(plane):
 
 
 def test_the_injected_block_carries_the_delta(plane):
-    from kyno.adapters.core.binder import DirectionBinder
-    from kyno.adapters.core.client import LocalDirectionSource
+    from kyno.sdk.binder import DirectionBinder
+    from kyno.sdk.client import LocalDirectionSource
 
     binder = DirectionBinder(LocalDirectionSource(plane))
     binder.bind()

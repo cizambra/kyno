@@ -6,10 +6,10 @@ bound to it keeps being sent a small block, unless it asks for more.
 from starlette.testclient import TestClient
 from typer.testing import CliRunner
 
-from kyno.adapters.core.binder import DirectionBinder
-from kyno.adapters.core.client import LocalDirectionSource
 from kyno.cli import app as cli
 from kyno.models import FULL
+from kyno.sdk.binder import DirectionBinder
+from kyno.sdk.client import LocalDirectionSource
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 from kyno.transports import build_http_app

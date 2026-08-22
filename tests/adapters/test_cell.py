@@ -2,14 +2,14 @@ import threading
 
 import pytest
 
-from kyno.adapters.core.cell import (
+from kyno.models import ChangesSince, Principle
+from kyno.sdk.cell import (
     COMPACT,
     DIRECTION_MARKER,
     FULL,
     Direction,
     DirectionCell,
 )
-from kyno.models import ChangesSince, Principle
 
 
 def _direction(version: int, constitution: str = "default") -> Direction:

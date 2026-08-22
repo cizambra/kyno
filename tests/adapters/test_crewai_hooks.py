@@ -2,12 +2,12 @@ import pytest
 
 pytest.importorskip("crewai")
 
-from kyno.adapters.core.binder import DirectionBinder  # noqa: E402
-from kyno.adapters.core.cell import DIRECTION_MARKER, FULL  # noqa: E402
-from kyno.adapters.core.client import LocalDirectionSource  # noqa: E402
-from kyno.adapters.core.gate import RealignmentGate, Verdict  # noqa: E402
-from kyno.adapters.core.trace import RunTrace  # noqa: E402
 from kyno.adapters.crewai.hooks import CrewAiKyno, TaskBlockedByKyno  # noqa: E402
+from kyno.sdk.binder import DirectionBinder  # noqa: E402
+from kyno.sdk.cell import DIRECTION_MARKER, FULL  # noqa: E402
+from kyno.sdk.client import LocalDirectionSource  # noqa: E402
+from kyno.sdk.gate import RealignmentGate, Verdict  # noqa: E402
+from kyno.sdk.trace import RunTrace  # noqa: E402
 
 
 class FakeCtx:

@@ -7,15 +7,15 @@ import threading
 import mcp.types as types
 from pydantic import AnyUrl
 
-from kyno.adapters.core.cell import Direction, DirectionCell
-from kyno.adapters.core.client import DirectionSource, SessionRunner
-from kyno.adapters.core.policy import (
+from kyno.mcp_server import RESOURCE_URI
+from kyno.sdk.cell import Direction, DirectionCell
+from kyno.sdk.client import DirectionSource, SessionRunner
+from kyno.sdk.policy import (
     PULL_FAILED_STALE,
     LogSink,
     TelemetryEvent,
     TelemetrySink,
 )
-from kyno.mcp_server import RESOURCE_URI
 
 _STOP = object()
 

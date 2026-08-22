@@ -1,6 +1,7 @@
 import logging
 
-from kyno.adapters.core.policy import (
+from kyno.errors import CoherenceError, KynoUnavailableError
+from kyno.sdk.policy import (
     UNCHECKED,
     GatePolicy,
     LogSink,
@@ -8,7 +9,6 @@ from kyno.adapters.core.policy import (
     RecordingSink,
     TelemetryEvent,
 )
-from kyno.errors import CoherenceError, KynoUnavailableError
 
 
 def test_defaults_are_fail_open():

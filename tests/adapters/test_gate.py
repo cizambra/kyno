@@ -1,5 +1,6 @@
-from kyno.adapters.core.cell import Direction
-from kyno.adapters.core.gate import (
+from kyno.models import Principle
+from kyno.sdk.cell import Direction
+from kyno.sdk.gate import (
     NO_SOURCE,
     SOURCE_ERROR,
     UNKNOWN_VERDICT,
@@ -7,7 +8,7 @@ from kyno.adapters.core.gate import (
     RealignmentGate,
     Verdict,
 )
-from kyno.adapters.core.policy import (
+from kyno.sdk.policy import (
     DRIFT_BLOCKED,
     DRIFT_PAUSED,
     PAUSE_UNSUPPORTED,
@@ -15,7 +16,6 @@ from kyno.adapters.core.policy import (
     GatePolicy,
     RecordingSink,
 )
-from kyno.models import Principle
 
 DIRECTION = Direction(
     constitution="eu", version=4, mission="Ship trustworthy lending", principles=("Be honest",)

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from kyno.adapters.core.cell import COMPACT, Direction, DirectionCell, check_context
-from kyno.adapters.core.client import DirectionSource
-from kyno.adapters.core.policy import (
+from kyno.errors import CoherenceError, KynoUnavailableError
+from kyno.sdk.cell import COMPACT, Direction, DirectionCell, check_context
+from kyno.sdk.client import DirectionSource
+from kyno.sdk.policy import (
     PULL_FAILED_EMPTY,
     PULL_FAILED_STALE,
     LogSink,
@@ -10,7 +11,6 @@ from kyno.adapters.core.policy import (
     TelemetryEvent,
     TelemetrySink,
 )
-from kyno.errors import CoherenceError, KynoUnavailableError
 
 
 class DirectionBinder:

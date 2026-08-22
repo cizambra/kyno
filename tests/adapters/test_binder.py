@@ -1,15 +1,15 @@
 import pytest
 
-from kyno.adapters.core.binder import DirectionBinder
-from kyno.adapters.core.cell import COMPACT, FULL, Direction, DirectionCell
-from kyno.adapters.core.client import LocalDirectionSource
-from kyno.adapters.core.policy import (
+from kyno.errors import KynoUnavailableError, UnknownVersionError
+from kyno.sdk.binder import DirectionBinder
+from kyno.sdk.cell import COMPACT, FULL, Direction, DirectionCell
+from kyno.sdk.client import LocalDirectionSource
+from kyno.sdk.policy import (
     PULL_FAILED_EMPTY,
     PULL_FAILED_STALE,
     PullPolicy,
     RecordingSink,
 )
-from kyno.errors import KynoUnavailableError, UnknownVersionError
 
 
 def test_a_step_binds_the_current_version(control_plane):

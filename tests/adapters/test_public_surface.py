@@ -2,7 +2,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-import kyno.adapters.core as core
+import kyno.sdk as core
 
 EXPECTED = {
     "Direction",
@@ -64,7 +64,7 @@ def test_no_adapter_can_write_direction():
 def test_the_core_stays_importable_with_no_orchestrator():
     """The whole core surface, in a process that must not touch a framework."""
     code = (
-        "import sys, kyno.adapters.core as core;"
+        "import sys, kyno.sdk as core;"
         "assert core.__all__;"
         "loaded = {m.split('.')[0] for m in sys.modules};"
         "assert not loaded & {'crewai', 'langgraph', 'langchain_core', 'openai'}, loaded"

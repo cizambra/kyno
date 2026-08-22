@@ -1,7 +1,7 @@
 import pytest
 
-from kyno.adapters.core.cell import Direction
-from kyno.adapters.core.trace import (
+from kyno.sdk.cell import Direction
+from kyno.sdk.trace import (
     DECOMPOSITION_COHERES_FIELDS,
     DELEGATION,
     SUBGRAPH,

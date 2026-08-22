@@ -4,13 +4,13 @@ from typing import NamedTuple
 import pytest
 from pydantic import AnyUrl
 
-from kyno.adapters.core.binder import DirectionBinder
-from kyno.adapters.core.cell import DirectionCell
-from kyno.adapters.core.client import McpDirectionSource, SessionRunner
-from kyno.adapters.core.policy import PULL_FAILED_STALE, RecordingSink
-from kyno.adapters.core.subscriber import BackgroundSubscriber
 from kyno.errors import KynoUnavailableError
 from kyno.mcp_server import RESOURCE_URI, build_server
+from kyno.sdk.binder import DirectionBinder
+from kyno.sdk.cell import DirectionCell
+from kyno.sdk.client import McpDirectionSource, SessionRunner
+from kyno.sdk.policy import PULL_FAILED_STALE, RecordingSink
+from kyno.sdk.subscriber import BackgroundSubscriber
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 

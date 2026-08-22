@@ -3,7 +3,7 @@ their caps, and text carrying the header of the injected direction block."""
 
 import pytest
 
-from kyno.adapters.core.cell import DIRECTION_MARKER
+from kyno.sdk.cell import DIRECTION_MARKER
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 

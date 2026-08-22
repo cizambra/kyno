@@ -1,6 +1,6 @@
 import pytest
 
-from kyno.adapters.core.client import DirectionSource, KynoBinding, LocalDirectionSource
+from kyno.sdk.client import DirectionSource, KynoBinding, LocalDirectionSource
 
 
 def test_binding_defaults_to_the_default_constitution():

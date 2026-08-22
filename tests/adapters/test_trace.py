@@ -1,9 +1,9 @@
 from datetime import UTC
 
-from kyno.adapters.core.cell import Direction
-from kyno.adapters.core.gate import Action, GateDecision, Verdict
-from kyno.adapters.core.trace import SERVES_DIRECTION_FIELDS, RunTrace
 from kyno.models import Principle
+from kyno.sdk.cell import Direction
+from kyno.sdk.gate import Action, GateDecision, Verdict
+from kyno.sdk.trace import SERVES_DIRECTION_FIELDS, RunTrace
 
 DIRECTION = Direction(
     constitution="eu", version=4, mission="Ship trustworthy lending", principles=("Be honest",)

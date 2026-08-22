@@ -13,17 +13,15 @@ Everything an adapter needs is exported here; the framework adapters in
 `kyno.adapters` are thin layers over this module.
 """
 
-from __future__ import annotations
-
-from kyno.adapters.core.binder import DirectionBinder
-from kyno.adapters.core.cell import (
+from kyno.sdk.binder import DirectionBinder
+from kyno.sdk.cell import (
     COMPACT,
     DIRECTION_MARKER,
     FULL,
     Direction,
     DirectionCell,
 )
-from kyno.adapters.core.client import (
+from kyno.sdk.client import (
     DirectionSource,
     KynoBinding,
     LocalDirectionSource,
@@ -31,21 +29,37 @@ from kyno.adapters.core.client import (
     SessionRunner,
     http_session,
 )
-from kyno.adapters.core.policy import (
+from kyno.sdk.gate import (
+    Action,
+    GateDecision,
+    RealignmentGate,
+    Verdict,
+    VerdictSource,
+)
+from kyno.sdk.policy import (
+    GatePolicy,
     LogSink,
     PullPolicy,
     RecordingSink,
     TelemetryEvent,
     TelemetrySink,
 )
-from kyno.adapters.core.subscriber import BackgroundSubscriber
-from kyno.adapters.core.trace import RunTrace
+from kyno.sdk.subscriber import BackgroundSubscriber
+from kyno.sdk.trace import DecompositionEdge, RunTrace, StepRecord
 
 __all__ = [
     "COMPACT",
     "DIRECTION_MARKER",
     "FULL",
+    "Action",
     "BackgroundSubscriber",
+    "DecompositionEdge",
+    "GateDecision",
+    "GatePolicy",
+    "RealignmentGate",
+    "StepRecord",
+    "Verdict",
+    "VerdictSource",
     "Direction",
     "DirectionBinder",
     "DirectionCell",
@@ -87,7 +101,7 @@ class KynoConnection:
     def close(self) -> None:
         self._runner.close()
 
-    def __enter__(self) -> KynoConnection:
+    def __enter__(self) -> "KynoConnection":
         return self
 
     def __exit__(self, *exc_info: object) -> None:

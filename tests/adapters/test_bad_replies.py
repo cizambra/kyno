@@ -13,10 +13,10 @@ import json
 
 import pytest
 
-from kyno.adapters.core.binder import DirectionBinder
-from kyno.adapters.core.client import McpDirectionSource
-from kyno.adapters.core.policy import PULL_FAILED_EMPTY, PULL_FAILED_STALE, RecordingSink
 from kyno.errors import KynoUnavailableError
+from kyno.sdk.binder import DirectionBinder
+from kyno.sdk.client import McpDirectionSource
+from kyno.sdk.policy import PULL_FAILED_EMPTY, PULL_FAILED_STALE, RecordingSink
 
 
 class Text:
@@ -132,7 +132,7 @@ def test_an_unavailable_error_keeps_its_own_message():
 
 
 def test_an_oversized_reply_is_refused_before_it_is_parsed():
-    from kyno.adapters.core.client import MAX_REPLY_CHARS
+    from kyno.sdk.client import MAX_REPLY_CHARS
 
     huge = json.dumps(good_payload(mission="x" * (MAX_REPLY_CHARS + 1)))
     with pytest.raises(KynoUnavailableError, match="bad reply"):
@@ -140,7 +140,7 @@ def test_an_oversized_reply_is_refused_before_it_is_parsed():
 
 
 def test_a_reply_at_the_size_limit_is_still_read():
-    from kyno.adapters.core.client import MAX_REPLY_CHARS
+    from kyno.sdk.client import MAX_REPLY_CHARS
 
     payload = json.dumps(good_payload())
     padded = json.dumps(good_payload(mission="x" * (MAX_REPLY_CHARS - len(payload))))
@@ -172,7 +172,7 @@ def test_the_loop_closing_between_the_check_and_the_dispatch_is_unavailable(monk
     # between them and run_coroutine_threadsafe raises RuntimeError.
     import asyncio
 
-    from kyno.adapters.core.client import SessionRunner
+    from kyno.sdk.client import SessionRunner
 
     def closed(coro, loop):
         raise RuntimeError("Event loop is closed")

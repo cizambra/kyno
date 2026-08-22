@@ -4,7 +4,7 @@ import textwrap
 
 
 def test_core_is_importable():
-    import kyno.adapters.core as core
+    import kyno.sdk as core
 
     assert core.__doc__
 
@@ -16,7 +16,7 @@ def test_core_never_imports_a_framework():
     code = textwrap.dedent(
         """
         import sys
-        import kyno.adapters.core  # noqa: F401
+        import kyno.sdk  # noqa: F401
         leaked = [m for m in sys.modules if m.split(".")[0] in ("crewai", "langgraph")]
         assert not leaked, leaked
         """

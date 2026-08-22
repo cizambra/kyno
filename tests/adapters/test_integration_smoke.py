@@ -13,9 +13,9 @@ pytestmark = [
 
 def test_crewai_hooks_register_against_the_real_api(control_plane):
     crewai_hooks = pytest.importorskip("crewai.hooks")
-    from kyno.adapters.core.binder import DirectionBinder
-    from kyno.adapters.core.client import LocalDirectionSource
     from kyno.adapters.crewai.hooks import CrewAiKyno
+    from kyno.sdk.binder import DirectionBinder
+    from kyno.sdk.client import LocalDirectionSource
 
     control_plane.set_direction(mission="M1", change_note="init")
     adapter = CrewAiKyno(DirectionBinder(LocalDirectionSource(control_plane)))
@@ -31,10 +31,10 @@ def test_a_real_react_agent_accepts_the_hooks(control_plane):
     from langchain_core.language_models import FakeListChatModel
     from langgraph.prebuilt import create_react_agent
 
-    from kyno.adapters.core.binder import DirectionBinder
-    from kyno.adapters.core.client import LocalDirectionSource
-    from kyno.adapters.core.gate import RealignmentGate
     from kyno.adapters.langgraph.nodes import direction_node, gate_node
+    from kyno.sdk.binder import DirectionBinder
+    from kyno.sdk.client import LocalDirectionSource
+    from kyno.sdk.gate import RealignmentGate
 
     control_plane.set_direction(mission="M1", change_note="init")
     binder = DirectionBinder(LocalDirectionSource(control_plane))

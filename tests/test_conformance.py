@@ -6,10 +6,10 @@ import pathlib
 
 import pytest
 
-from kyno.adapters.core.cell import Direction
 from kyno.authoring import read_constitution_file
 from kyno.conformance import SEPARATOR, check_log
 from kyno.models import COMPACT, FULL
+from kyno.sdk.cell import Direction
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 

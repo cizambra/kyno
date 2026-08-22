@@ -2,8 +2,11 @@ from contextlib import asynccontextmanager
 
 import pytest
 
-from kyno.adapters.core.binder import DirectionBinder
-from kyno.adapters.core.client import (
+from kyno.errors import KynoUnavailableError
+from kyno.mcp_server import build_server
+from kyno.models import FULL
+from kyno.sdk.binder import DirectionBinder
+from kyno.sdk.client import (
     DirectionSource,
     KynoBinding,
     LocalDirectionSource,
@@ -11,10 +14,7 @@ from kyno.adapters.core.client import (
     SessionRunner,
     http_session,
 )
-from kyno.adapters.core.policy import PULL_FAILED_STALE, RecordingSink
-from kyno.errors import KynoUnavailableError
-from kyno.mcp_server import build_server
-from kyno.models import FULL
+from kyno.sdk.policy import PULL_FAILED_STALE, RecordingSink
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 

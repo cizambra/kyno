@@ -5,10 +5,10 @@ from contextlib import asynccontextmanager
 import pytest
 
 import kyno
-from kyno.adapters.core.client import SessionRunner
 from kyno.errors import KynoUnavailableError
 from kyno.mcp_server import build_server
 from kyno.sdk import KynoConnection, connect
+from kyno.sdk.client import SessionRunner
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 

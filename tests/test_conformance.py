@@ -29,8 +29,6 @@ def expected(name: str) -> str:
 
 
 def test_the_example_files_match_what_kyno_actually_produces(plane):
-    # The guide's examples are generated, never hand-written; this test fails
-    # if the implementation and the committed files ever disagree.
     ch0 = plane.changes_since(0)
     assert json.loads(expected("response_before_any_direction.json")) == ch0.to_dict(COMPACT)
     assert expected("block_before_any_direction.txt") == (
@@ -72,9 +70,9 @@ def log_of(*blocks: str) -> str:
     return "".join(b + f"\n{SEPARATOR}\n" for b in blocks)
 
 
+GOOD_V0 = expected("block_before_any_direction.txt").rstrip("\n")
 GOOD_V1 = expected("block_version1_compact.txt").rstrip("\n")
 GOOD_V2 = expected("block_version2_compact.txt").rstrip("\n")
-GOOD_V0 = expected("block_before_any_direction.txt").rstrip("\n")
 
 
 def test_a_correct_log_passes_and_reports_the_version_change():

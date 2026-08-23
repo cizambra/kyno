@@ -75,8 +75,8 @@ class CrewAiKyno:
                 decision=decision,
             )
         if decision is not None and decision.halts(can_pause=False):
-            # CrewAI cannot resume, so a pause degrades to a block rather
-            # than becoming a verdict nobody acts on.
+            # CrewAI cannot resume a paused task, so a pause behaves like a
+            # block here.
             raise TaskBlockedByKyno(decision.reason, direction=direction)
 
     def step_callback(self, step_output: Any) -> None:

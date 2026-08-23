@@ -1,5 +1,6 @@
-"""The SDK-side rules both adapters share: one fresh block at the front,
-and what a gate decision means for a host that can or cannot pause."""
+"""These are the rules both adapters share: keeping one fresh block at the
+front of the context, and deciding what a gate decision means for a host
+that can or cannot pause."""
 
 from kyno.sdk import Action, GateDecision, Verdict, is_direction_block, refresh
 

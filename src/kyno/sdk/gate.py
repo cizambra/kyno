@@ -57,9 +57,9 @@ class GateDecision:
     version: int
 
     def halts(self, can_pause: bool) -> bool:
-        """Whether this decision stops the work on a host with or without a
-        pause mechanism: BLOCK always halts, PAUSE halts only where nothing
-        can pause, PROCEED never does."""
+        """Answers whether this decision stops the work. A block always
+        stops it. A pause stops it only when the host has no way to pause.
+        A proceed never stops it."""
         if self.action is Action.BLOCK:
             return True
         return self.action is Action.PAUSE and not can_pause

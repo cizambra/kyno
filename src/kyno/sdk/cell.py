@@ -15,17 +15,17 @@ from kyno.models import (
 
 
 def is_direction_block(text) -> bool:
-    """True only for text that IS a direction block — it starts with the
-    marker. Marker text inside other content is data, never an adapter's to
-    delete."""
+    """True only for text that starts with the marker. If the marker appears
+    inside other content, that content is data, and an adapter must not
+    delete it."""
     return isinstance(text, str) and text.startswith(DIRECTION_MARKER)
 
 
 def refresh(items, block, *, text_of=None, make=None):
-    """The rule every adapter follows: exactly one direction block, the
-    fresh one, first. `text_of` reads an item's text and `make` builds the
-    block's item, so a message-list adapter can inject its own shapes; the
-    defaults handle plain strings."""
+    """Keeps exactly one direction block in the list: the fresh one, in
+    first place. `text_of` reads the text of an item and `make` builds the
+    item for the new block, so an adapter that works with message lists can
+    pass its own shapes. The defaults work with plain strings."""
     text_of = text_of if text_of is not None else lambda item: item
     make = make if make is not None else lambda text: text
     kept = [item for item in items if not is_direction_block(text_of(item))]

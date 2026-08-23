@@ -258,19 +258,19 @@ let lastBlock = "[kyno:direction constitution=default version=0]\nNo direction h
 
 async function fetchBlock() {
   try {
-    const response = await callGetChangesSince(knownVersion);  // stage 1
+    const response = await callGetChangesSince(knownVersion);  // the call from stage 1
     knownVersion = response.current_version;
-    lastBlock = buildBlock(response);                          // stage 2
+    lastBlock = buildBlock(response);                          // the function from stage 2
   } catch {
     console.error("kyno unreachable — reusing the last block");
   }
   return lastBlock;
 }
 
-// in your orchestrator's before-each-step hook:
+// this part goes in your orchestrator's before-each-step hook:
 const block = await fetchBlock();
 const context = block + "\n\n" + stepContext;
-appendFileSync("my_blocks.log", block + "\n---end---\n");   // for the checker
+appendFileSync("my_blocks.log", block + "\n---end---\n");   // the log the checker reads
 ```
 
 **Check:** while your orchestrator runs, append every block you inject to a

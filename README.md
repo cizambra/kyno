@@ -149,7 +149,7 @@ every next step to the version in force right now:
 import kyno
 from kyno.adapters.crewai import CrewAiKyno
 
-connection = kyno.connect()          # reads KYNO_URL and KYNO_TOKEN
+connection = kyno.connect()  # reads KYNO_URL and KYNO_TOKEN
 adapter = CrewAiKyno(connection.binder(), constitution="eu")
 adapter.register()  # injects the current direction before each model call
 ```

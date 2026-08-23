@@ -100,3 +100,39 @@ def test_an_unreachable_plane_reports_no_change(connection):
     # The pull degrades to the last-known direction, which is the planned
     # one, so there is nothing to replan against.
     assert tracker.changed() is None
+
+
+class RegressingSource:
+    """A control plane behind a load balancer where one replica lags: the
+    first pull answers version 2, later pulls answer version 1."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def changes_since(self, known_version, constitution, detail="compact"):
+        from kyno.models import ChangesSince
+
+        self.calls += 1
+        version = 2 if self.calls == 1 else 1
+        return ChangesSince(
+            current_version=version,
+            changed=True,
+            mission=f"M{version}",
+            principles=(),
+            change_notes=(f"note {version}",),
+            changed_mission=True,
+            changed_principles=False,
+        )
+
+
+def test_a_replica_serving_an_older_version_cannot_roll_a_plan_back():
+    from kyno.sdk import DirectionBinder
+
+    binder = DirectionBinder(RegressingSource())
+    tracker = binder.plan()
+    assert tracker.direction().version == 2
+
+    # The stale replica answers version 1; the cell refuses to go backwards,
+    # so the bind serves the held version 2 and the plan is not disturbed.
+    assert binder.bind().version == 2
+    assert tracker.changed() is None

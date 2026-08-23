@@ -44,7 +44,7 @@ def crew_kyno(control_plane):
     control_plane.set_direction(mission="M1", principles=("Be honest",), change_note="init")
     binder = DirectionBinder(LocalDirectionSource(control_plane))
     adapter = CrewAiKyno(binder, trace=RunTrace(run_id="r1"))
-    adapter.bound_direction()  # warm the cell, as the first before_llm_call would
+    binder.bind()  # warm the cell, as the first before_llm_call would
     return adapter, control_plane
 
 

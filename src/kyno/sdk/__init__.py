@@ -20,6 +20,8 @@ from kyno.sdk.cell import (
     FULL,
     Direction,
     DirectionCell,
+    is_direction_block,
+    refresh,
 )
 from kyno.sdk.client import (
     DirectionSource,
@@ -79,6 +81,8 @@ __all__ = [
     "TelemetrySink",
     "connect",
     "http_session",
+    "is_direction_block",
+    "refresh",
 ]
 
 

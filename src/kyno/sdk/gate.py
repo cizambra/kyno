@@ -56,6 +56,14 @@ class GateDecision:
     constitution: str
     version: int
 
+    def halts(self, can_pause: bool) -> bool:
+        """Answers whether this decision stops the work. A block always
+        stops it. A pause stops it only when the host has no way to pause.
+        A proceed never stops it."""
+        if self.action is Action.BLOCK:
+            return True
+        return self.action is Action.PAUSE and not can_pause
+
     def to_dict(self) -> dict:
         return {
             "action": self.action.value,

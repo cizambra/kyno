@@ -98,7 +98,7 @@ def gate_node(
                 direction=direction,
                 decision=decision,
             )
-        blocked = decision.action is Action.BLOCK
+        blocked = decision.halts(can_pause=True)
         if decision.action is Action.PAUSE:
             answer = interrupt(
                 {

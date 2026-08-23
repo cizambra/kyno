@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from kyno.sdk.binder import DirectionBinder
-from kyno.sdk.cell import DIRECTION_MARKER, Direction
-from kyno.sdk.gate import Action, RealignmentGate
+from kyno.sdk.cell import Direction, refresh
+from kyno.sdk.gate import RealignmentGate
 from kyno.sdk.trace import RunTrace
 
 
@@ -48,18 +48,19 @@ class CrewAiKyno:
         self.constitution = constitution
         self.trace = trace
 
-    def bound_direction(self) -> Direction:
-        return self._binder.bind(self.constitution)
-
     def before_llm_call(self, ctx: Any) -> None:
-        direction = self.bound_direction()
+        direction = self._binder.bind(self.constitution)
         messages = getattr(ctx, "messages", None)
         if messages is None:
             messages = ctx.messages = []
-        kept = [m for m in messages if not _is_direction_block(m)]
         # CrewAI's executor keeps a reference to this list, so rebinding it
         # would silently detach the hook from the call it is editing.
-        messages[:] = [{"role": "system", "content": direction.render()}, *kept]
+        messages[:] = refresh(
+            messages,
+            direction.render(),
+            text_of=_system_content,
+            make=lambda block: {"role": "system", "content": block},
+        )
 
     def task_callback(self, task_output: Any) -> None:
         direction = self._binder.cell.get(self.constitution) or Direction.empty(self.constitution)
@@ -73,10 +74,9 @@ class CrewAiKyno:
                 direction=direction,
                 decision=decision,
             )
-        if decision is not None and decision.action in (Action.BLOCK, Action.PAUSE):
-            # A gate shared with LangGraph may be pause-capable. CrewAI cannot
-            # resume, so a pause here degrades to a block rather than becoming
-            # a verdict nobody acts on.
+        if decision is not None and decision.halts(can_pause=False):
+            # CrewAI cannot resume a paused task, so a pause behaves like a
+            # block here.
             raise TaskBlockedByKyno(decision.reason, direction=direction)
 
     def step_callback(self, step_output: Any) -> None:
@@ -104,14 +104,14 @@ class CrewAiKyno:
         return unregister_before_llm_call_hook(self.before_llm_call)
 
 
-def _is_direction_block(message: Any) -> bool:
+def _system_content(message: Any) -> str:
     # Only a system message can be the block this adapter injected; marker
     # text on any other role is data (a tool result echoed into the
     # transcript, a user paste) and is never the adapter's to delete.
     if not isinstance(message, dict) or message.get("role") != "system":
-        return False
+        return ""
     content = message.get("content", "")
-    return isinstance(content, str) and content.startswith(DIRECTION_MARKER)
+    return content if isinstance(content, str) else ""
 
 
 def _output_text(ctx: Any) -> str:

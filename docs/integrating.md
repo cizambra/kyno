@@ -7,9 +7,9 @@ that up in five stages. Every stage ends with a check, so you always know
 whether what you have so far is correct before you move on.
 
 One thing to be clear about before you start: **the point of an adapter is
-to make sure the call to Kyno happens on every step.** Kyno is an MCP
-server, so you could simply add it to your agents' tool list and let the
-model call `get_changes_since` itself — but then the call is optional, and
+to make sure the call to Kyno happens on every step.** Kyno serves MCP,
+so you could simply add it to your agents' tool list and let the model
+call `get_changes_since` itself — but then the call is optional, and
 the model decides when the direction matters. In our benchmark, setups
 where the direction was optional scored at the bottom of every table. The
 adapter removes that decision: your orchestrator code fetches before each

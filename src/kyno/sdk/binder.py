@@ -58,6 +58,11 @@ class DirectionBinder:
         self._emit(PULL_FAILED_EMPTY, constitution, 0, str(exc))
         return Direction.empty(constitution, self.context)
 
+    def plan(self, constitution: str = "default"):
+        from kyno.sdk.plan import PlanTracker
+
+        return PlanTracker(self, constitution)
+
     def _emit(self, kind: str, constitution: str, version: int, detail: str) -> None:
         self._telemetry.emit(
             TelemetryEvent(kind=kind, constitution=constitution, version=version, detail=detail)

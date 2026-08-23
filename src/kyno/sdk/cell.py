@@ -14,6 +14,24 @@ from kyno.models import (
 )
 
 
+def is_direction_block(text) -> bool:
+    """True only for text that IS a direction block — it starts with the
+    marker. Marker text inside other content is data, never an adapter's to
+    delete."""
+    return isinstance(text, str) and text.startswith(DIRECTION_MARKER)
+
+
+def refresh(items, block, *, text_of=None, make=None):
+    """The rule every adapter follows: exactly one direction block, the
+    fresh one, first. `text_of` reads an item's text and `make` builds the
+    block's item, so a message-list adapter can inject its own shapes; the
+    defaults handle plain strings."""
+    text_of = text_of if text_of is not None else lambda item: item
+    make = make if make is not None else lambda text: text
+    kept = [item for item in items if not is_direction_block(text_of(item))]
+    return [make(block), *kept]
+
+
 def check_context(context: str) -> str:
     """The injected block carries the same two levels a read asks Kyno for,
     so an organization has one word for how much context it wants."""

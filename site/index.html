@@ -67,38 +67,38 @@
         <!-- one rail from the store, one drop into each step -->
         <g class="pulls">
           <path d="M380 106 V 150" class="pull"/>
-          <path d="M80 150 H 596" class="pull rail"/>
-          <path d="M80 150 V 192" class="pull" marker-end="url(#arr)"/>
-          <path d="M252 150 V 192" class="pull" marker-end="url(#arr)"/>
-          <path d="M424 150 V 192" class="pull" marker-end="url(#arr)"/>
-          <path d="M596 150 V 192" class="pull waiting" marker-end="url(#arr-stale)"/>
-          <text x="166" y="140" text-anchor="middle" class="pull-label">pull before each step</text>
+          <path d="M122 150 H 638" class="pull rail"/>
+          <path d="M122 150 V 192" class="pull" marker-end="url(#arr)"/>
+          <path d="M294 150 V 192" class="pull" marker-end="url(#arr)"/>
+          <path d="M466 150 V 192" class="pull" marker-end="url(#arr)"/>
+          <path d="M638 150 V 192" class="pull waiting" marker-end="url(#arr-stale)"/>
+          <text x="208" y="140" text-anchor="middle" class="pull-label">pull before each step</text>
         </g>
 
         <!-- the workflow -->
         <g class="agents">
           <g class="agent fresh">
-            <rect x="20" y="200" width="120" height="58" rx="9"/>
-            <text x="80" y="224" text-anchor="middle" class="a-name">researcher</text>
-            <text x="80" y="244" text-anchor="middle" class="a-v">v9</text>
+            <rect x="62" y="200" width="120" height="58" rx="9"/>
+            <text x="122" y="224" text-anchor="middle" class="a-name">researcher</text>
+            <text x="122" y="244" text-anchor="middle" class="a-v">v9</text>
           </g>
-          <path d="M144 229 H 186" class="step" marker-end="url(#arr)"/>
+          <path d="M186 229 H 228" class="step" marker-end="url(#arr)"/>
           <g class="agent fresh">
-            <rect x="192" y="200" width="120" height="58" rx="9"/>
-            <text x="252" y="224" text-anchor="middle" class="a-name">planner</text>
-            <text x="252" y="244" text-anchor="middle" class="a-v">v9</text>
+            <rect x="234" y="200" width="120" height="58" rx="9"/>
+            <text x="294" y="224" text-anchor="middle" class="a-name">planner</text>
+            <text x="294" y="244" text-anchor="middle" class="a-v">v9</text>
           </g>
-          <path d="M316 229 H 358" class="step" marker-end="url(#arr)"/>
+          <path d="M358 229 H 400" class="step" marker-end="url(#arr)"/>
           <g class="agent fresh">
-            <rect x="364" y="200" width="120" height="58" rx="9"/>
-            <text x="424" y="224" text-anchor="middle" class="a-name">writer</text>
-            <text x="424" y="244" text-anchor="middle" class="a-v">v9</text>
+            <rect x="406" y="200" width="120" height="58" rx="9"/>
+            <text x="466" y="224" text-anchor="middle" class="a-name">writer</text>
+            <text x="466" y="244" text-anchor="middle" class="a-v">v9</text>
           </g>
-          <path d="M488 229 H 530" class="step" marker-end="url(#arr)"/>
+          <path d="M530 229 H 572" class="step" marker-end="url(#arr)"/>
           <g class="agent stale">
-            <rect x="536" y="200" width="120" height="58" rx="9"/>
-            <text x="596" y="224" text-anchor="middle" class="a-name">reviewer</text>
-            <text x="596" y="244" text-anchor="middle" class="a-v">v8 → pulls next</text>
+            <rect x="578" y="200" width="120" height="58" rx="9"/>
+            <text x="638" y="224" text-anchor="middle" class="a-name">reviewer</text>
+            <text x="638" y="244" text-anchor="middle" class="a-v">v8 → pulls next</text>
           </g>
         </g>
 

@@ -1,9 +1,20 @@
 [project]
 name = "kyno"
-license = { text = "MIT AND Elastic-2.0" }
+license = "MIT AND Elastic-2.0"
+license-files = ["LICENSE", "LICENSES/*"]
 version = "0.1.0"
 description = "A versioned coherence control plane for multi-agent orchestrators (control-plane core + MCP server)."
+readme = "README.md"
 requires-python = ">=3.11"
+keywords = ["multi-agent", "orchestration", "mcp", "coherence", "constitution"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+]
 dependencies = [
     "sqlalchemy>=2.0,<3.0",
     "alembic>=1.13,<2.0",
@@ -16,6 +27,11 @@ dependencies = [
     # The published page renders the declaration; CommonMark, pure Python.
     "markdown-it-py>=3.0,<5.0",
 ]
+
+[project.urls]
+Homepage = "https://cizambra.github.io/kyno/"
+Source = "https://github.com/cizambra/kyno"
+Issues = "https://github.com/cizambra/kyno/issues"
 
 [project.optional-dependencies]
 dev = [

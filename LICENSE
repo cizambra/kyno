@@ -1,11 +1,12 @@
 # Kyno licensing
 
-This repository contains code under two licenses. The full texts live in
-the LICENSES directory, and every source file names its license in an
-SPDX-License-Identifier header.
+Kyno uses two licenses. The idea behind the split is simple: the parts you
+integrate with are yours to copy, and the control plane is free to run but
+not to resell.
 
-MIT — the integration surface, which you are welcome to copy, fork, and
-build on:
+These directories are under the MIT license. They are the integration
+surface, and we want people to copy them, fork them, and build better
+adapters on top of them:
 
 - src/kyno/sdk/
 - src/kyno/adapters/
@@ -13,14 +14,16 @@ build on:
 - conformance/
 - docs/integrating.md
 
-Elastic License 2.0 — the control plane (the server, store, CLI, and
-publishing). You can use it, read it, change it, self-host it in
-production, and build on it for free. The one thing it does not permit is
-offering Kyno itself to third parties as a hosted or managed service.
+Everything else is under the Elastic License 2.0. That covers the control
+plane: the server, the store, the CLI, and the publishing pages. You can
+read it, change it, and self-host it in production for free, including
+commercially. The one thing you cannot do is offer Kyno itself to third
+parties as a hosted or managed service.
 
 The one-line rule: files that begin with an MIT header are MIT; everything
-else in this repository is under the Elastic License 2.0.
+else in this repository is under the Elastic License 2.0. The full texts
+are in the LICENSES directory.
 
-A note on how we enforce this: the Elastic License exists to stop hosted
-competitors, not to trap builders. If you used something here under the
-wrong assumption and in good faith, tell us and we will help you fix it.
+A note on how we enforce this: the Elastic License is here to stop hosted
+competitors, not to trap builders. If you used something under the wrong
+assumption and in good faith, tell us and we will help you fix it.

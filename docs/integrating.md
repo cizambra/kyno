@@ -19,9 +19,12 @@ you don't need to build any of this: `pip install kyno`, and
 `DirectionBinder` already does it all. This guide is for every other
 language.)
 
-The repo ships everything you need to test against, in the `conformance/`
-folder: a sample constitution, and example files showing exactly what Kyno
-returns and exactly what your adapter should produce.
+The [repo](https://github.com/cizambra/kyno) ships everything you need to
+test against, in the `conformance/` folder: a sample constitution, and
+example files showing exactly what Kyno returns and exactly what your
+adapter should produce. `pip install` gives you the server; the
+`conformance/` files come from the repo, so clone it or download that
+folder.
 
 ## Stage 1 — call Kyno and get the direction
 

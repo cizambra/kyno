@@ -17,7 +17,7 @@ it changes.
 ## Quick start
 
 ```bash
-pip install .             # from a clone; CLI: kyno
+pip install kyno          # CLI: kyno
 kyno init-db
 kyno set --mission "Ship a lending product people trust" \
          --note "initial constitution"

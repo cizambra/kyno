@@ -95,7 +95,14 @@ crew's or graph's behalf.
 A constitution is a mission plus ordered principles. The mission is the
 overarching purpose, and the tie-breaker when principles conflict. Both
 can carry longer prose: a declaration under the mission, a description
-under any principle. It is written in a file:
+under any principle.
+
+Direction is not only strategy. A constitution carries whatever your
+agents need to hold while they work: a mission and values, but just as
+well a quality bar, a tone, a priority order, or the rules for what to
+refuse. If it steers decisions and it can change, it belongs here.
+
+It is written in a file:
 
 ```yaml
 # constitution.yaml

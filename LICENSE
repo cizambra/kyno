@@ -20,9 +20,10 @@ read it, change it, and self-host it in production for free, including
 commercially. The one thing you cannot do is offer Kyno itself to third
 parties as a hosted or managed service.
 
-The one-line rule: files that begin with an MIT header are MIT; everything
-else in this repository is under the Elastic License 2.0. The full texts
-are in the LICENSES directory.
+To know which license applies to a file, look at its first line: files
+that begin with an MIT header are MIT, and everything else in this
+repository is under the Elastic License 2.0. The full texts are in the
+LICENSES directory.
 
 A note on how we enforce this: the Elastic License is here to stop hosted
 competitors, not to trap builders. If you used something under the wrong

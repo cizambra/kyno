@@ -1,6 +1,7 @@
 [project]
 name = "kyno"
-license = { text = "MIT AND Elastic-2.0" }
+license = "MIT AND Elastic-2.0"
+license-files = ["LICENSE", "LICENSES/*"]
 version = "0.1.0"
 description = "A versioned coherence control plane for multi-agent orchestrators (control-plane core + MCP server)."
 readme = "README.md"

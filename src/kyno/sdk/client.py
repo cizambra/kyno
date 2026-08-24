@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import asyncio
@@ -11,7 +12,6 @@ from typing import Any, Protocol, runtime_checkable
 
 from kyno.errors import KynoUnavailableError
 from kyno.models import COMPACT, ChangesSince
-from kyno.service import ControlPlane
 
 
 @dataclass(frozen=True)
@@ -42,11 +42,22 @@ class DirectionSource(Protocol):
     ) -> ChangesSince: ...
 
 
+@runtime_checkable
+class ControlPlaneProjection(Protocol):
+    """The projection of a control plane that this source uses: answering
+    what changed since a known version. Anything with that method satisfies
+    it, no inheritance needed."""
+
+    def changes_since(
+        self, known_version: int, constitution: str | None = None
+    ) -> ChangesSince: ...
+
+
 class LocalDirectionSource:
     """The control plane in this process -- what an embedding host and the
     tests use."""
 
-    def __init__(self, control_plane: ControlPlane) -> None:
+    def __init__(self, control_plane: ControlPlaneProjection) -> None:
         self._control_plane = control_plane
 
     def changes_since(

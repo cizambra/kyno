@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """LangGraph shim — install with ``pip install "kyno[langgraph]"``."""
 
 from kyno.adapters.langgraph.nodes import (

@@ -9,9 +9,8 @@ from pydantic import AnyUrl
 
 from kyno.errors import CoherenceError
 from kyno.models import COMPACT, DETAIL_LEVELS, FULL, check_detail
+from kyno.sdk.subscriber import RESOURCE_URI as RESOURCE_URI  # the SDK owns the wire name
 from kyno.service import ControlPlane
-
-RESOURCE_URI = "kyno://constitution/current"
 
 # get_principles has its own detail vocabulary: "titles" names exactly what
 # the small answer contains, where "compact" only means something when the

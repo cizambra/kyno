@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from kyno.errors import CoherenceError, KynoUnavailableError

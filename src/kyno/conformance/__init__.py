@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Checks the log an adapter writes while it runs.
 
 An adapter under test appends every block it injects to a log file, followed

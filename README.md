@@ -423,6 +423,12 @@ python -m pytest -q                      # SQLite, no network
 KYNO_TEST_POSTGRES_URL=postgresql+psycopg://… python -m pytest -q   # + Postgres
 ```
 
+## Licensing
+
+The SDK, the adapters, the conformance kit, and the integration guide are
+MIT. The control plane is under the Elastic License 2.0. [LICENSE](LICENSE)
+explains how to tell which license a file carries.
+
 Sibling project: [Canon](https://github.com/cizambra/canon) tests whether
 your system's outputs actually cohere with the constitution Kyno serves.
 

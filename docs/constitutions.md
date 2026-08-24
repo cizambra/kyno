@@ -2,9 +2,8 @@
 
 A constitution is a mission plus ordered principles. The mission is the
 overarching purpose, and the tie-breaker when principles conflict.
-Direction is not only strategy: operational principles work just as
-well here, from a quality bar to a tone to a priority order. This page
-covers the full file semantics: the optional fields, how edits
+A constitution is not limited to strategy; operational principles are
+just as good a use case. This page covers the full file semantics: the optional fields, how edits
 carry forward, and running several constitutions side by side.
 
 ## The file

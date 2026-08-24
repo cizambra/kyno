@@ -97,10 +97,9 @@ overarching purpose, and the tie-breaker when principles conflict. Both
 can carry longer prose: a declaration under the mission, a description
 under any principle.
 
-Direction is not only strategy. Operational principles work just as well
-here: a quality bar, a tone, a priority order, the way work gets handed
-off. A constitution carries whatever direction your agents need to hold
-while they work.
+The examples in this README read like strategy, but a constitution is
+not limited to it. Operational principles are just as good a use case:
+your quality bar, the tone you expect, how you prioritize.
 
 It is written in a file:
 

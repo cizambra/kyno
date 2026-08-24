@@ -99,7 +99,7 @@ under any principle.
 
 The examples in this README read like strategy, but a constitution is
 not limited to it. Operational principles are just as good a use case:
-your quality bar, the tone you expect, how you prioritize.
+your quality bar, the tone you expect, or how you prioritize.
 
 It is written in a file:
 
@@ -138,16 +138,16 @@ carries its own migration scripts. The details live in [Operating Kyno](docs/ope
 ## Documentation
 
 - [Writing constitutions](docs/constitutions.md): the file, its fields,
-  multiple constitutions.
+  and multiple constitutions.
 - [The MCP contract](docs/contract.md): every tool, the compact and full
-  reads, subscriptions.
+  reads, and subscriptions.
 - [The adapters in depth](docs/adapters.md): binder mechanics, failure
-  postures, the realignment gate.
+  postures, and the realignment gate.
 - [Build your own adapter](docs/integrating.md): the integration contract
   for any language.
 - [Publishing your constitution](docs/publishing.md): the public page,
-  colors, templates.
-- [Operating Kyno](docs/operating.md): storage, auth, deploying, testing.
+  colors, and templates.
+- [Operating Kyno](docs/operating.md): storage, auth, deploying, and testing.
 
 ## License
 

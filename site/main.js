@@ -13,16 +13,17 @@
 })();
 
 // The diagram plays the process: set_direction appends a version, and each
-// agent picks it up at its own next step. Without JavaScript, or under
-// prefers-reduced-motion, the mid-flight still in the markup is the frame.
+// agent picks it up at its own next step. It is one story, replayed: the
+// versions stay v7..v10 so nobody reads the counter as Kyno's own version.
+// Without JavaScript, or under prefers-reduced-motion, the mid-flight still
+// in the markup is the frame.
 (function () {
   "use strict";
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
   var eventEl = document.getElementById("flow-event");
-  if (!eventEl || reduced.matches) return;
+  var svg = document.querySelector(".flow-card svg");
+  if (!eventEl || !svg || reduced.matches) return;
 
-  var NOTES = ["pivot to SMB", "add the EU line", "focus on retention", "cut scope to core"];
-  var version = 9;
   var agents = [1, 2, 3, 4].map(function (i) {
     return {
       group: document.getElementById("agent-" + i),
@@ -46,35 +47,53 @@
     document.getElementById("ver-new").textContent = "v" + v + " new";
   }
 
-  function cycle() {
-    version += 1;
-    setStore(version);
-    eventEl.textContent =
-      'set_direction(note="' + NOTES[version % NOTES.length] + '") → v' + version;
-    agents.forEach(function (a) { setAgent(a, version - 1, false); });
-    agents.forEach(function (a, n) {
-      later(function () {
-        setAgent(a, version, true);
-        if (n === agents.length - 1) {
-          later(function () {
-            eventEl.textContent = "every agent is on v" + version + ", ready for the next change";
-          }, 900);
-          later(cycle, 5200);
-        }
-      }, 1100 + n * 1100);
-    });
+  function baseline() {
+    setStore(9);
+    agents.forEach(function (a) { setAgent(a, 9, true); });
+    agents[3].chip.textContent = "v8 → pulls next";
+    agents[3].group.setAttribute("class", "agent stale");
+    agents[3].drop.setAttribute("class", "pull waiting");
+    agents[3].drop.setAttribute("marker-end", "url(#arr-stale)");
+    eventEl.textContent = "mid-flight: three agents already on v9, the reviewer picks it up at its next step";
   }
 
-  // Finish the frame the markup starts on: the reviewer pulls v9.
-  later(function () {
-    setAgent(agents[3], 9, true);
-    eventEl.textContent = "every agent is on v9, ready for the next change";
-  }, 1800);
-  later(cycle, 4200);
+  function play() {
+    later(function () {
+      setAgent(agents[3], 9, true);
+      eventEl.textContent = "every agent is on v9, ready for the next change";
+    }, 2000);
+
+    later(function () {
+      setStore(10);
+      eventEl.textContent = 'set_direction(note="pivot to SMB") → v10';
+      agents.forEach(function (a) { setAgent(a, 9, false); });
+      agents.forEach(function (a, n) {
+        later(function () {
+          setAgent(a, 10, true);
+          if (n === agents.length - 1) {
+            eventEl.textContent = "every agent is on v10. The demo replays from here.";
+          }
+        }, 1100 + n * 1100);
+      });
+    }, 4600);
+
+    later(function () {
+      svg.classList.add("replay");
+      later(function () {
+        baseline();
+        svg.classList.remove("replay");
+        play();
+      }, 450);
+    }, 14200);
+  }
+
+  play();
 
   var onChange = function (e) {
     if (!e.matches) return;
     timers.forEach(clearTimeout);
+    timers = [];
+    baseline();
   };
   if (reduced.addEventListener) reduced.addEventListener("change", onChange);
 })();

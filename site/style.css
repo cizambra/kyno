@@ -142,7 +142,8 @@ h1 {
   padding: 1.4rem 1.4rem 1.1rem;
   box-shadow: 0 12px 40px rgba(23, 26, 33, 0.07);
 }
-.flow-card svg { width: 100%; height: auto; display: block; }
+.flow-card svg { width: 100%; height: auto; display: block; transition: opacity 0.4s; }
+.flow-card svg.replay { opacity: 0.12; }
 .flow-card figcaption {
   margin-top: 0.9rem; font-size: 0.92rem; color: var(--muted);
   text-align: center; text-wrap: balance;

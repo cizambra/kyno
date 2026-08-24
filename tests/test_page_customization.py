@@ -276,12 +276,12 @@ def test_the_index_template_can_report_how_many_are_published(plane, tmp_path):
     assert "<p>2 published</p>" in page
 
 
-def test_the_readme_documents_the_placeholders_that_actually_exist(plane, tmp_path):
-    # The README is how an operator learns these names; a placeholder it
-    # documents but we do not fill would render as literal text on their page.
+def test_the_docs_document_the_placeholders_that_actually_exist(plane, tmp_path):
+    # The publishing page is how an operator learns these names; a placeholder
+    # it documents but we do not fill would render as literal text on their page.
     from pathlib import Path as _Path
 
-    readme = (_Path(__file__).parent.parent / "README.md").read_text()
+    readme = (_Path(__file__).parent.parent / "docs" / "publishing.md").read_text()
     documented = [
         "$stylesheet",
         "$name",

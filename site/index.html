@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kyno — one versioned source of direction for multi-agent systems</title>
+<title>Kyno: one versioned source of direction for multi-agent systems</title>
 <meta name="description" content="A coherence control plane for multi-agent systems: one versioned source of truth for your system's mission and principles, served over MCP.">
 <link rel="stylesheet" href="style.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23171a21'/%3E%3Ctext x='8' y='12' font-family='monospace' font-size='11' fill='%237d95ff' text-anchor='middle'%3Ek%3C/text%3E%3C/svg%3E">
@@ -27,7 +27,7 @@
     <p class="badge"><span class="marker">[kyno:direction constitution=default version=1]</span></p>
     <h1>Your agents are playing a bad telephone game.</h1>
     <p class="sub">Kyno holds one versioned source of direction, and your agents
-    pull it before every step. Change the mission once — the very next step
+    pull it before every step. Change the mission once and the very next step
     runs on it.</p>
 
     <div class="cta">
@@ -106,7 +106,7 @@
         <text x="380" y="298" text-anchor="middle" class="flow-caption">mid-flight: three agents already on v9, the reviewer picks it up at its next step</text>
       </svg>
       <figcaption><code>set_direction</code> appends v9. Every agent picks it up
-      at its own next step — no restarts, no redeploys, no stale copies.</figcaption>
+      at its own next step. No restarts, no redeploys, no stale copies.</figcaption>
     </figure>
   </div>
 
@@ -115,7 +115,7 @@
       <p class="eyebrow">The problem</p>
       <h2>Stale direction is worse than no direction</h2>
       <p class="lede">When goals change, an agent holding the old copy keeps
-      working toward it — and your quality checks push finished work back
+      working toward it, and your quality checks push finished work back
       toward the obsolete goal.</p>
       <p class="lede">Kyno removes the copy: one versioned store, pulled
       before every step, subscribers notified the moment it changes.</p>
@@ -128,13 +128,15 @@
         <p class="eyebrow">How it works</p>
         <h2>Three moves, all of them boring on purpose</h2>
       </div>
-      <div class="cols">
-        <div class="col">
-          <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <h3>Pull before every step</h3>
-          <p>An agent binds the direction in force at its step boundary. This
-          block is what lands in its context — the same marker this page
-          carries in its hero.</p>
+      <div class="rows">
+        <div class="row">
+          <div class="row-text">
+            <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <h3>Pull before every step</h3>
+            <p>An agent binds the direction in force at its step boundary.
+            This block is what lands in its context. It is the same marker
+            at the top of this page.</p>
+          </div>
           <pre><span class="hl">[kyno:direction constitution=default version=1]</span>
 Mission: To help organizations keep
 multi-agent systems coherent.
@@ -146,31 +148,35 @@ Principles:
 Recent changes:
 - Kyno adopts its own constitution</pre>
         </div>
-        <div class="col">
-          <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8M10.3 20a2 2 0 003.4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <h3>Push when it changes</h3>
-          <p>Subscribers hear the moment a new version is appended — a hint to
-          pull, never a payload to trust.</p>
+        <div class="row rev">
+          <div class="row-text">
+            <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8M10.3 20a2 2 0 003.4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <h3>Push when it changes</h3>
+            <p>Subscribers hear the moment a new version is appended. Treat it
+            as a hint to pull, never as a payload to trust.</p>
+          </div>
           <pre>{
   "jsonrpc": "2.0",
-  "method":
-    "notifications/resources/updated",
+  "method": "notifications/resources/updated",
   "params": {
     "uri": <span class="hl">"kyno://constitution/current"</span>
   }
 }</pre>
         </div>
-        <div class="col">
-          <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 12l-8 8-9-9V4h7l10 8zM7.5 7.5h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <h3>Answers carry their version</h3>
-          <p>Ask what changed since the version you knew, and get the delta —
-          so a transcript can always say which direction each step served.</p>
+        <div class="row">
+          <div class="row-text">
+            <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 12l-8 8-9-9V4h7l10 8zM7.5 7.5h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <h3>Answers carry their version</h3>
+            <p>Ask what changed since the version you knew, and get the
+            delta. A transcript can always say which direction each step
+            served.</p>
+          </div>
           <pre>get_changes_since(known_version=0)
 → {
   "current_version": <span class="hl">1</span>,
   "changed": true,
-  "mission": "To help organizations
-    keep multi-agent systems coherent.",
+  "mission": "To help organizations keep
+    multi-agent systems coherent.",
   …
 }</pre>
         </div>
@@ -212,7 +218,7 @@ kyno serve --transport stdio    <span class="comment"># or --transport http</spa
       <a class="constitution-card" href="constitution/">
         <span class="marker">[kyno:direction constitution=default version=1]</span>
         <strong>We run on one too. Hold us to it.</strong>
-        <span class="tail">Kyno's own constitution — set through the same CLI any
+        <span class="tail">Kyno's own constitution, set through the same CLI any
         operator uses, published through the same flow, rendered on the same
         page. →</span>
       </a>
@@ -225,7 +231,7 @@ kyno serve --transport stdio    <span class="comment"># or --transport http</spa
     <a href="https://github.com/cizambra/kyno">GitHub</a>
     <a href="https://github.com/cizambra/kyno/blob/main/docs/integrating.md">Build an adapter</a>
     <a href="https://github.com/cizambra/kyno/blob/main/LICENSE">MIT + Elastic 2.0</a>
-    <a href="https://github.com/cizambra/canon">Sibling project: Canon — coherence testing</a>
+    <a href="https://github.com/cizambra/canon">Sibling project: Canon (coherence testing)</a>
   </div>
 </footer>
 

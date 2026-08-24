@@ -101,8 +101,16 @@ declaration: |
   The literature has started to describe this problem already [2](https://arxiv.org/pdf/2601.04170).
   And because drift is the default, I think we need to invest in coherence and alignment.
 
+  Businesses and organizations today practice what I call _top-bottom governance_: systems that draw the boundaries
+  of what agents within a system can do, and enforce them through rules and policies.
+  While this works not only for agents but also for human individuals and human groups, you also want them
+  to have the ability to exercise self-governance and make the right judgment calls when making decisions
+  and taking actions on behalf of themselves and of the systems they are inserted into. This is what I call
+  _bottom-up_ agency.
+
   Kyno is the product of applying my synthesis work, [_Coherence Dynamics Theory_](https://www.adaptable-discipline.com/cdt),
-  into solving this problem.
+  into solving the problem of drift management, introducing a bottom-up layer of coherence into agentic
+  orchestration.
 
   ## How we hold ourselves to our principles
 
@@ -111,5 +119,5 @@ declaration: |
   direction changes, the change note is public. If the project's behavior
   contradicts a principle here, that is a bug in the project.
 
-note: Refining drift as a shared property of systems under a directional regime.
+note: Top-bottom governance, bottom-up agency, and where Kyno stands.
 by: camilo

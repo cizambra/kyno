@@ -24,7 +24,8 @@ work back toward the obsolete goal.
 
 And even when the direction never changes, long runs decay. Every handoff
 paraphrases the mission a little, summaries compress it, and by the late
-steps the system is serving an approximation of what you asked for.
+steps the system is serving an approximation of what you asked for. Like
+a bad telephone game.
 
 A static system prompt can't fix either one, because it is a copy too:
 you paste it at launch, and it starts aging the moment the run begins.

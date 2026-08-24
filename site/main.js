@@ -66,30 +66,30 @@
   });
 
   [8, 9, 10].forEach(function (v, round) {
-    var base = 2.4 + round * 9.2;
+    var base = 2.4 + round * 8.2;
     at(base, function () {
       operator.classList.add("acting");
       opArrow.classList.add("sending");
       eventEl.textContent = "operator: " + CHANGES[v];
     });
-    at(base + 3.0, function () {
+    at(base + 2.2, function () {
       setStore(v, true);
       eventEl.textContent = "kyno appends v" + v + ", every agent pulls it at its next step";
       agents.forEach(function (a) { setAgent(a, v - 1, false); });
     });
-    at(base + 3.6, function () {
+    at(base + 2.8, function () {
       operator.classList.remove("acting");
       opArrow.classList.remove("sending");
     });
     agents.forEach(function (a, n) {
-      at(base + 3.8 + n * 0.9, function () { setAgent(a, v, true); });
+      at(base + 3.0 + n * 0.9, function () { setAgent(a, v, true); });
     });
-    at(base + 3.8 + agents.length * 0.9, function () {
+    at(base + 3.0 + agents.length * 0.9, function () {
       eventEl.textContent = "every agent is on v" + v;
     });
   });
 
-  var CYCLE = 30.5 * 1000;
+  var CYCLE = 27.5 * 1000;
 
   function play() {
     steps.forEach(function (s) { timers.push(setTimeout(s[1], s[0])); });

@@ -106,7 +106,7 @@ declaration: |
   While this works not only for agents but also for human individuals and human groups, you also want them
   to have the ability to exercise self-governance and make the right judgment calls when making decisions
   and taking actions on behalf of themselves and of the systems they are inserted into. This is what I call
-  _bottom-up_ agency. Human organizations already rely heavily on both top-bottom governance and bottom-up
+  _bottom-up agency_. Human organizations already rely heavily on both top-bottom governance and bottom-up
   agency, but agentic workflows don't have a standard layer that helps them exercise bottom-up agency.
 
   Kyno is the product of applying my synthesis work, [_Coherence Dynamics Theory_](https://www.adaptable-discipline.com/cdt),
@@ -120,5 +120,5 @@ declaration: |
   direction changes, the change note is public. If the project's behavior
   contradicts a principle here, that is a bug in the project.
 
-note: Agentic workflows lack a standard layer for bottom-up agency.
+note: Typography, the whole term bottom-up agency in italics.
 by: camilo

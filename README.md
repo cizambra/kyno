@@ -46,7 +46,9 @@ changes.
   always say which direction each step served.
 
 Kyno carries the direction and tells you when it moved. What your system
-does about it belongs to your system.
+does about it belongs to your system, and that is deliberate: with the
+mission and principles present at every step, your agents can judge their
+own decisions against higher-level principles instead of rules alone.
 
 ## Quick start
 

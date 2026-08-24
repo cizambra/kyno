@@ -72,8 +72,8 @@ declaration: |
 
   I've been talking about drift for a while. Drift is not a phenomenon that only occurs in AI agents.
   It's a phenomenon that also happens at a human level. Drift is a behavioral force that applies a pull on humans
-  and makes them act out of coherence. Furthermore, drift is a property shared by _all_ systems that aim
-  to hold a direction over time. Agents and humans are a manifestation of this same dynamic.
+  and makes them act out of coherence. Furthermore, drift is a property shared by _all_ systems that operate
+  under a _directional regime_ over time. Agents and humans are a manifestation of this same dynamic.
 
   I think we have all observed this drift in different systems, but we are just now able to name it
   more clearly.
@@ -111,5 +111,5 @@ declaration: |
   direction changes, the change note is public. If the project's behavior
   contradicts a principle here, that is a bug in the project.
 
-note: Refining the idea of drift on the declaration.
+note: Refining drift as a shared property of systems under a directional regime.
 by: camilo

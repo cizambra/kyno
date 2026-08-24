@@ -25,7 +25,11 @@
   var svg = document.querySelector(".flow-card svg");
   if (!eventEl || !svg || reduced.matches) return;
 
-  var NOTES = { 8: "pivot to SMB", 9: "add the EU line", 10: "focus on retention" };
+  var CHANGES = {
+    8: 'principle added: "Say the hard number first"',
+    9: "mission rewritten for the EU launch",
+    10: 'principle dropped: "Growth first"',
+  };
   var agents = [1, 2, 3, 4].map(function (i) {
     return {
       group: document.getElementById("agent-" + i),
@@ -63,7 +67,7 @@
     var base = 2.4 + round * 6.4;
     at(base, function () {
       setStore(v, true);
-      eventEl.textContent = 'set_direction(note="' + NOTES[v] + '") → v' + v;
+      eventEl.textContent = "constitution updated → v" + v + " (" + CHANGES[v] + ")";
       agents.forEach(function (a) { setAgent(a, v - 1, false); });
     });
     agents.forEach(function (a, n) {

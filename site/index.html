@@ -104,9 +104,11 @@
 
         <text x="380" y="298" text-anchor="middle" class="flow-caption" id="flow-event">mid-flight: three agents already on v9, the reviewer picks it up at its next step</text>
       </svg>
-      <figcaption><code>set_direction</code> appends a new version. Every agent
-      picks it up at its own next step. No restarts, no redeploys, no stale
-      copies.</figcaption>
+      <figcaption><code>set_direction</code> appends a new version, and every
+      agent picks it up at its own next step. A step is whatever boundary your
+      orchestrator already has: the next task in a workflow, the next node in
+      a graph, the next turn in a session. The pull happens at every one of
+      them, so no step runs on a stale copy.</figcaption>
     </figure>
   </div>
 

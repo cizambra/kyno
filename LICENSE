@@ -24,8 +24,3 @@ To know which license applies to a file, look at its first line: files
 that begin with an MIT header are MIT, and everything else in this
 repository is under the Elastic License 2.0. The full texts are in the
 LICENSES directory.
-
-A note on how we enforce this: the Elastic License exists to prevent
-other companies from selling Kyno as their own hosted service. If you used
-something under the wrong assumption and in good faith, tell us and we
-will help you fix it.

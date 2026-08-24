@@ -24,7 +24,6 @@
 
 <main>
   <div class="hero wrap">
-    <p class="badge"><span class="marker">[kyno:direction constitution=default version=1]</span></p>
     <h1>Your agents are playing a bad telephone game.</h1>
     <p class="sub">Kyno holds one versioned source of direction, and your agents
     pull it before every step. Change the mission once and the very next step
@@ -126,7 +125,7 @@
     <div class="wrap">
       <div class="section-head">
         <p class="eyebrow">How it works</p>
-        <h2>Three moves, all of them boring on purpose</h2>
+        <h2>Pull, push, and version-stamped answers</h2>
       </div>
       <div class="rows">
         <div class="row">
@@ -134,8 +133,8 @@
             <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
             <h3>Pull before every step</h3>
             <p>An agent binds the direction in force at its step boundary.
-            This block is what lands in its context. It is the same marker
-            at the top of this page.</p>
+            This block is what lands in its context before the step
+            runs.</p>
           </div>
           <pre><span class="hl">[kyno:direction constitution=default version=1]</span>
 Mission: To help organizations keep
@@ -166,7 +165,7 @@ Recent changes:
         <div class="row">
           <div class="row-text">
             <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 12l-8 8-9-9V4h7l10 8zM7.5 7.5h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <h3>Answers carry their version</h3>
+            <h3>Every answer carries its version</h3>
             <p>Ask what changed since the version you knew, and get the
             delta. A transcript can always say which direction each step
             served.</p>

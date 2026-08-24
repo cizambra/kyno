@@ -43,9 +43,10 @@ class DirectionSource(Protocol):
 
 
 @runtime_checkable
-class ChangesSinceProvider(Protocol):
-    """What LocalDirectionSource needs from a control plane. A protocol, so
-    the SDK never imports the control plane itself."""
+class LocalControlPlane(Protocol):
+    """A control plane living in this process: anything that can answer what
+    changed since a known version. Defined as a protocol so the MIT-licensed
+    SDK never depends on the control plane's code."""
 
     def changes_since(
         self, known_version: int, constitution: str | None = None
@@ -56,7 +57,7 @@ class LocalDirectionSource:
     """The control plane in this process -- what an embedding host and the
     tests use."""
 
-    def __init__(self, control_plane: ChangesSinceProvider) -> None:
+    def __init__(self, control_plane: LocalControlPlane) -> None:
         self._control_plane = control_plane
 
     def changes_since(

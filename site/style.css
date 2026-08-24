@@ -152,6 +152,12 @@ h1 {
 
 .flow-card text { font-family: var(--sans); }
 
+.operator rect { fill: var(--panel); stroke: var(--rule); stroke-width: 1.4; }
+.op-name { fill: var(--ink); font-size: 14px; font-weight: 650; }
+.op-sub { fill: var(--muted); font-size: 11px; }
+.op-arrow { fill: none; stroke: var(--muted); stroke-width: 1.6; transition: stroke 0.3s; }
+.op-arrow.sending { stroke: var(--accent); }
+
 .store-box { fill: var(--code-bg); }
 .store-name { fill: var(--code-text); font-size: 17px; font-weight: 700; }
 .store-sub { fill: var(--code-muted); font-size: 12px; }

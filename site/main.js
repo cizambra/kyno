@@ -23,6 +23,7 @@
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
   var eventEl = document.getElementById("flow-event");
   var svg = document.querySelector(".flow-card svg");
+  var opArrow = document.getElementById("op-arrow");
   if (!eventEl || !svg || reduced.matches) return;
 
   var CHANGES = {
@@ -68,14 +69,15 @@
     at(base, function () {
       setStore(v, true);
       eventEl.textContent = "constitution updated → v" + v + " (" + CHANGES[v] + ")";
+      opArrow.classList.add("sending");
       agents.forEach(function (a) { setAgent(a, v - 1, false); });
     });
+    at(base + 1.6, function () { opArrow.classList.remove("sending"); });
     agents.forEach(function (a, n) {
       at(base + 1.0 + n * 0.9, function () { setAgent(a, v, true); });
     });
     at(base + 1.0 + agents.length * 0.9, function () {
-      eventEl.textContent = "every agent is on v" + v +
-        (v === 10 ? ". The demo replays from here." : "");
+      eventEl.textContent = "every agent is on v" + v;
     });
   });
 

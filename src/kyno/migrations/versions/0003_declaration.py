@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Elastic-2.0
 """long-form declaration on constitution versions
 
 Revision ID: 0003

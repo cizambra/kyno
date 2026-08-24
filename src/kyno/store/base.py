@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Elastic-2.0
 from __future__ import annotations
 
 from datetime import datetime

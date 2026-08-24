@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Elastic-2.0
 """publication state on constitutions
 
 Revision ID: 0002

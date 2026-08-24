@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Elastic-2.0
 class CoherenceError(Exception):
     """Base class for all kyno errors."""
 

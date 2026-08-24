@@ -30,3 +30,10 @@ not listed here is not a review nit.
 
 - Keep PR descriptions short: what it does, how to verify, where to look.
   The durable explanation belongs in the code and commit messages.
+
+## Licensing of new files
+
+New files under `src/kyno/sdk/`, `src/kyno/adapters/`, or
+`src/kyno/conformance/` start with the SPDX line — copy it from any
+neighboring file; CI reminds you if you forget. Files anywhere else need no
+header.

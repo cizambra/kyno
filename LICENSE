@@ -18,4 +18,9 @@ publishing). You can use it, read it, change it, self-host it in
 production, and build on it for free. The one thing it does not permit is
 offering Kyno itself to third parties as a hosted or managed service.
 
-Anything not listed above is under the Elastic License 2.0.
+The one-line rule: files that begin with an MIT header are MIT; everything
+else in this repository is under the Elastic License 2.0.
+
+A note on how we enforce this: the Elastic License exists to stop hosted
+competitors, not to trap builders. If you used something here under the
+wrong assumption and in good faith, tell us and we will help you fix it.

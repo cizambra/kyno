@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Elastic-2.0
 """HTML for the public constitution pages.
 
 The default pages ship as template files (`kyno/templates/`) and the

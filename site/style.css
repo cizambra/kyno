@@ -1,0 +1,207 @@
+/* The Instrument: the site looks like the control plane it sells.
+   Dark cockpit is primary; light is its considered variant. System fonts
+   only — the repo's zero-dependency bar includes this page. */
+
+:root {
+  --bg: #0a0e0b;
+  --panel: #10150f;
+  --panel-2: #141b12;
+  --line: rgba(110, 235, 150, 0.16);
+  --line-soft: rgba(110, 235, 150, 0.08);
+  --text: #d7e3d8;
+  --muted: #8fa695;
+  --accent: #52f08d;
+  --accent-dim: #2f9459;
+  --marker: #6fe89b;
+  --chip-stale: #3d4a3f;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f4f7f3;
+    --panel: #ffffff;
+    --panel-2: #eef3ec;
+    --line: rgba(18, 92, 47, 0.22);
+    --line-soft: rgba(18, 92, 47, 0.1);
+    --text: #1c2620;
+    --muted: #55675b;
+    --accent: #0c7a43;
+    --accent-dim: #0c7a43;
+    --marker: #0c7a43;
+    --chip-stale: #cfdacf;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover, a:focus-visible { text-decoration: underline; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+code, pre, .marker, .chip, .ticker { font-family: var(--mono); }
+
+.wrap { max-width: 68rem; margin: 0 auto; padding: 0 1.25rem; }
+
+/* ---- top strip: the marker as identity ---- */
+header.top {
+  border-bottom: 1px solid var(--line);
+  padding: 0.7rem 0;
+  font-size: 0.8rem;
+}
+header.top .wrap { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.marker { color: var(--marker); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+header.top nav { display: flex; gap: 1.25rem; }
+header.top nav a { color: var(--muted); }
+
+/* ---- hero ---- */
+.hero { padding: 5rem 0 3.5rem; }
+.hero h1 {
+  font-size: clamp(2rem, 5.4vw, 3.4rem);
+  line-height: 1.12;
+  margin: 0 0 1rem;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  max-width: 20ch;
+}
+.hero p.sub { font-size: 1.15rem; color: var(--muted); max-width: 44ch; margin: 0 0 2rem; }
+.hero p.sub strong { color: var(--text); font-weight: 600; }
+
+.install {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.7rem 1rem;
+  font-family: var(--mono);
+  font-size: 1rem;
+}
+.install .prompt { color: var(--accent-dim); user-select: none; }
+.copy-btn {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.copy-btn:hover { background: var(--line-soft); }
+
+/* ---- the ticker: set_direction fires, agents flip on their next pull ---- */
+.ticker {
+  margin-top: 2.6rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1.1rem 1.25rem 1.35rem;
+  font-size: 0.86rem;
+  max-width: 44rem;
+}
+.ticker .call { min-height: 1.5em; color: var(--muted); }
+.ticker .call .fn { color: var(--accent); }
+.ticker .call .ret { color: var(--marker); }
+.ticker .caret { display: inline-block; width: 0.55em; height: 1.05em; vertical-align: -0.18em; background: var(--accent); opacity: 0; }
+.ticker.typing .caret { opacity: 1; animation: blink 0.9s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.ticker .chips { display: flex; gap: 0.6rem; margin-top: 0.95rem; flex-wrap: wrap; }
+.chip {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0.34rem 0.65rem;
+  color: var(--muted);
+  background: var(--panel-2);
+  transition: color 0.25s, border-color 0.25s, background 0.25s;
+}
+.chip .v { color: var(--chip-stale); transition: color 0.25s; }
+.chip.fresh { border-color: var(--accent-dim); color: var(--text); }
+.chip.fresh .v { color: var(--accent); }
+.ticker .legend { margin-top: 0.9rem; font-size: 0.72rem; color: var(--muted); font-family: var(--sans); }
+
+/* ---- sections ---- */
+section { padding: 3.2rem 0; border-top: 1px solid var(--line-soft); }
+.eyebrow { font-family: var(--mono); font-size: 0.78rem; color: var(--marker); margin: 0 0 1rem; }
+section h2 { font-size: 1.65rem; letter-spacing: -0.01em; margin: 0 0 1rem; text-wrap: balance; }
+section p { max-width: 62ch; }
+.lede { color: var(--muted); }
+.lede em { color: var(--text); font-style: italic; }
+
+/* ---- how it works ---- */
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1.1rem; margin-top: 1.8rem; }
+.col {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1.2rem 1.2rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.col h3 { margin: 0; font-size: 1.02rem; }
+.col p { font-size: 0.9rem; color: var(--muted); margin: 0; }
+.col pre {
+  margin: auto 0 0;
+  background: var(--bg);
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  padding: 0.8rem 0.9rem;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  color: var(--text);
+}
+.col pre .hl { color: var(--marker); }
+
+/* ---- quick start ---- */
+.qs {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1.2rem 1.4rem;
+  max-width: 44rem;
+}
+.qs pre { margin: 0; font-size: 0.88rem; line-height: 1.9; overflow-x: auto; }
+.qs .comment { color: var(--muted); }
+.qs .copy-btn { position: absolute; top: 0.8rem; right: 0.9rem; }
+
+/* ---- constitution card ---- */
+.constitution-card {
+  display: block;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 1.4rem 1.6rem;
+  max-width: 44rem;
+  color: var(--text);
+}
+.constitution-card:hover { background: var(--panel-2); text-decoration: none; }
+.constitution-card .marker { display: block; font-size: 0.75rem; margin-bottom: 0.55rem; }
+.constitution-card strong { font-size: 1.12rem; }
+.constitution-card span.tail { display: block; color: var(--muted); font-size: 0.9rem; margin-top: 0.3rem; }
+
+/* ---- footer ---- */
+footer { border-top: 1px solid var(--line); padding: 2.2rem 0 3rem; font-size: 0.85rem; color: var(--muted); }
+footer .wrap { display: flex; gap: 1.6rem; flex-wrap: wrap; }
+footer a { color: var(--muted); }
+footer a:hover { color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker .caret { animation: none; }
+  .chip, .chip .v { transition: none; }
+}

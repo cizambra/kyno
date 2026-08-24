@@ -138,7 +138,7 @@ h1 {
 .store-box { fill: var(--code-bg); }
 .store-name { fill: var(--code-text); font-size: 17px; font-weight: 700; }
 .store-sub { fill: var(--code-muted); font-size: 12px; }
-.versions text { font-family: var(--mono); font-size: 12px; }
+.versions text { font-family: var(--mono); font-size: 12.5px; }
 .v-old { fill: var(--code-muted); }
 .v-now rect { fill: var(--accent); }
 .v-now text { fill: var(--accent-ink); font-weight: 700; }
@@ -147,6 +147,7 @@ h1 {
   fill: none; stroke: var(--accent); stroke-width: 1.6;
   stroke-dasharray: 5 5;
 }
+.pull.rail { opacity: 0.55; }
 .pull.waiting { stroke: var(--stale); opacity: 0.75; }
 .arr-head { fill: var(--accent); }
 .arr-head-stale { fill: var(--stale); }

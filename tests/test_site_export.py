@@ -25,10 +25,14 @@ def test_the_exported_page_carries_the_committed_constitution():
 
 def test_the_landing_page_requests_nothing_external():
     html = (SITE / "index.html").read_text()
-    # Anchors may leave the site; assets (scripts, styles, images) may not.
+    # Anchors may leave the site; assets (scripts, styles, images) may not,
+    # with one deliberate exception: the cookieless Umami analytics script.
     # A data: URI is inline content, not a request, wherever it points inside.
+    allowed = {"https://cloud.umami.is/script.js"}
     for tag in re.findall(r"<(?:script|link|img)\b[^>]*>", html):
         for url in re.findall(r"(?:src|href)=\"([^\"]*)\"", tag):
+            if url in allowed:
+                continue
             assert not url.startswith(("http://", "https://", "//")), tag
 
 

@@ -1,10 +1,18 @@
 # Kyno
 
+[![PyPI](https://img.shields.io/pypi/v/kyno)](https://pypi.org/project/kyno/)
+[![Tests](https://github.com/cizambra/kyno/actions/workflows/ci.yml/badge.svg)](https://github.com/cizambra/kyno/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/pypi/pyversions/kyno)](https://pypi.org/project/kyno/)
+[![License](https://img.shields.io/badge/license-MIT%20%2B%20ELv2-blue)](https://github.com/cizambra/kyno/blob/main/LICENSE)
+[![Site](https://img.shields.io/badge/site-cizambra.github.io%2Fkyno-blue)](https://cizambra.github.io/kyno/)
+
 Kyno is a coherence control plane for multi-agent systems. It holds one
-versioned source of truth for your system's mission and principles — its
-*constitution* — and serves it over [MCP](https://modelcontextprotocol.io),
+versioned source of truth for your system's mission and principles, its
+*constitution*, and serves it over [MCP](https://modelcontextprotocol.io),
 so every agent acts on the direction in force right now, even when that
 direction changes mid-flight.
+
+![An operator publishes a constitution change into Kyno, and each agent in a four-agent workflow picks the new version up at its own next step.](https://raw.githubusercontent.com/cizambra/kyno/main/docs/media/demo.gif)
 
 ## Why
 
@@ -99,14 +107,15 @@ kyno set --mission "Ship a lending product people trust" --note "sharpen the mis
 
 Over MCP or Python:
 
-- `get_constitution` — the direction in force now (mission, principles, version).
-- `get_changes_since(known_version)` — the pull an agent makes before a step:
-  the current direction plus the change notes since the version it last saw.
+- `get_constitution`: the direction in force now (mission, principles, version).
+- `get_changes_since(known_version)`: the pull an agent makes before a step.
+  It returns the current direction plus the change notes since the version
+  the agent last saw.
   Missing a notification causes no harm, because the next pull carries
   everything needed.
-- `get_mission`, `get_declaration`, `get_principles`, `get_principle(title)` —
+- `get_mission`, `get_declaration`, `get_principles`, `get_principle(title)`:
   one piece of the document each, for when a compact read left it out.
-- `set_direction(mission?, declaration?, principles?, change_note)` — append
+- `set_direction(mission?, declaration?, principles?, change_note)`: append
   the next version. Omitted fields carry forward; `""` clears one. On HTTP
   this requires the bearer token.
 
@@ -124,7 +133,7 @@ whole document is one tool call away.
 
 ## Multiple constitutions
 
-One Kyno can hold several constitutions side by side — for example one per
+One Kyno can hold several constitutions side by side, for example one per
 product line or per jurisdiction. Every operation takes an optional
 `constitution` name, over MCP and on the CLI (`--constitution eu`), and
 defaults to `"default"`, so a single-constitution setup never has to mention
@@ -157,7 +166,7 @@ adapter.register()  # injects the current direction before each model call
 
 That is the whole integration. Every model call carries the version in force,
 and a version published mid-run reaches the next step. The pieces behind
-`connect()` — the binder, the sources, the policies — live in `kyno.sdk` for
+`connect()`, the binder, the sources, the policies, live in `kyno.sdk` for
 anyone who needs to assemble them differently. Embedding Kyno in the same
 process instead? Swap the source:
 `DirectionBinder(LocalDirectionSource(control_plane))`.
@@ -263,11 +272,11 @@ kyno unpublish --constitution eu
 While `kyno serve --transport http` is running, a published constitution is
 readable by anyone at:
 
-- `GET /constitutions/{name}` — a self-contained HTML page (no scripts, no
+- `GET /constitutions/{name}`: a self-contained HTML page (no scripts, no
   external assets, light and dark). The declaration is the body of it,
   rendered from markdown, and a described principle carries its paragraph.
-- `GET /constitutions/{name}.json` — the same content, machine-readable.
-- `GET /constitutions/` and `GET /constitutions.json` — an index of what you
+- `GET /constitutions/{name}.json`: the same content, machine-readable.
+- `GET /constitutions/` and `GET /constitutions.json`: an index of what you
   have published.
 
 Three things worth knowing:
@@ -324,7 +333,7 @@ export KYNO_INDEX_TEMPLATE=/srv/pages/index.html      # optional
 ```
 
 That is the whole workflow. What you exported is what Kyno was already
-rendering — the same files, filled the same way — so you are editing a
+rendering, the same files filled the same way, so you are editing a
 working page rather than reconstructing one, and anything you leave alone
 keeps working.
 
@@ -346,11 +355,11 @@ variables above; one that drops it is fully yours.
 | `$stylesheet` | the whole `<style>` block: color variables + Kyno's page styles |
 | `$name` | the constitution's name |
 | `$mission` | the mission, or the name when there is no mission |
-| `$declaration` | the declaration rendered from markdown, wrapped in its `<div>` — empty when there is none |
-| `$principles` | the principles section, heading and list — empty when there are none |
+| `$declaration` | the declaration rendered from markdown, wrapped in its `<div>`; empty when there is none |
+| `$principles` | the principles section, heading and list; empty when there are none |
 | `$version` | the version number, e.g. `3` |
 | `$updated` | the last-changed date, e.g. `2026-08-13` |
-| `$history` | the version history block — empty unless you published history |
+| `$history` | the version history block; empty unless you published history |
 
 **`index.html`**
 
@@ -363,7 +372,7 @@ variables above; one that drops it is fully yours.
 Each block placeholder brings its own wrapper and disappears entirely when it
 has nothing to say, so a template never has to ask "what if there is no
 declaration". That is deliberate. These are placeholders, not a template
-language — no loops, no conditions, no expressions — and the defaults are
+language, with no loops, no conditions and no expressions, and the defaults are
 held to the same limit, which is why they are the same files you just
 exported.
 
@@ -383,7 +392,7 @@ warning, so a bad template never takes your public page down.
 - **HTTP** is gated by a shared bearer token (`KYNO_TOKEN`) gates every request to the
   MCP endpoint (`/mcp`). The server refuses to start tokenless over HTTP
   unless you explicitly opt in (`KYNO_ALLOW_INSECURE_HTTP`, for local
-  experimentation only — it warns), and a `KYNO_TOKEN` that is set but blank
+  experimentation only; it warns), and a `KYNO_TOKEN` that is set but blank
   is a configuration error rather than silently no auth. Embedders building
   the app in code opt in the same way:
   `build_http_app(..., allow_insecure=True)`. The published constitution
@@ -392,7 +401,7 @@ warning, so a bad template never takes your public page down.
 
 The write token is direction control: whoever holds it steers the
 instructions of every agent bound to this Kyno. Treat it like a system-prompt
-credential — serve `/mcp` over TLS and keep the token out of logs and
+credential: serve `/mcp` over TLS and keep the token out of logs and
 checkpoints (Kyno's own reprs never print it). One related caution: the
 `[kyno:direction …]` header on the injected block is a record for reading
 transcripts, not a security check. Text arriving from tools or users can

@@ -113,11 +113,10 @@
         <text x="380" y="298" text-anchor="middle" class="flow-caption" id="flow-event">mid-flight: three agents already on v9, the reviewer picks it up at its next step</text>
       </svg>
       <figcaption><code>set_direction</code> appends a new version, and an
-      agent picks it up at its next pull. Where that pull happens depends on
-      the adapter: on CrewAI it runs before every model call, on LangGraph it
-      runs each time the graph passes the direction node, and a custom
-      adapter wires it to whatever boundary your orchestrator has. Nothing
-      restarts; the next pull simply carries the new version.</figcaption>
+      agent picks it up at its next pull. The adapter decides where that pull
+      runs: before every model call, or at whatever boundary your workflow
+      already has. Nothing restarts; the next pull simply carries the new
+      version.</figcaption>
     </figure>
   </div>
 

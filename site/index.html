@@ -30,10 +30,13 @@
     pull it before every step. Change the mission once — the very next step
     runs on it.</p>
 
-    <div class="install">
-      <span class="prompt">$</span>
-      <span id="pip-cmd">pip install kyno</span>
-      <button class="copy-btn" data-copy="pip install kyno">copy</button>
+    <div class="cta">
+      <div class="install">
+        <span class="prompt">$</span>
+        <span id="pip-cmd">pip install kyno</span>
+        <button class="copy-btn" data-copy="pip install kyno">copy</button>
+      </div>
+      <a class="btn btn-ghost" href="https://github.com/cizambra/kyno">Star on GitHub</a>
     </div>
 
     <figure class="flow-card">
@@ -108,25 +111,26 @@
   </div>
 
   <section id="problem">
-    <div class="wrap narrow">
+    <div class="wrap narrow section-head">
       <p class="eyebrow">The problem</p>
       <h2>Stale direction is worse than no direction</h2>
       <p class="lede">When goals change, an agent holding the old copy keeps
-      working toward it. Your quality checks make it worse: they review
-      against the same stale copy, and push finished work back toward the
-      obsolete goal.</p>
-      <p class="lede">Kyno removes the copy. Direction lives in one versioned
-      store, every step pulls the version in force, and subscribers hear the
-      moment it changes.</p>
+      working toward it — and your quality checks push finished work back
+      toward the obsolete goal.</p>
+      <p class="lede">Kyno removes the copy: one versioned store, pulled
+      before every step, subscribers notified the moment it changes.</p>
     </div>
   </section>
 
   <section id="how">
     <div class="wrap">
-      <p class="eyebrow">How it works</p>
-      <h2>Three moves, all of them boring on purpose</h2>
+      <div class="section-head">
+        <p class="eyebrow">How it works</p>
+        <h2>Three moves, all of them boring on purpose</h2>
+      </div>
       <div class="cols">
         <div class="col">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <h3>Pull before every step</h3>
           <p>An agent binds the direction in force at its step boundary. This
           block is what lands in its context — the same marker this page
@@ -143,6 +147,7 @@ Recent changes:
 - Kyno adopts its own constitution</pre>
         </div>
         <div class="col">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8M10.3 20a2 2 0 003.4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <h3>Push when it changes</h3>
           <p>Subscribers hear the moment a new version is appended — a hint to
           pull, never a payload to trust.</p>
@@ -156,6 +161,7 @@ Recent changes:
 }</pre>
         </div>
         <div class="col">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 12l-8 8-9-9V4h7l10 8zM7.5 7.5h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <h3>Answers carry their version</h3>
           <p>Ask what changed since the version you knew, and get the delta —
           so a transcript can always say which direction each step served.</p>
@@ -174,8 +180,10 @@ Recent changes:
 
   <section id="start">
     <div class="wrap narrow">
-      <p class="eyebrow">Quick start</p>
-      <h2>Running in a minute</h2>
+      <div class="section-head">
+        <p class="eyebrow">Quick start</p>
+        <h2>Running in a minute</h2>
+      </div>
       <div class="qs">
         <button class="copy-btn" data-copy="pip install kyno
 kyno init-db
@@ -198,7 +206,9 @@ kyno serve --transport stdio    <span class="comment"># or --transport http</spa
 
   <section id="constitution">
     <div class="wrap narrow">
-      <p class="eyebrow">Our constitution</p>
+      <div class="section-head">
+        <p class="eyebrow">Our constitution</p>
+      </div>
       <a class="constitution-card" href="constitution/">
         <span class="marker">[kyno:direction constitution=default version=1]</span>
         <strong>We run on one too. Hold us to it.</strong>

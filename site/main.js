@@ -25,6 +25,7 @@
   var svg = document.querySelector(".flow-card svg");
   var opArrow = document.getElementById("op-arrow");
   var operator = document.getElementById("operator");
+  var doc = document.getElementById("doc");
   if (!eventEl || !svg || reduced.matches) return;
 
   var CHANGES = {
@@ -70,6 +71,7 @@
     at(base, function () {
       operator.classList.add("acting");
       opArrow.classList.add("sending");
+      doc.classList.add("sending");
       eventEl.textContent = "operator: " + CHANGES[v];
     });
     at(base + 2.2, function () {
@@ -80,6 +82,7 @@
     at(base + 2.8, function () {
       operator.classList.remove("acting");
       opArrow.classList.remove("sending");
+      doc.classList.remove("sending");
     });
     agents.forEach(function (a, n) {
       at(base + 3.0 + n * 0.9, function () { setAgent(a, v, true); });

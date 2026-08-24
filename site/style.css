@@ -162,6 +162,20 @@ h1 {
   .op-arrow.sending { animation: pull-flow 1.6s linear infinite; }
 }
 
+.doc { opacity: 0; transform: translate(192px, 38px); }
+.doc-body { fill: var(--panel); stroke: var(--accent); stroke-width: 1.4; }
+.doc-fold { fill: none; stroke: var(--accent); stroke-width: 1.4; }
+.doc-lines { fill: none; stroke: var(--accent); stroke-width: 1.2; }
+@media (prefers-reduced-motion: no-preference) {
+  .doc.sending { animation: doc-travel 2s ease-in-out; }
+  @keyframes doc-travel {
+    0% { opacity: 0; transform: translate(192px, 38px); }
+    15% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { opacity: 0; transform: translate(252px, 38px); }
+  }
+}
+
 .store-box { fill: var(--code-bg); }
 .store-name { fill: var(--code-text); font-size: 17px; font-weight: 700; }
 .store-sub { fill: var(--code-muted); font-size: 12px; }

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Elastic-2.0
 """Reading a constitution out of a file an operator wrote.
 
 A declaration is paragraphs and a description is a paragraph; both are

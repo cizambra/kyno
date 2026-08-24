@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Elastic-2.0
 """initial coherence schema
 
 Revision ID: 0001

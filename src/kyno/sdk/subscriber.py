@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import contextlib
@@ -7,7 +8,6 @@ import threading
 import mcp.types as types
 from pydantic import AnyUrl
 
-from kyno.mcp_server import RESOURCE_URI
 from kyno.sdk.cell import Direction, DirectionCell
 from kyno.sdk.client import DirectionSource, SessionRunner
 from kyno.sdk.policy import (
@@ -16,6 +16,10 @@ from kyno.sdk.policy import (
     TelemetryEvent,
     TelemetrySink,
 )
+
+# The resource every Kyno announces version bumps on. Defined here so the
+# SDK owns the wire name and the server imports it from the SDK.
+RESOURCE_URI = "kyno://constitution/current"
 
 _STOP = object()
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import asyncio
@@ -11,7 +12,6 @@ from typing import Any, Protocol, runtime_checkable
 
 from kyno.errors import KynoUnavailableError
 from kyno.models import COMPACT, ChangesSince
-from kyno.service import ControlPlane
 
 
 @dataclass(frozen=True)
@@ -42,11 +42,21 @@ class DirectionSource(Protocol):
     ) -> ChangesSince: ...
 
 
+@runtime_checkable
+class ChangesSinceProvider(Protocol):
+    """What LocalDirectionSource needs from a control plane. A protocol, so
+    the SDK never imports the control plane itself."""
+
+    def changes_since(
+        self, known_version: int, constitution: str | None = None
+    ) -> ChangesSince: ...
+
+
 class LocalDirectionSource:
     """The control plane in this process -- what an embedding host and the
     tests use."""
 
-    def __init__(self, control_plane: ControlPlane) -> None:
+    def __init__(self, control_plane: ChangesSinceProvider) -> None:
         self._control_plane = control_plane
 
     def changes_since(

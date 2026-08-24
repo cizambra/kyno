@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Adapters that wire the Kyno control plane into agent orchestrators.
 
 The framework-agnostic core lives in ``kyno.sdk``; per-framework

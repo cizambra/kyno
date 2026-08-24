@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Command line for the adapter checker: python -m kyno.conformance check FILE"""
 
 from __future__ import annotations

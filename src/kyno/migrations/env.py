@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Elastic-2.0
 import os
 
 from alembic import context

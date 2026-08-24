@@ -1,6 +1,6 @@
 [project]
 name = "kyno"
-license = { text = "MIT" }
+license = { text = "MIT AND Elastic-2.0" }
 version = "0.1.0"
 description = "A versioned coherence control plane for multi-agent orchestrators (control-plane core + MCP server)."
 requires-python = ">=3.11"

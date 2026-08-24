@@ -13,10 +13,11 @@
 })();
 
 // The diagram plays the process: set_direction appends a version, and each
-// agent picks it up at its own next step. It is one story, replayed: the
-// versions stay v7..v10 so nobody reads the counter as Kyno's own version.
-// Without JavaScript, or under prefers-reduced-motion, the mid-flight still
-// in the markup is the frame.
+// agent picks it up at its own next step. One bounded story on a loop:
+// everyone starts on v7, the operator appends v8, then v9, then v10, and
+// the demo replays. Versions never leave v7..v10, so nobody reads the
+// counter as Kyno's own version. Without JavaScript, or under
+// prefers-reduced-motion, the mid-flight still in the markup is the frame.
 (function () {
   "use strict";
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -24,6 +25,7 @@
   var svg = document.querySelector(".flow-card svg");
   if (!eventEl || !svg || reduced.matches) return;
 
+  var NOTES = { 8: "pivot to SMB", 9: "add the EU line", 10: "focus on retention" };
   var agents = [1, 2, 3, 4].map(function (i) {
     return {
       group: document.getElementById("agent-" + i),
@@ -32,7 +34,6 @@
     };
   });
   var timers = [];
-  function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
 
   function setAgent(a, v, fresh) {
     a.chip.textContent = fresh ? "v" + v : "v" + v + " so far";
@@ -41,50 +42,51 @@
     a.drop.setAttribute("marker-end", fresh ? "url(#arr)" : "url(#arr-stale)");
   }
 
-  function setStore(v) {
-    document.getElementById("ver-old1").textContent = "v" + (v - 2);
-    document.getElementById("ver-old2").textContent = "v" + (v - 1);
-    document.getElementById("ver-new").textContent = "v" + v + " new";
+  function setStore(current, isNew) {
+    var old1 = current - 2, old2 = current - 1;
+    document.getElementById("ver-old1").textContent = old1 >= 7 ? "v" + old1 : "";
+    document.getElementById("ver-old2").textContent = old2 >= 7 ? "v" + old2 : "";
+    document.getElementById("ver-new").textContent = "v" + current + (isNew ? " new" : "");
   }
 
-  function baseline() {
-    setStore(9);
-    agents.forEach(function (a) { setAgent(a, 9, true); });
-    agents[3].chip.textContent = "v8 → pulls next";
-    agents[3].group.setAttribute("class", "agent stale");
-    agents[3].drop.setAttribute("class", "pull waiting");
-    agents[3].drop.setAttribute("marker-end", "url(#arr-stale)");
-    eventEl.textContent = "mid-flight: three agents already on v9, the reviewer picks it up at its next step";
-  }
+  // One timeline, replayed: [seconds from start, what happens].
+  var steps = [];
+  function at(sec, fn) { steps.push([sec * 1000, fn]); }
+
+  at(0, function () {
+    setStore(7, false);
+    agents.forEach(function (a) { setAgent(a, 7, true); });
+    eventEl.textContent = "four agents at work, every one of them on v7";
+  });
+
+  [8, 9, 10].forEach(function (v, round) {
+    var base = 2.4 + round * 6.4;
+    at(base, function () {
+      setStore(v, true);
+      eventEl.textContent = 'set_direction(note="' + NOTES[v] + '") → v' + v;
+      agents.forEach(function (a) { setAgent(a, v - 1, false); });
+    });
+    agents.forEach(function (a, n) {
+      at(base + 1.0 + n * 0.9, function () { setAgent(a, v, true); });
+    });
+    at(base + 1.0 + agents.length * 0.9, function () {
+      eventEl.textContent = "every agent is on v" + v +
+        (v === 10 ? ". The demo replays from here." : "");
+    });
+  });
+
+  var CYCLE = 23.5 * 1000;
 
   function play() {
-    later(function () {
-      setAgent(agents[3], 9, true);
-      eventEl.textContent = "every agent is on v9, ready for the next change";
-    }, 2000);
-
-    later(function () {
-      setStore(10);
-      eventEl.textContent = 'set_direction(note="pivot to SMB") → v10';
-      agents.forEach(function (a) { setAgent(a, 9, false); });
-      agents.forEach(function (a, n) {
-        later(function () {
-          setAgent(a, 10, true);
-          if (n === agents.length - 1) {
-            eventEl.textContent = "every agent is on v10. The demo replays from here.";
-          }
-        }, 1100 + n * 1100);
-      });
-    }, 4600);
-
-    later(function () {
+    steps.forEach(function (s) { timers.push(setTimeout(s[1], s[0])); });
+    timers.push(setTimeout(function () {
       svg.classList.add("replay");
-      later(function () {
-        baseline();
+      timers.push(setTimeout(function () {
         svg.classList.remove("replay");
+        timers = [];
         play();
-      }, 450);
-    }, 14200);
+      }, 450));
+    }, CYCLE));
   }
 
   play();
@@ -93,7 +95,14 @@
     if (!e.matches) return;
     timers.forEach(clearTimeout);
     timers = [];
-    baseline();
+    svg.classList.remove("replay");
+    setStore(9, true);
+    agents.forEach(function (a) { setAgent(a, 9, true); });
+    agents[3].chip.textContent = "v8 → pulls next";
+    agents[3].group.setAttribute("class", "agent stale");
+    agents[3].drop.setAttribute("class", "pull waiting");
+    agents[3].drop.setAttribute("marker-end", "url(#arr-stale)");
+    eventEl.textContent = "mid-flight: three agents already on v9, the reviewer picks it up at its next step";
   };
   if (reduced.addEventListener) reduced.addEventListener("change", onChange);
 })();

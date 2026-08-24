@@ -55,11 +55,11 @@
           <text x="380" y="42" text-anchor="middle" class="store-name">Kyno</text>
           <text x="380" y="60" text-anchor="middle" class="store-sub">direction store</text>
           <g class="versions">
-            <text x="316" y="88" text-anchor="middle" class="v-old">v7</text>
-            <text x="352" y="88" text-anchor="middle" class="v-old">v8</text>
+            <text x="316" y="88" text-anchor="middle" class="v-old" id="ver-old1">v7</text>
+            <text x="352" y="88" text-anchor="middle" class="v-old" id="ver-old2">v8</text>
             <g class="v-now">
               <rect x="376" y="72" width="66" height="22" rx="5"/>
-              <text x="409" y="87" text-anchor="middle">v9 new</text>
+              <text x="409" y="87" text-anchor="middle" id="ver-new">v9 new</text>
             </g>
           </g>
         </g>
@@ -68,44 +68,45 @@
         <g class="pulls">
           <path d="M380 106 V 150" class="pull"/>
           <path d="M122 150 H 638" class="pull rail"/>
-          <path d="M122 150 V 192" class="pull" marker-end="url(#arr)"/>
-          <path d="M294 150 V 192" class="pull" marker-end="url(#arr)"/>
-          <path d="M466 150 V 192" class="pull" marker-end="url(#arr)"/>
-          <path d="M638 150 V 192" class="pull waiting" marker-end="url(#arr-stale)"/>
+          <path d="M122 150 V 192" class="pull" id="drop-1" marker-end="url(#arr)"/>
+          <path d="M294 150 V 192" class="pull" id="drop-2" marker-end="url(#arr)"/>
+          <path d="M466 150 V 192" class="pull" id="drop-3" marker-end="url(#arr)"/>
+          <path d="M638 150 V 192" class="pull" id="drop-4" marker-end="url(#arr)"/>
           <text x="208" y="140" text-anchor="middle" class="pull-label">pull before each step</text>
         </g>
 
         <!-- the workflow -->
         <g class="agents">
-          <g class="agent fresh">
+          <g class="agent fresh" id="agent-1">
             <rect x="62" y="200" width="120" height="58" rx="9"/>
             <text x="122" y="224" text-anchor="middle" class="a-name">researcher</text>
-            <text x="122" y="244" text-anchor="middle" class="a-v">v9</text>
+            <text x="122" y="244" text-anchor="middle" class="a-v" id="agent-v-1">v9</text>
           </g>
           <path d="M186 229 H 228" class="step" marker-end="url(#arr)"/>
-          <g class="agent fresh">
+          <g class="agent fresh" id="agent-2">
             <rect x="234" y="200" width="120" height="58" rx="9"/>
             <text x="294" y="224" text-anchor="middle" class="a-name">planner</text>
-            <text x="294" y="244" text-anchor="middle" class="a-v">v9</text>
+            <text x="294" y="244" text-anchor="middle" class="a-v" id="agent-v-2">v9</text>
           </g>
           <path d="M358 229 H 400" class="step" marker-end="url(#arr)"/>
-          <g class="agent fresh">
+          <g class="agent fresh" id="agent-3">
             <rect x="406" y="200" width="120" height="58" rx="9"/>
             <text x="466" y="224" text-anchor="middle" class="a-name">writer</text>
-            <text x="466" y="244" text-anchor="middle" class="a-v">v9</text>
+            <text x="466" y="244" text-anchor="middle" class="a-v" id="agent-v-3">v9</text>
           </g>
           <path d="M530 229 H 572" class="step" marker-end="url(#arr)"/>
-          <g class="agent stale">
+          <g class="agent stale" id="agent-4">
             <rect x="578" y="200" width="120" height="58" rx="9"/>
             <text x="638" y="224" text-anchor="middle" class="a-name">reviewer</text>
-            <text x="638" y="244" text-anchor="middle" class="a-v">v8 → pulls next</text>
+            <text x="638" y="244" text-anchor="middle" class="a-v" id="agent-v-4">v8 → pulls next</text>
           </g>
         </g>
 
-        <text x="380" y="298" text-anchor="middle" class="flow-caption">mid-flight: three agents already on v9, the reviewer picks it up at its next step</text>
+        <text x="380" y="298" text-anchor="middle" class="flow-caption" id="flow-event">mid-flight: three agents already on v9, the reviewer picks it up at its next step</text>
       </svg>
-      <figcaption><code>set_direction</code> appends v9. Every agent picks it up
-      at its own next step. No restarts, no redeploys, no stale copies.</figcaption>
+      <figcaption><code>set_direction</code> appends a new version. Every agent
+      picks it up at its own next step. No restarts, no redeploys, no stale
+      copies.</figcaption>
     </figure>
   </div>
 

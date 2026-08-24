@@ -50,7 +50,7 @@
         </defs>
 
         <!-- the operator: where direction changes come from -->
-        <g class="operator">
+        <g class="operator" id="operator">
           <rect x="52" y="31" width="130" height="58" rx="9"/>
           <text x="117" y="55" text-anchor="middle" class="op-name">operator</text>
           <text x="117" y="73" text-anchor="middle" class="op-sub">your organization</text>
@@ -112,11 +112,12 @@
 
         <text x="380" y="298" text-anchor="middle" class="flow-caption" id="flow-event">mid-flight: three agents already on v9, the reviewer picks it up at its next step</text>
       </svg>
-      <figcaption><code>set_direction</code> appends a new version, and every
-      agent picks it up at its own next step. A step is whatever boundary your
-      orchestrator already has: the next task in a workflow, the next node in
-      a graph, the next turn in a session. The pull happens at every one of
-      them, so no step runs on a stale copy.</figcaption>
+      <figcaption><code>set_direction</code> appends a new version, and an
+      agent picks it up at its next pull. Where that pull happens depends on
+      the adapter: on CrewAI it runs before every model call, on LangGraph it
+      runs each time the graph passes the direction node, and a custom
+      adapter wires it to whatever boundary your orchestrator has. Nothing
+      restarts; the next pull simply carries the new version.</figcaption>
     </figure>
   </div>
 

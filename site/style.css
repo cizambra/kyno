@@ -152,11 +152,15 @@ h1 {
 
 .flow-card text { font-family: var(--sans); }
 
-.operator rect { fill: var(--panel); stroke: var(--rule); stroke-width: 1.4; }
+.operator rect { fill: var(--panel); stroke: var(--rule); stroke-width: 1.4; transition: stroke 0.3s; }
+.operator.acting rect { stroke: var(--accent); }
 .op-name { fill: var(--ink); font-size: 14px; font-weight: 650; }
 .op-sub { fill: var(--muted); font-size: 11px; }
 .op-arrow { fill: none; stroke: var(--muted); stroke-width: 1.6; transition: stroke 0.3s; }
-.op-arrow.sending { stroke: var(--accent); }
+.op-arrow.sending { stroke: var(--accent); stroke-dasharray: 5 5; }
+@media (prefers-reduced-motion: no-preference) {
+  .op-arrow.sending { animation: pull-flow 1.6s linear infinite; }
+}
 
 .store-box { fill: var(--code-bg); }
 .store-name { fill: var(--code-text); font-size: 17px; font-weight: 700; }

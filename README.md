@@ -1,9 +1,10 @@
 # Kyno
 
-A **coherence control plane** for multi-agent systems: one versioned source of
-truth for your system's **mission and principles** (its *constitution*), served
-over [MCP](https://modelcontextprotocol.io) so every agent acts on the
-direction in force right now, even when that direction changes mid-flight.
+Kyno is a coherence control plane for multi-agent systems. It holds one
+versioned source of truth for your system's mission and principles — its
+*constitution* — and serves it over [MCP](https://modelcontextprotocol.io),
+so every agent acts on the direction in force right now, even when that
+direction changes mid-flight.
 
 ## Why
 
@@ -25,19 +26,19 @@ kyno current
 kyno serve --transport stdio    # or --transport http
 ```
 
-A constitution is a **mission** (the overarching purpose, and the tie-breaker
-when principles conflict) plus ordered **principles**. Every change appends a
-new immutable version with a plain-language change note. Nothing is edited in
-place, so the question "what was the direction when agent X acted" always has
-an answer.
+A constitution is a mission plus ordered principles. The mission is the
+overarching purpose, and the tie-breaker when principles conflict. Every
+change appends a new immutable version with a plain-language change note.
+Nothing is edited in place, so the question "what was the direction when
+agent X acted" always has an answer.
 
 ## Writing one
 
 A one-line principle is a short name for an idea, not the full rule. Give a
 constitution as much as it needs and no more. Each of these is optional:
 
-- a **declaration**: the long-form document that the mission is the headline of;
-- a **description** under any principle: the paragraph that settles an
+- a declaration: the long-form document that the mission is the headline of;
+- a description under any principle: the paragraph that settles an
   argument about what the principle means.
 
 Both are prose, and long prose doesn't fit in command-line flags, so a
@@ -70,7 +71,7 @@ kyno set --file constitution.yaml
 kyno set --file constitution.yaml --constitution eu --note "the EU edit"
 ```
 
-The declaration is **markdown**, and the published page renders it: headings,
+The declaration is markdown, and the published page renders it: headings,
 lists, emphasis, quotes, links. Raw HTML inside it is escaped instead of
 passed through, and `javascript:` links are refused. The page is served to
 anonymous visitors, so text you typed must never reach them as markup that
@@ -109,9 +110,9 @@ Over MCP or Python:
   the next version. Omitted fields carry forward; `""` clears one. On HTTP
   this requires the bearer token.
 
-Every read is **as small as it can be by default** — the titles, not the long
-text — because an agent pulls before every step and would otherwise pay for
-the whole document each time. Ask for more when something actually needs it:
+Every read returns as little as it can by default: the titles, not the long
+text. An agent pulls before every step, and would otherwise pay for the
+whole document each time. Ask for more when something actually needs it:
 `detail="full"` on the two pulls, `detail="full"` on `get_principles`, or one
 of the targeted reads. Every answer carries the version it came from, so a
 client mixing them can tell when they have drifted apart.
@@ -142,7 +143,7 @@ pip install "kyno[crewai]"      # or: pip install "kyno[langgraph]"
 On a different framework or language? The whole contract for building your
 own adapter is one page: [docs/integrating.md](docs/integrating.md).
 
-An adapter binds a crew or a graph to one **named constitution** and re-binds
+An adapter binds a crew or a graph to one named constitution and re-binds
 every next step to the version in force right now:
 
 ```python
@@ -161,7 +162,7 @@ anyone who needs to assemble them differently. Embedding Kyno in the same
 process instead? Swap the source:
 `DirectionBinder(LocalDirectionSource(control_plane))`.
 
-- **Pull before each step** — the current mission and principle titles are
+- **Pull before each step.** The current mission and principle titles are
   injected into the next model call, tagged with the constitution and version
   they came from. That block rides on every model call, so it stays small by
   default. Bind with `connection.binder(context="full")` when you would
@@ -171,10 +172,10 @@ process instead? Swap the source:
   binder holds, and the staleness is emitted as telemetry. Bind with
   `connection.binder(policy=PullPolicy(fail_closed=True))` when your posture
   is "no direction, no work": the step raises instead of proceeding.
-- **Push consumption** — `BackgroundSubscriber` turns an MCP
+- **Push consumption.** `BackgroundSubscriber` turns an MCP
   `resources/updated` notification into a re-pull by name. A step already
   running is never interrupted; the next one binds the new direction.
-- **What changed** — a pull carries the operator's change note and a computed
+- **What changed.** A pull carries the operator's change note and a computed
   delta: which principle moved, quoted both ways, whether the mission moved,
   what was added or dropped. The note says why, in the words of whoever wrote
   it; the delta says what, computed from the versions themselves. A consumer
@@ -182,11 +183,11 @@ process instead? Swap the source:
   front of it. The delta is what makes a small change visible: when one
   principle of four moves and the mission holds, the block otherwise reads
   the same as the last one.
-- **Planning** — if your orchestrator plans before it executes,
+- **Planning.** If your orchestrator plans before it executes,
   `binder.plan()` returns a tracker: `direction()` pulls what to plan against
   and remembers the version, and `changed()` returns the fresh direction when
   a newer version exists, so you know when to re-plan the remaining work.
-- **Adapters are read-only** — they pull and subscribe. `set_direction` stays
+- **Adapters are read-only.** They pull and subscribe. `set_direction` stays
   an operator or CLI action against Kyno, never something an adapter calls on
   a crew's or graph's behalf.
 
@@ -208,11 +209,11 @@ class State(KynoState, total=False):
 Kyno carries the direction, the version, and what changed. What a system does
 when the version moves belongs to the system, and there are three answers:
 
-- **carry on** — the next step gets the new direction. The integration above
+- **Carry on.** The next step gets the new direction. The integration above
   already does this, and it costs nothing beyond the pull.
-- **reassess** — re-derive the remaining work under the new direction. This
+- **Reassess.** Re-derive the remaining work under the new direction. This
   is a planning call, made when `binder.plan()` reports a change.
-- **stop** — review finished work against the direction it was bound to, and
+- **Stop.** Review finished work against the direction it was bound to, and
   halt on a bad verdict. This is the realignment gate, and it costs a judge
   call per finished task.
 
@@ -271,14 +272,14 @@ readable by anyone at:
 
 Three things worth knowing:
 
-- **A published name has to be a slug** — lowercase letters, digits and
+- **A published name has to be a slug**: lowercase letters, digits and
   single hyphens (`acme`, `acme-eu`). It is both the URL and the name your
   agents use, so Kyno refuses anything else rather than quietly rewriting it.
   Names you never publish are unrestricted.
 - **Nothing is public until you publish it**, and publication is per name.
   One Kyno can hold your internal constitution and your public one side by
   side; publishing the second does nothing to the first.
-- **Publishing shows the current direction only** — mission, declaration,
+- **Publishing shows the current direction only**: mission, declaration,
   principles, version, last-changed date. The version history stays private
   unless you add `--with-history`, because change notes are written for your
   operators and routinely explain why you changed course. A published history
@@ -376,10 +377,10 @@ warning, so a bad template never takes your public page down.
 
 ## Auth
 
-- **stdio**: open. A process that can spawn the server already owns the
+- **stdio** is open. A process that can spawn the server already owns the
   database file under it, so a token there would add a step without adding
   protection.
-- **HTTP**: a shared bearer token (`KYNO_TOKEN`) gates every request to the
+- **HTTP** is gated by a shared bearer token (`KYNO_TOKEN`) gates every request to the
   MCP endpoint (`/mcp`). The server refuses to start tokenless over HTTP
   unless you explicitly opt in (`KYNO_ALLOW_INSECURE_HTTP`, for local
   experimentation only — it warns), and a `KYNO_TOKEN` that is set but blank
@@ -389,7 +390,7 @@ warning, so a bad template never takes your public page down.
   pages above sit outside that gate on purpose; they are the surface you
   chose to open.
 
-The write token is **direction control**: whoever holds it steers the
+The write token is direction control: whoever holds it steers the
 instructions of every agent bound to this Kyno. Treat it like a system-prompt
 credential — serve `/mcp` over TLS and keep the token out of logs and
 checkpoints (Kyno's own reprs never print it). One related caution: the
@@ -401,10 +402,10 @@ replace the block they injected themselves.
 
 ## Deploying
 
-- Use an **absolute `KYNO_DATABASE_URL`** in production. The default
+- Use an absolute `KYNO_DATABASE_URL` in production. The default
   (`sqlite:///kyno.sqlite3`) is a dev convenience that resolves against
   whatever working directory the process starts in.
-- Run a hosted Kyno **behind a reverse proxy that enforces rate limits**.
+- Run a hosted Kyno behind a reverse proxy that enforces rate limits.
   The public pages answer anonymous traffic, and rate limiting is the
   proxy's job, not Kyno's.
 - Field sizes are part of the API contract: mission ≤ 4,000 characters,

@@ -46,8 +46,7 @@ class DirectionSource(Protocol):
 class ControlPlaneProjection(Protocol):
     """The projection of a control plane that this source uses: answering
     what changed since a known version. Anything with that method satisfies
-    it, no inheritance needed — which is how the MIT-licensed SDK avoids
-    depending on the control plane's code."""
+    it, no inheritance needed."""
 
     def changes_since(
         self, known_version: int, constitution: str | None = None

@@ -1,7 +1,6 @@
 # Operating Kyno
 
-Storage, auth, deployment, and testing, for when Kyno moves past a
-laptop.
+Storage, auth, deployment, and testing for a production Kyno.
 
 ## Storage
 

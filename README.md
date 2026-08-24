@@ -26,9 +26,9 @@ And even when the direction never changes, long runs decay. Every handoff
 paraphrases the mission a little, summaries compress it, and by the late
 steps the system is serving an approximation of what you asked for.
 
-A static system prompt can't fix either one, because it is a copy by
-construction: pasted at launch, drifting from then on. Kyno removes the
-copy. Direction lives in one versioned store, agents pull the current
+A static system prompt can't fix either one, because it is a copy too:
+you paste it at launch, and it starts aging the moment the run begins.
+Kyno removes the copy. Direction lives in one versioned store, agents pull the current
 version before each step, and subscribers are notified the moment it
 changes.
 
@@ -115,16 +115,15 @@ are in [Writing constitutions](docs/constitutions.md).
 
 Every change appends a new immutable version with a plain-language change
 note. Nothing is edited in place, so the question "what was the direction
-when agent X acted" always has an answer. That is the provenance story:
-the direction each step served is a fact you can look up, not a guess
-from memory.
+when agent X acted" always has an answer. That is what makes the record
+auditable: the direction each step served is a fact you can look up.
 
 ## Self-hosting
 
-Kyno runs wherever Python runs: SQLite out of the box, PostgreSQL in
-production via `KYNO_DATABASE_URL`, served over stdio for a local process
-or HTTP with a bearer token for a fleet. A pip install carries its own
-migration scripts. The details live in [Operating Kyno](docs/operating.md).
+Kyno self-hosts with no external services: SQLite out of the box,
+PostgreSQL in production via `KYNO_DATABASE_URL`, served over stdio for a
+local process or over HTTP with a bearer token for a fleet. A pip install
+carries its own migration scripts. The details live in [Operating Kyno](docs/operating.md).
 
 ## Documentation
 
@@ -149,9 +148,10 @@ Two licenses, split by directory:
 - The SDK, the adapters, the conformance kit, and the integration guide
   are [MIT](LICENSES/MIT.txt).
 
-[LICENSE](LICENSE) explains how to tell which license a file carries. The
-short version: build anything on the SDK freely; don't offer the control
-plane itself as a hosted service.
+[LICENSE](LICENSE) explains how to tell which license a file carries.
+You can build anything on the SDK, freely and commercially. What the
+Elastic License restricts is offering the control plane itself as a
+hosted service.
 
 ## Contributing
 

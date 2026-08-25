@@ -96,6 +96,8 @@ Kyno is running and holds the direction store; what changes is whether
 a pull crosses the network or stays a function call. The embedded setup
 is in [Operating Kyno](operating.md#running-kyno-embedded).
 
+**Two ways to run Kyno: as its own service, or embedded in your app.**
+
 ```mermaid
 ---
 config:

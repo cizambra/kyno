@@ -8,6 +8,7 @@ by stage.
 On this page:
 
 - [The integration](#the-integration)
+- [The loop](#the-loop)
 - [Acting on a change](#acting-on-a-change)
 - [The realignment gate](#the-realignment-gate)
 
@@ -54,17 +55,19 @@ config:
   theme: neutral
 ---
 flowchart TB
-  subgraph svc["Kyno as its own service"]
-    direction LR
-    A1["your app<br/>adapter + binder"] -- "MCP over HTTP" --> K1["kyno serve<br/>control plane"]
-    K1 --- S1[("direction store")]
-  end
   subgraph emb["Kyno embedded in your app"]
     direction LR
     B2["adapter + binder"] -- "function call" --> K2["control plane"]
     K2 --- S2[("direction store")]
   end
+  subgraph svc["Kyno as its own service"]
+    direction LR
+    A1["your app<br/>adapter + binder"] -- "MCP over HTTP" --> K1["kyno serve<br/>control plane"]
+    K1 --- S1[("direction store")]
+  end
 ```
+
+### The loop
 
 - **Pull before each step.** The binder injects the current mission and
   principle titles into the next model call, tagged with the constitution

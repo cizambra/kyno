@@ -157,7 +157,7 @@ does, stage 1 is done.
 Two details you'll need later:
 
 - If you call before any direction has been set, you get
-  `current_version: 0` and empty fields. That is a normal response, not an
+  `current_version: 0` and empty fields. That's a normal response, not an
   error, and your code should handle it like any other.
 - `detail: "compact"` returns the mission and the principle titles.
   `detail: "full"` also returns the declaration and each principle's
@@ -241,7 +241,7 @@ All four match, and stage 2 is done.
 ## Stage 3: wire it into your orchestrator
 
 Before this stage, everything you have built is identical for every
-adapter, in every framework: the call and the block do not care what
+adapter, in every framework: the call and the block don't care what
 orchestrator they serve. This stage is the only framework-specific part,
 and it comes down to two things: where your framework's before-each-step
 hook lives, and what "the front of the context" means there (a messages
@@ -259,7 +259,7 @@ or middleware for this). In that place:
    agent's role or system prompt, before the task.
 4. Remember the version number for the next call.
 
-Do this on every step, even when nothing changed. A direction that is only
+Do this on every step, even when nothing changed. A direction that's only
 sent once falls out of the context window as the conversation grows.
 
 In TypeScript, the whole thing, including the stage-5 rule that a failed

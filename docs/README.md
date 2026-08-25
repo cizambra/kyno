@@ -1,9 +1,9 @@
 # Kyno documentation
 
 The [README](../README.md) tells you what Kyno is and gets you running.
-These pages are for after that decision, when you are wiring Kyno into a
-real system and want the full detail. They read in this order, but each
-one stands alone.
+These pages hold everything else, for when you're wiring Kyno into a real
+system and want the full detail. I ordered them the way I'd read them,
+but each one stands alone.
 
 1. [Writing constitutions](constitutions.md). The file, its fields, how
    edits carry forward, and running several constitutions side by side.

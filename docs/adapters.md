@@ -1,10 +1,10 @@
 # The adapters in depth
 
-The README shows the two-line integration. This page is everything
-behind it: what the binder does on every pull, how pushes and deltas
-work, the planning tracker, the failure postures, and the realignment
-gate. Building for another framework or language? The whole contract is
-one page: [integrating.md](integrating.md).
+The README shows the two-line integration. Here's everything behind it:
+what the binder does on every pull, how pushes and deltas work, the
+planning tracker, the failure postures, and the realignment gate.
+Building for another framework or language? The whole contract is one
+page: [integrating.md](integrating.md).
 
 On this page:
 
@@ -34,7 +34,7 @@ adapter = CrewAiKyno(connection.binder(), constitution="eu")
 adapter.register()  # injects the current direction before each model call
 ```
 
-That is the whole integration. Every model call carries the version in force,
+That's the whole integration. Every model call carries the version in force,
 and a version published mid-run reaches the next step. The pieces behind
 `connect()`, the binder, the sources, the policies, live in `kyno.sdk` for
 anyone who needs to assemble them differently. Embedding Kyno in the same

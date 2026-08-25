@@ -2,9 +2,9 @@
 
 A constitution is a mission plus ordered principles. The mission is the
 overarching purpose, and the tie-breaker when principles conflict.
-A constitution is not limited to strategy; operational principles are
-just as good a use case. This page covers the full file semantics: the optional fields, how edits
-carry forward, and running several constitutions side by side.
+A constitution isn't limited to strategy; operational principles are
+just as good a use case. Here's everything the file can hold, and how
+edits behave once versions start stacking up.
 
 On this page:
 
@@ -55,7 +55,7 @@ The declaration is markdown, and the published page renders it: headings,
 lists, emphasis, quotes, links. Raw HTML inside it is escaped instead of
 passed through, and `javascript:` links are refused. The page is served to
 anonymous visitors, so text you typed must never reach them as markup that
-runs. Images are not rendered either; that is what keeps the page one
+runs. Images aren't rendered either; that's what keeps the page one
 self-contained response.
 
 Everywhere else the declaration stays exactly the markdown you wrote. The
@@ -64,7 +64,7 @@ rendered document.
 
 `--note`, `--by` and `--constitution` may override the file, because they
 describe this edit rather than the constitution. The field flags
-(`--mission`, `--declaration`, `--principle`) cannot be combined with
+(`--mission`, `--declaration`, `--principle`) can't be combined with
 `--file`, because two sources for the same field would be ambiguous. Fields
 the file leaves out are carried forward from the previous version; to clear
 one, write it empty, like `declaration: ""`.

@@ -1,6 +1,6 @@
 # The MCP contract
 
-Everything an agent or client can ask Kyno, over MCP or Python.
+This is everything an agent or client can ask Kyno, over MCP or Python.
 
 ## The tools
 

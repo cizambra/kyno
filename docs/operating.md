@@ -31,7 +31,7 @@ nothing.
 - **HTTP** is gated by a shared bearer token (`KYNO_TOKEN`) gates every request to the
   MCP endpoint (`/mcp`). The server refuses to start tokenless over HTTP
   unless you explicitly opt in (`KYNO_ALLOW_INSECURE_HTTP`, for local
-  experimentation only; it warns), and a `KYNO_TOKEN` that is set but blank
+  experimentation only; it warns), and a `KYNO_TOKEN` that's set but blank
   is a configuration error rather than silently no auth. Embedders building
   the app in code opt in the same way:
   `build_http_app(..., allow_insecure=True)`. The published constitution

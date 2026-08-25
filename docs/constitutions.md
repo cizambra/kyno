@@ -86,5 +86,7 @@ as the same version-0 empty state an untouched store does. The subscribable
 resource is the default constitution's; agents on another one pull it by name
 with `get_changes_since`.
 
-Questions? [Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)
+## 💬 Questions?
+
+[Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)
 and I'll answer there, so the next person finds it too.

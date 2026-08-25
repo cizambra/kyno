@@ -95,5 +95,7 @@ python -m pytest -q                      # SQLite, no network
 KYNO_TEST_POSTGRES_URL=postgresql+psycopg://… python -m pytest -q   # + Postgres
 ```
 
-Questions? [Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)
+## 💬 Questions?
+
+[Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)
 and I'll answer there, so the next person finds it too.

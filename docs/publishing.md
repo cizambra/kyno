@@ -132,5 +132,7 @@ alone rather than breaking the page. And if your file is missing or
 unreadable when a request arrives, Kyno serves its own page and logs a
 warning, so a bad template never takes your public page down.
 
-Questions? [Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)
+## 💬 Questions?
+
+[Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)
 and I'll answer there, so the next person finds it too.

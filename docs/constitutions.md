@@ -6,6 +6,12 @@ A constitution is not limited to strategy; operational principles are
 just as good a use case. This page covers the full file semantics: the optional fields, how edits
 carry forward, and running several constitutions side by side.
 
+On this page:
+
+- [The file](#the-file)
+- [Multiple constitutions](#multiple-constitutions)
+
+
 ## The file
 
 A one-line principle is a short name for an idea, not the full rule. Give a

@@ -2,6 +2,14 @@
 
 Storage, auth, deployment, and testing for a production Kyno.
 
+On this page:
+
+- [Storage](#storage)
+- [Auth](#auth)
+- [Deploying](#deploying)
+- [Testing](#testing)
+
+
 ## Storage
 
 SQLite out of the box; PostgreSQL for production via `KYNO_DATABASE_URL`.

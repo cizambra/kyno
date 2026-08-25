@@ -137,6 +137,8 @@ carries its own migration scripts. The details live in [Operating Kyno](docs/ope
 
 ## Documentation
 
+The [documentation index](docs/README.md) lays these out in reading order.
+
 - [Writing constitutions](docs/constitutions.md): the file, its fields,
   and multiple constitutions.
 - [The MCP contract](docs/contract.md): every tool, the compact and full

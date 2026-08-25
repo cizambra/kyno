@@ -4,6 +4,13 @@ If you want to show people the principles you say you operate by, Kyno can
 serve that page itself. The published page and the one your agents obey are
 then the same record, not two copies that drift apart.
 
+On this page:
+
+- [Changing the colors](#changing-the-colors)
+- [Using your own templates](#using-your-own-templates)
+- [Placeholders](#placeholders)
+
+
 ```bash
 kyno publish                                  # the default constitution
 kyno publish --constitution eu --with-history

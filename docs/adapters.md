@@ -6,6 +6,13 @@ work, the planning tracker, the failure postures, and the realignment
 gate. Building for another framework or language? The whole contract is
 one page: [integrating.md](integrating.md).
 
+On this page:
+
+- [The integration](#the-integration)
+- [Acting on a change](#acting-on-a-change)
+- [The realignment gate](#the-realignment-gate)
+
+
 ## The integration
 
 ```bash
@@ -91,7 +98,9 @@ when the version moves belongs to the system, and there are three answers:
 
 Kyno takes no position on which one is right.
 
-**The realignment gate** reviews each finished task. It holds no judgment of
+### The realignment gate
+
+The gate reviews each finished task. It holds no judgment of
 its own: it asks a `VerdictSource` you supply and acts on the answer, raising
 on CrewAI and calling `interrupt()` on LangGraph when the verdict is
 `DRIFTED`. Kyno ships no judge, so an adapter built without one has no gate.

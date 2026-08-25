@@ -104,8 +104,6 @@ flowchart LR
   an operator or CLI action against Kyno, never something an adapter calls on
   a crew's or graph's behalf.
 
-All of that, on one canvas:
-
 ```mermaid
 ---
 config:

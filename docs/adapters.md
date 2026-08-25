@@ -66,34 +66,25 @@ flowchart TB
   end
 ```
 
-- **Pull before each step.** The current mission and principle titles are
-  injected into the next model call, tagged with the constitution and version
-  they came from. That block rides on every model call, so it stays small by
-  default. Bind with `connection.binder(context="full")` when you would
-  rather spend the tokens: the declaration and the principle descriptions are
-  injected too. When Kyno is unreachable, or answers with something
-  unreadable, the pull degrades: the step runs on the last direction the
-  binder holds, and the staleness is emitted as telemetry. Bind with
-  `connection.binder(policy=PullPolicy(fail_closed=True))` when your posture
-  is "no direction, no work": the step raises instead of proceeding.
-- **Push consumption.** `BackgroundSubscriber` turns an MCP
-  `resources/updated` notification into a re-pull by name. A step already
-  running is never interrupted; the next one binds the new direction.
-- **What changed.** A pull carries the operator's change note and a computed
-  delta: which principle moved, quoted both ways, whether the mission moved,
-  what was added or dropped. The note says why, in the words of whoever wrote
-  it; the delta says what, computed from the versions themselves. A consumer
-  holding no version gets no delta, since the whole direction is already in
-  front of it. The delta is what makes a small change visible: when one
-  principle of four moves and the mission holds, the block otherwise reads
-  the same as the last one.
-- **Planning.** If your orchestrator plans before it executes,
-  `binder.plan()` returns a tracker: `direction()` pulls what to plan against
-  and remembers the version, and `changed()` returns the fresh direction when
-  a newer version exists, so you know when to re-plan the remaining work.
-- **Adapters are read-only.** They pull and subscribe. `set_direction` stays
-  an operator or CLI action against Kyno, never something an adapter calls on
-  a crew's or graph's behalf.
+- **Pull before each step.** The binder injects the current mission and
+  principle titles into the next model call, tagged with the constitution
+  and version they came from. It stays small by default;
+  `connection.binder(context="full")` injects the declaration and the
+  principle descriptions too. If Kyno is unreachable, the step runs on
+  the last direction the binder holds and the staleness shows up in
+  telemetry; `PullPolicy(fail_closed=True)` makes the step raise instead.
+- **Push when it changes.** `BackgroundSubscriber` turns a
+  `resources/updated` notification into a re-pull. A running step is
+  never interrupted; the next one binds the new direction.
+- **What changed.** A pull carries the operator's change note and a
+  computed delta: which principle moved, whether the mission moved, what
+  was added or dropped. That's what makes a small change visible.
+- **Planning.** `binder.plan()` returns a tracker: `direction()` pulls
+  what to plan against, and `changed()` tells you when to re-plan the
+  remaining work.
+- **Adapters are read-only.** They pull and subscribe. `set_direction`
+  stays an operator action, never something an adapter calls on the
+  crew's behalf.
 
 ```mermaid
 ---

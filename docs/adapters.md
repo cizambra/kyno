@@ -1,6 +1,6 @@
 # The adapters in depth
 
-The README shows the two-line integration. Here's everything behind it:
+The [project README](../README.md) shows the two-line integration. Here's everything behind it:
 what the binder does on every pull, how pushes and deltas work, the
 planning tracker, the failure postures, and the realignment gate.
 Building for another framework or language? The whole contract is one

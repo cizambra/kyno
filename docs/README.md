@@ -1,6 +1,6 @@
 # Kyno documentation
 
-The [README](../README.md) tells you what Kyno is and gets you running.
+The [project README](../README.md) tells you what Kyno is and gets you running.
 These pages hold everything else, for when you're wiring Kyno into a real
 system and want the full detail. I ordered them the way I'd read them,
 but each one stands alone.

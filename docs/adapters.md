@@ -106,12 +106,12 @@ flowchart TB
   subgraph emb["Kyno embedded in your app"]
     direction LR
     B2["adapter + binder"] -- "function call" --> K2["control plane"]
-    K2 --- S2[("direction store")]
+    K2 --- S2[("store")]
   end
   subgraph svc["Kyno as its own service"]
     direction LR
     A1["your app<br/>adapter + binder"] -- "MCP over HTTP" --> K1["kyno serve<br/>control plane"]
-    K1 --- S1[("direction store")]
+    K1 --- S1[("store")]
   end
 ```
 

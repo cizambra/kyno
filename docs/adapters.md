@@ -116,22 +116,16 @@ config:
   flowchart:
     useMaxWidth: false
 ---
-flowchart LR
+flowchart TB
   KY["Kyno<br/>control plane"]
   subgraph APP["your app"]
-    direction TB
-    SUB["subscriber"]
-    BN["binder"]
-    STEP["the step<br/>(model call)"]
-    GATE["realignment gate"]
+    direction LR
+    SUB["subscriber"] -. "re-pull" .-> BN["binder"]
+    BN -- "direction block" --> STEP["the step<br/>(model call)"]
+    STEP -. "finished work" .-> GATE["realignment gate<br/>asks your judge"]
   end
-  JD["your judge<br/>(VerdictSource)"]
-  KY -. "new version published" .-> SUB
-  SUB -. "re-pull" .-> BN
-  BN -- "pull before each step" --> KY
-  BN -- "direction block" --> STEP
-  STEP -. "finished work" .-> GATE
-  GATE -. "verdict?" .-> JD
+  APP -- "pull before each step" --> KY
+  KY -. "new version published" .-> APP
 ```
 
 On LangGraph, inherit `KynoState` in your graph's state schema and put

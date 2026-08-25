@@ -35,7 +35,7 @@ adapter.register()  # injects the current direction before each model call
 
 That's the whole integration. Every model call carries the version in force,
 and a version published mid-run reaches the next step. The pieces behind
-`connect()`, the binder, the sources, the policies, live in `kyno.sdk` for
+`connect()`, the binder, the sources, and the policies, live in `kyno.sdk` for
 anyone who needs to assemble them differently. Embedding Kyno in the same
 process instead? Swap the source:
 `DirectionBinder(LocalDirectionSource(control_plane))`.

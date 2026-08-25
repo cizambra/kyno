@@ -67,12 +67,16 @@ renders and escapes it is covered in
 
 ### Editing with flags
 
-`--note`, `--by` and `--constitution` may override the file, because they
-describe this edit rather than the constitution. The field flags
-(`--mission`, `--declaration`, `--principle`) can't be combined with
-`--file`, because two sources for the same field would be ambiguous. Fields
-the file leaves out are carried forward from the previous version; to clear
-one, write it empty, like `declaration: ""`.
+A file can carry its own `note:`, `by:` and `constitution:` keys, and
+the matching flags win over them when both are given. That's safe: those
+three describe the edit (what changed, who made it, and which
+constitution to write to), and they can't touch the content. The content
+flags (`--mission`, `--declaration`, `--principle`) can't be combined
+with `--file` at all, because two sources for the same field would be
+ambiguous. Fields the file leaves out are carried forward from the
+previous version; to clear one, write it empty, like `declaration: ""`.
+And every edit appends a new version, so nothing you had is ever
+overwritten.
 
 The flags are still there for a quick edit:
 

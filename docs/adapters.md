@@ -38,26 +38,12 @@ and a version published mid-run reaches the next step. The pieces behind
 `connect()`, the binder, the sources, and the policies, live in `kyno.sdk` for
 anyone who needs to assemble them differently.
 
-You can also embed Kyno instead of running it as a server. The control
-plane is a Python object, and `kyno serve` is just one way to reach it:
-it wraps that object in an MCP server so other processes can call it.
-If your orchestrator is itself a Python app, construct the object in
-your own process and the binder calls it directly:
-
-```python
-from kyno.service import ControlPlane
-from kyno.sdk import DirectionBinder, LocalDirectionSource
-
-binder = DirectionBinder(LocalDirectionSource(control_plane))
-```
-
-Everything downstream is identical; the only difference is whether a
-pull travels over the network or over a function call. Embedding fits a
-single Python app that edits the constitution and runs the agents, or a
-test suite. The server fits the moment more than one process, machine,
-or language needs the same direction. One trade to know: push
-notifications are an MCP feature, so an embedded binder only pulls,
-which still catches every change because the pull is self-describing.
+An adapter always talks to a running Kyno; the choice is only where it
+runs. Usually that's a server you reach with `kyno.connect`. If your
+orchestrator is itself a Python app, you can run the control plane
+inside the same process instead, and the binder calls it directly:
+`DirectionBinder(LocalDirectionSource(control_plane))`. Everything
+downstream is identical.
 
 - **Pull before each step.** The current mission and principle titles are
   injected into the next model call, tagged with the constitution and version

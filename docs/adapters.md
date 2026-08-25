@@ -21,7 +21,7 @@ pip install "kyno[crewai]"      # or: pip install "kyno[langgraph]"
 On a different framework or language? [integrating.md](integrating.md)
 shows how to build your own adapter.
 
-An adapter binds a crew or a graph to one named constitution and re-binds
+An adapter binds a crew (in CrewAI) or a graph (in LangGraph) to one named constitution and re-binds
 every next step to the version in force right now:
 
 ```python

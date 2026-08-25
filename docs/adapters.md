@@ -7,10 +7,53 @@ by stage.
 
 On this page:
 
-- [The integration](#the-integration)
 - [The loop](#the-loop)
+- [The integration](#the-integration)
 - [Acting on a change](#acting-on-a-change)
 - [The realignment gate](#the-realignment-gate)
+
+## The loop
+
+- **Pull before each step.** The binder injects the current mission and
+  principle titles into the next model call, tagged with the constitution
+  and version they came from. It stays small by default;
+  `connection.binder(context="full")` injects the declaration and the
+  principle descriptions too. If Kyno is unreachable, the step runs on
+  the last direction the binder holds and the staleness shows up in
+  telemetry; `PullPolicy(fail_closed=True)` makes the step raise instead.
+- **Push when it changes.** `BackgroundSubscriber` turns a
+  `resources/updated` notification into a re-pull. A running step is
+  never interrupted; the next one binds the new direction.
+- **What changed.** A pull carries the operator's change note and a
+  computed delta: which principle moved, whether the mission moved, what
+  was added or dropped. That's what makes a small change visible.
+- **Planning.** `binder.plan()` returns a tracker: `direction()` pulls
+  what to plan against, and `changed()` tells you when to re-plan the
+  remaining work.
+- **Adapters are read-only.** They pull and subscribe. `set_direction`
+  stays an operator action, never something an adapter calls on the
+  crew's behalf.
+
+```mermaid
+---
+config:
+  look: handDrawn
+  theme: neutral
+  flowchart:
+    useMaxWidth: false
+---
+flowchart TB
+  KY["Kyno<br/>control plane"]
+  subgraph APP["your app"]
+    direction LR
+    SUB["subscriber"] -. "re-pull" .-> BN["binder"]
+    BN -- "direction block" --> STEP["the step<br/>(model call)"]
+    STEP -. "finished work" .-> GATE["realignment gate<br/>asks your judge"]
+  end
+  APP -- "pull before each step" --> KY
+  KY -. "new version published" .-> APP
+```
+
 
 
 ## The integration
@@ -65,48 +108,6 @@ flowchart TB
     A1["your app<br/>adapter + binder"] -- "MCP over HTTP" --> K1["kyno serve<br/>control plane"]
     K1 --- S1[("direction store")]
   end
-```
-
-### The loop
-
-- **Pull before each step.** The binder injects the current mission and
-  principle titles into the next model call, tagged with the constitution
-  and version they came from. It stays small by default;
-  `connection.binder(context="full")` injects the declaration and the
-  principle descriptions too. If Kyno is unreachable, the step runs on
-  the last direction the binder holds and the staleness shows up in
-  telemetry; `PullPolicy(fail_closed=True)` makes the step raise instead.
-- **Push when it changes.** `BackgroundSubscriber` turns a
-  `resources/updated` notification into a re-pull. A running step is
-  never interrupted; the next one binds the new direction.
-- **What changed.** A pull carries the operator's change note and a
-  computed delta: which principle moved, whether the mission moved, what
-  was added or dropped. That's what makes a small change visible.
-- **Planning.** `binder.plan()` returns a tracker: `direction()` pulls
-  what to plan against, and `changed()` tells you when to re-plan the
-  remaining work.
-- **Adapters are read-only.** They pull and subscribe. `set_direction`
-  stays an operator action, never something an adapter calls on the
-  crew's behalf.
-
-```mermaid
----
-config:
-  look: handDrawn
-  theme: neutral
-  flowchart:
-    useMaxWidth: false
----
-flowchart TB
-  KY["Kyno<br/>control plane"]
-  subgraph APP["your app"]
-    direction LR
-    SUB["subscriber"] -. "re-pull" .-> BN["binder"]
-    BN -- "direction block" --> STEP["the step<br/>(model call)"]
-    STEP -. "finished work" .-> GATE["realignment gate<br/>asks your judge"]
-  end
-  APP -- "pull before each step" --> KY
-  KY -. "new version published" .-> APP
 ```
 
 On LangGraph, inherit `KynoState` in your graph's state schema and put

@@ -2,8 +2,8 @@
 
 The [project README](../README.md) shows the two-line integration. This
 page is the detail underneath it. Building for another framework or
-language? The whole contract is one page:
-[integrating.md](integrating.md).
+language? [integrating.md](integrating.md) walks you through it, stage
+by stage.
 
 On this page:
 
@@ -18,8 +18,8 @@ On this page:
 pip install "kyno[crewai]"      # or: pip install "kyno[langgraph]"
 ```
 
-On a different framework or language? The whole contract for building your
-own adapter is one page: [docs/integrating.md](docs/integrating.md).
+On a different framework or language? [integrating.md](integrating.md)
+shows how to build your own adapter.
 
 An adapter binds a crew or a graph to one named constitution and re-binds
 every next step to the version in force right now:

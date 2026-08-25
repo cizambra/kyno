@@ -11,8 +11,8 @@ but each one stands alone.
    and full reads, and subscriptions.
 3. [The adapters in depth](adapters.md). What the binder does on every
    pull, the failure postures, and the realignment gate.
-4. [Build your own adapter](integrating.md). The integration contract
-   for any framework or language, in five stages with a checker.
+4. [Build your own adapter](integrating.md). How to build one for any
+   framework or language, in five stages with a checker.
 5. [Publishing your constitution](publishing.md). The public page, the
    colors, and your own templates.
 6. [Operating Kyno](operating.md). Storage, auth, deploying, and testing.

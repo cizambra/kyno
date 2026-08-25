@@ -74,6 +74,29 @@ flowchart LR
   K2 --- S2[("direction store")]
 ```
 
+```mermaid
+---
+config:
+  look: handDrawn
+  theme: neutral
+---
+flowchart LR
+  KY["Kyno<br/>control plane"]
+  subgraph APP["your app"]
+    BN["binder"]
+    SUB["subscriber"]
+    STEP["the step<br/>(model call)"]
+    GATE["realignment gate"]
+  end
+  JD["your judge<br/>(VerdictSource)"]
+  BN -- "pull before each step" --> KY
+  KY -. "new version published" .-> SUB
+  SUB -. "re-pull" .-> BN
+  BN -- "direction block" --> STEP
+  STEP -. "finished work" .-> GATE
+  GATE -. "verdict?" .-> JD
+```
+
 - **Pull before each step.** The current mission and principle titles are
   injected into the next model call, tagged with the constitution and version
   they came from. That block rides on every model call, so it stays small by

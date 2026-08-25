@@ -5,6 +5,7 @@ Storage, auth, deployment, and testing for a production Kyno.
 On this page:
 
 - [Storage](#storage)
+- [Running Kyno embedded](#running-kyno-embedded)
 - [Auth](#auth)
 - [Deploying](#deploying)
 - [Testing](#testing)
@@ -22,6 +23,28 @@ duplicated.
 Reads never fail on an empty store. Before any direction is set, consumers
 get a version-0 empty state, so integrating Kyno ahead of adopting it costs
 nothing.
+
+## Running Kyno embedded
+
+When your orchestrator is itself a Python app, you can run the control
+plane inside it instead of behind `kyno serve`. The construction mirrors
+what the CLI does: read the settings, build the store, and hand the
+control plane to the binder.
+
+```python
+from kyno.config import Settings, store_from_settings
+from kyno.service import ControlPlane
+from kyno.sdk import DirectionBinder, LocalDirectionSource
+
+store = store_from_settings(Settings.from_env())  # reads KYNO_DATABASE_URL
+control_plane = ControlPlane(store)
+binder = DirectionBinder(LocalDirectionSource(control_plane))
+```
+
+The schema has to exist before the first read, so run `kyno init-db` once
+against the same database, or call `store.create_all()` from code. From
+here the binder behaves exactly as it does over MCP, and the CLI keeps
+working against the same database for edits and inspection.
 
 ## Auth
 

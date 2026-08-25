@@ -13,10 +13,10 @@ On this page:
 
 ## The file
 
-A one-line principle is a short name for an idea, not the full rule. The
-full rule goes in a description, and the compact pull carries only the
-titles, so detail costs tokens only when a read asks for it. Each of
-these is optional:
+A one-line principle is just a handle for the idea. The full rule lives
+in one of two optional places, and agents only fetch them when a read
+asks for the full detail, so writing more doesn't cost you tokens on
+every call:
 
 - a declaration: the long-form document that the mission is the headline of;
 - a description under any principle: the paragraph that settles an

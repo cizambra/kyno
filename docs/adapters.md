@@ -14,6 +14,12 @@ On this page:
 
 ## The loop
 
+The loop is the cycle an adapter runs around every step: pull the
+direction in force, put it in front of the agent, and listen for
+changes. It's what keeps a running system on the current version
+instead of on a copy. Everything an adapter is expected to do falls out
+of these five behaviors.
+
 - **Pull before each step.** The binder injects the current mission and
   principle titles into the next model call, tagged with the constitution
   and version they came from. It stays small by default;

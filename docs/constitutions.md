@@ -13,10 +13,11 @@ On this page:
 
 ## The file
 
-A one-line principle is just a handle for the idea. The full rule lives
-in one of two optional places, and agents only fetch them when a read
-asks for the full detail, so writing more doesn't cost you tokens on
-every call:
+A principle's title is one line, and one line can't hold a full rule.
+When a principle needs more, you have two places for the longer text.
+Agents read the titles on every step, and the longer text only when
+they ask for the full detail, so extra detail doesn't cost tokens on
+every call. Both places are optional:
 
 - a declaration: the long-form document that the mission is the headline of;
 - a description under any principle: the paragraph that settles an

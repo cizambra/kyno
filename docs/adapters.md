@@ -36,9 +36,12 @@ adapter.register()  # injects the current direction before each model call
 That's the whole integration. Every model call carries the version in force,
 and a version published mid-run reaches the next step. The pieces behind
 `connect()`, the binder, the sources, and the policies, live in `kyno.sdk` for
-anyone who needs to assemble them differently. Embedding Kyno in the same
-process instead? Swap the source:
-`DirectionBinder(LocalDirectionSource(control_plane))`.
+anyone who needs to assemble them differently.
+
+You can also run Kyno inside your own process, with no server and no MCP
+between you and it. Everything stays the same except the source: instead
+of connecting to an endpoint, hand the binder the control plane directly
+with `DirectionBinder(LocalDirectionSource(control_plane))`.
 
 - **Pull before each step.** The current mission and principle titles are
   injected into the next model call, tagged with the constitution and version

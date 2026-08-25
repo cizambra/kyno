@@ -13,22 +13,35 @@ On this page:
 
 ## The file
 
-A principle's title is one line, and one line can't hold a full rule.
-When a principle needs more, you have two places for the longer text.
-Agents read the titles on every step, and the longer text only when
-they ask for the full detail, so extra detail doesn't cost tokens on
-every call. Both places are optional:
+The constitution is represented in a YAML file that contains three main
+elements:
 
-- a declaration: the long-form document that the mission is the headline of;
-- a description under any principle: the paragraph that settles an
-  argument about what the principle means.
+- A **mission**: The ultimate goal the system is intended to achieve. The
+  mission is the tie-breaker when principles conflict.
+- A set of **principles**: Each principle is defined by two parts. The
+  principle itself (e.g. _Customer comes First_), and a description (e.g.
+  "We always put the customer first and work backwards from their needs").
+  The description is what helps settle an argument about what a principle
+  means. When there is no description, the title is just a string.
+- A **declaration**: Optional. This is a long-form document that adds more
+  context about your mission and why the principles make sense. This is a
+  good space to explain your _whys_.
 
-Both are prose, and long prose doesn't fit in command-line flags, so a
-constitution is written in a file:
+Agents read the titles on every step, and the longer text only when they
+ask for the full detail, so extra detail doesn't cost tokens on every
+call.
+
+Because long prose doesn't fit in command-line flags, a constitution is
+better written in a file:
 
 ```yaml
 # constitution.yaml
 mission: Ship a lending product people trust with their worst month
+principles:
+  - Say the hard number first
+  - title: Refuse clearly
+    description: |
+      If we cannot lend, we say so on the first screen, and we say why.
 declaration: |
   ## What we are for
 
@@ -39,11 +52,6 @@ declaration: |
 
   - We say no early and in plain words.
   - We publish the number before the story that softens it.
-principles:
-  - Say the hard number first
-  - title: Refuse clearly
-    description: |
-      If we cannot lend, we say so on the first screen, and we say why.
 note: the constitution as written
 by: camilo
 ```
@@ -53,16 +61,11 @@ kyno set --file constitution.yaml
 kyno set --file constitution.yaml --constitution eu --note "the EU edit"
 ```
 
-The declaration is markdown, and the published page renders it: headings,
-lists, emphasis, quotes, links. Raw HTML inside it is escaped instead of
-passed through, and `javascript:` links are refused. The page is served to
-anonymous visitors, so text you typed must never reach them as markup that
-runs. Images aren't rendered either; that's what keeps the page one
-self-contained response.
+The declaration can be written using markdown. How the published page
+renders and escapes it is covered in
+[Publishing your constitution](publishing.md).
 
-Everywhere else the declaration stays exactly the markdown you wrote. The
-JSON endpoint, the MCP tools and `kyno export` all serve the source, not the
-rendered document.
+### Editing with flags
 
 `--note`, `--by` and `--constitution` may override the file, because they
 describe this edit rather than the constitution. The field flags

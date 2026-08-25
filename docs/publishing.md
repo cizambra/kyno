@@ -27,6 +27,18 @@ readable by anyone at:
 - `GET /constitutions/` and `GET /constitutions.json`: an index of what you
   have published.
 
+The declaration can be written using markdown, and the published page
+renders it: headings,
+lists, emphasis, quotes, links. Raw HTML inside it is escaped instead of
+passed through, and `javascript:` links are refused. The page is served to
+anonymous visitors, so text you typed must never reach them as markup that
+runs. Images aren't rendered either; that's what keeps the page one
+self-contained response.
+
+Everywhere else the declaration stays exactly the markdown you wrote. The
+JSON endpoint, the MCP tools and `kyno export` all serve the source, not the
+rendered document.
+
 Three things worth knowing:
 
 - **A published name has to be a slug**: lowercase letters, digits and

@@ -40,8 +40,8 @@ anyone who needs to assemble them differently.
 
 The adapter pulls from a running Kyno, and that Kyno can run in two
 places. As its own service: `kyno serve` somewhere, `kyno.connect` from
-your app. Or inside your Python application: you build the control
-plane yourself and hand it to the binder with
+your app. Or inside your Python application: you create Kyno's own
+control plane object in your code and hand it to the binder with
 `DirectionBinder(LocalDirectionSource(control_plane))`. In both cases
 Kyno is running and holds the direction store; what changes is whether
 a pull crosses the network or stays a function call.

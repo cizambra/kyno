@@ -375,3 +375,6 @@ the block rule is `refresh()` (`cell.py`). The framework adapters in
 lives: `CrewAiKyno.before_llm_call` (`crewai/hooks.py`) and
 `direction_node` (`langgraph/nodes.py`). If your orchestrator plans first,
 `binder.plan()` (`sdk/plan.py`) is the tracker described in stage 5.
+
+Questions? [Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)
+and I'll answer there, so the next person finds it too.

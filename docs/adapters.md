@@ -175,3 +175,6 @@ from kyno.adapters.langgraph import gate_node  # LangGraph
 adapter = CrewAiKyno(binder, gate=RealignmentGate(source=your_judge))
 crew = Crew(..., task_callback=adapter.task_callback)  # CrewAI
 ```
+
+Questions? [Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)
+and I'll answer there, so the next person finds it too.

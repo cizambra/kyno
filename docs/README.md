@@ -16,3 +16,6 @@ but each one stands alone.
 5. [Publishing your constitution](publishing.md). The public page, the
    colors, and your own templates.
 6. [Operating Kyno](operating.md). Storage, auth, deploying, and testing.
+
+Questions? [Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)
+and I'll answer there, so the next person finds it too.

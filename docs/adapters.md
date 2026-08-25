@@ -64,7 +64,6 @@ flowchart TB
     B2["adapter + binder"] -- "function call" --> K2["control plane"]
     K2 --- S2[("direction store")]
   end
-  svc ~~~ emb
 ```
 
 - **Pull before each step.** The binder injects the current mission and

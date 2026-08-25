@@ -53,7 +53,7 @@ flowchart TB
   subgraph APP["your app"]
     direction LR
     SUB["subscriber"] -. "re-pull" .-> BN["binder"]
-    BN -- "direction block" --> STEP["the step<br/>(model call)"]
+    BN -- "direction block" --> STEP["your agent's action<br/>(LLM call)"]
     STEP -. "finished work" .-> GATE["realignment gate<br/>asks your judge"]
   end
   APP -- "pull before each step" --> KY

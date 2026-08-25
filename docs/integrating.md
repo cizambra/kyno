@@ -49,7 +49,7 @@ config:
 flowchart LR
   subgraph orch["your orchestrator"]
     AD["adapter"]
-    ST["the step<br/>(model call)"]
+    ST["your agent's action<br/>(LLM call)"]
   end
   KY["Kyno<br/>control plane"]
   AD -- "1 · get_changes_since" --> KY

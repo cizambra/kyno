@@ -13,8 +13,10 @@ On this page:
 
 ## The file
 
-A one-line principle is a short name for an idea, not the full rule. Give a
-constitution as much as it needs and no more. Each of these is optional:
+A one-line principle is a short name for an idea, not the full rule. The
+full rule goes in a description, and the compact pull carries only the
+titles, so detail costs tokens only when a read asks for it. Each of
+these is optional:
 
 - a declaration: the long-form document that the mission is the headline of;
 - a description under any principle: the paragraph that settles an

@@ -131,18 +131,31 @@ class State(KynoState, total=False):
 
 ### Acting on a change
 
-Kyno carries the direction, the version, and what changed. What a system does
-when the version moves belongs to the system, and there are three answers:
+Kyno carries the direction, the version, and what changed. What your
+system does when the version moves is an integration decision: you pick
+the response when you wire the adapter, and each option has a cost and a
+fit.
 
-- **Carry on.** The next step gets the new direction. The integration above
-  already does this, and it costs nothing beyond the pull.
-- **Reassess.** Re-derive the remaining work under the new direction. This
-  is a planning call, made when `binder.plan()` reports a change.
-- **Stop.** Review finished work against the direction it was bound to, and
-  halt on a bad verdict. This is the realignment gate, and it costs a judge
-  call per finished task.
+- **Carry on.** The next step gets the new direction, and finished work
+  stands. This is the default; `adapter.register()` already does it, and
+  it costs nothing beyond the pull. It fits most workflows, where any
+  step done under the current direction is good work.
+- **Reassess.** Re-derive the remaining plan under the new direction.
+  Wire it where your orchestrator plans: call `binder.plan()`, plan
+  against `direction()`, and re-plan when `changed()` returns a fresh
+  version. It costs one planning call per change, and it fits workflows
+  whose remaining steps were derived from the direction, where following
+  a stale plan wastes the rest of the run.
+- **Stop.** Review finished work against the direction it was bound to,
+  and halt on a bad verdict. Wire it with the
+  [realignment gate](#the-realignment-gate) and a judge you supply. It
+  costs a judge call per finished task, and it fits work that is
+  expensive to ship wrong, where a halt is cheaper than a drifted
+  handoff.
 
-Kyno takes no position on which one is right.
+Kyno takes no position on which one is right, and they combine: most
+integrations carry on by default and add the gate where the output is
+expensive.
 
 ### The realignment gate
 

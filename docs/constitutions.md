@@ -3,8 +3,7 @@
 A constitution is a mission plus ordered principles. The mission is the
 overarching purpose, and the tie-breaker when principles conflict.
 A constitution isn't limited to strategy; operational principles are
-just as good a use case. Here's everything the file can hold, and how
-edits behave once versions start stacking up.
+just as good a use case.
 
 On this page:
 

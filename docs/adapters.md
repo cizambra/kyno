@@ -80,11 +80,12 @@ config:
   look: handDrawn
   theme: neutral
 ---
-flowchart LR
+flowchart TB
   KY["Kyno<br/>control plane"]
   subgraph APP["your app"]
-    BN["binder"]
+    direction LR
     SUB["subscriber"]
+    BN["binder"]
     STEP["the step<br/>(model call)"]
     GATE["realignment gate"]
   end

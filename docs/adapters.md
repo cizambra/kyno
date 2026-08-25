@@ -75,30 +75,6 @@ flowchart LR
   K2 --- S2[("direction store")]
 ```
 
-```mermaid
----
-config:
-  look: handDrawn
-  theme: neutral
----
-flowchart TB
-  KY["Kyno<br/>control plane"]
-  subgraph APP["your app"]
-    direction LR
-    SUB["subscriber"]
-    BN["binder"]
-    STEP["the step<br/>(model call)"]
-    GATE["realignment gate"]
-  end
-  JD["your judge<br/>(VerdictSource)"]
-  BN -- "pull before each step" --> KY
-  KY -. "new version published" .-> SUB
-  SUB -. "re-pull" .-> BN
-  BN -- "direction block" --> STEP
-  STEP -. "finished work" .-> GATE
-  GATE -. "verdict?" .-> JD
-```
-
 - **Pull before each step.** The current mission and principle titles are
   injected into the next model call, tagged with the constitution and version
   they came from. That block rides on every model call, so it stays small by
@@ -127,6 +103,32 @@ flowchart TB
 - **Adapters are read-only.** They pull and subscribe. `set_direction` stays
   an operator or CLI action against Kyno, never something an adapter calls on
   a crew's or graph's behalf.
+
+All of that, on one canvas:
+
+```mermaid
+---
+config:
+  look: handDrawn
+  theme: neutral
+---
+flowchart TB
+  KY["Kyno<br/>control plane"]
+  subgraph APP["your app"]
+    direction LR
+    SUB["subscriber"]
+    BN["binder"]
+    STEP["the step<br/>(model call)"]
+    GATE["realignment gate"]
+  end
+  JD["your judge<br/>(VerdictSource)"]
+  BN -- "pull before each step" --> KY
+  KY -. "new version published" .-> SUB
+  SUB -. "re-pull" .-> BN
+  BN -- "direction block" --> STEP
+  STEP -. "finished work" .-> GATE
+  GATE -. "verdict?" .-> JD
+```
 
 On LangGraph, inherit `KynoState` in your graph's state schema and put
 `direction_node` ahead of the work. LangGraph carries only the keys a schema

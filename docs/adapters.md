@@ -38,13 +38,13 @@ and a version published mid-run reaches the next step. The pieces behind
 `connect()`, the binder, the sources, and the policies, live in `kyno.sdk` for
 anyone who needs to assemble them differently.
 
-Every pull needs a running Kyno behind it, and there are two ways to
-give the adapter one. The usual way is a server: `kyno serve` runs
-somewhere, and `kyno.connect` reaches it. The other way is to run the
-control plane inside your own Python process and hand it to the binder
-directly: `DirectionBinder(LocalDirectionSource(control_plane))`. The
-behavior is the same either way; the pull travels over a function call
-instead of the network.
+The adapter pulls from a running Kyno, and that Kyno can run in two
+places. As its own service: `kyno serve` somewhere, `kyno.connect` from
+your app. Or inside your Python application: you build the control
+plane yourself and hand it to the binder with
+`DirectionBinder(LocalDirectionSource(control_plane))`. In both cases
+Kyno is running and holds the direction store; what changes is whether
+a pull crosses the network or stays a function call.
 
 - **Pull before each step.** The current mission and principle titles are
   injected into the next model call, tagged with the constitution and version

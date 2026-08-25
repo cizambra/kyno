@@ -48,15 +48,15 @@ config:
   flowchart:
     useMaxWidth: false
 ---
-flowchart TB
+flowchart LR
   KY["Kyno<br/>control plane"]
   subgraph APP["your app"]
     direction LR
     SUB["subscriber"] -. "re-pull" .-> BN["binder"]
     BN -- "direction block" --> ACT["your agent's action<br/>(LLM call)"]
   end
-  APP -- "pull before each step" --> KY
   KY -. "push when it changes" .-> APP
+  APP -- "pull before each step" --> KY
 ```
 
 
@@ -103,16 +103,17 @@ config:
   theme: neutral
 ---
 flowchart TB
-  subgraph emb["Kyno embedded in your app"]
-    direction LR
-    B2["adapter + binder"] -- "function call" --> K2["control plane"]
-    K2 --- S2[("store")]
-  end
   subgraph svc["Kyno as its own service"]
     direction LR
     A1["your app<br/>adapter + binder"] -- "MCP over HTTP" --> K1["kyno serve<br/>control plane"]
-    K1 --- S1[("store")]
+    K1 --- S1[("direction store")]
   end
+  subgraph emb["Kyno embedded in your app"]
+    direction LR
+    B2["adapter + binder"] -- "function call" --> K2["control plane"]
+    K2 --- S2[("direction store")]
+  end
+  svc ~~~ emb
 ```
 
 On LangGraph, inherit `KynoState` in your graph's state schema and put

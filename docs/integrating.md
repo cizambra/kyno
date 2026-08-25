@@ -36,6 +36,25 @@ On this page:
 - [Done](#done)
 
 
+This is the shape you are building, one step at a time:
+
+```mermaid
+---
+config:
+  look: handDrawn
+  theme: neutral
+---
+flowchart LR
+  subgraph orch["your orchestrator"]
+    AD["adapter"]
+    ST["the step<br/>(model call)"]
+  end
+  KY["Kyno<br/>control plane"]
+  AD -- "1 · get_changes_since" --> KY
+  KY -- "2 · direction + changes" --> AD
+  AD -- "3 · block at the front of the context" --> ST
+```
+
 ## Stage 1: call Kyno and get the direction
 
 Start a local Kyno with the sample constitution:

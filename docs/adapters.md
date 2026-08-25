@@ -46,6 +46,27 @@ control plane object in your code and hand it to the binder with
 Kyno is running and holds the direction store; what changes is whether
 a pull crosses the network or stays a function call.
 
+```mermaid
+---
+config:
+  look: handDrawn
+  theme: neutral
+---
+flowchart TB
+  subgraph one["Kyno as its own service"]
+    direction LR
+    A1["your app<br/>adapter + binder"] -- "MCP over HTTP" --> K1["kyno serve<br/>control plane"]
+    K1 --- S1[("direction store")]
+  end
+  subgraph two["Kyno embedded in your app"]
+    direction LR
+    subgraph A2["your app"]
+      B2["adapter + binder"] -- "function call" --> K2["control plane"]
+    end
+    K2 --- S2[("direction store")]
+  end
+```
+
 - **Pull before each step.** The current mission and principle titles are
   injected into the next model call, tagged with the constitution and version
   they came from. That block rides on every model call, so it stays small by

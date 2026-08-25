@@ -116,19 +116,19 @@ config:
   flowchart:
     useMaxWidth: false
 ---
-flowchart TB
+flowchart LR
   KY["Kyno<br/>control plane"]
   subgraph APP["your app"]
-    direction LR
+    direction TB
     SUB["subscriber"]
     BN["binder"]
     STEP["the step<br/>(model call)"]
     GATE["realignment gate"]
   end
   JD["your judge<br/>(VerdictSource)"]
-  BN -- "pull before each step" --> KY
   KY -. "new version published" .-> SUB
   SUB -. "re-pull" .-> BN
+  BN -- "pull before each step" --> KY
   BN -- "direction block" --> STEP
   STEP -. "finished work" .-> GATE
   GATE -. "verdict?" .-> JD

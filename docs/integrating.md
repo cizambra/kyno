@@ -43,6 +43,8 @@ This is the shape you are building, one step at a time:
 config:
   look: handDrawn
   theme: neutral
+  flowchart:
+    useMaxWidth: false
 ---
 flowchart LR
   subgraph orch["your orchestrator"]

@@ -54,6 +54,8 @@ is in [Operating Kyno](operating.md#running-kyno-embedded).
 config:
   look: handDrawn
   theme: neutral
+  flowchart:
+    useMaxWidth: false
 ---
 flowchart LR
   A1["your app<br/>adapter + binder"] -- "MCP over HTTP" --> K1["kyno serve<br/>control plane"]
@@ -67,6 +69,8 @@ flowchart LR
 config:
   look: handDrawn
   theme: neutral
+  flowchart:
+    useMaxWidth: false
 ---
 flowchart LR
   subgraph A2["your app"]
@@ -109,6 +113,8 @@ flowchart LR
 config:
   look: handDrawn
   theme: neutral
+  flowchart:
+    useMaxWidth: false
 ---
 flowchart TB
   KY["Kyno<br/>control plane"]

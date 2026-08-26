@@ -27,10 +27,6 @@ of these five behaviors.
   principle descriptions too. If Kyno is unreachable, the step runs on
   the last direction the binder holds and the staleness shows up in
   telemetry; `PullPolicy(fail_closed=True)` makes the step raise instead.
-- **Changes are announced too.** The server sends `resources/updated`
-  on every new version. Consuming it is optional, and the adapters
-  don't; their next pull already returns the current version. The
-  [contract](contract.md) covers subscribing.
 - **What changed.** A pull carries the operator's change note and a
   computed delta: which principle moved, whether the mission moved, what
   was added or dropped. That's what makes a small change visible.

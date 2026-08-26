@@ -22,7 +22,7 @@ readable by anyone at:
 
 - `GET /constitutions/{name}`: a self-contained HTML page (no scripts, no
   external assets, light and dark). The declaration is the body of it,
-  rendered from markdown, and a described principle carries its paragraph.
+  rendered from markdown, and a described principle shows its paragraph.
 - `GET /constitutions/{name}.json`: the same content, machine-readable.
 - `GET /constitutions/` and `GET /constitutions.json`: an index of what you
   have published.

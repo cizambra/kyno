@@ -79,9 +79,12 @@ kyno set --file constitution.yaml --by "release-bot" --note "apply the reviewed 
 How the two combine:
 
 - **`--note`, `--by`, `--constitution`**: These describe the edit, not
-  the content. When the file has the same keys, the flag wins. This is
-  safe because none of them can change the mission, the principles, or
-  the declaration.
+  the content. When the file has the same keys, the flag wins. For
+  example, if the file says `note: first draft` and you run
+  `kyno set --file constitution.yaml --note "the reviewed edit"`, the
+  version is stored with `note: the reviewed edit`. This is safe because
+  none of these flags can change the mission, the principles, or the
+  declaration.
 - **`--mission`, `--declaration`, `--principle`**: These are content.
   They can't be combined with `--file`, because two sources for the same
   field would be ambiguous.

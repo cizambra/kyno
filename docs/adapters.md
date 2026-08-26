@@ -27,9 +27,11 @@ of these five behaviors.
   principle descriptions too. If Kyno is unreachable, the step runs on
   the last direction the binder holds and the staleness shows up in
   telemetry; `PullPolicy(fail_closed=True)` makes the step raise instead.
-- **Push when it changes.** `BackgroundSubscriber` turns a
-  `resources/updated` notification into a re-pull. A running step is
-  never interrupted; the next one binds the new direction.
+- **Push when it changes.** The server announces every new version over
+  MCP (`resources/updated`). It's a hint any client or backend can
+  subscribe to; the adapters don't need it, because the next pull
+  already carries everything. The
+  [contract](contract.md) covers subscribing.
 - **What changed.** A pull carries the operator's change note and a
   computed delta: which principle moved, whether the mission moved, what
   was added or dropped. That's what makes a small change visible.

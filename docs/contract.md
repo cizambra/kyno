@@ -25,8 +25,13 @@ client mixing them can tell when they have drifted apart.
 
 Clients may also subscribe to the `kyno://constitution/current` resource and
 receive a standard MCP `resources/updated` notification on every version
-bump. It serves the compact form: a resource takes no parameters, and the
-whole document is one tool call away.
+bump. The notification is a hint, never a payload: on a wake, call
+`get_changes_since` with the last version you processed and you get
+everything you missed, downtime included. That makes any consumer work,
+agent or not: a backend that audits every version, a job that rebuilds a
+cache, or a watcher that posts the change note somewhere. The shipped
+adapters don't subscribe, because the binder pulls at every step boundary
+anyway.
 
 ## 💬 Questions?
 

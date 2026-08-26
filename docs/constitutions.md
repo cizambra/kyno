@@ -67,7 +67,7 @@ renders and escapes it is covered in
 
 ### Editing with flags
 
-A file can carry its own `note:`, `by:` and `constitution:` keys, and
+A file can have its own `note:`, `by:` and `constitution:` keys, and
 the matching flags win over them when both are given. That's safe: those
 three describe the edit (what changed, who made it, and which
 constitution to write to), and they can't touch the content. The content

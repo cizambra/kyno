@@ -30,8 +30,8 @@ only tells you there is one. To get the content, call `get_changes_since`
 with the last version you processed. This works even if your process was
 down for a while, because the store keeps the full history. For example,
 a backend can subscribe and write every new version to an audit log. The
-adapters that ship with Kyno don't subscribe; they pull at every step,
-and that's enough.
+adapters that ship with Kyno don't subscribe; the pull they make at
+every step already returns the current version.
 
 ## 💬 Questions?
 

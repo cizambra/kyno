@@ -28,9 +28,8 @@ of these five behaviors.
   the last direction the binder holds and the staleness shows up in
   telemetry; `PullPolicy(fail_closed=True)` makes the step raise instead.
 - **Push when it changes.** The server announces every new version over
-  MCP (`resources/updated`). It's a hint any client or backend can
-  subscribe to; the adapters don't need it, because the next pull
-  already carries everything. The
+  MCP (`resources/updated`). Any client or backend can subscribe. The
+  adapters don't, because the next pull already carries everything. The
   [contract](contract.md) covers subscribing.
 - **What changed.** A pull carries the operator's change note and a
   computed delta: which principle moved, whether the mission moved, what

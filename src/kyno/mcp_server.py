@@ -9,7 +9,7 @@ from pydantic import AnyUrl
 
 from kyno.errors import CoherenceError
 from kyno.models import COMPACT, DETAIL_LEVELS, FULL, check_detail
-from kyno.sdk.subscriber import RESOURCE_URI as RESOURCE_URI  # the SDK owns the wire name
+from kyno.sdk.client import RESOURCE_URI as RESOURCE_URI  # the SDK owns the wire name
 from kyno.service import ControlPlane
 
 # get_principles has its own detail vocabulary: "titles" names exactly what

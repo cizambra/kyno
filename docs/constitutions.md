@@ -67,39 +67,38 @@ renders and escapes it is covered in
 
 ### Editing with flags
 
-`kyno set` takes an edit from two places: a file, or the field flags.
-The flags exist for quick edits and for automation. A script that
-sharpens the mission doesn't need to write a file first, and a CI job
-that applies a reviewed file still wants to stamp who ran it:
+There are two ways to pass an edit to `kyno set`: a file, or flags. Use
+flags when the edit is small, or when a script needs to add information
+about the run:
 
 ```bash
 kyno set --mission "Ship a lending product people trust" --note "sharpen the mission"
 kyno set --file constitution.yaml --by "release-bot" --note "apply the reviewed edit"
 ```
 
-The rules:
+How the two combine:
 
-- A file can have its own `note:`, `by:` and `constitution:` keys, and
-  the matching flags win over them when both are given. That's safe:
-  those three describe the edit (what changed, who made it, and which
-  constitution to write to), and they can't touch the content.
-- The content flags (`--mission`, `--declaration`, `--principle`) can't
-  be combined with `--file`, because two sources for the same field
-  would be ambiguous.
-- Fields the file leaves out are carried forward from the previous
-  version. To clear one, write it empty, like `declaration: ""`.
-- Every edit appends a new version, so nothing you had is ever
-  overwritten.
+- **`--note`, `--by`, `--constitution`**: These describe the edit, not
+  the content. When the file has the same keys, the flag wins. This is
+  safe because none of them can change the mission, the principles, or
+  the declaration.
+- **`--mission`, `--declaration`, `--principle`**: These are content.
+  They can't be combined with `--file`, because two sources for the same
+  field would be ambiguous.
+- **Omitted fields**: They keep their previous value. To clear one,
+  write it empty (e.g. `declaration: ""`).
+- **Versions**: Every edit appends a new version. Previous versions are
+  never modified.
 
 Two things to watch:
 
-- The file is a full write, not a diff. If you apply a stale file, its
-  content becomes the newest version, and your agents serve it on their
-  next pull. The history makes this recoverable with one more
-  `kyno set`, but nothing warns you at write time.
-- `--constitution` redirects the whole edit. A file written for `eu`
-  lands in `us` if the flag says so. When the file already names its
-  constitution, leave the flag off and let the file speak.
+- **The file is a full write, not a diff.** If you apply a stale file,
+  its content becomes the newest version, and your agents serve it on
+  their next pull. You can fix it with one more `kyno set`, but nothing
+  warns you when it happens.
+- **`--constitution` redirects the whole edit.** A file written for `eu`
+  lands in `us` if the flag says so. If the file already names its
+  constitution, don't pass the flag.
 
 ## Multiple constitutions
 

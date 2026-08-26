@@ -1,0 +1,25 @@
+name: Question
+description: Ask anything about using or integrating Kyno.
+title: "[question] "
+labels: ["question"]
+body:
+  - type: textarea
+    id: doing
+    attributes:
+      label: What are you trying to do?
+      description: A sentence or two about the setup. Which orchestrator, which language, what you want Kyno to do in it.
+    validations:
+      required: true
+  - type: textarea
+    id: read
+    attributes:
+      label: What did you already try or read?
+      description: A docs page, a code snippet, an error. Helps me answer once instead of twice.
+    validations:
+      required: false
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+    validations:
+      required: true

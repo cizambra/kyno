@@ -9,12 +9,12 @@ whether what you have so far is correct before you move on.
 One thing to be clear about before you start: **the point of an adapter is
 to make sure the call to Kyno happens on every step.** Kyno serves MCP,
 so you could simply add it to your agents' tool list and let the model
-call `get_changes_since` itself — but then the call is optional, and
+call `get_changes_since` itself, but then the call is optional, and
 the model decides when the direction matters. In our benchmark, setups
 where the direction was optional scored at the bottom of every table. The
 adapter removes that decision: your orchestrator code fetches before each
 step and puts the finished text in the context, so the agent never chooses
-whether to consult the direction — it always has it. (If you're in Python
+whether to consult the direction: it always has it. (If you're in Python
 you don't need to build any of this: `pip install kyno`, and
 `DirectionBinder` already does it all. This guide is for every other
 language.)
@@ -26,7 +26,38 @@ adapter should produce. `pip install` gives you the server; the
 `conformance/` files come from the repo, so clone it or download that
 folder.
 
-## Stage 1 — call Kyno and get the direction
+On this page:
+
+- [Stage 1: call Kyno and get the direction](#stage-1-call-kyno-and-get-the-direction)
+- [Stage 2: turn the response into the block](#stage-2-turn-the-response-into-the-block)
+- [Stage 3: wire it into your orchestrator](#stage-3-wire-it-into-your-orchestrator)
+- [Stage 4: a change arrives mid-run](#stage-4-a-change-arrives-mid-run)
+- [Stage 5: Kyno goes down](#stage-5-kyno-goes-down)
+- [Done](#done)
+
+
+This is the shape you are building, one step at a time:
+
+```mermaid
+---
+config:
+  look: handDrawn
+  theme: neutral
+  flowchart:
+    useMaxWidth: false
+---
+flowchart LR
+  subgraph orch["your orchestrator"]
+    AD["adapter"]
+    ST["your agent's action<br/>(LLM call)"]
+  end
+  KY["Kyno<br/>control plane"]
+  AD -- "1 · get_changes_since" --> KY
+  KY -- "2 · direction + changes" --> AD
+  AD -- "3 · block at the front of the context" --> ST
+```
+
+## Stage 1: call Kyno and get the direction
 
 Start a local Kyno with the sample constitution:
 
@@ -101,7 +132,7 @@ console.log(response.current_version, response.mission);
 await client.close();
 ```
 
-**Ruby, or any language without an MCP client library** — the protocol is
+**Ruby, or any language without an MCP client library**: the protocol is
 three plain HTTP POSTs to the same URL: one to open a session, one to say
 you're ready, one to call the tool. The session id comes back in the
 `mcp-session-id` response header, and replies arrive as a server-sent
@@ -147,14 +178,14 @@ does, stage 1 is done.
 Two details you'll need later:
 
 - If you call before any direction has been set, you get
-  `current_version: 0` and empty fields. That is a normal response, not an
-  error — your code should handle it like any other.
+  `current_version: 0` and empty fields. That's a normal response, not an
+  error, and your code should handle it like any other.
 - `detail: "compact"` returns the mission and the principle titles.
   `detail: "full"` also returns the declaration and each principle's
   description. Use compact unless you need the rest; this call runs before
   every step.
 
-## Stage 2 — turn the response into the block
+## Stage 2: turn the response into the block
 
 The "block" is the text your adapter puts in front of each step. Write a
 function that takes the response from stage 1 and produces this:
@@ -180,13 +211,13 @@ The rules:
   one more line: `No direction has been set yet.`
 - If the response has `change_notes`, add a `Recent changes:` section with
   one `- ` line each. Same for `delta` under `What changed:`. Skip either
-  section when its list is empty. The `delta` lines matter most — they tell
+  section when its list is empty. The `delta` lines matter most: they tell
   the agents what changed since the last version.
 - With `detail: "full"`, add `Declaration:` and its text after the mission
   line, and put each principle's description on an indented line under its
   title.
 
-The whole function, in TypeScript — a direct translation works in any
+The whole function, in TypeScript. A direct translation works in any
 language:
 
 ```typescript
@@ -226,12 +257,12 @@ example blocks, character for character:
 | `response_version1_full.json` (from `detail: "full"`) | `block_version1_full.txt` |
 | `response_version2_after_knowing_1.json` | `block_version2_compact.txt` |
 
-All four match — stage 2 is done.
+All four match, and stage 2 is done.
 
-## Stage 3 — wire it into your orchestrator
+## Stage 3: wire it into your orchestrator
 
 Before this stage, everything you have built is identical for every
-adapter, in every framework — the call and the block do not care what
+adapter, in every framework: the call and the block don't care what
 orchestrator they serve. This stage is the only framework-specific part,
 and it comes down to two things: where your framework's before-each-step
 hook lives, and what "the front of the context" means there (a messages
@@ -245,14 +276,14 @@ or middleware for this). In that place:
 
 1. Call `get_changes_since` with the last version you saw.
 2. Build the block.
-3. Put the block at the very front of the step's context — before the
+3. Put the block at the very front of the step's context, before the
    agent's role or system prompt, before the task.
 4. Remember the version number for the next call.
 
-Do this on every step, even when nothing changed. A direction that is only
+Do this on every step, even when nothing changed. A direction that's only
 sent once falls out of the context window as the conversation grows.
 
-In TypeScript, the whole thing — including the stage-5 rule that a failed
+In TypeScript, the whole thing, including the stage-5 rule that a failed
 fetch reuses the last block instead of crashing the step:
 
 ```typescript
@@ -265,7 +296,7 @@ async function fetchBlock() {
     knownVersion = response.current_version;
     lastBlock = buildBlock(response);                          // the function from stage 2
   } catch {
-    console.error("kyno unreachable — reusing the last block");
+    console.error("kyno unreachable, reusing the last block");
   }
   return lastBlock;
 }
@@ -285,10 +316,10 @@ python -m kyno.conformance check my_blocks.log
 ```
 
 It verifies every block starts with the marker, empty-state blocks are
-exact, and the version number never goes backwards. `all checks passed` —
-stage 3 is done.
+exact, and the version number never goes backwards. `all checks passed`
+means stage 3 is done.
 
-## Stage 4 — a change arrives mid-run
+## Stage 4: a change arrives mid-run
 
 Start a run that takes several steps. While it's running, publish the
 second version of the sample constitution from another terminal:
@@ -305,12 +336,12 @@ versions, step by step: [1, 1, 1, 2, 2]
   version changed at step 4: 1 -> 2
 ```
 
-The change must appear on the step right after you published it — not
+The change must appear on the step right after you published it, not
 several steps later, and not never. The blocks from that step on must also
 contain the `What changed:` lines (compare with
 `block_version2_compact.txt`).
 
-## Stage 5 — Kyno goes down
+## Stage 5: Kyno goes down
 
 Start another multi-step run. While it's running, stop the Kyno server.
 
@@ -329,7 +360,7 @@ ones that ship with Kyno. Two smaller things worth adding after:
 
 - **Push notifications.** Kyno announces new versions on the MCP resource
   `kyno://constitution/current`. If your MCP client supports subscriptions,
-  a notification is a good moment to fetch sooner. It's optional — fetching
+  a notification is a good moment to fetch sooner. It's optional, because fetching
   before every step already keeps you correct.
 - **Planning.** If your orchestrator makes a plan before executing it,
   fetch the direction at planning time too, and re-plan the remaining steps
@@ -344,3 +375,8 @@ the block rule is `refresh()` (`cell.py`). The framework adapters in
 lives: `CrewAiKyno.before_llm_call` (`crewai/hooks.py`) and
 `direction_node` (`langgraph/nodes.py`). If your orchestrator plans first,
 `binder.plan()` (`sdk/plan.py`) is the tracker described in stage 5.
+
+## 💬 Questions?
+
+[Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)
+and I'll answer there, so the next person finds it too.

@@ -4,6 +4,13 @@ If you want to show people the principles you say you operate by, Kyno can
 serve that page itself. The published page and the one your agents obey are
 then the same record, not two copies that drift apart.
 
+On this page:
+
+- [Changing the colors](#changing-the-colors)
+- [Using your own templates](#using-your-own-templates)
+- [Placeholders](#placeholders)
+
+
 ```bash
 kyno publish                                  # the default constitution
 kyno publish --constitution eu --with-history
@@ -20,10 +27,22 @@ readable by anyone at:
 - `GET /constitutions/` and `GET /constitutions.json`: an index of what you
   have published.
 
+The declaration can be written using markdown, and the published page
+renders it: headings,
+lists, emphasis, quotes, links. Raw HTML inside it is escaped instead of
+passed through, and `javascript:` links are refused. The page is served to
+anonymous visitors, so text you typed must never reach them as markup that
+runs. Images aren't rendered either; that's what keeps the page one
+self-contained response.
+
+Everywhere else the declaration stays exactly the markdown you wrote. The
+JSON endpoint, the MCP tools and `kyno export` all serve the source, not the
+rendered document.
+
 Three things worth knowing:
 
 - **A published name has to be a slug**: lowercase letters, digits and
-  single hyphens (`acme`, `acme-eu`). It is both the URL and the name your
+  single hyphens (`acme`, `acme-eu`). It's both the URL and the name your
   agents use, so Kyno refuses anything else rather than quietly rewriting it.
   Names you never publish are unrestricted.
 - **Nothing is public until you publish it**, and publication is per name.
@@ -33,7 +52,7 @@ Three things worth knowing:
   principles, version, last-changed date. The version history stays private
   unless you add `--with-history`, because change notes are written for your
   operators and routinely explain why you changed course. A published history
-  shows the 100 most recent versions; that is the page's contract. The full
+  shows the 100 most recent versions; that's the page's contract. The full
   history stays available to authenticated callers over MCP and
   `kyno export`.
 
@@ -73,8 +92,8 @@ export KYNO_CONSTITUTION_TEMPLATE=/srv/pages/constitution.html
 export KYNO_INDEX_TEMPLATE=/srv/pages/index.html      # optional
 ```
 
-That is the whole workflow. What you exported is what Kyno was already
-rendering, the same files filled the same way, so you are editing a
+That's the whole workflow. What you exported is what Kyno was already
+rendering, the same files filled the same way, so you're editing a
 working page rather than reconstructing one, and anything you leave alone
 keeps working.
 
@@ -95,8 +114,8 @@ variables above; one that drops it is fully yours.
 | --- | --- |
 | `$stylesheet` | the whole `<style>` block: color variables + Kyno's page styles |
 | `$name` | the constitution's name |
-| `$mission` | the mission, or the name when there is no mission |
-| `$declaration` | the declaration rendered from markdown, wrapped in its `<div>`; empty when there is none |
+| `$mission` | the mission, or the name when there's no mission |
+| `$declaration` | the declaration rendered from markdown, wrapped in its `<div>`; empty when there's none |
 | `$principles` | the principles section, heading and list; empty when there are none |
 | `$version` | the version number, e.g. `3` |
 | `$updated` | the last-changed date, e.g. `2026-08-13` |
@@ -111,8 +130,8 @@ variables above; one that drops it is fully yours.
 | `$count` | how many are published |
 
 Each block placeholder brings its own wrapper and disappears entirely when it
-has nothing to say, so a template never has to ask "what if there is no
-declaration". That is deliberate. These are placeholders, not a template
+has nothing to say, so a template never has to ask "what if there's no
+declaration". That's deliberate. These are placeholders, not a template
 language, with no loops, no conditions and no expressions, and the defaults are
 held to the same limit, which is why they are the same files you just
 exported.
@@ -124,3 +143,8 @@ a constitution into markup that runs. A placeholder you misspell is left
 alone rather than breaking the page. And if your file is missing or
 unreadable when a request arrives, Kyno serves its own page and logs a
 warning, so a bad template never takes your public page down.
+
+## 💬 Questions?
+
+[Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)
+and I'll answer there, so the next person finds it too.

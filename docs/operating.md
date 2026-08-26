@@ -2,6 +2,15 @@
 
 Storage, auth, deployment, and testing for a production Kyno.
 
+On this page:
+
+- [Storage](#storage)
+- [Running Kyno embedded](#running-kyno-embedded)
+- [Auth](#auth)
+- [Deploying](#deploying)
+- [Testing](#testing)
+
+
 ## Storage
 
 SQLite out of the box; PostgreSQL for production via `KYNO_DATABASE_URL`.
@@ -15,6 +24,28 @@ Reads never fail on an empty store. Before any direction is set, consumers
 get a version-0 empty state, so integrating Kyno ahead of adopting it costs
 nothing.
 
+## Running Kyno embedded
+
+When your orchestrator is itself a Python app, you can run the control
+plane inside it instead of behind `kyno serve`. The construction mirrors
+what the CLI does: read the settings, build the store, and hand the
+control plane to the binder.
+
+```python
+from kyno.config import Settings, store_from_settings
+from kyno.service import ControlPlane
+from kyno.sdk import DirectionBinder, LocalDirectionSource
+
+store = store_from_settings(Settings.from_env())  # reads KYNO_DATABASE_URL
+control_plane = ControlPlane(store)
+binder = DirectionBinder(LocalDirectionSource(control_plane))
+```
+
+The schema has to exist before the first read, so run `kyno init-db` once
+against the same database, or call `store.create_all()` from code. From
+here the binder behaves exactly as it does over MCP, and the CLI keeps
+working against the same database for edits and inspection.
+
 ## Auth
 
 - **stdio** is open. A process that can spawn the server already owns the
@@ -23,7 +54,7 @@ nothing.
 - **HTTP** is gated by a shared bearer token (`KYNO_TOKEN`) gates every request to the
   MCP endpoint (`/mcp`). The server refuses to start tokenless over HTTP
   unless you explicitly opt in (`KYNO_ALLOW_INSECURE_HTTP`, for local
-  experimentation only; it warns), and a `KYNO_TOKEN` that is set but blank
+  experimentation only; it warns), and a `KYNO_TOKEN` that's set but blank
   is a configuration error rather than silently no auth. Embedders building
   the app in code opt in the same way:
   `build_http_app(..., allow_insecure=True)`. The published constitution
@@ -63,3 +94,8 @@ replace the block they injected themselves.
 python -m pytest -q                      # SQLite, no network
 KYNO_TEST_POSTGRES_URL=postgresql+psycopg://… python -m pytest -q   # + Postgres
 ```
+
+## 💬 Questions?
+
+[Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)
+and I'll answer there, so the next person finds it too.

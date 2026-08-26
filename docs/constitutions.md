@@ -2,25 +2,46 @@
 
 A constitution is a mission plus ordered principles. The mission is the
 overarching purpose, and the tie-breaker when principles conflict.
-A constitution is not limited to strategy; operational principles are
-just as good a use case. This page covers the full file semantics: the optional fields, how edits
-carry forward, and running several constitutions side by side.
+A constitution isn't limited to strategy; operational principles are
+just as good a use case.
+
+On this page:
+
+- [The file](#the-file)
+- [Multiple constitutions](#multiple-constitutions)
+
 
 ## The file
 
-A one-line principle is a short name for an idea, not the full rule. Give a
-constitution as much as it needs and no more. Each of these is optional:
+The constitution is represented in a YAML file that contains three main
+elements:
 
-- a declaration: the long-form document that the mission is the headline of;
-- a description under any principle: the paragraph that settles an
-  argument about what the principle means.
+- A **mission**: The ultimate goal the system is intended to achieve. The
+  mission is the tie-breaker when principles conflict.
+- A set of **principles**: Each principle is defined by two parts. The
+  principle itself (e.g. _Customer comes First_), and a description (e.g.
+  "We always put the customer first and work backwards from their needs").
+  The description is what helps settle an argument about what a principle
+  means. When there is no description, the title is just a string.
+- A **declaration**: Optional. This is a long-form document that adds more
+  context about your mission and why the principles make sense. This is a
+  good space to explain your _whys_.
 
-Both are prose, and long prose doesn't fit in command-line flags, so a
-constitution is written in a file:
+Agents read the titles on every step, and the longer text only when they
+ask for the full detail, so extra detail doesn't cost tokens on every
+call.
+
+Because long prose doesn't fit in command-line flags, a constitution is
+better written in a file:
 
 ```yaml
 # constitution.yaml
 mission: Ship a lending product people trust with their worst month
+principles:
+  - Say the hard number first
+  - title: Refuse clearly
+    description: |
+      If we cannot lend, we say so on the first screen, and we say why.
 declaration: |
   ## What we are for
 
@@ -31,11 +52,6 @@ declaration: |
 
   - We say no early and in plain words.
   - We publish the number before the story that softens it.
-principles:
-  - Say the hard number first
-  - title: Refuse clearly
-    description: |
-      If we cannot lend, we say so on the first screen, and we say why.
 note: the constitution as written
 by: camilo
 ```
@@ -45,23 +61,22 @@ kyno set --file constitution.yaml
 kyno set --file constitution.yaml --constitution eu --note "the EU edit"
 ```
 
-The declaration is markdown, and the published page renders it: headings,
-lists, emphasis, quotes, links. Raw HTML inside it is escaped instead of
-passed through, and `javascript:` links are refused. The page is served to
-anonymous visitors, so text you typed must never reach them as markup that
-runs. Images are not rendered either; that is what keeps the page one
-self-contained response.
+The declaration can be written using markdown. How the published page
+renders and escapes it is covered in
+[Publishing your constitution](publishing.md).
 
-Everywhere else the declaration stays exactly the markdown you wrote. The
-JSON endpoint, the MCP tools and `kyno export` all serve the source, not the
-rendered document.
+### Editing with flags
 
-`--note`, `--by` and `--constitution` may override the file, because they
-describe this edit rather than the constitution. The field flags
-(`--mission`, `--declaration`, `--principle`) cannot be combined with
-`--file`, because two sources for the same field would be ambiguous. Fields
-the file leaves out are carried forward from the previous version; to clear
-one, write it empty, like `declaration: ""`.
+A file can carry its own `note:`, `by:` and `constitution:` keys, and
+the matching flags win over them when both are given. That's safe: those
+three describe the edit (what changed, who made it, and which
+constitution to write to), and they can't touch the content. The content
+flags (`--mission`, `--declaration`, `--principle`) can't be combined
+with `--file` at all, because two sources for the same field would be
+ambiguous. Fields the file leaves out are carried forward from the
+previous version; to clear one, write it empty, like `declaration: ""`.
+And every edit appends a new version, so nothing you had is ever
+overwritten.
 
 The flags are still there for a quick edit:
 
@@ -80,3 +95,8 @@ it. Each name has its own version sequence: bumping `eu` to v2 leaves
 as the same version-0 empty state an untouched store does. The subscribable
 resource is the default constitution's; agents on another one pull it by name
 with `get_changes_since`.
+
+## 💬 Questions?
+
+[Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)
+and I'll answer there, so the next person finds it too.

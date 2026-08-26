@@ -87,8 +87,8 @@ crew's or graph's behalf.
 
 - [The adapters in depth](docs/adapters.md): CrewAI, LangGraph, the
   failure postures, and the realignment gate.
-- [Build your own adapter](docs/integrating.md): the whole contract in
-  one page, for any framework or language, with a conformance checker.
+- [Build your own adapter](docs/integrating.md): everything you need to
+  build one, for any framework or language, with a conformance checker.
 
 ## What a constitution is
 
@@ -137,14 +137,16 @@ carries its own migration scripts. The details live in [Operating Kyno](docs/ope
 
 ## Documentation
 
+The [documentation index](docs/README.md) lays these out in reading order.
+
 - [Writing constitutions](docs/constitutions.md): the file, its fields,
   and multiple constitutions.
 - [The MCP contract](docs/contract.md): every tool, the compact and full
   reads, and subscriptions.
 - [The adapters in depth](docs/adapters.md): binder mechanics, failure
   postures, and the realignment gate.
-- [Build your own adapter](docs/integrating.md): the integration contract
-  for any language.
+- [Build your own adapter](docs/integrating.md): how to build an adapter
+  in any language.
 - [Publishing your constitution](docs/publishing.md): the public page,
   colors, and templates.
 - [Operating Kyno](docs/operating.md): storage, auth, deploying, and testing.

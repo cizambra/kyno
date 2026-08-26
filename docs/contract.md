@@ -1,6 +1,6 @@
 # The MCP contract
 
-Everything an agent or client can ask Kyno, over MCP or Python.
+This is everything an agent or client can ask Kyno, over MCP or Python.
 
 ## The tools
 
@@ -27,3 +27,8 @@ Clients may also subscribe to the `kyno://constitution/current` resource and
 receive a standard MCP `resources/updated` notification on every version
 bump. It serves the compact form: a resource takes no parameters, and the
 whole document is one tool call away.
+
+## 💬 Questions?
+
+[Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)
+and I'll answer there, so the next person finds it too.

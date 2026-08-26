@@ -5,16 +5,16 @@ from kyno.sdk.client import DirectionSource, KynoBinding, LocalDirectionSource
 
 def test_binding_defaults_to_the_default_constitution():
     binding = KynoBinding()
-    assert binding.constitution == "default"
+    assert binding.endpoint is None
     assert binding.endpoint is None and binding.token is None
 
 
 def test_binding_from_env_reads_url_and_token(monkeypatch):
     monkeypatch.setenv("KYNO_URL", "https://kyno.internal/mcp")
     monkeypatch.setenv("KYNO_TOKEN", "secret")
-    binding = KynoBinding.from_env(constitution="eu")
+    binding = KynoBinding.from_env()
     assert binding.endpoint == "https://kyno.internal/mcp"
-    assert binding.token == "secret" and binding.constitution == "eu"
+    assert binding.token == "secret"
 
 
 def test_binding_from_env_without_token_is_none_not_empty(monkeypatch):
@@ -55,20 +55,20 @@ def test_binding_from_env_treats_an_empty_url_as_unset(monkeypatch):
 
 
 def test_a_binding_cannot_be_repointed_after_construction():
-    binding = KynoBinding(constitution="eu")
+    binding = KynoBinding()
     with pytest.raises(Exception):  # noqa: B017 - frozen dataclass raises FrozenInstanceError
-        binding.constitution = "us"
+        binding.endpoint = "https://elsewhere/mcp"
 
 
 def test_the_repr_of_a_binding_never_contains_the_token():
     # Bindings travel into logs and tracebacks; the credential must not.
-    binding = KynoBinding(constitution="eu", endpoint="https://kyno.internal/mcp", token="hunter2")
+    binding = KynoBinding(endpoint="https://kyno.internal/mcp", token="hunter2")
     assert "hunter2" not in repr(binding)
-    assert "eu" in repr(binding)
+    assert "kyno.internal" in repr(binding)
 
 
 def test_two_bindings_with_the_same_wiring_are_equal_and_hashable():
-    wiring = {"constitution": "eu", "endpoint": "https://kyno.internal/mcp", "token": "t"}
+    wiring = {"endpoint": "https://kyno.internal/mcp", "token": "t"}
     assert KynoBinding(**wiring) == KynoBinding(**wiring)
     assert len({KynoBinding(**wiring), KynoBinding(**wiring)}) == 1
 
@@ -78,12 +78,12 @@ def test_one_source_serves_two_bindings_without_crosstalk(control_plane):
     control_plane.set_direction(mission="EU v1", change_note="init", constitution="eu")
     control_plane.set_direction(mission="US v1", change_note="init", constitution="us")
     source = LocalDirectionSource(control_plane)
-    eu, us = KynoBinding(constitution="eu"), KynoBinding(constitution="us")
+    eu, us = "eu", "us"
 
     control_plane.set_direction(mission="EU v2", change_note="pivot", constitution="eu")
 
-    after_eu = source.changes_since(1, eu.constitution)
-    after_us = source.changes_since(1, us.constitution)
+    after_eu = source.changes_since(1, eu)
+    after_us = source.changes_since(1, us)
     assert after_eu.changed is True and after_eu.mission == "EU v2"
     assert after_us.changed is False and after_us.mission == "US v1"
 

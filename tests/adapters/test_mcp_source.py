@@ -149,7 +149,7 @@ def test_closing_a_runner_twice_is_harmless(in_memory_runner):
 
 def test_http_session_needs_an_endpoint():
     with pytest.raises(KynoUnavailableError):
-        http_session(KynoBinding(constitution="eu"))
+        http_session(KynoBinding())
 
 
 async def test_http_session_sends_the_token_as_a_bearer_header(monkeypatch):

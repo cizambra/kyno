@@ -15,7 +15,7 @@ EXPECTED = {
     "SessionRunner",
     "http_session",
     "DirectionBinder",
-    "BackgroundSubscriber",
+    "RESOURCE_URI",
     "Verdict",
     "VerdictSource",
     "Action",

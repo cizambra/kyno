@@ -27,10 +27,7 @@ of these five behaviors.
   principle descriptions too. If Kyno is unreachable, the step runs on
   the last direction the binder holds and the staleness shows up in
   telemetry; `PullPolicy(fail_closed=True)` makes the step raise instead.
-- **Push when it changes.** `BackgroundSubscriber` turns a
-  `resources/updated` notification into a re-pull. A running step is
-  never interrupted; the next one binds the new direction.
-- **What changed.** A pull carries the operator's change note and a
+- **What changed.** A pull includes the operator's change note and a
   computed delta: which principle moved, whether the mission moved, what
   was added or dropped. That's what makes a small change visible.
 - **Planning.** `binder.plan()` returns a tracker: `direction()` pulls
@@ -82,7 +79,7 @@ adapter = CrewAiKyno(connection.binder(), constitution="eu")
 adapter.register()  # injects the current direction before each model call
 ```
 
-That's the whole integration. Every model call carries the version in force,
+That's the whole integration. Every model call runs under the version in force,
 and a version published mid-run reaches the next step. The pieces behind
 `connect()`, the binder, the sources, and the policies, live in `kyno.sdk` for
 anyone who needs to assemble them differently.
@@ -118,7 +115,7 @@ flowchart TB
 ```
 
 On LangGraph, inherit `KynoState` in your graph's state schema and put
-`direction_node` ahead of the work. LangGraph carries only the keys a schema
+`direction_node` ahead of the work. LangGraph passes along only the keys a schema
 declares, so without `KynoState` the direction a node pulls never reaches the
 nodes after it:
 
@@ -132,7 +129,7 @@ class State(KynoState, total=False):
 
 ### Acting on a change
 
-Kyno carries the direction, the version, and what changed. What your
+Kyno delivers the direction, the version, and what changed. What your
 system does when the version moves is an integration decision: you pick
 the response when you wire the adapter, and each option has a cost and a
 fit.

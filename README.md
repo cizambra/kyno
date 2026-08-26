@@ -16,7 +16,7 @@ direction changes mid-flight.
 
 ## Why
 
-Two things go wrong when every agent carries its own copy of the direction.
+Two things go wrong when every agent holds its own copy of the direction.
 
 When goals change, an agent holding the old copy keeps producing work for
 it. It gets worse: quality checks made against that stale copy push the
@@ -45,7 +45,7 @@ changes.
 - Every answer carries the version it came from, so a transcript can
   always say which direction each step served.
 
-Kyno carries the direction and tells you when it moved. What your system
+Kyno serves the direction and tells you when it moved. What your system
 does about it belongs to your system, and that is deliberate: with the
 mission and principles present at every step, your agents can judge their
 own decisions against higher-level principles instead of rules alone.
@@ -80,7 +80,7 @@ adapter = CrewAiKyno(connection.binder())
 adapter.register()  # injects the current direction before each model call
 ```
 
-That is the whole integration. Every model call carries the version in
+That is the whole integration. Every model call runs under the version in
 force, and a version published mid-run reaches the next step. Adapters
 are read-only: they pull and subscribe, and never write direction on a
 crew's or graph's behalf.
@@ -94,7 +94,7 @@ crew's or graph's behalf.
 
 A constitution is a mission plus ordered principles. The mission is the
 overarching purpose, and the tie-breaker when principles conflict. Both
-can carry longer prose: a declaration under the mission, a description
+can hold longer prose: a declaration under the mission, a description
 under any principle.
 
 The examples in this README read like strategy, but a constitution is
@@ -133,7 +133,7 @@ auditable: the direction each step served is a fact you can look up.
 Kyno self-hosts with no external services: SQLite out of the box,
 PostgreSQL in production via `KYNO_DATABASE_URL`, served over stdio for a
 local process or over HTTP with a bearer token for a fleet. A pip install
-carries its own migration scripts. The details live in [Operating Kyno](docs/operating.md).
+ships with its own migration scripts. The details live in [Operating Kyno](docs/operating.md).
 
 ## Documentation
 
@@ -160,7 +160,7 @@ Two licenses, split by directory:
 - The SDK, the adapters, the conformance kit, and the integration guide
   are [MIT](LICENSES/MIT.txt).
 
-[LICENSE](LICENSE) explains how to tell which license a file carries.
+[LICENSE](LICENSE) explains which license applies to each file.
 You can build anything on the SDK, freely and commercially. What the
 Elastic License restricts is offering the control plane itself as a
 hosted service.

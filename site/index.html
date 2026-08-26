@@ -121,7 +121,7 @@
       <figcaption><code>set_direction</code> appends a new version, and an
       agent picks it up at its next pull. The adapter decides where that pull
       runs: before every model call, or at whatever boundary your workflow
-      already has. Nothing restarts; the next pull simply carries the new
+      already has. Nothing restarts; the next pull simply brings the new
       version.</figcaption>
     </figure>
   </div>
@@ -142,7 +142,7 @@
     <div class="wrap">
       <div class="section-head">
         <p class="eyebrow">How it works</p>
-        <h2>Pull, push, and version-stamped answers</h2>
+        <h2>Every step pulls, and every answer says its version</h2>
       </div>
       <div class="rows">
         <div class="row">
@@ -165,21 +165,6 @@ Recent changes:
 - Kyno adopts its own constitution</pre>
         </div>
         <div class="row rev">
-          <div class="row-text">
-            <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8M10.3 20a2 2 0 003.4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <h3>Push when it changes</h3>
-            <p>Subscribers hear the moment a new version is appended. Treat it
-            as a hint to pull, never as a payload to trust.</p>
-          </div>
-          <pre>{
-  "jsonrpc": "2.0",
-  "method": "notifications/resources/updated",
-  "params": {
-    "uri": <span class="hl">"kyno://constitution/current"</span>
-  }
-}</pre>
-        </div>
-        <div class="row">
           <div class="row-text">
             <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 12l-8 8-9-9V4h7l10 8zM7.5 7.5h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
             <h3>Every answer carries its version</h3>

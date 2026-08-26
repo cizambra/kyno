@@ -84,7 +84,7 @@ replace the block they injected themselves.
   titles ≤ 300 and descriptions ≤ 4,000, constitution names ≤ 200.
   `set_direction` refuses anything larger, and `/mcp` request bodies are
   capped at 5 MB.
-- A pip-installed Kyno carries its own migration scripts: `kyno init-db`
+- A pip-installed Kyno ships with its own migration scripts: `kyno init-db`
   creates a fresh schema stamped at the current head, and `kyno upgrade-db`
   brings an existing database up to date after an upgrade.
 

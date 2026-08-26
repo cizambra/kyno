@@ -25,6 +25,7 @@ from kyno.sdk.cell import (
     refresh,
 )
 from kyno.sdk.client import (
+    RESOURCE_URI,
     DirectionSource,
     KynoBinding,
     LocalDirectionSource,
@@ -48,7 +49,6 @@ from kyno.sdk.policy import (
     TelemetryEvent,
     TelemetrySink,
 )
-from kyno.sdk.subscriber import BackgroundSubscriber
 from kyno.sdk.trace import DecompositionEdge, RunTrace, StepRecord
 
 __all__ = [
@@ -56,7 +56,7 @@ __all__ = [
     "DIRECTION_MARKER",
     "FULL",
     "Action",
-    "BackgroundSubscriber",
+    "RESOURCE_URI",
     "DecompositionEdge",
     "GateDecision",
     "GatePolicy",

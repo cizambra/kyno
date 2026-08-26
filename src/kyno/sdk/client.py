@@ -13,23 +13,24 @@ from typing import Any, Protocol, runtime_checkable
 from kyno.errors import KynoUnavailableError
 from kyno.models import COMPACT, ChangesSince
 
+# The resource Kyno announces version changes on. The server sends a
+# `resources/updated` notification here every time a version is appended;
+# any client can subscribe. Named in the SDK so the server imports it
+# instead of defining its own copy.
+RESOURCE_URI = "kyno://constitution/current"
+
 
 @dataclass(frozen=True)
 class KynoBinding:
-    """What an integrator is wired to: an endpoint, a credential, and the
-    name of the constitution it serves. The name is part of the binding
-    because "which direction was this agent on" must be answerable from the
-    adapter, not from a config file somewhere else."""
+    """The endpoint and credential an integrator is wired to."""
 
-    constitution: str = "default"
     endpoint: str | None = None
     # repr=False: bindings travel into logs and tracebacks; the credential must not.
     token: str | None = field(default=None, repr=False)
 
     @classmethod
-    def from_env(cls, constitution: str = "default") -> KynoBinding:
+    def from_env(cls) -> KynoBinding:
         return cls(
-            constitution=constitution,
             endpoint=os.environ.get("KYNO_URL") or None,
             token=os.environ.get("KYNO_TOKEN") or None,
         )

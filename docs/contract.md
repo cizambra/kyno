@@ -23,15 +23,15 @@ whole document each time. Ask for more when something actually needs it:
 of the targeted reads. Every answer carries the version it came from, so a
 client mixing them can tell when they have drifted apart.
 
-Clients may also subscribe to the `kyno://constitution/current` resource and
-receive a standard MCP `resources/updated` notification on every version
-bump. The notification carries no content. When you receive one, call
-`get_changes_since` with the last version you processed; that returns
-everything you missed, downtime included. That makes any consumer work,
-agent or not: a backend that audits every version, a job that rebuilds a
-cache, or a watcher that posts the change note somewhere. The shipped
-adapters don't subscribe, because the binder pulls at every step boundary
-anyway.
+Clients can also subscribe to the `kyno://constitution/current` resource.
+Kyno sends a standard MCP `resources/updated` notification every time a
+new version is appended. The notification doesn't include the version; it
+only tells you there is one. To get the content, call `get_changes_since`
+with the last version you processed. This works even if your process was
+down for a while, because the store keeps the full history. For example,
+a backend can subscribe and write every new version to an audit log. The
+adapters that ship with Kyno don't subscribe; they pull at every step,
+and that's enough.
 
 ## 💬 Questions?
 

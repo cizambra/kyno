@@ -162,6 +162,20 @@ Where a gate exists but its judge is unreachable, the work proceeds marked
 `unchecked` and the event is emitted as telemetry;
 `GatePolicy(fail_closed=True)` stops instead.
 
+```mermaid
+---
+config:
+  look: handDrawn
+  theme: neutral
+---
+flowchart LR
+  W["finished work"] --> G["realignment gate"]
+  G <-- "verdict?" --> J["your judge<br/>(VerdictSource)"]
+  G -- "aligned" --> OK["work proceeds"]
+  G -- "drifted" --> ST["halted"]
+  G -. "no verdict" .-> UN["proceeds, marked<br/>unchecked"]
+```
+
 ```python
 from kyno.sdk import RealignmentGate
 from kyno.adapters.langgraph import gate_node  # LangGraph

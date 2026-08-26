@@ -167,10 +167,11 @@ Recent changes:
         <div class="row rev">
           <div class="row-text">
             <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8M10.3 20a2 2 0 003.4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <h3>Push when it changes</h3>
-            <p>Subscribers hear the moment a new version is appended. The
-            notification only says that something changed; the content
-            comes from the next pull.</p>
+            <h3>Changes are announced too</h3>
+            <p>When a version is appended, Kyno sends this notification.
+            Consuming it is optional: a backend can subscribe and react,
+            and agents don't need it, because their next pull already
+            returns the current version.</p>
           </div>
           <pre>{
   "jsonrpc": "2.0",

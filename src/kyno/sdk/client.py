@@ -13,6 +13,12 @@ from typing import Any, Protocol, runtime_checkable
 from kyno.errors import KynoUnavailableError
 from kyno.models import COMPACT, ChangesSince
 
+# The resource Kyno announces version changes on. The server sends a
+# `resources/updated` notification here every time a version is appended;
+# any client can subscribe. Named in the SDK so the server imports it
+# instead of defining its own copy.
+RESOURCE_URI = "kyno://constitution/current"
+
 
 @dataclass(frozen=True)
 class KynoBinding:

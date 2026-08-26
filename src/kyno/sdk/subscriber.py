@@ -1,11 +1,10 @@
 # SPDX-License-Identifier: MIT
-"""The resource every Kyno announces version bumps on. Defined here so the
-SDK owns the wire name and the server imports it from the SDK.
+"""The wire name for the resource that announces version changes. It lives
+in the SDK so the server can import it instead of defining its own copy.
 
-The server emits a standard MCP `resources/updated` notification on this
-resource at every version append. Any client can subscribe to it; the
-shipped adapters don't, because the binder pulls at every step boundary
-and the next pull already carries the current version.
+The server sends a `resources/updated` notification on this resource every
+time a version is appended. Any client can subscribe. The adapters that
+ship with Kyno don't; they pull at every step, and that's enough.
 """
 
 from __future__ import annotations

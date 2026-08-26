@@ -16,9 +16,7 @@ from kyno.models import COMPACT, ChangesSince
 
 @dataclass(frozen=True)
 class KynoBinding:
-    """The endpoint and credential an integrator is wired to. The
-    constitution name isn't part of the binding; the adapter passes it on
-    every bind."""
+    """The endpoint and credential an integrator is wired to."""
 
     endpoint: str | None = None
     # repr=False: bindings travel into logs and tracebacks; the credential must not.

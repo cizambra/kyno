@@ -25,7 +25,19 @@ client mixing them can tell when they have drifted apart.
 
 Clients can also subscribe to the `kyno://constitution/current` resource.
 Kyno sends a standard MCP `resources/updated` notification every time a
-new version is appended. The notification doesn't include the version; it
+new version is appended:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "notifications/resources/updated",
+  "params": {
+    "uri": "kyno://constitution/current"
+  }
+}
+```
+
+The notification doesn't include the version; it
 only tells you there is one. To get the content, call `get_changes_since`
 with the last version you processed. This works even if your process was
 down for a while, because the store keeps the full history. For example,

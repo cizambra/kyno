@@ -359,3 +359,13 @@ def test_pulled_file_names_its_constitution(tmp_path, monkeypatch):
     # The name in the file is enough to route a later apply back to eu.
     r = runner.invoke(app, ["set", "--file", str(target), "--note", "reapply"])
     assert "no field changed" in r.output
+
+
+def test_by_defaults_to_the_system_user(tmp_path, monkeypatch):
+    import getpass
+
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    r = runner.invoke(app, ["set", "--mission", "M1", "--note", "init"])
+    assert r.exit_code == 0
+    assert json.loads(r.stdout)["created_by"] == getpass.getuser()

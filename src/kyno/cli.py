@@ -84,7 +84,9 @@ def set_direction_cmd(
         None, "--declaration", help="The long-form document. Use --file for anything longer."
     ),
     principle: list[str] = typer.Option(None, "--principle", help="Repeat for each principle."),
-    by: str | None = typer.Option(None, "--by", help="Who made this change."),
+    by: str | None = typer.Option(
+        None, "--by", help="Who made this change. Defaults to your system username."
+    ),
     constitution: str | None = typer.Option(
         None, "--constitution", help="Which named constitution to act on."
     ),
@@ -100,13 +102,23 @@ def set_direction_cmd(
             declaration=fields.declaration,
             principles=fields.principles,
             change_note=note,
-            created_by=by,
+            created_by=by if by is not None else _system_user(),
             constitution=constitution or fields.constitution or "default",
         )
         typer.echo(json.dumps(v.to_dict()))
     except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
+
+
+def _system_user() -> str | None:
+    """Git's fallback for an unstated author: the person at the keyboard."""
+    import getpass
+
+    try:
+        return getpass.getuser()
+    except (KeyError, OSError):
+        return None
 
 
 def _fields_from(file, *, mission, declaration, principle) -> ConstitutionFile:

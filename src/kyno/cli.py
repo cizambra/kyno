@@ -92,16 +92,15 @@ def set_direction_cmd(
     """Append a version. Flags are for quick edits; --file is how a
     constitution with a declaration or described principles gets written."""
     fields = _fields_from(file, mission=mission, declaration=declaration, principle=principle)
-    note = note if note is not None else fields.note
     if not note:
-        raise typer.BadParameter("a change note is required: pass --note, or put `note:` in --file")
+        raise typer.BadParameter("a change note is required: pass --note")
     try:
         v = _control_plane().set_direction(
             mission=fields.mission,
             declaration=fields.declaration,
             principles=fields.principles,
             change_note=note,
-            created_by=by if by is not None else fields.created_by,
+            created_by=by,
             constitution=constitution or fields.constitution or "default",
         )
         typer.echo(json.dumps(v.to_dict()))
@@ -111,8 +110,9 @@ def set_direction_cmd(
 
 
 def _fields_from(file, *, mission, declaration, principle) -> ConstitutionFile:
-    """One source per field. --note, --by and --constitution may override a
-    file because they are about this edit, not about the constitution."""
+    """The content of an edit, from the file or the content flags, never
+    both. A file holds content only; --note, --by and --constitution
+    describe the edit and always come from the command line."""
     if file is None:
         return ConstitutionFile(
             mission=mission,
@@ -126,7 +126,8 @@ def _fields_from(file, *, mission, declaration, principle) -> ConstitutionFile:
     if conflicting:
         raise typer.BadParameter(
             f"--file cannot be combined with {', '.join(conflicting)}; "
-            "--note, --by and --constitution may override the file"
+            "a file holds content only, and --note, --by and --constitution "
+            "describe the edit"
         )
     try:
         return read_constitution_file(file)

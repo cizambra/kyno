@@ -20,7 +20,7 @@ from kyno.models import ConstitutionVersion, Principle, normalize_principles
 # Every key a file may carry. An unknown one is refused rather than ignored:
 # a constitution missing the half somebody thought they wrote is worse than
 # a file that will not load.
-FIELDS = ("constitution", "mission", "declaration", "principles", "note", "by")
+FIELDS = ("constitution", "mission", "declaration", "principles")
 
 
 @dataclass(frozen=True)
@@ -32,8 +32,6 @@ class ConstitutionFile:
     mission: str | None = None
     declaration: str | None = None
     principles: tuple[Principle, ...] | None = None
-    note: str | None = None
-    created_by: str | None = None
 
 
 def read_constitution_file(path: str) -> ConstitutionFile:
@@ -42,17 +40,20 @@ def read_constitution_file(path: str) -> ConstitutionFile:
         raise AuthoringError(f"{path}: a constitution file must be a mapping of fields")
     unknown = sorted(set(document) - set(FIELDS))
     if unknown:
+        hint = (
+            "; the change note and author are flags: --note, --by"
+            if {"note", "by"} & set(unknown)
+            else ""
+        )
         raise AuthoringError(
             f"{path}: unknown field(s) {', '.join(unknown)} "
-            f"(a constitution file takes {', '.join(FIELDS)})"
+            f"(a constitution file takes {', '.join(FIELDS)}{hint})"
         )
     return ConstitutionFile(
         constitution=_text(document, "constitution", path),
         mission=_text(document, "mission", path),
         declaration=_text(document, "declaration", path),
         principles=_principles(document, path),
-        note=_text(document, "note", path),
-        created_by=_text(document, "by", path),
     )
 
 
@@ -69,10 +70,6 @@ def write_constitution_file(path: str, version: ConstitutionVersion, constitutio
             p.title if not p.description else {"title": p.title, "description": p.description}
             for p in version.principles
         ]
-    if version.change_note:
-        document["note"] = version.change_note
-    if version.created_by:
-        document["by"] = version.created_by
     try:
         Path(path).write_text(_dump(document), encoding="utf-8")
     except OSError as exc:

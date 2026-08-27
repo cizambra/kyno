@@ -311,8 +311,8 @@ def test_pull_writes_the_current_snapshot(tmp_path, monkeypatch):
     text = target.read_text(encoding="utf-8")
     assert "constitution: default" in text
     assert "mission: M1" in text
-    assert "note: init" in text
-    assert "by: camilo" in text
+    # Content only: the note and author live in the store, not the file.
+    assert "note:" not in text and "by:" not in text
 
 
 def test_applying_a_pulled_file_changes_nothing(tmp_path, monkeypatch):
@@ -321,7 +321,7 @@ def test_applying_a_pulled_file_changes_nothing(tmp_path, monkeypatch):
     runner.invoke(app, ["set", "--mission", "M1", "--principle", "p1", "--note", "init"])
     target = tmp_path / "constitution.yaml"
     runner.invoke(app, ["pull", str(target)])
-    r = runner.invoke(app, ["set", "--file", str(target)])
+    r = runner.invoke(app, ["set", "--file", str(target), "--note", "reapply"])
     assert r.exit_code == 1
     assert "no field changed" in r.output
 
@@ -330,8 +330,8 @@ def test_pull_refreshes_a_stale_file(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
     target = tmp_path / "constitution.yaml"
-    target.write_text("mission: the old mission\nnote: first draft\n", encoding="utf-8")
-    runner.invoke(app, ["set", "--file", str(target)])
+    target.write_text("mission: the old mission\n", encoding="utf-8")
+    runner.invoke(app, ["set", "--file", str(target), "--note", "first draft"])
     runner.invoke(app, ["set", "--mission", "the hotfix mission", "--note", "hotfix"])
     r = runner.invoke(app, ["pull", str(target)])
     assert r.exit_code == 0
@@ -357,5 +357,5 @@ def test_pulled_file_names_its_constitution(tmp_path, monkeypatch):
     runner.invoke(app, ["pull", str(target), "--constitution", "eu"])
     assert "constitution: eu" in target.read_text(encoding="utf-8")
     # The name in the file is enough to route a later apply back to eu.
-    r = runner.invoke(app, ["set", "--file", str(target)])
+    r = runner.invoke(app, ["set", "--file", str(target), "--note", "reapply"])
     assert "no field changed" in r.output

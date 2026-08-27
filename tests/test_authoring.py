@@ -42,8 +42,6 @@ principles:
     description: |
       A refusal is a sentence, not a maze. If we cannot lend, say so on the
       first screen and say why.
-note: the constitution as written
-by: camilo
 """
 
 
@@ -73,7 +71,6 @@ def test_a_file_carries_every_field_a_constitution_has(tmp_path):
 
     assert read.constitution == "acme"
     assert read.mission == "Ship a lending product people trust with their worst month"
-    assert read.note == "the constitution as written" and read.created_by == "camilo"
     assert read.principles == (
         Principle("Say the hard number first"),
         Principle(
@@ -93,25 +90,32 @@ def test_a_block_of_prose_keeps_its_paragraphs(tmp_path):
 
 
 def test_an_omitted_field_reads_as_carry_it_forward(tmp_path):
-    read = read_constitution_file(write(tmp_path, "mission: M\nnote: n\n"))
+    read = read_constitution_file(write(tmp_path, "mission: M\n"))
     assert read.declaration is None and read.principles is None
-    assert read.constitution is None and read.created_by is None
+    assert read.constitution is None
+
+
+def test_note_and_by_in_a_file_are_refused_and_the_flags_named(tmp_path):
+    # The file is the constitution; who changed it and why belong to the
+    # edit, so they travel as --note and --by.
+    with pytest.raises(AuthoringError, match="--note, --by"):
+        read_constitution_file(write(tmp_path, "mission: M\nnote: n\nby: camilo\n"))
 
 
 def test_an_empty_declaration_is_a_present_value_that_clears_it(tmp_path):
-    read = read_constitution_file(write(tmp_path, 'mission: M\ndeclaration: ""\nnote: n\n'))
+    read = read_constitution_file(write(tmp_path, 'mission: M\ndeclaration: ""\n'))
     assert read.declaration == ""
 
 
 def test_a_key_with_no_value_reads_as_omitted_rather_than_empty(tmp_path):
     # Deliberate: "declaration:" with nothing after it is far more often a
     # half-written file than a deletion, and clearing is spelled "".
-    read = read_constitution_file(write(tmp_path, "mission: M\ndeclaration:\nnote: n\n"))
+    read = read_constitution_file(write(tmp_path, "mission: M\ndeclaration:\n"))
     assert read.declaration is None
 
 
 def test_json_is_read_too_since_it_is_valid_yaml(tmp_path):
-    body = json.dumps({"mission": "M", "principles": ["p1"], "note": "n"})
+    body = json.dumps({"mission": "M", "principles": ["p1"]})
     read = read_constitution_file(write(tmp_path, body, "constitution.json"))
     assert read.mission == "M" and read.principles == (Principle("p1"),)
 
@@ -120,7 +124,7 @@ def test_a_misspelled_key_is_refused_and_named(tmp_path):
     # Silently ignoring "principals" would publish a constitution missing
     # everything the operator thought they had written.
     with pytest.raises(AuthoringError, match="principals"):
-        read_constitution_file(write(tmp_path, "mission: M\nprincipals:\n  - p1\nnote: n\n"))
+        read_constitution_file(write(tmp_path, "mission: M\nprincipals:\n  - p1\n"))
 
 
 def test_a_file_that_is_not_a_mapping_is_refused(tmp_path):
@@ -140,19 +144,22 @@ def test_a_file_that_is_not_there_is_refused(tmp_path):
 
 def test_a_field_that_should_be_text_is_refused_when_it_is_not(tmp_path):
     with pytest.raises(AuthoringError, match="mission"):
-        read_constitution_file(write(tmp_path, "mission:\n  a: map\nnote: n\n"))
+        read_constitution_file(write(tmp_path, "mission:\n  a: map\n"))
 
 
 def test_principles_that_are_not_a_list_are_refused(tmp_path):
     with pytest.raises(AuthoringError, match="principles"):
-        read_constitution_file(write(tmp_path, "principles: just one\nnote: n\n"))
+        read_constitution_file(write(tmp_path, "principles: just one\n"))
 
 
 # --- through the CLI -------------------------------------------------------
 
 
 def test_setting_a_constitution_from_a_file(db, tmp_path):
-    result = runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE)])
+    result = runner.invoke(
+        app,
+        ["set", "--file", write(tmp_path, FULL_FILE), "--note", "the constitution as written", "--by", "camilo"],
+    )
     assert result.exit_code == 0, result.output
 
     head = plane(db).current("acme")
@@ -165,7 +172,7 @@ def test_setting_a_constitution_from_a_file(db, tmp_path):
     assert head.created_by == "camilo"
 
 
-def test_the_flags_that_may_override_the_file(db, tmp_path):
+def test_the_edit_flags_route_and_describe_a_file_edit(db, tmp_path):
     path = write(tmp_path, FULL_FILE)
     result = runner.invoke(
         app,
@@ -208,12 +215,10 @@ def test_a_missing_file_reports_a_clean_error(db, tmp_path):
 
 
 def test_a_second_file_appends_a_version_and_carries_what_it_omits(db, tmp_path):
-    runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE)])
-    second = write(
-        tmp_path, "constitution: acme\nmission: A sharper mission\nnote: sharpen\n", "2.yaml"
-    )
+    runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE), "--note", "init"])
+    second = write(tmp_path, "constitution: acme\nmission: A sharper mission\n", "2.yaml")
 
-    assert runner.invoke(app, ["set", "--file", second]).exit_code == 0
+    assert runner.invoke(app, ["set", "--file", second, "--note", "sharpen"]).exit_code == 0
 
     head = plane(db).current("acme")
     assert head.version == 2
@@ -223,10 +228,10 @@ def test_a_second_file_appends_a_version_and_carries_what_it_omits(db, tmp_path)
 
 
 def test_a_file_can_clear_the_declaration(db, tmp_path):
-    runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE)])
-    clearing = write(tmp_path, 'constitution: acme\ndeclaration: ""\nnote: retract\n', "3.yaml")
+    runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE), "--note", "init"])
+    clearing = write(tmp_path, 'constitution: acme\ndeclaration: ""\n', "3.yaml")
 
-    assert runner.invoke(app, ["set", "--file", clearing]).exit_code == 0
+    assert runner.invoke(app, ["set", "--file", clearing, "--note", "retract"]).exit_code == 0
     assert plane(db).current("acme").declaration == ""
 
 
@@ -272,12 +277,11 @@ def test_write_constitution_file_round_trips_prose(tmp_path):
     write_constitution_file(str(path), version, "default")
     text = path.read_text(encoding="utf-8")
     assert "declaration: |" in text
-    assert "by" not in text.splitlines()[0]
+    # A pulled file is content only; the edit metadata stays in the store.
+    assert "note:" not in text and "by:" not in text
 
     got = read_constitution_file(str(path))
     assert got.constitution == "default"
     assert got.mission == version.mission
     assert got.declaration == version.declaration
     assert got.principles == version.principles
-    assert got.note == version.change_note
-    assert got.created_by is None

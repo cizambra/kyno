@@ -111,11 +111,10 @@ principles:
   - title: Refuse clearly
     description: |
       If we cannot lend, we say so on the first screen, and we say why.
-note: the constitution as written
 ```
 
 ```bash
-kyno set --file constitution.yaml
+kyno set --file constitution.yaml --note "the constitution as written"
 ```
 
 The full file semantics, and running several constitutions side by side,

@@ -7,7 +7,7 @@ from pathlib import Path
 import typer
 from sqlalchemy.exc import SQLAlchemyError
 
-from kyno.authoring import ConstitutionFile, read_constitution_file
+from kyno.authoring import ConstitutionFile, read_constitution_file, write_constitution_file
 from kyno.config import Settings, store_from_settings
 from kyno.errors import CoherenceError
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
@@ -200,6 +200,28 @@ def current(constitution: str = _CONSTITUTION_OPTION) -> None:
             typer.echo("no constitution set (version 0)")
         else:
             typer.echo(json.dumps(v.to_dict()))
+    except (CoherenceError, SQLAlchemyError) as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+
+@app.command()
+def pull(
+    file: str = typer.Argument(..., help="Where to write the snapshot."),
+    constitution: str = _CONSTITUTION_OPTION,
+) -> None:
+    """Write the current version into a file, replacing what the file held.
+
+    The inverse of `kyno set --file`: after a pull, the file says exactly
+    what the store serves. Run it when the file may be stale -- after a
+    flags-only edit, or after somebody else applied a change."""
+    try:
+        v = _control_plane().current(constitution)
+        if v.version == 0:
+            typer.echo(f"error: nothing to pull: '{constitution}' has no versions", err=True)
+            raise typer.Exit(code=1)
+        write_constitution_file(file, v, constitution)
+        typer.echo(f"pulled {constitution} v{v.version} into {file}")
     except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None

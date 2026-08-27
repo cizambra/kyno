@@ -1,4 +1,5 @@
-"""Reading a constitution out of a file an operator wrote.
+"""Reading a constitution out of a file an operator wrote, and writing
+the store's current version back into one.
 
 A declaration is paragraphs and a description is a paragraph; both are
 miserable to type as command-line flags and worse to re-type on the next
@@ -14,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from kyno.errors import AuthoringError, CoherenceError
-from kyno.models import Principle, normalize_principles
+from kyno.models import ConstitutionVersion, Principle, normalize_principles
 
 # Every key a file may carry. An unknown one is refused rather than ignored:
 # a constitution missing the half somebody thought they wrote is worse than
@@ -53,6 +54,48 @@ def read_constitution_file(path: str) -> ConstitutionFile:
         note=_text(document, "note", path),
         created_by=_text(document, "by", path),
     )
+
+
+def write_constitution_file(path: str, version: ConstitutionVersion, constitution: str) -> None:
+    """Replace the file with what the store currently serves, as a file
+    `kyno set --file` reads back. Applying it unchanged is a no-op edit."""
+    document: dict = {"constitution": constitution}
+    if version.mission:
+        document["mission"] = version.mission
+    if version.declaration:
+        document["declaration"] = version.declaration
+    if version.principles:
+        document["principles"] = [
+            p.title if not p.description else {"title": p.title, "description": p.description}
+            for p in version.principles
+        ]
+    if version.change_note:
+        document["note"] = version.change_note
+    if version.created_by:
+        document["by"] = version.created_by
+    try:
+        Path(path).write_text(_dump(document), encoding="utf-8")
+    except OSError as exc:
+        raise AuthoringError(f"{path} could not be written: {exc}") from None
+
+
+def _dump(document: dict) -> str:
+    import yaml
+
+    class _Dumper(yaml.SafeDumper):
+        def increase_indent(self, flow=False, indentless=False):
+            # Never indentless: list items sit indented under their key,
+            # the way the docs and people write the file by hand.
+            return super().increase_indent(flow, False)
+
+    def _scalar(dumper, text):
+        # Prose keeps its line breaks readable as a block scalar; a
+        # single-line value stays a plain one.
+        style = "|" if "\n" in text else None
+        return dumper.represent_scalar("tag:yaml.org,2002:str", text, style=style)
+
+    _Dumper.add_representer(str, _scalar)
+    return yaml.dump(document, Dumper=_Dumper, sort_keys=False, allow_unicode=True)
 
 
 def _load(path: str):

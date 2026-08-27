@@ -246,3 +246,38 @@ def test_an_empty_field_flag_still_conflicts_with_a_file(db, tmp_path):
     result = runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE), "--mission", ""])
     assert result.exit_code != 0
     assert "--mission" in plain(result)
+
+
+def test_write_constitution_file_round_trips_prose(tmp_path):
+    from datetime import UTC, datetime
+
+    from kyno.authoring import write_constitution_file
+    from kyno.models import ConstitutionVersion
+
+    version = ConstitutionVersion(
+        version=3,
+        mission="Ship a lending product people trust",
+        declaration="## What we are for\n\nLending is a promise.",
+        principles=(
+            Principle(title="Refuse clearly", description="We say no early.\nAnd in plain words."),
+            Principle(title="Say the hard number first"),
+        ),
+        change_note="the reviewed edit",
+        changed_mission=True,
+        changed_principles=True,
+        created_at=datetime.now(UTC),
+        created_by=None,
+    )
+    path = tmp_path / "c.yaml"
+    write_constitution_file(str(path), version, "default")
+    text = path.read_text(encoding="utf-8")
+    assert "declaration: |" in text
+    assert "by" not in text.splitlines()[0]
+
+    got = read_constitution_file(str(path))
+    assert got.constitution == "default"
+    assert got.mission == version.mission
+    assert got.declaration == version.declaration
+    assert got.principles == version.principles
+    assert got.note == version.change_note
+    assert got.created_by is None

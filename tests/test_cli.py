@@ -295,3 +295,67 @@ def test_publishing_an_unroutable_name_is_a_clean_error(tmp_path, monkeypatch):
     assert r.exit_code == 1
     assert "error:" in r.output.lower()
     assert "Traceback" not in r.output
+
+
+def test_pull_writes_the_current_snapshot(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    runner.invoke(
+        app,
+        ["set", "--mission", "M1", "--principle", "p1", "--note", "init", "--by", "camilo"],
+    )
+    target = tmp_path / "constitution.yaml"
+    r = runner.invoke(app, ["pull", str(target)])
+    assert r.exit_code == 0
+    assert "pulled default v1" in r.output
+    text = target.read_text(encoding="utf-8")
+    assert "constitution: default" in text
+    assert "mission: M1" in text
+    assert "note: init" in text
+    assert "by: camilo" in text
+
+
+def test_applying_a_pulled_file_changes_nothing(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["set", "--mission", "M1", "--principle", "p1", "--note", "init"])
+    target = tmp_path / "constitution.yaml"
+    runner.invoke(app, ["pull", str(target)])
+    r = runner.invoke(app, ["set", "--file", str(target)])
+    assert r.exit_code == 1
+    assert "no field changed" in r.output
+
+
+def test_pull_refreshes_a_stale_file(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    target = tmp_path / "constitution.yaml"
+    target.write_text("mission: the old mission\nnote: first draft\n", encoding="utf-8")
+    runner.invoke(app, ["set", "--file", str(target)])
+    runner.invoke(app, ["set", "--mission", "the hotfix mission", "--note", "hotfix"])
+    r = runner.invoke(app, ["pull", str(target)])
+    assert r.exit_code == 0
+    text = target.read_text(encoding="utf-8")
+    assert "the hotfix mission" in text
+    assert "the old mission" not in text
+
+
+def test_pull_on_an_empty_store_errors(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    r = runner.invoke(app, ["pull", str(tmp_path / "constitution.yaml")])
+    assert r.exit_code == 1
+    assert "nothing to pull" in r.output
+    assert not (tmp_path / "constitution.yaml").exists()
+
+
+def test_pulled_file_names_its_constitution(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["set", "--mission", "EU rules", "--note", "init", "--constitution", "eu"])
+    target = tmp_path / "eu.yaml"
+    runner.invoke(app, ["pull", str(target), "--constitution", "eu"])
+    assert "constitution: eu" in target.read_text(encoding="utf-8")
+    # The name in the file is enough to route a later apply back to eu.
+    r = runner.invoke(app, ["set", "--file", str(target)])
+    assert "no field changed" in r.output

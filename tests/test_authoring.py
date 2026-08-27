@@ -95,11 +95,11 @@ def test_an_omitted_field_reads_as_carry_it_forward(tmp_path):
     assert read.constitution is None
 
 
-def test_note_and_by_in_a_file_are_refused_and_the_flags_named(tmp_path):
-    # The file is the constitution; who changed it and why belong to the
-    # edit, so they travel as --note and --by.
-    with pytest.raises(AuthoringError, match="--note, --by"):
-        read_constitution_file(write(tmp_path, "mission: M\nnote: n\nby: camilo\n"))
+def test_keys_kyno_does_not_read_are_the_operators_own(tmp_path):
+    # One file can serve other tools too; note and by look like kyno
+    # metadata but are not kyno fields, so they read as custom keys.
+    read = read_constitution_file(write(tmp_path, "mission: M\nnote: n\nby: camilo\nteam: lending\n"))
+    assert read.mission == "M"
 
 
 def test_an_empty_declaration_is_a_present_value_that_clears_it(tmp_path):
@@ -120,11 +120,22 @@ def test_json_is_read_too_since_it_is_valid_yaml(tmp_path):
     assert read.mission == "M" and read.principles == (Principle("p1"),)
 
 
-def test_a_misspelled_key_is_refused_and_named(tmp_path):
-    # Silently ignoring "principals" would publish a constitution missing
-    # everything the operator thought they had written.
-    with pytest.raises(AuthoringError, match="principals"):
-        read_constitution_file(write(tmp_path, "mission: M\nprincipals:\n  - p1\n"))
+def test_a_misspelled_kyno_field_reads_as_a_custom_key(tmp_path):
+    # "principals" is not refused; `kyno check` is where a typo shows up,
+    # reported as a custom field beside the kyno fields the file misses.
+    read = read_constitution_file(write(tmp_path, "mission: M\nprincipals:\n  - p1\n"))
+    assert read.principles is None
+
+
+def test_check_sorts_kyno_fields_from_custom_ones(tmp_path):
+    from kyno.authoring import check_constitution_file
+
+    report = check_constitution_file(
+        write(tmp_path, "mission: M\nprincipals:\n  - p1\nnote: n\n")
+    )
+    assert report.present == ("mission",)
+    assert report.missing == ("constitution", "declaration", "principles")
+    assert report.custom == ("note", "principals")
 
 
 def test_a_file_that_is_not_a_mapping_is_refused(tmp_path):
@@ -285,3 +296,27 @@ def test_write_constitution_file_round_trips_prose(tmp_path):
     assert got.mission == version.mission
     assert got.declaration == version.declaration
     assert got.principles == version.principles
+
+
+def test_write_constitution_file_keeps_the_operators_custom_keys(tmp_path):
+    from datetime import UTC, datetime
+
+    from kyno.authoring import write_constitution_file
+    from kyno.models import ConstitutionVersion
+
+    path = tmp_path / "c.yaml"
+    path.write_text("mission: stale\nteam: lending\nowner: camilo\n", encoding="utf-8")
+    version = ConstitutionVersion(
+        version=2,
+        mission="Fresh mission",
+        principles=(),
+        change_note="n",
+        changed_mission=True,
+        changed_principles=False,
+        created_at=datetime.now(UTC),
+        created_by=None,
+    )
+    write_constitution_file(str(path), version, "default")
+    text = path.read_text(encoding="utf-8")
+    assert "mission: Fresh mission" in text and "stale" not in text
+    assert "team: lending" in text and "owner: camilo" in text

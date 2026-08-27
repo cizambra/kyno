@@ -7,7 +7,12 @@ from pathlib import Path
 import typer
 from sqlalchemy.exc import SQLAlchemyError
 
-from kyno.authoring import ConstitutionFile, read_constitution_file, write_constitution_file
+from kyno.authoring import (
+    ConstitutionFile,
+    check_constitution_file,
+    read_constitution_file,
+    write_constitution_file,
+)
 from kyno.config import Settings, store_from_settings
 from kyno.errors import CoherenceError
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
@@ -216,6 +221,23 @@ def current(constitution: str = _CONSTITUTION_OPTION) -> None:
     except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
+
+
+@app.command()
+def check(
+    file: str = typer.Argument(..., help="The constitution file to inspect."),
+) -> None:
+    """Report which kyno fields a file sets, which it leaves out, and which
+    keys are yours. Nothing here blocks an apply: a field the file leaves
+    out keeps the previous version's value, and a custom key is ignored."""
+    try:
+        report = check_constitution_file(file)
+    except CoherenceError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+    typer.echo(f"kyno fields set: {', '.join(report.present) or 'none'}")
+    typer.echo(f"kyno fields not set: {', '.join(report.missing) or 'none'}")
+    typer.echo(f"custom fields: {', '.join(report.custom) or 'none'}")
 
 
 @app.command()

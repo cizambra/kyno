@@ -369,3 +369,34 @@ def test_by_defaults_to_the_system_user(tmp_path, monkeypatch):
     r = runner.invoke(app, ["set", "--mission", "M1", "--note", "init"])
     assert r.exit_code == 0
     assert json.loads(r.stdout)["created_by"] == getpass.getuser()
+
+
+def test_check_is_a_report_not_a_gate(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    target = tmp_path / "constitution.yaml"
+    target.write_text("mission: M\nprincipals:\n  - p1\nnote: n\n", encoding="utf-8")
+    r = runner.invoke(app, ["check", str(target)])
+    assert r.exit_code == 0
+    assert "kyno fields set: mission" in r.output
+    assert "principles" in r.output
+    assert "note, principals" in r.output
+
+
+def test_check_on_a_file_that_does_not_parse_errors(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    target = tmp_path / "constitution.yaml"
+    target.write_text("mission: [unclosed\n", encoding="utf-8")
+    r = runner.invoke(app, ["check", str(target)])
+    assert r.exit_code == 1
+    assert "error:" in r.output
+
+
+def test_applying_a_file_with_custom_fields_ignores_them(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    target = tmp_path / "constitution.yaml"
+    target.write_text("mission: M1\nnote: the file note\nteam: lending\n", encoding="utf-8")
+    r = runner.invoke(app, ["set", "--file", str(target), "--note", "the real note"])
+    assert r.exit_code == 0
+    payload = json.loads(r.stdout)
+    assert payload["change_note"] == "the real note"

@@ -95,7 +95,7 @@ def test_an_omitted_field_reads_as_carry_it_forward(tmp_path):
     assert read.constitution is None
 
 
-def test_keys_kyno_does_not_read_are_the_operators_own(tmp_path):
+def test_given_unknown_keys_when_reading_a_file_then_they_are_the_operators_own(tmp_path):
     # One file can serve other tools too; note and by look like kyno
     # metadata but are not kyno fields, so they read as custom keys.
     read = read_constitution_file(write(tmp_path, "mission: M\nnote: n\nby: camilo\nteam: lending\n"))
@@ -120,14 +120,14 @@ def test_json_is_read_too_since_it_is_valid_yaml(tmp_path):
     assert read.mission == "M" and read.principles == (Principle("p1"),)
 
 
-def test_a_misspelled_kyno_field_reads_as_a_custom_key(tmp_path):
+def test_given_a_misspelled_field_when_reading_a_file_then_it_counts_as_custom(tmp_path):
     # "principals" is not refused; `kyno check` is where a typo shows up,
     # reported as a custom field beside the kyno fields the file misses.
     read = read_constitution_file(write(tmp_path, "mission: M\nprincipals:\n  - p1\n"))
     assert read.principles is None
 
 
-def test_check_sorts_kyno_fields_from_custom_ones(tmp_path):
+def test_given_a_mixed_file_when_checking_then_fields_sort_into_kyno_and_custom(tmp_path):
     from kyno.authoring import check_constitution_file
 
     report = check_constitution_file(
@@ -183,7 +183,7 @@ def test_setting_a_constitution_from_a_file(db, tmp_path):
     assert head.created_by == "camilo"
 
 
-def test_the_edit_flags_route_and_describe_a_file_edit(db, tmp_path):
+def test_given_edit_flags_when_applying_a_file_then_they_route_and_describe_the_edit(db, tmp_path):
     path = write(tmp_path, FULL_FILE)
     result = runner.invoke(
         app,
@@ -197,7 +197,7 @@ def test_the_edit_flags_route_and_describe_a_file_edit(db, tmp_path):
 
 
 @pytest.mark.parametrize("flag", ["--mission", "--declaration", "--principle"])
-def test_content_flags_do_not_exist(db, tmp_path, flag):
+def test_given_a_content_flag_when_running_set_then_it_is_not_an_option(db, tmp_path, flag):
     # The file is the only source of content, so these aren't options at all.
     result = runner.invoke(app, ["set", write(tmp_path, FULL_FILE), flag, "X"])
     assert result.exit_code != 0
@@ -239,7 +239,7 @@ def test_a_file_can_clear_the_declaration(db, tmp_path):
     assert plane(db).current("acme").declaration == ""
 
 
-def test_set_without_a_file_is_refused(db):
+def test_given_no_file_argument_when_running_set_then_it_is_refused(db):
     """The file is the only source of content and it's a required
     argument, so `kyno set` with no file doesn't parse."""
     result = runner.invoke(app, ["set", "--note", "init"])
@@ -247,7 +247,7 @@ def test_set_without_a_file_is_refused(db):
     assert "file" in plain(result).lower()
 
 
-def test_rendered_yaml_round_trips_prose(tmp_path):
+def test_given_prose_content_when_rendered_to_yaml_then_reading_it_back_round_trips(tmp_path):
     from datetime import UTC, datetime
 
     from kyno.authoring import render_constitution_yaml

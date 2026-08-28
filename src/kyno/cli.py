@@ -260,17 +260,47 @@ def current(
 def check(
     file: str = typer.Argument(..., help="The constitution file to inspect."),
 ) -> None:
-    """Report which kyno fields a file sets, which it leaves out, and which
-    keys are yours. Nothing here blocks an apply: a field the file leaves
-    out keeps the previous version's value, and a custom key is ignored."""
+    """Report how Kyno reads a file, then whether the store agrees with it.
+    The field report never blocks anything. The store comparison is the
+    drift detector: exit 1 when the file and the head disagree, so a
+    pipeline can gate on it."""
     try:
         report = check_constitution_file(file)
+        fields = read_constitution_file(file)
     except CoherenceError as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
     typer.echo(f"kyno fields set: {', '.join(report.present) or 'none'}")
     typer.echo(f"kyno fields not set: {', '.join(report.missing) or 'none'}")
     typer.echo(f"custom fields: {', '.join(report.custom) or 'none'}")
+
+    try:
+        target = _constitution_name(fields, file)
+    except AuthoringError as exc:
+        typer.echo(f"store: not compared ({exc})")
+        raise typer.Exit(code=1) from None
+    try:
+        plane = _control_plane()
+        head = plane.current(target)
+        preview = plane.preview_edit(
+            mission=fields.mission,
+            declaration=fields.declaration,
+            principles=fields.principles,
+            constitution=target,
+        )
+    except (CoherenceError, SQLAlchemyError) as exc:
+        typer.echo(f"store: not compared ({exc})")
+        return
+    if head.version == 0:
+        typer.echo(f"store: '{target}' has no versions; applying this file creates version 1")
+        raise typer.Exit(code=1)
+    if not preview:
+        typer.echo(f"store: agrees with '{target}' (version {head.version})")
+        return
+    typer.echo(f"store: differs from '{target}' (version {head.version}):")
+    for line in preview:
+        typer.echo(f"  {line}")
+    raise typer.Exit(code=1)
 
 
 @app.command()

@@ -155,12 +155,9 @@ def _check_publishable(name: str) -> None:
 
 
 class ControlPlane:
-    def __init__(
-        self, store: ConstitutionStore, constitution: str = "default", max_retries: int = 5
-    ) -> None:
+    def __init__(self, store: ConstitutionStore, constitution: str = "default") -> None:
         self._store = store
         self._constitution = constitution
-        self._max_retries = max_retries
         self._subscribers: list[Callable[[ConstitutionVersion], None]] = []
 
     def _name(self, constitution: str | None) -> str:
@@ -288,43 +285,98 @@ class ControlPlane:
             change_note=change_note,
             name=name,
         )
-        for _ in range(self._max_retries):
-            head = self._store.head(name)
-            if head is None:
-                new_mission = mission if mission is not None else ""
-                new_declaration = declaration if declaration is not None else ""
-                new_principles = principles if principles is not None else ()
-                changed_mission = changed_principles = True
-                next_version = 1
-            else:
-                new_mission = mission if mission is not None else head.mission
-                new_declaration = declaration if declaration is not None else head.declaration
-                new_principles = principles if principles is not None else head.principles
-                changed_mission = new_mission != head.mission
-                changed_principles = new_principles != head.principles
-                # The two recorded flags stay literally about the fields they
-                # name, so a declaration-only edit still appends a version --
-                # which is what a polling consumer reads as "changed".
-                if not (
-                    changed_mission or changed_principles or new_declaration != head.declaration
-                ):
-                    raise EmptyChangeError("no field changed")
-                next_version = head.version + 1
-            try:
-                version = self._store.append(
-                    name,
-                    next_version,
-                    mission=new_mission,
-                    declaration=new_declaration,
-                    principles=new_principles,
-                    change_note=change_note,
-                    changed_mission=changed_mission,
-                    changed_principles=changed_principles,
-                    created_by=created_by,
-                )
-            except VersionConflictError:
-                continue  # a concurrent writer moved HEAD; recompute and retry
-            for cb in self._subscribers:
-                cb(version)
-            return version
-        raise VersionConflictError("exceeded retries acquiring next version")
+        head, effective = self._effective(
+            name, mission=mission, declaration=declaration, principles=principles
+        )
+        new_mission, new_declaration, new_principles, changed_mission, changed_principles = (
+            effective
+        )
+        if head is not None and not (
+            changed_mission or changed_principles or new_declaration != head.declaration
+        ):
+            # The two recorded flags stay literally about the fields they
+            # name, so a declaration-only edit still appends a version --
+            # which is what a polling consumer reads as "changed".
+            raise EmptyChangeError("no field changed")
+        next_version = 1 if head is None else head.version + 1
+        try:
+            version = self._store.append(
+                name,
+                next_version,
+                mission=new_mission,
+                declaration=new_declaration,
+                principles=new_principles,
+                change_note=change_note,
+                changed_mission=changed_mission,
+                changed_principles=changed_principles,
+                created_by=created_by,
+            )
+        except VersionConflictError:
+            # A concurrent writer took this version. Nothing lands: whoever
+            # asked decides against the new head, with eyes open.
+            raise VersionConflictError(
+                f"the head of '{name}' moved while applying; read it again and re-apply"
+            ) from None
+        for cb in self._subscribers:
+            cb(version)
+        return version
+
+    def _effective(self, name: str, *, mission, declaration, principles):
+        """The head, and what an edit with these fields would make of it:
+        (mission, declaration, principles, changed_mission, changed_principles).
+        Omitted fields carry forward; on an empty store everything starts."""
+        head = self._store.head(name)
+        if head is None:
+            return head, (
+                mission if mission is not None else "",
+                declaration if declaration is not None else "",
+                principles if principles is not None else (),
+                True,
+                True,
+            )
+        new_mission = mission if mission is not None else head.mission
+        new_declaration = declaration if declaration is not None else head.declaration
+        new_principles = principles if principles is not None else head.principles
+        return head, (
+            new_mission,
+            new_declaration,
+            new_principles,
+            new_mission != head.mission,
+            new_principles != head.principles,
+        )
+
+    def preview_edit(
+        self,
+        *,
+        mission: str | None = None,
+        declaration: str | None = None,
+        principles: tuple[Principle | str, ...] | None = None,
+        constitution: str | None = None,
+    ) -> tuple[str, ...]:
+        """What an apply with these fields would change, as plain sentences.
+        Empty means the apply would be refused as no field changed."""
+        principles = normalize_principles(principles)
+        name = self._name(constitution)
+        head, effective = self._effective(
+            name, mission=mission, declaration=declaration, principles=principles
+        )
+        new_mission, new_declaration, new_principles, changed_mission, changed_principles = (
+            effective
+        )
+        if head is None:
+            return (f"Creates '{name}' at version 1.",)
+        after = ConstitutionVersion(
+            version=head.version + 1,
+            mission=new_mission,
+            declaration=new_declaration,
+            principles=new_principles,
+            change_note="",
+            changed_mission=changed_mission,
+            changed_principles=changed_principles,
+            created_at=head.created_at,
+            created_by=None,
+        )
+        lines = list(_delta(head, after))
+        if new_declaration != head.declaration:
+            lines.append("The declaration changed.")
+        return tuple(lines)

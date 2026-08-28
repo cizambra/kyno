@@ -422,3 +422,56 @@ def test_given_custom_fields_when_applying_then_they_are_ignored(tmp_path, monke
     assert r.exit_code == 0
     payload = json.loads(r.stdout)
     assert payload["change_note"] == "the real note"
+
+
+def test_given_an_edit_when_applied_then_the_delta_is_printed(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    apply_yaml(tmp_path, mission="M1", note="init")
+    r = apply_yaml(tmp_path, mission="M2", note="pivot")
+    assert r.exit_code == 0
+    assert 'The mission was "M1" and is now "M2".' in r.output
+    # stdout stays the version JSON, pipeable; the delta rides stderr.
+    assert json.loads(r.stdout.splitlines()[-1])["version"] == 2
+
+
+def test_given_an_empty_store_when_applying_then_the_first_version_is_announced(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    r = apply_yaml(tmp_path, mission="M1", note="init")
+    assert "Creates 'default' at version 1." in r.output
+
+
+def test_given_dry_run_when_applying_then_the_delta_prints_and_nothing_lands(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    apply_yaml(tmp_path, mission="M1", note="init")
+    target = tmp_path / "next.yaml"
+    target.write_text("mission: M2\n", encoding="utf-8")
+    r = runner.invoke(app, ["set", str(target), "--dry-run"])
+    assert r.exit_code == 0
+    assert 'The mission was "M1" and is now "M2".' in r.output
+    head = json.loads(runner.invoke(app, ["current"]).stdout)
+    assert head["version"] == 1 and head["mission"] == "M1"
+
+
+def test_given_identical_content_when_dry_running_then_it_says_no_field_changed(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    apply_yaml(tmp_path, mission="M1", note="init", name="same.yaml")
+    r = runner.invoke(app, ["set", str(tmp_path / "same.yaml"), "--dry-run"])
+    assert r.exit_code == 0
+    assert "no field changed" in r.output
+
+
+def test_given_dry_run_when_no_note_is_passed_then_it_still_runs(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    target = tmp_path / "next.yaml"
+    target.write_text("mission: M1\n", encoding="utf-8")
+    r = runner.invoke(app, ["set", str(target), "--dry-run"])
+    assert r.exit_code == 0

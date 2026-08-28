@@ -1,24 +1,38 @@
-from kyno.transports import require_token
+from kyno.transports import resolve_scope
 
 
-def test_open_when_no_token_configured():
-    assert require_token({}, None) is True
+def test_open_when_no_tokens_configured():
+    # No auth configured: every request is a write, as before.
+    assert resolve_scope({}, None) == "write"
 
 
-def test_requires_matching_bearer():
-    assert require_token({"authorization": "Bearer secret"}, "secret") is True
-    assert require_token({"authorization": "Bearer wrong"}, "secret") is False
-    assert require_token({}, "secret") is False
+def test_write_token_resolves_to_write_scope():
+    assert resolve_scope({"authorization": "Bearer secret"}, "secret") == "write"
+    assert resolve_scope({"authorization": "Bearer wrong"}, "secret") is None
+    assert resolve_scope({}, "secret") is None
+
+
+def test_read_token_resolves_to_read_scope():
+    assert resolve_scope({"authorization": "Bearer r1"}, "w", ("r1", "r2")) == "read"
+    assert resolve_scope({"authorization": "Bearer r2"}, "w", ("r1", "r2")) == "read"
+    assert resolve_scope({"authorization": "Bearer w"}, "w", ("r1",)) == "write"
+    assert resolve_scope({"authorization": "Bearer nope"}, "w", ("r1",)) is None
+
+
+def test_read_tokens_alone_still_guard_the_door():
+    # Only read tokens configured: nothing resolves to write.
+    assert resolve_scope({"authorization": "Bearer r1"}, None, ("r1",)) == "read"
+    assert resolve_scope({}, None, ("r1",)) is None
 
 
 def test_header_lookup_is_case_insensitive():
-    assert require_token({"Authorization": "Bearer secret"}, "secret") is True
+    assert resolve_scope({"Authorization": "Bearer secret"}, "secret") == "write"
 
 
 def test_non_ascii_bearer_value_is_rejected_not_crashed():
     # hmac.compare_digest raises TypeError comparing a non-ASCII str against
     # an ASCII str; that must fail closed (401), not surface as a 500.
-    assert require_token({"authorization": "Bearer café"}, "tok") is False
+    assert resolve_scope({"authorization": "Bearer café"}, "tok") is None
 
 
 import pytest
@@ -319,3 +333,46 @@ def test_http_app_lifespan_is_wired_when_no_token_configured():
     assert "Task group is not initialized" not in response.text
     assert response.status_code == 200
     assert '"serverInfo"' in response.text
+
+
+@pytest.mark.asyncio
+async def test_read_only_server_lists_no_set_direction_and_refuses_it():
+    from mcp.shared.memory import create_connected_server_and_client_session
+
+    server = build_server(_make_control_plane(), read_only=True)
+    async with create_connected_server_and_client_session(server) as client:
+        listed = await client.list_tools()
+        names = {tool.name for tool in listed.tools}
+        assert "set_direction" not in names
+        assert "get_constitution" in names
+
+        result = await client.call_tool("set_direction", {"change_note": "n", "mission": "M"})
+        assert result.isError
+        assert "read-only" in result.content[0].text
+
+
+def test_http_app_routes_read_token_to_the_read_only_server():
+    from starlette.testclient import TestClient
+
+    from kyno.transports import build_http_app
+
+    app = build_http_app(_make_control_plane(), token="w", read_tokens=("r",))
+    with TestClient(app) as client:
+        ok = client.post(
+            "/mcp",
+            json=_initialize_payload(),
+            headers={**_MCP_HEADERS, "Authorization": "Bearer r"},
+        )
+        assert ok.status_code == 200
+        bad = client.post("/mcp", json=_initialize_payload(), headers=_MCP_HEADERS)
+        assert bad.status_code == 401
+
+
+def test_http_app_refuses_a_read_token_equal_to_the_write_token():
+    import pytest
+
+    from kyno.errors import ConfigError
+    from kyno.transports import build_http_app
+
+    with pytest.raises(ConfigError, match="one scope"):
+        build_http_app(_make_control_plane(), token="same", read_tokens=("same",))

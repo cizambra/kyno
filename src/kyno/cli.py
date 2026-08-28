@@ -291,7 +291,13 @@ def serve(transport: str = typer.Option("stdio", "--transport")) -> None:
         from kyno.transports import build_http_app
 
         uvicorn.run(
-            build_http_app(cp, settings.token, settings.page, allow_insecure=allow_insecure),
+            build_http_app(
+                cp,
+                settings.token,
+                settings.page,
+                read_tokens=settings.read_tokens,
+                allow_insecure=allow_insecure,
+            ),
             host=settings.host,
             port=settings.port,
         )

@@ -137,3 +137,23 @@ def test_a_theme_value_that_could_break_out_of_the_stylesheet_is_refused(monkeyp
     monkeypatch.setenv("KYNO_PAGE_ACCENT", value)
     with pytest.raises(ConfigError, match="KYNO_PAGE_ACCENT"):
         Settings.from_env()
+
+
+def test_read_tokens_parse_from_a_comma_separated_env(monkeypatch):
+    monkeypatch.setenv("KYNO_READ_TOKENS", "r1, r2,r3")
+    assert Settings.from_env().read_tokens == ("r1", "r2", "r3")
+
+
+def test_read_tokens_default_to_none_configured(monkeypatch):
+    monkeypatch.delenv("KYNO_READ_TOKENS", raising=False)
+    assert Settings.from_env().read_tokens == ()
+
+
+def test_a_blank_read_token_entry_is_refused(monkeypatch):
+    import pytest
+
+    from kyno.errors import ConfigError
+
+    monkeypatch.setenv("KYNO_READ_TOKENS", "r1,,r3")
+    with pytest.raises(ConfigError, match="blank"):
+        Settings.from_env()

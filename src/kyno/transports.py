@@ -26,23 +26,33 @@ PUBLIC_HEADERS = {
 }
 
 
-def require_token(headers: dict, token: str | None) -> bool:
-    if token is None:
-        return True
+def resolve_scope(
+    headers: dict, token: str | None, read_tokens: tuple[str, ...] = ()
+) -> str | None:
+    """What the bearer header entitles this request to: "write", "read", or
+    None for unauthorized. A server with no tokens configured is open, so
+    every request is a write."""
+    if token is None and not read_tokens:
+        return "write"
     value = None
     for k, v in headers.items():
         if k.lower() == "authorization":
             value = v
             break
     if value is None:
-        return False
+        return None
     try:
-        return hmac.compare_digest(value, f"Bearer {token}")
+        if token is not None and hmac.compare_digest(value, f"Bearer {token}"):
+            return "write"
+        for read_token in read_tokens:
+            if hmac.compare_digest(value, f"Bearer {read_token}"):
+                return "read"
+        return None
     except TypeError:
         # Python's constant-time comparison only accepts plain-ASCII strings.
         # A header it can't even compare cannot be our token — so answer
         # "wrong token" (401), never "server error" (500).
-        return False
+        return None
 
 
 async def run_stdio(control_plane: ControlPlane) -> None:
@@ -58,17 +68,25 @@ def build_http_app(
     token: str | None,
     page: PageConfig | None = None,
     *,
+    read_tokens: tuple[str, ...] = (),
     allow_insecure: bool = False,
 ):
-    """The Starlette app: the public constitution pages, and /mcp behind the
-    bearer token. No token means anyone who can reach the port can rewrite
-    the constitution, so an embedder opts into that in code, as loudly as
-    the CLI's KYNO_ALLOW_INSECURE_HTTP."""
+    """The Starlette app: the public constitution pages, and /mcp behind
+    bearer tokens. The write token can do everything; a read token reaches
+    every read tool and no set_direction. No tokens means anyone who can
+    reach the port can rewrite the constitution, so an embedder opts into
+    that in code, as loudly as the CLI's KYNO_ALLOW_INSECURE_HTTP."""
     if token is None and not allow_insecure:
         raise ConfigError(
             "refusing to build an HTTP app without a token: "
             "pass one, or pass allow_insecure=True to open the write endpoint"
         )
+    for read_token in read_tokens:
+        if token is not None and read_token == token:
+            raise ConfigError(
+                "a read token equals the write token: a token has one scope, "
+                "so give the read side its own value"
+            )
     from contextlib import asynccontextmanager
 
     from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
@@ -80,22 +98,30 @@ def build_http_app(
 
     page = page or PageConfig()
 
-    server = build_server(control_plane)
-    try:
-        # The MCP layer grew its own body cap (4 MiB by default) that would
-        # answer 413 below ours; one constant governs both layers.
-        manager = StreamableHTTPSessionManager(app=server, max_request_body_size=MAX_MCP_BODY_BYTES)
-    except TypeError:  # an mcp release before the cap existed
-        manager = StreamableHTTPSessionManager(app=server)
+    def make_manager(read_only: bool):
+        server = build_server(control_plane, read_only=read_only)
+        try:
+            # The MCP layer grew its own body cap (4 MiB by default) that
+            # would answer 413 below ours; one constant governs both layers.
+            return StreamableHTTPSessionManager(
+                app=server, max_request_body_size=MAX_MCP_BODY_BYTES
+            )
+        except TypeError:  # an mcp release before the cap existed
+            return StreamableHTTPSessionManager(app=server)
+
+    write_manager = make_manager(read_only=False)
+    read_manager = make_manager(read_only=True) if read_tokens else None
 
     async def handle(scope, receive, send):
         headers = {
             k.decode(errors="replace"): v.decode(errors="replace")
             for k, v in scope.get("headers", [])
         }
-        if not require_token(headers, token):
+        request_scope = resolve_scope(headers, token, read_tokens)
+        if request_scope is None:
             await Response("unauthorized", status_code=401)(scope, receive, send)
             return
+        manager = read_manager if request_scope == "read" else write_manager
         declared = headers.get("content-length", "")
         if declared.isdigit() and int(declared) > MAX_MCP_BODY_BYTES:
             await Response("request body too large", status_code=413)(scope, receive, send)
@@ -161,8 +187,12 @@ def build_http_app(
 
     @asynccontextmanager
     async def lifespan(app):
-        async with manager.run():
-            yield
+        async with write_manager.run():
+            if read_manager is None:
+                yield
+            else:
+                async with read_manager.run():
+                    yield
 
     # Order matters: "{name}" would otherwise swallow "default.json" whole.
     # The index sits at /constitutions.json, not /constitutions/index.json,

@@ -266,13 +266,17 @@ _TOOLS = [
 ]
 
 
-def build_server(control_plane: ControlPlane) -> Server:
+def build_server(control_plane: ControlPlane, *, read_only: bool = False) -> Server:
+    """The MCP server. A read-only build serves every read tool and no
+    set_direction: it's what a read-scoped token talks to."""
     server: Server = Server("kyno")
     subscribers: set = set()  # sessions subscribed to RESOURCE_URI
     pending: set = set()  # in-flight notification tasks, kept alive until done
 
     @server.list_tools()
     async def list_tools() -> list[types.Tool]:
+        if read_only:
+            return [tool for tool in _TOOLS if tool.name != "set_direction"]
         return _TOOLS
 
     @server.call_tool()
@@ -307,6 +311,8 @@ def build_server(control_plane: ControlPlane) -> Server:
                 control_plane, arguments["title"], arguments.get("constitution")
             )
         elif name == "set_direction":
+            if read_only:
+                raise ValueError("set_direction needs a write token; this token is read-only")
             _require(arguments, "change_note")
             result = handle_set_direction(
                 control_plane,

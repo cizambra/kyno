@@ -44,6 +44,18 @@ def _page_from_env() -> PageConfig:
 _TABLE_PREFIX = re.compile(r"[A-Za-z0-9_]+")
 
 
+def _read_tokens_from_env() -> tuple[str, ...]:
+    raw = os.environ.get("KYNO_READ_TOKENS")
+    if raw is None:
+        return ()
+    tokens = tuple(part.strip() for part in raw.split(","))
+    if not all(tokens) or not tokens:
+        # A blank entry reads as "auth is on" to whoever set it; the only
+        # honest answers are working tokens or a loud refusal.
+        raise ConfigError("KYNO_READ_TOKENS has a blank entry: give each a value, or unset it")
+    return tokens
+
+
 def _token_from_env() -> str | None:
     token = os.environ.get("KYNO_TOKEN")
     if token is None:
@@ -73,6 +85,7 @@ class Settings:
     host: str
     port: int
     page: PageConfig
+    read_tokens: tuple[str, ...] = field(repr=False, default=())
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -85,6 +98,7 @@ class Settings:
             page=_page_from_env(),
             database_url=os.environ.get("KYNO_DATABASE_URL", "sqlite:///kyno.sqlite3"),
             token=_token_from_env(),
+            read_tokens=_read_tokens_from_env(),
             table_prefix=_table_prefix_from_env(),
             host=os.environ.get("KYNO_HOST", "127.0.0.1"),
             port=port,

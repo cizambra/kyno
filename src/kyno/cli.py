@@ -297,6 +297,24 @@ def unpublish(constitution: str = _CONSTITUTION_OPTION) -> None:
 
 
 @app.command()
+def log(constitution: str = _CONSTITUTION_OPTION) -> None:
+    """The history, one line per version, newest first: version, date,
+    author, and the change note. `kyno export` has the full content."""
+    try:
+        rows = _store().export_versions(constitution)
+    except (CoherenceError, SQLAlchemyError) as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+    if not rows:
+        typer.echo("no constitution set (version 0)")
+        return
+    for row in reversed(rows):
+        day = str(row.get("created_at", ""))[:10]
+        by = row.get("created_by") or "-"
+        typer.echo(f"v{row['version']}  {day}  {by}  {row['change_note']}")
+
+
+@app.command()
 def export(
     from_version: int | None = typer.Option(
         None, "--from", help="First version to include (inclusive)."

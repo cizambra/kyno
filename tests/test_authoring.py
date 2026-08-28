@@ -196,19 +196,12 @@ def test_the_edit_flags_route_and_describe_a_file_edit(db, tmp_path):
     assert plane(db).current("acme").version == 0
 
 
-@pytest.mark.parametrize(
-    "flags",
-    [
-        ["--mission", "M"],
-        ["--declaration", "D"],
-        ["--principle", "p1"],
-    ],
-)
-def test_a_file_and_a_field_flag_together_are_refused(db, tmp_path, flags):
-    # Two sources for one field is a question nobody should have to answer.
-    result = runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE), *flags])
+@pytest.mark.parametrize("flag", ["--mission", "--declaration", "--principle"])
+def test_content_flags_do_not_exist(db, tmp_path, flag):
+    # The file is the only source of content, so these aren't options at all.
+    result = runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE), flag, "X"])
     assert result.exit_code != 0
-    assert "--file" in plain(result)
+    assert "no such option" in plain(result).lower()
 
 
 def test_a_file_with_no_note_and_no_flag_is_refused(db, tmp_path):
@@ -219,7 +212,7 @@ def test_a_file_with_no_note_and_no_flag_is_refused(db, tmp_path):
 
 
 def test_a_missing_file_reports_a_clean_error(db, tmp_path):
-    result = runner.invoke(app, ["set", "--file", str(tmp_path / "nowhere.yaml")])
+    result = runner.invoke(app, ["set", "--file", str(tmp_path / "nowhere.yaml"), "--note", "n"])
     assert result.exit_code == 1
     assert "error:" in plain(result).lower()
     assert "Traceback" not in result.output
@@ -246,28 +239,16 @@ def test_a_file_can_clear_the_declaration(db, tmp_path):
     assert plane(db).current("acme").declaration == ""
 
 
-def test_the_flags_still_work_on_their_own(db):
-    result = runner.invoke(
-        app,
-        ["set", "--mission", "M1", "--declaration", "D1", "--principle", "p1", "--note", "init"],
-    )
-    assert result.exit_code == 0, result.output
-    head = plane(db).current()
-    assert head.mission == "M1" and head.declaration == "D1"
-    assert [p.title for p in head.principles] == ["p1"]
-
-
-def test_an_empty_field_flag_still_conflicts_with_a_file(db, tmp_path):
-    # `--mission ""` is a real instruction (clear it), not an absent flag.
-    result = runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE), "--mission", ""])
+def test_set_requires_a_file(db):
+    result = runner.invoke(app, ["set", "--note", "init"])
     assert result.exit_code != 0
-    assert "--mission" in plain(result)
+    assert "--file" in plain(result)
 
 
-def test_write_constitution_file_round_trips_prose(tmp_path):
+def test_rendered_yaml_round_trips_prose(tmp_path):
     from datetime import UTC, datetime
 
-    from kyno.authoring import write_constitution_file
+    from kyno.authoring import render_constitution_yaml
     from kyno.models import ConstitutionVersion
 
     version = ConstitutionVersion(
@@ -285,8 +266,8 @@ def test_write_constitution_file_round_trips_prose(tmp_path):
         created_by=None,
     )
     path = tmp_path / "c.yaml"
-    write_constitution_file(str(path), version, "default")
-    text = path.read_text(encoding="utf-8")
+    text = render_constitution_yaml(version, "default")
+    path.write_text(text, encoding="utf-8")
     assert "declaration: |" in text
     # A pulled file is content only; the edit metadata stays in the store.
     assert "note:" not in text and "by:" not in text
@@ -296,27 +277,3 @@ def test_write_constitution_file_round_trips_prose(tmp_path):
     assert got.mission == version.mission
     assert got.declaration == version.declaration
     assert got.principles == version.principles
-
-
-def test_write_constitution_file_keeps_the_operators_custom_keys(tmp_path):
-    from datetime import UTC, datetime
-
-    from kyno.authoring import write_constitution_file
-    from kyno.models import ConstitutionVersion
-
-    path = tmp_path / "c.yaml"
-    path.write_text("mission: stale\nteam: lending\nowner: camilo\n", encoding="utf-8")
-    version = ConstitutionVersion(
-        version=2,
-        mission="Fresh mission",
-        principles=(),
-        change_note="n",
-        changed_mission=True,
-        changed_principles=False,
-        created_at=datetime.now(UTC),
-        created_by=None,
-    )
-    write_constitution_file(str(path), version, "default")
-    text = path.read_text(encoding="utf-8")
-    assert "mission: Fresh mission" in text and "stale" not in text
-    assert "team: lending" in text and "owner: camilo" in text

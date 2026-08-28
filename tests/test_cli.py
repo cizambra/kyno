@@ -8,10 +8,29 @@ from kyno.cli import app
 runner = CliRunner()
 
 
+def apply_yaml(tmp_path, *, mission, principles=(), constitution=None, note=None, by=None, name="applied.yaml"):
+    """Write a constitution file and apply it: the only way content lands."""
+    lines = []
+    if constitution is not None:
+        lines.append(f"constitution: {constitution}")
+    lines.append(f"mission: {mission}")
+    if principles:
+        lines.append("principles:")
+        lines.extend(f"  - {p}" for p in principles)
+    path = tmp_path / name
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    args = ["set", "--file", str(path)]
+    if note is not None:
+        args += ["--note", note]
+    if by is not None:
+        args += ["--by", by]
+    return runner.invoke(app, args)
+
+
 def test_init_set_current_roundtrip(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     assert runner.invoke(app, ["init-db"]).exit_code == 0
-    r = runner.invoke(app, ["set", "--mission", "M1", "--principle", "p1", "--note", "init"])
+    r = apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init")
     assert r.exit_code == 0
     out = runner.invoke(app, ["current"])
     assert out.exit_code == 0
@@ -23,7 +42,7 @@ def test_init_set_current_roundtrip(tmp_path, monkeypatch):
 def test_set_requires_note(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    r = runner.invoke(app, ["set", "--mission", "M1"])
+    r = apply_yaml(tmp_path, mission="M1")
     assert r.exit_code != 0
 
 
@@ -39,7 +58,7 @@ def test_current_against_uninitialized_db_reports_clean_error(tmp_path, monkeypa
 
 def test_set_against_uninitialized_db_reports_clean_error(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'never_init.sqlite3'}")
-    r = runner.invoke(app, ["set", "--mission", "M1", "--note", "init"])
+    r = apply_yaml(tmp_path, mission="M1", note="init")
     assert r.exit_code == 1
     assert "error:" in r.output.lower()
     assert "Traceback" not in r.output
@@ -57,8 +76,8 @@ def test_current_on_initialized_but_empty_store_reports_no_constitution_set(tmp_
 def test_set_noop_reports_clean_error(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    runner.invoke(app, ["set", "--mission", "M1", "--principle", "p1", "--note", "init"])
-    r = runner.invoke(app, ["set", "--mission", "M1", "--principle", "p1", "--note", "again"])
+    apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init")
+    r = apply_yaml(tmp_path, mission="M1", principles=["p1"], note="again")
     assert r.exit_code == 1
     assert "error:" in r.output.lower()
     assert "Traceback" not in r.output
@@ -67,9 +86,7 @@ def test_set_noop_reports_clean_error(tmp_path, monkeypatch):
 def test_set_by_records_created_by(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    r = runner.invoke(
-        app, ["set", "--mission", "M1", "--principle", "p1", "--note", "init", "--by", "alice"]
-    )
+    r = apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init", by="alice")
     assert r.exit_code == 0
     out = runner.invoke(app, ["current"])
     assert out.exit_code == 0
@@ -137,9 +154,9 @@ def test_serve_http_insecure_optin_refuses_non_matching_values(monkeypatch, tmp_
 def test_export_round_trips_written_versions(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    runner.invoke(app, ["set", "--mission", "M1", "--note", "v1"])
-    runner.invoke(app, ["set", "--mission", "M2", "--note", "v2"])
-    runner.invoke(app, ["set", "--mission", "M3", "--note", "v3"])
+    apply_yaml(tmp_path, mission="M1", note="v1")
+    apply_yaml(tmp_path, mission="M2", note="v2")
+    apply_yaml(tmp_path, mission="M3", note="v3")
 
     full = runner.invoke(app, ["export"])
     assert full.exit_code == 0
@@ -180,10 +197,7 @@ def test_serve_bogus_transport_is_argparse_style_exit_2(monkeypatch, tmp_path):
 def test_constitution_flag_round_trips_a_named_constitution(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    r = runner.invoke(
-        app,
-        ["set", "--constitution", "eu", "--mission", "EU1", "--principle", "p1", "--note", "init"],
-    )
+    r = apply_yaml(tmp_path, mission="EU1", principles=["p1"], constitution="eu", note="init")
     assert r.exit_code == 0
     out = runner.invoke(app, ["current", "--constitution", "eu"])
     assert json.loads(out.stdout)["mission"] == "EU1"
@@ -193,9 +207,9 @@ def test_constitution_flag_round_trips_a_named_constitution(tmp_path, monkeypatc
 def test_named_and_default_constitutions_keep_independent_versions(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    runner.invoke(app, ["set", "--mission", "M1", "--note", "init"])
-    runner.invoke(app, ["set", "--constitution", "eu", "--mission", "EU1", "--note", "init"])
-    runner.invoke(app, ["set", "--constitution", "eu", "--mission", "EU2", "--note", "pivot"])
+    apply_yaml(tmp_path, mission="M1", note="init")
+    apply_yaml(tmp_path, mission="EU1", constitution="eu", note="init")
+    apply_yaml(tmp_path, mission="EU2", constitution="eu", note="pivot")
 
     assert json.loads(runner.invoke(app, ["current"]).stdout)["version"] == 1
     eu = json.loads(runner.invoke(app, ["current", "--constitution", "eu"]).stdout)
@@ -209,7 +223,7 @@ def test_named_and_default_constitutions_keep_independent_versions(tmp_path, mon
 def test_reads_of_an_unknown_constitution_report_the_empty_state(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    runner.invoke(app, ["set", "--mission", "M1", "--note", "init"])
+    apply_yaml(tmp_path, mission="M1", note="init")
     r = runner.invoke(app, ["current", "--constitution", "never-written"])
     assert r.exit_code == 0 and "version 0" in r.output
     e = runner.invoke(app, ["export", "--constitution", "never-written"])
@@ -219,7 +233,7 @@ def test_reads_of_an_unknown_constitution_report_the_empty_state(tmp_path, monke
 def test_publish_and_unpublish_report_what_changed(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    runner.invoke(app, ["set", "--mission", "M1", "--note", "init"])
+    apply_yaml(tmp_path, mission="M1", note="init")
 
     pub = runner.invoke(app, ["publish"])
     assert pub.exit_code == 0
@@ -236,7 +250,7 @@ def test_publish_and_unpublish_report_what_changed(tmp_path, monkeypatch):
 def test_publish_says_whether_history_is_public(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    runner.invoke(app, ["set", "--mission", "M1", "--note", "init"])
+    apply_yaml(tmp_path, mission="M1", note="init")
 
     quiet = runner.invoke(app, ["publish"])
     assert "history" in quiet.output.lower()
@@ -251,8 +265,8 @@ def test_publish_says_whether_history_is_public(tmp_path, monkeypatch):
 def test_publish_defaults_to_the_default_constitution_and_honors_the_flag(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    runner.invoke(app, ["set", "--mission", "M1", "--note", "init"])
-    runner.invoke(app, ["set", "--constitution", "eu", "--mission", "EU1", "--note", "init"])
+    apply_yaml(tmp_path, mission="M1", note="init")
+    apply_yaml(tmp_path, mission="EU1", constitution="eu", note="init")
 
     r = runner.invoke(app, ["publish", "--constitution", "eu"])
     assert r.exit_code == 0
@@ -272,7 +286,7 @@ def test_unpublishing_an_unknown_constitution_is_a_clean_error(tmp_path, monkeyp
     # A typo here must not print success while the real page stays public.
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    runner.invoke(app, ["set", "--mission", "M1", "--note", "init"])
+    apply_yaml(tmp_path, mission="M1", note="init")
     r = runner.invoke(app, ["unpublish", "--constitution", "defualt"])
     assert r.exit_code == 1
     assert "error:" in r.output.lower()
@@ -290,73 +304,64 @@ def test_publish_against_uninitialized_db_reports_clean_error(tmp_path, monkeypa
 def test_publishing_an_unroutable_name_is_a_clean_error(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    runner.invoke(app, ["set", "--constitution", "acme/eu", "--mission", "M1", "--note", "init"])
+    apply_yaml(tmp_path, mission="M1", constitution="acme/eu", note="init")
     r = runner.invoke(app, ["publish", "--constitution", "acme/eu"])
     assert r.exit_code == 1
     assert "error:" in r.output.lower()
     assert "Traceback" not in r.output
 
 
-def test_pull_writes_the_current_snapshot(tmp_path, monkeypatch):
+def test_current_yaml_prints_the_head_as_a_file(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    runner.invoke(
-        app,
-        ["set", "--mission", "M1", "--principle", "p1", "--note", "init", "--by", "camilo"],
-    )
-    target = tmp_path / "constitution.yaml"
-    r = runner.invoke(app, ["pull", str(target)])
+    apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init", by="camilo")
+    r = runner.invoke(app, ["current", "--yaml"])
     assert r.exit_code == 0
-    assert "pulled default v1" in r.output
-    text = target.read_text(encoding="utf-8")
-    assert "constitution: default" in text
-    assert "mission: M1" in text
-    # Content only: the note and author live in the store, not the file.
-    assert "note:" not in text and "by:" not in text
+    assert "constitution: default" in r.stdout
+    assert "mission: M1" in r.stdout
+    # Content only: the note and author live in the store, not the output.
+    assert "note:" not in r.stdout and "by:" not in r.stdout
 
 
-def test_applying_a_pulled_file_changes_nothing(tmp_path, monkeypatch):
+def test_applying_the_yaml_read_out_changes_nothing(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    runner.invoke(app, ["set", "--mission", "M1", "--principle", "p1", "--note", "init"])
-    target = tmp_path / "constitution.yaml"
-    runner.invoke(app, ["pull", str(target)])
+    apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init")
+    out = runner.invoke(app, ["current", "--yaml"]).stdout
+    target = tmp_path / "recovered.yaml"
+    target.write_text(out, encoding="utf-8")
     r = runner.invoke(app, ["set", "--file", str(target), "--note", "reapply"])
     assert r.exit_code == 1
     assert "no field changed" in r.output
 
 
-def test_pull_refreshes_a_stale_file(tmp_path, monkeypatch):
+def test_current_yaml_tracks_the_latest_head(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    target = tmp_path / "constitution.yaml"
-    target.write_text("mission: the old mission\n", encoding="utf-8")
-    runner.invoke(app, ["set", "--file", str(target), "--note", "first draft"])
-    runner.invoke(app, ["set", "--mission", "the hotfix mission", "--note", "hotfix"])
-    r = runner.invoke(app, ["pull", str(target)])
-    assert r.exit_code == 0
-    text = target.read_text(encoding="utf-8")
-    assert "the hotfix mission" in text
-    assert "the old mission" not in text
+    apply_yaml(tmp_path, mission="the old mission", note="first")
+    apply_yaml(tmp_path, mission="the hotfix mission", note="hotfix")
+    out = runner.invoke(app, ["current", "--yaml"]).stdout
+    assert "the hotfix mission" in out
+    assert "the old mission" not in out
 
 
-def test_pull_on_an_empty_store_errors(tmp_path, monkeypatch):
+def test_current_yaml_on_an_empty_store_errors(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    r = runner.invoke(app, ["pull", str(tmp_path / "constitution.yaml")])
+    r = runner.invoke(app, ["current", "--yaml"])
     assert r.exit_code == 1
-    assert "nothing to pull" in r.output
-    assert not (tmp_path / "constitution.yaml").exists()
+    assert "nothing to read" in r.output
 
 
-def test_pulled_file_names_its_constitution(tmp_path, monkeypatch):
+def test_yaml_read_out_names_its_constitution(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    runner.invoke(app, ["set", "--mission", "EU rules", "--note", "init", "--constitution", "eu"])
+    apply_yaml(tmp_path, mission="EU rules", constitution="eu", note="init")
+    out = runner.invoke(app, ["current", "--yaml", "--constitution", "eu"]).stdout
+    assert "constitution: eu" in out
+    # The name in the output is enough to route a later apply back to eu.
     target = tmp_path / "eu.yaml"
-    runner.invoke(app, ["pull", str(target), "--constitution", "eu"])
-    assert "constitution: eu" in target.read_text(encoding="utf-8")
-    # The name in the file is enough to route a later apply back to eu.
+    target.write_text(out, encoding="utf-8")
     r = runner.invoke(app, ["set", "--file", str(target), "--note", "reapply"])
     assert "no field changed" in r.output
 
@@ -366,7 +371,7 @@ def test_by_defaults_to_the_system_user(tmp_path, monkeypatch):
 
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    r = runner.invoke(app, ["set", "--mission", "M1", "--note", "init"])
+    r = apply_yaml(tmp_path, mission="M1", note="init")
     assert r.exit_code == 0
     assert json.loads(r.stdout)["created_by"] == getpass.getuser()
 

@@ -56,8 +56,8 @@ This is _bottom-up agency_.
 ```bash
 pip install kyno          # CLI: kyno
 kyno init-db
-kyno set --mission "Ship a lending product people trust" \
-         --note "initial constitution"
+echo 'mission: Ship a lending product people trust' > constitution.yaml
+kyno set --file constitution.yaml --note "initial constitution"
 kyno current
 kyno serve --transport stdio    # or --transport http
 ```

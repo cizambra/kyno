@@ -66,10 +66,9 @@ def check_constitution_file(path: str) -> FileReport:
     )
 
 
-def write_constitution_file(path: str, version: ConstitutionVersion, constitution: str) -> None:
-    """Write what the store currently serves, as a file `kyno set --file`
-    reads back; applying it unchanged is a no-op edit. The kyno fields are
-    replaced, and the operator's custom keys are kept as they were."""
+def render_constitution_yaml(version: ConstitutionVersion, constitution: str) -> str:
+    """The current version in the file format `kyno set --file` reads back.
+    Applying it unchanged is a no-op edit."""
     document: dict = {"constitution": constitution}
     if version.mission:
         document["mission"] = version.mission
@@ -80,21 +79,7 @@ def write_constitution_file(path: str, version: ConstitutionVersion, constitutio
             p.title if not p.description else {"title": p.title, "description": p.description}
             for p in version.principles
         ]
-    for key, value in _custom_fields(path).items():
-        document[key] = value
-    try:
-        Path(path).write_text(_dump(document), encoding="utf-8")
-    except OSError as exc:
-        raise AuthoringError(f"{path} could not be written: {exc}") from None
-
-
-def _custom_fields(path: str) -> Mapping:
-    if not Path(path).exists():
-        return {}
-    existing = _load(path)
-    if not isinstance(existing, Mapping):
-        raise AuthoringError(f"{path} is not a constitution file; refusing to replace it")
-    return {key: value for key, value in existing.items() if key not in FIELDS}
+    return _dump(document)
 
 
 def _dump(document: dict) -> str:

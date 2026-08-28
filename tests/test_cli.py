@@ -528,3 +528,23 @@ def test_given_a_file_without_a_constitution_key_when_applying_then_it_is_refuse
     assert r.exit_code == 1
     assert "constitution: <name>" in r.output
     assert "no constitution set" in runner.invoke(app, ["current"]).output
+
+
+def test_given_versions_when_reading_log_then_they_list_newest_first(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    apply_yaml(tmp_path, mission="M1", note="first", by="camilo")
+    apply_yaml(tmp_path, mission="M2", note="second", by="ci")
+    r = runner.invoke(app, ["log"])
+    assert r.exit_code == 0
+    lines = r.stdout.strip().splitlines()
+    assert lines[0].startswith("v2") and "ci" in lines[0] and "second" in lines[0]
+    assert lines[1].startswith("v1") and "camilo" in lines[1] and "first" in lines[1]
+
+
+def test_given_an_empty_store_when_reading_log_then_it_says_so(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    r = runner.invoke(app, ["log"])
+    assert r.exit_code == 0
+    assert "no constitution set" in r.stdout

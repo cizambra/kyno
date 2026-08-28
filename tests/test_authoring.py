@@ -169,7 +169,7 @@ def test_principles_that_are_not_a_list_are_refused(tmp_path):
 def test_setting_a_constitution_from_a_file(db, tmp_path):
     result = runner.invoke(
         app,
-        ["set", "--file", write(tmp_path, FULL_FILE), "--note", "the constitution as written", "--by", "camilo"],
+        ["set", write(tmp_path, FULL_FILE), "--note", "the constitution as written", "--by", "camilo"],
     )
     assert result.exit_code == 0, result.output
 
@@ -187,7 +187,7 @@ def test_the_edit_flags_route_and_describe_a_file_edit(db, tmp_path):
     path = write(tmp_path, FULL_FILE)
     result = runner.invoke(
         app,
-        ["set", "--file", path, "--constitution", "eu", "--note", "the EU edit", "--by", "ops"],
+        ["set", path, "--constitution", "eu", "--note", "the EU edit", "--by", "ops"],
     )
     assert result.exit_code == 0, result.output
 
@@ -199,30 +199,30 @@ def test_the_edit_flags_route_and_describe_a_file_edit(db, tmp_path):
 @pytest.mark.parametrize("flag", ["--mission", "--declaration", "--principle"])
 def test_content_flags_do_not_exist(db, tmp_path, flag):
     # The file is the only source of content, so these aren't options at all.
-    result = runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE), flag, "X"])
+    result = runner.invoke(app, ["set", write(tmp_path, FULL_FILE), flag, "X"])
     assert result.exit_code != 0
     assert "no such option" in plain(result).lower()
 
 
 def test_a_file_with_no_note_and_no_flag_is_refused(db, tmp_path):
     path = write(tmp_path, "mission: M\n")
-    result = runner.invoke(app, ["set", "--file", path])
+    result = runner.invoke(app, ["set", path])
     assert result.exit_code != 0
     assert "note" in plain(result).lower()
 
 
 def test_a_missing_file_reports_a_clean_error(db, tmp_path):
-    result = runner.invoke(app, ["set", "--file", str(tmp_path / "nowhere.yaml"), "--note", "n"])
+    result = runner.invoke(app, ["set", str(tmp_path / "nowhere.yaml"), "--note", "n"])
     assert result.exit_code == 1
     assert "error:" in plain(result).lower()
     assert "Traceback" not in result.output
 
 
 def test_a_second_file_appends_a_version_and_carries_what_it_omits(db, tmp_path):
-    runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE), "--note", "init"])
+    runner.invoke(app, ["set", write(tmp_path, FULL_FILE), "--note", "init"])
     second = write(tmp_path, "constitution: acme\nmission: A sharper mission\n", "2.yaml")
 
-    assert runner.invoke(app, ["set", "--file", second, "--note", "sharpen"]).exit_code == 0
+    assert runner.invoke(app, ["set", second, "--note", "sharpen"]).exit_code == 0
 
     head = plane(db).current("acme")
     assert head.version == 2
@@ -232,17 +232,19 @@ def test_a_second_file_appends_a_version_and_carries_what_it_omits(db, tmp_path)
 
 
 def test_a_file_can_clear_the_declaration(db, tmp_path):
-    runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE), "--note", "init"])
+    runner.invoke(app, ["set", write(tmp_path, FULL_FILE), "--note", "init"])
     clearing = write(tmp_path, 'constitution: acme\ndeclaration: ""\n', "3.yaml")
 
-    assert runner.invoke(app, ["set", "--file", clearing, "--note", "retract"]).exit_code == 0
+    assert runner.invoke(app, ["set", clearing, "--note", "retract"]).exit_code == 0
     assert plane(db).current("acme").declaration == ""
 
 
-def test_set_requires_a_file(db):
+def test_set_without_a_file_is_refused(db):
+    """The file is the only source of content and it's a required
+    argument, so `kyno set` with no file doesn't parse."""
     result = runner.invoke(app, ["set", "--note", "init"])
     assert result.exit_code != 0
-    assert "--file" in plain(result)
+    assert "file" in plain(result).lower()
 
 
 def test_rendered_yaml_round_trips_prose(tmp_path):

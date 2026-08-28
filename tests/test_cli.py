@@ -19,7 +19,7 @@ def apply_yaml(tmp_path, *, mission, principles=(), constitution=None, note=None
         lines.extend(f"  - {p}" for p in principles)
     path = tmp_path / name
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    args = ["set", "--file", str(path)]
+    args = ["set", str(path)]
     if note is not None:
         args += ["--note", note]
     if by is not None:
@@ -27,7 +27,9 @@ def apply_yaml(tmp_path, *, mission, principles=(), constitution=None, note=None
     return runner.invoke(app, args)
 
 
-def test_init_set_current_roundtrip(tmp_path, monkeypatch):
+def test_an_applied_file_is_what_current_serves(tmp_path, monkeypatch):
+    """The whole loop in one breath: init the store, apply a file, and
+    `kyno current` serves exactly that content."""
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     assert runner.invoke(app, ["init-db"]).exit_code == 0
     r = apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init")
@@ -39,7 +41,10 @@ def test_init_set_current_roundtrip(tmp_path, monkeypatch):
     assert payload["principles"] == [{"title": "p1", "description": ""}]
 
 
-def test_set_requires_note(tmp_path, monkeypatch):
+def test_a_change_note_is_required_to_apply(tmp_path, monkeypatch):
+    """Notes are not optional: every applied version answers "what
+    changed?", so an apply without --note is refused. (--dry-run is the
+    one exception, tested with the dry-run behavior.)"""
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
     r = apply_yaml(tmp_path, mission="M1")
@@ -73,7 +78,7 @@ def test_current_on_initialized_but_empty_store_reports_no_constitution_set(tmp_
     assert "error:" not in r.output.lower()
 
 
-def test_set_noop_reports_clean_error(tmp_path, monkeypatch):
+def test_an_edit_that_changes_nothing_is_refused(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init")
@@ -83,7 +88,7 @@ def test_set_noop_reports_clean_error(tmp_path, monkeypatch):
     assert "Traceback" not in r.output
 
 
-def test_set_by_records_created_by(tmp_path, monkeypatch):
+def test_the_by_flag_records_the_author(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
     r = apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init", by="alice")
@@ -330,7 +335,7 @@ def test_applying_the_yaml_read_out_changes_nothing(tmp_path, monkeypatch):
     out = runner.invoke(app, ["current", "--yaml"]).stdout
     target = tmp_path / "recovered.yaml"
     target.write_text(out, encoding="utf-8")
-    r = runner.invoke(app, ["set", "--file", str(target), "--note", "reapply"])
+    r = runner.invoke(app, ["set", str(target), "--note", "reapply"])
     assert r.exit_code == 1
     assert "no field changed" in r.output
 
@@ -362,7 +367,7 @@ def test_yaml_read_out_names_its_constitution(tmp_path, monkeypatch):
     # The name in the output is enough to route a later apply back to eu.
     target = tmp_path / "eu.yaml"
     target.write_text(out, encoding="utf-8")
-    r = runner.invoke(app, ["set", "--file", str(target), "--note", "reapply"])
+    r = runner.invoke(app, ["set", str(target), "--note", "reapply"])
     assert "no field changed" in r.output
 
 
@@ -401,7 +406,7 @@ def test_applying_a_file_with_custom_fields_ignores_them(tmp_path, monkeypatch):
     runner.invoke(app, ["init-db"])
     target = tmp_path / "constitution.yaml"
     target.write_text("mission: M1\nnote: the file note\nteam: lending\n", encoding="utf-8")
-    r = runner.invoke(app, ["set", "--file", str(target), "--note", "the real note"])
+    r = runner.invoke(app, ["set", str(target), "--note", "the real note"])
     assert r.exit_code == 0
     payload = json.loads(r.stdout)
     assert payload["change_note"] == "the real note"

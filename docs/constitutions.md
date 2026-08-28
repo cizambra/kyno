@@ -57,8 +57,8 @@ by: camilo
 ```
 
 ```bash
-kyno set --file constitution.yaml
-kyno set --file constitution.yaml --constitution eu --note "the EU edit"
+kyno set constitution.yaml
+kyno set constitution.yaml --constitution eu --note "the EU edit"
 ```
 
 The declaration can be written using markdown. How the published page

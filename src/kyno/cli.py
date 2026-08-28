@@ -79,10 +79,8 @@ _CONSTITUTION_OPTION = typer.Option(
 
 @app.command("set")
 def set_direction_cmd(
-    file: str = typer.Option(
-        ..., "--file", help="The constitution file. The only source of content."
-    ),
-    note: str | None = typer.Option(None, "--note", help="Plain-language what + why."),
+    file: str = typer.Argument(..., help="The constitution file. The only source of content."),
+    note: str | None = typer.Option(None, "--note", help="What changed in this new version?"),
     by: str | None = typer.Option(
         None, "--by", help="Who made this change. Defaults to your system username."
     ),

@@ -24,7 +24,7 @@ def apply_yaml(tmp_path, *, mission, principles=(), constitution=None, note=None
         lines.extend(f"  - {p}" for p in principles)
     path = tmp_path / name
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    args = ["set", "--file", str(path)]
+    args = ["set", str(path)]
     if note is not None:
         args += ["--note", note]
     if by is not None:

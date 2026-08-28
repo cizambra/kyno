@@ -87,24 +87,47 @@ def set_direction_cmd(
     constitution: str | None = typer.Option(
         None, "--constitution", help="Which named constitution to act on."
     ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Print what would change, apply nothing."
+    ),
 ) -> None:
     """Append a version from a file. The file says what the constitution
-    is; the flags say what this edit is."""
-    if not note:
+    is; the flags say what this edit is. Every apply prints the delta it
+    makes; --dry-run prints it and stops."""
+    if not dry_run and not note:
         raise typer.BadParameter("a change note is required: pass --note")
     try:
         fields = read_constitution_file(file)
     except CoherenceError as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
+    target = constitution or fields.constitution or "default"
+    plane = _control_plane()
     try:
-        v = _control_plane().set_direction(
+        preview = plane.preview_edit(
+            mission=fields.mission,
+            declaration=fields.declaration,
+            principles=fields.principles,
+            constitution=target,
+        )
+    except (CoherenceError, SQLAlchemyError) as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+    if dry_run:
+        for line in preview or ("no field changed",):
+            typer.echo(line)
+        return
+    # The delta goes to stderr so stdout stays the version JSON, pipeable.
+    for line in preview:
+        typer.echo(line, err=True)
+    try:
+        v = plane.set_direction(
             mission=fields.mission,
             declaration=fields.declaration,
             principles=fields.principles,
             change_note=note,
             created_by=by if by is not None else _system_user(),
-            constitution=constitution or fields.constitution or "default",
+            constitution=target,
         )
         typer.echo(json.dumps(v.to_dict()))
     except (CoherenceError, SQLAlchemyError) as exc:

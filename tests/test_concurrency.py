@@ -45,14 +45,18 @@ def test_parallel_appends_serialize_by_unique_index(store):
     assert len(conflicts) == 7
 
 
-def test_service_level_contention_through_control_plane(store):
-    # Unlike the append()-level test above, this exercises ControlPlane's
-    # retry loop itself, not just the unique-index guard -- hence the
-    # generous max_retries (up to 7 of 8 threads may need to retry).
-    cp = ControlPlane(store, max_retries=20)
+def test_given_contending_writers_when_applying_then_conflicts_surface_and_nothing_is_lost(store):
+    # Racing writers don't get silently merged: each either lands or is told
+    # the head moved. The store never skips or reuses a version.
+    cp = ControlPlane(store)
+    landed: list[int] = []
+    refused: list[int] = []
 
     def writer(i):
-        cp.set_direction(mission=f"M{i}", change_note=f"note{i}")
+        try:
+            landed.append(cp.set_direction(mission=f"M{i}", change_note=f"note{i}").version)
+        except VersionConflictError:
+            refused.append(i)
 
     threads = [threading.Thread(target=writer, args=(i,)) for i in range(8)]
     for t in threads:
@@ -60,9 +64,11 @@ def test_service_level_contention_through_control_plane(store):
     for t in threads:
         t.join()
 
+    assert len(landed) + len(refused) == 8
     versions = sorted(v.version for v in store.versions_after("default", 0))
-    assert versions == list(range(1, 9))
-    assert store.head("default").version == 8
+    assert versions == list(range(1, len(landed) + 1))
+    assert sorted(landed) == versions
+    assert store.head("default").version == len(landed)
 
 
 def test_concurrent_first_write_to_same_new_constitution_name_maps_to_conflict(store):

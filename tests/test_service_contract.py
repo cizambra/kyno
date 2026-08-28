@@ -138,7 +138,7 @@ def test_on_change_fires_after_commit(cp):
     assert seen == [1, 2]
 
 
-def test_set_direction_retries_and_recomputes_against_fresh_head():
+def test_given_a_racing_writer_when_applying_then_a_conflict_surfaces_not_a_recompute():
     real = SqlConstitutionStore(url="sqlite://")
     real.create_all()
     ControlPlane(real).set_direction(mission="M1", principles=("p1",), change_note="init")
@@ -178,21 +178,22 @@ def test_set_direction_retries_and_recomputes_against_fresh_head():
             return self.inner.append(*args, **kwargs)
 
     cp = ControlPlane(ConflictOnceStore(real))
-    v = cp.set_direction(mission="M2", change_note="pivot after race")
-    # Must land as v3 (not v2) and carry forward the CONCURRENT writer's
-    # principles -- proving the retry re-read the fresh head.
-    assert v.version == 3
-    assert v.mission == "M2"
-    assert v.principles == (Principle("p1"), Principle("concurrent"))
-    assert v.changed_mission is True
+    # A concurrent writer took the version. Nothing lands and nothing is
+    # silently recomputed: the conflict surfaces, and the head is the
+    # concurrent writer's edit, untouched.
+    with pytest.raises(VersionConflictError, match="moved while applying"):
+        cp.set_direction(mission="M2", change_note="pivot after race")
+    head = real.head("default")
+    assert head.version == 2
+    assert head.principles == (Principle("p1"), Principle("concurrent"))
 
 
-def test_retry_exhaustion_raises_after_exact_max_retries_attempts():
+def test_given_a_conflict_when_applying_then_there_is_one_attempt_never_a_loop():
     stub = AlwaysConflictStore()
-    cp = ControlPlane(stub, max_retries=3)
+    cp = ControlPlane(stub)
     with pytest.raises(VersionConflictError):
         cp.set_direction(mission="M", change_note="x")
-    assert stub.append_calls == 3
+    assert stub.append_calls == 1
 
 
 def test_whitespace_only_change_note_is_rejected(cp):

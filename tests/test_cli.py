@@ -540,3 +540,47 @@ def test_given_an_empty_store_when_reading_log_then_it_says_so(tmp_path, monkeyp
     r = runner.invoke(app, ["log"])
     assert r.exit_code == 0
     assert "no constitution set" in r.stdout
+
+
+def test_given_a_matching_file_when_checking_then_the_store_agrees(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    apply_yaml(tmp_path, mission="M1", note="init", name="c.yaml")
+    r = runner.invoke(app, ["check", str(tmp_path / "c.yaml")])
+    assert r.exit_code == 0
+    assert "store: agrees with 'default' (version 1)" in r.stdout
+
+
+def test_given_a_stale_file_when_checking_then_it_fails_and_shows_the_delta(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    apply_yaml(tmp_path, mission="M2", note="hotfix")
+    stale = tmp_path / "stale.yaml"
+    stale.write_text("mission: M1\n", encoding="utf-8")
+    r = runner.invoke(app, ["check", str(stale)])
+    assert r.exit_code == 1
+    assert "store: differs from 'default' (version 1):" in r.stdout
+    assert 'The mission was "M2" and is now "M1".' in r.stdout
+
+
+def test_given_an_empty_store_when_checking_then_it_fails(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    target = tmp_path / "c.yaml"
+    target.write_text("mission: M1\n", encoding="utf-8")
+    r = runner.invoke(app, ["check", str(target)])
+    assert r.exit_code == 1
+    assert "has no versions" in r.stdout
+
+
+def test_given_an_unreachable_store_when_checking_then_the_report_still_prints(
+    tmp_path, monkeypatch
+):
+    # No init-db: the field report stands, the comparison says why it didn't run.
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'never.sqlite3'}")
+    target = tmp_path / "c.yaml"
+    target.write_text("mission: M1\n", encoding="utf-8")
+    r = runner.invoke(app, ["check", str(target)])
+    assert r.exit_code == 0
+    assert "kyno fields set: mission" in r.stdout
+    assert "store: not compared" in r.stdout

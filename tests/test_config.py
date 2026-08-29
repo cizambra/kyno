@@ -139,17 +139,17 @@ def test_a_theme_value_that_could_break_out_of_the_stylesheet_is_refused(monkeyp
         Settings.from_env()
 
 
-def test_read_tokens_parse_from_a_comma_separated_env(monkeypatch):
+def test_given_a_comma_separated_env_when_loading_settings_then_read_tokens_parse(monkeypatch):
     monkeypatch.setenv("KYNO_READ_TOKENS", "r1, r2,r3")
     assert Settings.from_env().read_tokens == ("r1", "r2", "r3")
 
 
-def test_read_tokens_default_to_none_configured(monkeypatch):
+def test_given_no_env_when_loading_settings_then_no_read_tokens_are_configured(monkeypatch):
     monkeypatch.delenv("KYNO_READ_TOKENS", raising=False)
     assert Settings.from_env().read_tokens == ()
 
 
-def test_a_blank_read_token_entry_is_refused(monkeypatch):
+def test_given_a_blank_read_token_entry_when_loading_settings_then_it_is_refused(monkeypatch):
     import pytest
 
     from kyno.errors import ConfigError

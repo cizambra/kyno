@@ -1,25 +1,25 @@
 from kyno.transports import resolve_scope
 
 
-def test_open_when_no_tokens_configured():
+def test_given_no_tokens_configured_when_resolving_scope_then_the_door_is_open():
     # No auth configured: every request is a write, as before.
     assert resolve_scope({}, None) == "write"
 
 
-def test_write_token_resolves_to_write_scope():
+def test_given_the_write_token_when_resolving_scope_then_it_is_write():
     assert resolve_scope({"authorization": "Bearer secret"}, "secret") == "write"
     assert resolve_scope({"authorization": "Bearer wrong"}, "secret") is None
     assert resolve_scope({}, "secret") is None
 
 
-def test_read_token_resolves_to_read_scope():
+def test_given_a_read_token_when_resolving_scope_then_it_is_read():
     assert resolve_scope({"authorization": "Bearer r1"}, "w", ("r1", "r2")) == "read"
     assert resolve_scope({"authorization": "Bearer r2"}, "w", ("r1", "r2")) == "read"
     assert resolve_scope({"authorization": "Bearer w"}, "w", ("r1",)) == "write"
     assert resolve_scope({"authorization": "Bearer nope"}, "w", ("r1",)) is None
 
 
-def test_read_tokens_alone_still_guard_the_door():
+def test_given_only_read_tokens_when_a_wrong_bearer_arrives_then_the_door_stays_shut():
     # Only read tokens configured: nothing resolves to write.
     assert resolve_scope({"authorization": "Bearer r1"}, None, ("r1",)) == "read"
     assert resolve_scope({}, None, ("r1",)) is None
@@ -336,7 +336,7 @@ def test_http_app_lifespan_is_wired_when_no_token_configured():
 
 
 @pytest.mark.asyncio
-async def test_read_only_server_lists_no_set_direction_and_refuses_it():
+async def test_given_a_read_only_server_when_listing_and_calling_then_set_direction_is_gone():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     server = build_server(_make_control_plane(), read_only=True)
@@ -351,7 +351,7 @@ async def test_read_only_server_lists_no_set_direction_and_refuses_it():
         assert "read-only" in result.content[0].text
 
 
-def test_http_app_routes_read_token_to_the_read_only_server():
+def test_given_a_read_token_when_posting_to_the_http_app_then_the_read_only_server_answers():
     from starlette.testclient import TestClient
 
     from kyno.transports import build_http_app
@@ -368,7 +368,7 @@ def test_http_app_routes_read_token_to_the_read_only_server():
         assert bad.status_code == 401
 
 
-def test_http_app_refuses_a_read_token_equal_to_the_write_token():
+def test_given_a_read_token_equal_to_the_write_token_when_building_the_app_then_it_is_refused():
     import pytest
 
     from kyno.errors import ConfigError

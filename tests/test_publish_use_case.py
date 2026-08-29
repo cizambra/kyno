@@ -12,6 +12,28 @@ from kyno.transports import build_http_app
 
 runner = CliRunner()
 
+
+def apply_yaml(
+    tmp_path, *, mission, principles=(), constitution=None, note=None, by=None, name="applied.yaml"
+):
+    """Write a constitution file and apply it: the only way content lands."""
+    lines = []
+    if constitution is not None:
+        lines.append(f"constitution: {constitution}")
+    lines.append(f"mission: {mission}")
+    if principles:
+        lines.append("principles:")
+        lines.extend(f"  - {p}" for p in principles)
+    path = tmp_path / name
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    args = ["set", str(path)]
+    if note is not None:
+        args += ["--note", note]
+    if by is not None:
+        args += ["--by", by]
+    return runner.invoke(cli, args)
+
+
 MISSION = "Ship a lending product people trust with their worst month"
 PRINCIPLE = "Say the hard number before the soft story"
 PRIVATE_NOTE = "dropped a principle because the enterprise deal needed it"
@@ -26,20 +48,9 @@ def test_an_organization_publishes_one_constitution_and_keeps_the_other_private(
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{db}")
     assert runner.invoke(cli, ["init-db"]).exit_code == 0
 
-    runner.invoke(cli, ["set", "--mission", MISSION, "--principle", PRINCIPLE, "--note", "initial"])
-    runner.invoke(cli, ["set", "--mission", f"{MISSION}, everywhere", "--note", PRIVATE_NOTE])
-    runner.invoke(
-        cli,
-        [
-            "set",
-            "--constitution",
-            "acme-internal",
-            "--mission",
-            "How we really decide",
-            "--note",
-            "init",
-        ],
-    )
+    apply_yaml(tmp_path, mission=MISSION, principles=[PRINCIPLE], note="initial")
+    apply_yaml(tmp_path, mission=f"{MISSION}, everywhere", note=PRIVATE_NOTE)
+    apply_yaml(tmp_path, mission="How we really decide", constitution="acme-internal", note="init")
 
     plane = ControlPlane(SqlConstitutionStore(url=f"sqlite:///{db}"))
     with TestClient(build_http_app(plane, token="secret")) as visitor:
@@ -77,8 +88,8 @@ def test_opening_history_exposes_the_change_notes_and_closing_it_hides_them_agai
     db = tmp_path / "kyno.sqlite3"
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{db}")
     runner.invoke(cli, ["init-db"])
-    runner.invoke(cli, ["set", "--mission", MISSION, "--note", "initial"])
-    runner.invoke(cli, ["set", "--mission", f"{MISSION}, everywhere", "--note", PRIVATE_NOTE])
+    apply_yaml(tmp_path, mission=MISSION, note="initial")
+    apply_yaml(tmp_path, mission=f"{MISSION}, everywhere", note=PRIVATE_NOTE)
 
     plane = ControlPlane(SqlConstitutionStore(url=f"sqlite:///{db}"))
     with TestClient(build_http_app(plane, token="secret")) as visitor:

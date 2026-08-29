@@ -42,8 +42,6 @@ principles:
     description: |
       A refusal is a sentence, not a maze. If we cannot lend, say so on the
       first screen and say why.
-note: the constitution as written
-by: camilo
 """
 
 
@@ -73,7 +71,6 @@ def test_a_file_carries_every_field_a_constitution_has(tmp_path):
 
     assert read.constitution == "acme"
     assert read.mission == "Ship a lending product people trust with their worst month"
-    assert read.note == "the constitution as written" and read.created_by == "camilo"
     assert read.principles == (
         Principle("Say the hard number first"),
         Principle(
@@ -93,34 +90,51 @@ def test_a_block_of_prose_keeps_its_paragraphs(tmp_path):
 
 
 def test_an_omitted_field_reads_as_carry_it_forward(tmp_path):
-    read = read_constitution_file(write(tmp_path, "mission: M\nnote: n\n"))
+    read = read_constitution_file(write(tmp_path, "mission: M\n"))
     assert read.declaration is None and read.principles is None
-    assert read.constitution is None and read.created_by is None
+    assert read.constitution is None
+
+
+def test_given_unknown_keys_when_reading_a_file_then_they_are_the_operators_own(tmp_path):
+    # One file can serve other tools too; note and by look like kyno
+    # metadata but are not kyno fields, so they read as custom keys.
+    body = "mission: M\nnote: n\nby: camilo\nteam: lending\n"
+    read = read_constitution_file(write(tmp_path, body))
+    assert read.mission == "M"
 
 
 def test_an_empty_declaration_is_a_present_value_that_clears_it(tmp_path):
-    read = read_constitution_file(write(tmp_path, 'mission: M\ndeclaration: ""\nnote: n\n'))
+    read = read_constitution_file(write(tmp_path, 'mission: M\ndeclaration: ""\n'))
     assert read.declaration == ""
 
 
 def test_a_key_with_no_value_reads_as_omitted_rather_than_empty(tmp_path):
     # Deliberate: "declaration:" with nothing after it is far more often a
     # half-written file than a deletion, and clearing is spelled "".
-    read = read_constitution_file(write(tmp_path, "mission: M\ndeclaration:\nnote: n\n"))
+    read = read_constitution_file(write(tmp_path, "mission: M\ndeclaration:\n"))
     assert read.declaration is None
 
 
 def test_json_is_read_too_since_it_is_valid_yaml(tmp_path):
-    body = json.dumps({"mission": "M", "principles": ["p1"], "note": "n"})
+    body = json.dumps({"mission": "M", "principles": ["p1"]})
     read = read_constitution_file(write(tmp_path, body, "constitution.json"))
     assert read.mission == "M" and read.principles == (Principle("p1"),)
 
 
-def test_a_misspelled_key_is_refused_and_named(tmp_path):
-    # Silently ignoring "principals" would publish a constitution missing
-    # everything the operator thought they had written.
-    with pytest.raises(AuthoringError, match="principals"):
-        read_constitution_file(write(tmp_path, "mission: M\nprincipals:\n  - p1\nnote: n\n"))
+def test_given_a_misspelled_field_when_reading_a_file_then_it_counts_as_custom(tmp_path):
+    # "principals" is not refused; `kyno check` is where a typo shows up,
+    # reported as a custom field beside the kyno fields the file misses.
+    read = read_constitution_file(write(tmp_path, "mission: M\nprincipals:\n  - p1\n"))
+    assert read.principles is None
+
+
+def test_given_a_mixed_file_when_checking_then_fields_sort_into_kyno_and_custom(tmp_path):
+    from kyno.authoring import check_constitution_file
+
+    report = check_constitution_file(write(tmp_path, "mission: M\nprincipals:\n  - p1\nnote: n\n"))
+    assert report.present == ("mission",)
+    assert report.missing == ("constitution", "declaration", "principles")
+    assert report.custom == ("note", "principals")
 
 
 def test_a_file_that_is_not_a_mapping_is_refused(tmp_path):
@@ -140,19 +154,29 @@ def test_a_file_that_is_not_there_is_refused(tmp_path):
 
 def test_a_field_that_should_be_text_is_refused_when_it_is_not(tmp_path):
     with pytest.raises(AuthoringError, match="mission"):
-        read_constitution_file(write(tmp_path, "mission:\n  a: map\nnote: n\n"))
+        read_constitution_file(write(tmp_path, "mission:\n  a: map\n"))
 
 
 def test_principles_that_are_not_a_list_are_refused(tmp_path):
     with pytest.raises(AuthoringError, match="principles"):
-        read_constitution_file(write(tmp_path, "principles: just one\nnote: n\n"))
+        read_constitution_file(write(tmp_path, "principles: just one\n"))
 
 
 # --- through the CLI -------------------------------------------------------
 
 
 def test_setting_a_constitution_from_a_file(db, tmp_path):
-    result = runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE)])
+    result = runner.invoke(
+        app,
+        [
+            "set",
+            write(tmp_path, FULL_FILE),
+            "--note",
+            "the constitution as written",
+            "--by",
+            "camilo",
+        ],
+    )
     assert result.exit_code == 0, result.output
 
     head = plane(db).current("acme")
@@ -165,11 +189,11 @@ def test_setting_a_constitution_from_a_file(db, tmp_path):
     assert head.created_by == "camilo"
 
 
-def test_the_flags_that_may_override_the_file(db, tmp_path):
+def test_given_edit_flags_when_applying_a_file_then_they_route_and_describe_the_edit(db, tmp_path):
     path = write(tmp_path, FULL_FILE)
     result = runner.invoke(
         app,
-        ["set", "--file", path, "--constitution", "eu", "--note", "the EU edit", "--by", "ops"],
+        ["set", path, "--constitution", "eu", "--note", "the EU edit", "--by", "ops"],
     )
     assert result.exit_code == 0, result.output
 
@@ -178,42 +202,33 @@ def test_the_flags_that_may_override_the_file(db, tmp_path):
     assert plane(db).current("acme").version == 0
 
 
-@pytest.mark.parametrize(
-    "flags",
-    [
-        ["--mission", "M"],
-        ["--declaration", "D"],
-        ["--principle", "p1"],
-    ],
-)
-def test_a_file_and_a_field_flag_together_are_refused(db, tmp_path, flags):
-    # Two sources for one field is a question nobody should have to answer.
-    result = runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE), *flags])
+@pytest.mark.parametrize("flag", ["--mission", "--declaration", "--principle"])
+def test_given_a_content_flag_when_running_set_then_it_is_not_an_option(db, tmp_path, flag):
+    # The file is the only source of content, so these aren't options at all.
+    result = runner.invoke(app, ["set", write(tmp_path, FULL_FILE), flag, "X"])
     assert result.exit_code != 0
-    assert "--file" in plain(result)
+    assert "no such option" in plain(result).lower()
 
 
 def test_a_file_with_no_note_and_no_flag_is_refused(db, tmp_path):
     path = write(tmp_path, "mission: M\n")
-    result = runner.invoke(app, ["set", "--file", path])
+    result = runner.invoke(app, ["set", path])
     assert result.exit_code != 0
     assert "note" in plain(result).lower()
 
 
 def test_a_missing_file_reports_a_clean_error(db, tmp_path):
-    result = runner.invoke(app, ["set", "--file", str(tmp_path / "nowhere.yaml")])
+    result = runner.invoke(app, ["set", str(tmp_path / "nowhere.yaml"), "--note", "n"])
     assert result.exit_code == 1
     assert "error:" in plain(result).lower()
     assert "Traceback" not in result.output
 
 
 def test_a_second_file_appends_a_version_and_carries_what_it_omits(db, tmp_path):
-    runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE)])
-    second = write(
-        tmp_path, "constitution: acme\nmission: A sharper mission\nnote: sharpen\n", "2.yaml"
-    )
+    runner.invoke(app, ["set", write(tmp_path, FULL_FILE), "--note", "init"])
+    second = write(tmp_path, "constitution: acme\nmission: A sharper mission\n", "2.yaml")
 
-    assert runner.invoke(app, ["set", "--file", second]).exit_code == 0
+    assert runner.invoke(app, ["set", second, "--note", "sharpen"]).exit_code == 0
 
     head = plane(db).current("acme")
     assert head.version == 2
@@ -223,26 +238,50 @@ def test_a_second_file_appends_a_version_and_carries_what_it_omits(db, tmp_path)
 
 
 def test_a_file_can_clear_the_declaration(db, tmp_path):
-    runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE)])
-    clearing = write(tmp_path, 'constitution: acme\ndeclaration: ""\nnote: retract\n', "3.yaml")
+    runner.invoke(app, ["set", write(tmp_path, FULL_FILE), "--note", "init"])
+    clearing = write(tmp_path, 'constitution: acme\ndeclaration: ""\n', "3.yaml")
 
-    assert runner.invoke(app, ["set", "--file", clearing]).exit_code == 0
+    assert runner.invoke(app, ["set", clearing, "--note", "retract"]).exit_code == 0
     assert plane(db).current("acme").declaration == ""
 
 
-def test_the_flags_still_work_on_their_own(db):
-    result = runner.invoke(
-        app,
-        ["set", "--mission", "M1", "--declaration", "D1", "--principle", "p1", "--note", "init"],
-    )
-    assert result.exit_code == 0, result.output
-    head = plane(db).current()
-    assert head.mission == "M1" and head.declaration == "D1"
-    assert [p.title for p in head.principles] == ["p1"]
-
-
-def test_an_empty_field_flag_still_conflicts_with_a_file(db, tmp_path):
-    # `--mission ""` is a real instruction (clear it), not an absent flag.
-    result = runner.invoke(app, ["set", "--file", write(tmp_path, FULL_FILE), "--mission", ""])
+def test_given_no_file_argument_when_running_set_then_it_is_refused(db):
+    """The file is the only source of content and it's a required
+    argument, so `kyno set` with no file doesn't parse."""
+    result = runner.invoke(app, ["set", "--note", "init"])
     assert result.exit_code != 0
-    assert "--mission" in plain(result)
+    assert "file" in plain(result).lower()
+
+
+def test_given_prose_content_when_rendered_to_yaml_then_reading_it_back_round_trips(tmp_path):
+    from datetime import UTC, datetime
+
+    from kyno.authoring import render_constitution_yaml
+    from kyno.models import ConstitutionVersion
+
+    version = ConstitutionVersion(
+        version=3,
+        mission="Ship a lending product people trust",
+        declaration="## What we are for\n\nLending is a promise.",
+        principles=(
+            Principle(title="Refuse clearly", description="We say no early.\nAnd in plain words."),
+            Principle(title="Say the hard number first"),
+        ),
+        change_note="the reviewed edit",
+        changed_mission=True,
+        changed_principles=True,
+        created_at=datetime.now(UTC),
+        created_by=None,
+    )
+    path = tmp_path / "c.yaml"
+    text = render_constitution_yaml(version, "default")
+    path.write_text(text, encoding="utf-8")
+    assert "declaration: |" in text
+    # A pulled file is content only; the edit metadata stays in the store.
+    assert "note:" not in text and "by:" not in text
+
+    got = read_constitution_file(str(path))
+    assert got.constitution == "default"
+    assert got.mission == version.mission
+    assert got.declaration == version.declaration
+    assert got.principles == version.principles

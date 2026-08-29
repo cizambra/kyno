@@ -40,7 +40,7 @@ def test_the_example_files_match_what_kyno_actually_produces(plane):
         mission=f1.mission,
         declaration=f1.declaration,
         principles=f1.principles,
-        change_note=f1.note,
+        change_note="initial constitution",
     )
     ch1 = plane.changes_since(0)
     assert json.loads(expected("response_version1_compact.json")) == ch1.to_dict(COMPACT)
@@ -57,7 +57,7 @@ def test_the_example_files_match_what_kyno_actually_produces(plane):
         mission=f2.mission,
         declaration=f2.declaration,
         principles=f2.principles,
-        change_note=f2.note,
+        change_note="second reviewer required above $25,000",
     )
     ch2 = plane.changes_since(1)
     assert json.loads(expected("response_version2_after_knowing_1.json")) == ch2.to_dict(COMPACT)

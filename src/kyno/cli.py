@@ -7,7 +7,11 @@ from pathlib import Path
 import typer
 from sqlalchemy.exc import SQLAlchemyError
 
-from kyno.authoring import ConstitutionFile, read_constitution_file
+from kyno.authoring import (
+    check_constitution_file,
+    read_constitution_file,
+    render_constitution_yaml,
+)
 from kyno.config import Settings, store_from_settings
 from kyno.errors import CoherenceError
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
@@ -75,33 +79,31 @@ _CONSTITUTION_OPTION = typer.Option(
 
 @app.command("set")
 def set_direction_cmd(
-    note: str | None = typer.Option(None, "--note", help="Plain-language what + why."),
-    file: str | None = typer.Option(
-        None, "--file", help="Read the constitution from a YAML (or JSON) file."
+    file: str = typer.Argument(..., help="The constitution file. The only source of content."),
+    note: str | None = typer.Option(None, "--note", help="What changed in this new version?"),
+    by: str | None = typer.Option(
+        None, "--by", help="Who made this change. Defaults to your system username."
     ),
-    mission: str | None = typer.Option(None, "--mission"),
-    declaration: str | None = typer.Option(
-        None, "--declaration", help="The long-form document. Use --file for anything longer."
-    ),
-    principle: list[str] = typer.Option(None, "--principle", help="Repeat for each principle."),
-    by: str | None = typer.Option(None, "--by", help="Who made this change."),
     constitution: str | None = typer.Option(
         None, "--constitution", help="Which named constitution to act on."
     ),
 ) -> None:
-    """Append a version. Flags are for quick edits; --file is how a
-    constitution with a declaration or described principles gets written."""
-    fields = _fields_from(file, mission=mission, declaration=declaration, principle=principle)
-    note = note if note is not None else fields.note
+    """Append a version from a file. The file says what the constitution
+    is; the flags say what this edit is."""
     if not note:
-        raise typer.BadParameter("a change note is required: pass --note, or put `note:` in --file")
+        raise typer.BadParameter("a change note is required: pass --note")
+    try:
+        fields = read_constitution_file(file)
+    except CoherenceError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from None
     try:
         v = _control_plane().set_direction(
             mission=fields.mission,
             declaration=fields.declaration,
             principles=fields.principles,
             change_note=note,
-            created_by=by if by is not None else fields.created_by,
+            created_by=by if by is not None else _system_user(),
             constitution=constitution or fields.constitution or "default",
         )
         typer.echo(json.dumps(v.to_dict()))
@@ -110,29 +112,14 @@ def set_direction_cmd(
         raise typer.Exit(code=1) from None
 
 
-def _fields_from(file, *, mission, declaration, principle) -> ConstitutionFile:
-    """One source per field. --note, --by and --constitution may override a
-    file because they are about this edit, not about the constitution."""
-    if file is None:
-        return ConstitutionFile(
-            mission=mission,
-            declaration=declaration,
-            principles=tuple(principle) if principle else None,
-        )
-    given = (("--mission", mission is not None), ("--declaration", declaration is not None))
-    conflicting = [
-        flag for flag, was_given in (*given, ("--principle", bool(principle))) if was_given
-    ]
-    if conflicting:
-        raise typer.BadParameter(
-            f"--file cannot be combined with {', '.join(conflicting)}; "
-            "--note, --by and --constitution may override the file"
-        )
+def _system_user() -> str | None:
+    """Git's fallback for an unstated author: the person at the keyboard."""
+    import getpass
+
     try:
-        return read_constitution_file(file)
-    except CoherenceError as exc:
-        typer.echo(f"error: {exc}", err=True)
-        raise typer.Exit(code=1) from None
+        return getpass.getuser()
+    except (KeyError, OSError):
+        return None
 
 
 page_app = typer.Typer(help="Work with the pages Kyno publishes.")
@@ -193,16 +180,47 @@ def page_export(
 
 
 @app.command()
-def current(constitution: str = _CONSTITUTION_OPTION) -> None:
+def current(
+    constitution: str = _CONSTITUTION_OPTION,
+    as_yaml: bool = typer.Option(
+        False,
+        "--yaml",
+        help="Print the head in the file format `kyno set --file` reads.",
+    ),
+) -> None:
+    """The version in force. JSON by default; --yaml prints it as a
+    constitution file, ready to redirect, commit, and re-apply."""
     try:
         v = _control_plane().current(constitution)
         if v.version == 0:
+            if as_yaml:
+                typer.echo(f"error: nothing to read: '{constitution}' has no versions", err=True)
+                raise typer.Exit(code=1)
             typer.echo("no constitution set (version 0)")
+        elif as_yaml:
+            typer.echo(render_constitution_yaml(v, constitution), nl=False)
         else:
             typer.echo(json.dumps(v.to_dict()))
     except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
+
+
+@app.command()
+def check(
+    file: str = typer.Argument(..., help="The constitution file to inspect."),
+) -> None:
+    """Report which kyno fields a file sets, which it leaves out, and which
+    keys are yours. Nothing here blocks an apply: a field the file leaves
+    out keeps the previous version's value, and a custom key is ignored."""
+    try:
+        report = check_constitution_file(file)
+    except CoherenceError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+    typer.echo(f"kyno fields set: {', '.join(report.present) or 'none'}")
+    typer.echo(f"kyno fields not set: {', '.join(report.missing) or 'none'}")
+    typer.echo(f"custom fields: {', '.join(report.custom) or 'none'}")
 
 
 @app.command()

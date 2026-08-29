@@ -56,8 +56,8 @@ This is _bottom-up agency_.
 ```bash
 pip install kyno          # CLI: kyno
 kyno init-db
-kyno set --mission "Ship a lending product people trust" \
-         --note "initial constitution"
+echo 'mission: Ship a lending product people trust' > constitution.yaml
+kyno set constitution.yaml --note "initial constitution"
 kyno current
 kyno serve --transport stdio    # or --transport http
 ```
@@ -111,11 +111,10 @@ principles:
   - title: Refuse clearly
     description: |
       If we cannot lend, we say so on the first screen, and we say why.
-note: the constitution as written
 ```
 
 ```bash
-kyno set --file constitution.yaml
+kyno set constitution.yaml --note "the constitution as written"
 ```
 
 The full file semantics, and running several constitutions side by side,

@@ -57,32 +57,24 @@ by: camilo
 ```
 
 ```bash
-kyno set --file constitution.yaml
-kyno set --file constitution.yaml --constitution eu --note "the EU edit"
+kyno set constitution.yaml
+kyno set constitution.yaml --constitution eu --note "the EU edit"
 ```
 
 The declaration can be written using markdown. How the published page
 renders and escapes it is covered in
 [Publishing your constitution](publishing.md).
 
-### Editing with flags
+### The file and the flags
 
-A file can have its own `note:`, `by:` and `constitution:` keys, and
-the matching flags win over them when both are given. That's safe: those
-three describe the edit (what changed, who made it, and which
-constitution to write to), and they can't touch the content. The content
-flags (`--mission`, `--declaration`, `--principle`) can't be combined
-with `--file` at all, because two sources for the same field would be
-ambiguous. Fields the file leaves out are carried forward from the
-previous version; to clear one, write it empty, like `declaration: ""`.
-And every edit appends a new version, so nothing you had is ever
-overwritten.
-
-The flags are still there for a quick edit:
-
-```bash
-kyno set --mission "Ship a lending product people trust" --note "sharpen the mission"
-```
+The file is the only source of content. The flags describe the edit:
+`--note` (required, what changed and why), `--by` (who made it, your
+system username when omitted), and `--constitution` (which named
+constitution to write to; the file's own `constitution:` key works too,
+and the flag wins when both are given). Fields the file leaves out are
+carried forward from the previous version; to clear one, write it
+empty, like `declaration: ""`. And every edit appends a new version, so
+nothing you had is ever overwritten.
 
 ## Multiple constitutions
 

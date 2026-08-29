@@ -194,13 +194,14 @@ Recent changes:
       <div class="qs">
         <button class="copy-btn" data-copy="pip install kyno
 kyno init-db
-kyno set --mission &quot;Ship a lending product people trust&quot; --note &quot;initial constitution&quot;
+echo 'mission: Ship a lending product people trust' > constitution.yaml
+kyno set constitution.yaml --note &quot;initial constitution&quot;
 kyno current
 kyno serve --transport stdio">copy</button>
         <pre>pip install kyno
 kyno init-db
-kyno set --mission "Ship a lending product people trust" \
-         --note "initial constitution"
+echo 'mission: Ship a lending product people trust' > constitution.yaml
+kyno set constitution.yaml --note "initial constitution"
 kyno current
 kyno serve --transport stdio    <span class="comment"># or --transport http</span></pre>
       </div>

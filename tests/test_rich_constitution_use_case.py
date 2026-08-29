@@ -31,8 +31,6 @@ principles:
     description: |
       A refusal is a sentence, not a maze. If we cannot lend, say so on the
       first screen and say why.
-note: the constitution as written
-by: camilo
 """
 
 HEADLINE = "Ship a lending product people trust with their worst month"
@@ -49,7 +47,8 @@ def test_an_organization_writes_a_rich_constitution_publishes_it_and_binds_a_cre
     path.write_text(CONSTITUTION)
 
     assert runner.invoke(cli, ["init-db"]).exit_code == 0
-    assert runner.invoke(cli, ["set", "--file", str(path)]).exit_code == 0
+    apply = ["set", str(path), "--note", "the constitution as written", "--by", "camilo"]
+    assert runner.invoke(cli, apply).exit_code == 0
     assert runner.invoke(cli, ["publish", "--constitution", "acme"]).exit_code == 0
 
     plane = ControlPlane(SqlConstitutionStore(url=f"sqlite:///{db}"))

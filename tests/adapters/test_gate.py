@@ -42,14 +42,14 @@ class StubVerdictSource:
         return self.verdict
 
 
-def test_aligned_output_proceeds_checked():
+def test_given_an_aligned_output_when_gating_then_it_proceeds_checked():
     gate = RealignmentGate(StubVerdictSource(Verdict.ALIGNED))
     decision = gate.review(output="fine", direction=DIRECTION)
     assert decision.action is Action.PROCEED and decision.checked is True
     assert decision.verdict is Verdict.ALIGNED
 
 
-def test_the_source_sees_the_direction_it_should_judge_against():
+def test_given_the_judge_source_when_gating_then_it_sees_the_direction_to_judge_against():
     source = StubVerdictSource(Verdict.ALIGNED)
     RealignmentGate(source).review(output="draft", direction=DIRECTION)
     assert source.seen == [
@@ -62,7 +62,7 @@ def test_the_source_sees_the_direction_it_should_judge_against():
     ]
 
 
-def test_no_source_proceeds_unchecked_and_says_so():
+def test_given_no_judge_source_when_gating_then_it_proceeds_unchecked_and_says_so():
     sink = RecordingSink()
     decision = RealignmentGate(telemetry=sink).review(output="anything", direction=DIRECTION)
 
@@ -72,7 +72,7 @@ def test_no_source_proceeds_unchecked_and_says_so():
     assert [e.kind for e in sink.events] == [UNCHECKED]
 
 
-def test_a_broken_judge_proceeds_unchecked_not_blocked():
+def test_given_a_broken_judge_when_gating_then_it_proceeds_unchecked_not_blocked():
     sink = RecordingSink()
     gate = RealignmentGate(StubVerdictSource(error=TimeoutError("judge down")), telemetry=sink)
 
@@ -82,7 +82,7 @@ def test_a_broken_judge_proceeds_unchecked_not_blocked():
     assert sink.events[0].detail.startswith("judge down") or "judge down" in sink.events[0].detail
 
 
-def test_fail_closed_blocks_only_the_gate_that_opted_in():
+def test_given_fail_closed_when_gating_then_only_the_opted_in_gate_blocks():
     strict = RealignmentGate(policy=GatePolicy(fail_closed=True))
     lenient = RealignmentGate()
 
@@ -90,13 +90,13 @@ def test_fail_closed_blocks_only_the_gate_that_opted_in():
     assert lenient.review(output="x", direction=DIRECTION).action is Action.PROCEED
 
 
-def test_an_unknown_verdict_from_a_working_judge_follows_the_same_policy():
+def test_given_an_unknown_verdict_when_gating_then_the_no_answer_policy_applies():
     gate = RealignmentGate(StubVerdictSource(Verdict.UNKNOWN))
     decision = gate.review(output="x", direction=DIRECTION)
     assert decision.action is Action.PROCEED and decision.checked is False
 
 
-def test_drift_blocks_where_the_framework_cannot_pause():
+def test_given_drift_when_the_framework_cannot_pause_then_it_blocks():
     sink = RecordingSink()
     gate = RealignmentGate(StubVerdictSource(Verdict.DRIFTED), telemetry=sink, can_pause=False)
 
@@ -106,7 +106,7 @@ def test_drift_blocks_where_the_framework_cannot_pause():
     assert {e.kind for e in sink.events} == {DRIFT_BLOCKED, PAUSE_UNSUPPORTED}
 
 
-def test_drift_pauses_where_the_framework_can():
+def test_given_drift_when_the_framework_can_pause_then_it_pauses():
     sink = RecordingSink()
     gate = RealignmentGate(StubVerdictSource(Verdict.DRIFTED), telemetry=sink, can_pause=True)
 
@@ -116,14 +116,14 @@ def test_drift_pauses_where_the_framework_can():
     assert [e.kind for e in sink.events] == [DRIFT_PAUSED]
 
 
-def test_drift_still_blocks_under_a_fail_open_policy():
+def test_given_a_fail_open_policy_when_drift_is_found_then_it_still_blocks():
     # Fail-open governs the ABSENCE of a judgment; a real DRIFTED verdict is
     # a judgment and must not be waved through.
     gate = RealignmentGate(StubVerdictSource(Verdict.DRIFTED), policy=GatePolicy())
     assert gate.review(output="x", direction=DIRECTION).action is Action.BLOCK
 
 
-def test_decision_serializes_for_a_trace():
+def test_given_a_decision_when_serializing_for_a_trace_then_it_round_trips():
     decision = RealignmentGate().review(output="x", direction=DIRECTION)
     assert decision.to_dict() == {
         "action": "proceed",
@@ -135,7 +135,7 @@ def test_decision_serializes_for_a_trace():
     }
 
 
-def test_an_aligned_review_stays_quiet():
+def test_given_an_aligned_review_when_gating_then_it_stays_quiet():
     """Telemetry marks degraded and blocked work; routine passes are noise."""
     sink = RecordingSink()
     RealignmentGate(StubVerdictSource(Verdict.ALIGNED), telemetry=sink).review(
@@ -144,14 +144,14 @@ def test_an_aligned_review_stays_quiet():
     assert sink.events == []
 
 
-def test_a_judge_that_answers_with_a_non_verdict_is_treated_as_no_answer():
+def test_given_a_non_verdict_answer_when_gating_then_it_is_treated_as_no_answer():
     gate = RealignmentGate(StubVerdictSource(verdict="looks fine to me"))
     decision = gate.review(output="x", direction=DIRECTION)
     assert decision.reason == UNKNOWN_VERDICT
     assert decision.action is Action.PROCEED and decision.checked is False
 
 
-def test_a_fail_closed_gate_blocks_a_broken_judge():
+def test_given_a_fail_closed_gate_when_the_judge_breaks_then_it_blocks():
     gate = RealignmentGate(
         StubVerdictSource(error=TimeoutError("judge down")), policy=GatePolicy(fail_closed=True)
     )
@@ -159,7 +159,7 @@ def test_a_fail_closed_gate_blocks_a_broken_judge():
     assert decision.action is Action.BLOCK and decision.reason == SOURCE_ERROR
 
 
-def test_fail_closed_does_not_turn_a_pausable_drift_into_a_block():
+def test_given_fail_closed_when_drift_can_pause_then_it_still_pauses_not_blocks():
     """Pause preserves the run for a human; fail-closed is about no answer."""
     gate = RealignmentGate(
         StubVerdictSource(Verdict.DRIFTED), policy=GatePolicy(fail_closed=True), can_pause=True
@@ -167,7 +167,7 @@ def test_fail_closed_does_not_turn_a_pausable_drift_into_a_block():
     assert gate.review(output="x", direction=DIRECTION).action is Action.PAUSE
 
 
-def test_a_review_before_any_direction_is_set_is_still_recorded():
+def test_given_no_direction_set_when_reviewing_then_it_is_still_recorded():
     """A crew can start before anyone sets direction; the trace must say so."""
     sink = RecordingSink()
     gate = RealignmentGate(StubVerdictSource(Verdict.ALIGNED), telemetry=sink)
@@ -177,7 +177,7 @@ def test_a_review_before_any_direction_is_set_is_still_recorded():
     assert decision.constitution == "default" and decision.version == 0
 
 
-def test_a_blocked_drift_serializes_the_whole_decision():
+def test_given_a_blocked_drift_when_serializing_then_the_whole_decision_is_there():
     gate = RealignmentGate(StubVerdictSource(Verdict.DRIFTED))
     assert gate.review(output="x", direction=DIRECTION).to_dict() == {
         "action": "block",

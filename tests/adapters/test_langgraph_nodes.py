@@ -45,7 +45,7 @@ def binder(control_plane):
     return DirectionBinder(LocalDirectionSource(control_plane)), control_plane
 
 
-def test_pull_before_writes_the_direction_into_state(binder):
+def test_given_a_wrapped_node_when_it_runs_then_the_direction_is_pulled_into_state(binder):
     bind, _cp = binder
 
     @pull_before(bind)
@@ -59,7 +59,7 @@ def test_pull_before_writes_the_direction_into_state(binder):
     assert update["kyno_constitution"] == "default" and update["kyno_version"] == 1
 
 
-def test_each_node_entry_rebinds_after_a_pivot(binder):
+def test_given_a_pivot_when_the_next_node_enters_then_it_rebinds(binder):
     bind, control_plane = binder
     node = direction_node(bind)
 
@@ -71,7 +71,9 @@ def test_each_node_entry_rebinds_after_a_pivot(binder):
     assert direction_from_state(second).mission == "M2"
 
 
-def test_a_graph_binds_the_new_direction_at_the_next_node(binder):
+def test_given_a_direction_change_when_the_graph_reaches_the_next_node_then_it_binds_the_new_one(
+    binder,
+):
     bind, control_plane = binder
 
     def work(state):
@@ -109,7 +111,7 @@ def _gated_graph(bind, gate, **kwargs):
     )
 
 
-def test_an_aligned_output_passes_the_gate_node(binder):
+def test_given_an_aligned_output_when_the_gate_node_runs_then_it_passes(binder):
     bind, _cp = binder
     graph = _gated_graph(bind, RealignmentGate(StubVerdictSource(Verdict.ALIGNED), can_pause=True))
 
@@ -119,7 +121,7 @@ def test_an_aligned_output_passes_the_gate_node(binder):
     assert "__interrupt__" not in result
 
 
-def test_drift_interrupts_and_an_accepting_resume_proceeds(binder):
+def test_given_drift_when_the_resume_accepts_then_the_run_proceeds(binder):
     bind, _cp = binder
     graph = _gated_graph(bind, RealignmentGate(StubVerdictSource(Verdict.DRIFTED), can_pause=True))
     config = {"configurable": {"thread_id": "t2"}}
@@ -134,7 +136,7 @@ def test_drift_interrupts_and_an_accepting_resume_proceeds(binder):
     assert resumed["kyno_blocked"] is False and resumed["kyno_verdict"] == "drifted"
 
 
-def test_a_rejecting_resume_blocks(binder):
+def test_given_drift_when_the_resume_rejects_then_the_run_blocks(binder):
     bind, _cp = binder
     graph = _gated_graph(bind, RealignmentGate(StubVerdictSource(Verdict.DRIFTED), can_pause=True))
     config = {"configurable": {"thread_id": "t3"}}
@@ -145,7 +147,7 @@ def test_a_rejecting_resume_blocks(binder):
     assert resumed["kyno_blocked"] is True
 
 
-def test_an_unjudged_output_passes_marked_unchecked(binder):
+def test_given_an_unjudged_output_when_the_gate_node_runs_then_it_passes_marked_unchecked(binder):
     bind, _cp = binder
     graph = _gated_graph(bind, RealignmentGate(can_pause=True))
 
@@ -154,7 +156,7 @@ def test_an_unjudged_output_passes_marked_unchecked(binder):
     assert result["kyno_checked"] is False and result["kyno_blocked"] is False
 
 
-def test_a_resume_that_does_not_say_accept_blocks(binder):
+def test_given_a_resume_that_does_not_say_accept_when_resuming_then_it_blocks(binder):
     """Anything but an explicit accept is a refusal; silence is not consent."""
     bind, _cp = binder
     graph = _gated_graph(bind, RealignmentGate(StubVerdictSource(Verdict.DRIFTED), can_pause=True))
@@ -166,7 +168,9 @@ def test_a_resume_that_does_not_say_accept_blocks(binder):
     assert resumed["kyno_blocked"] is True
 
 
-def test_a_gate_that_cannot_pause_blocks_without_interrupting(binder):
+def test_given_a_gate_that_cannot_pause_when_drift_is_found_then_it_blocks_without_interrupting(
+    binder,
+):
     bind, _cp = binder
     graph = _gated_graph(bind, RealignmentGate(StubVerdictSource(Verdict.DRIFTED), can_pause=False))
 
@@ -175,7 +179,7 @@ def test_a_gate_that_cannot_pause_blocks_without_interrupting(binder):
     assert result["kyno_blocked"] is True and "__interrupt__" not in result
 
 
-def test_the_direction_reaches_the_gate_across_an_intervening_node(binder):
+def test_given_an_intervening_node_when_the_gate_runs_then_the_direction_still_reaches_it(binder):
     """The state schema must declare the kyno keys or they are dropped."""
     bind, _cp = binder
     graph = _gated_graph(bind, RealignmentGate(StubVerdictSource(Verdict.ALIGNED), can_pause=True))
@@ -185,7 +189,7 @@ def test_the_direction_reaches_the_gate_across_an_intervening_node(binder):
     assert result["kyno_version"] == 1 and result["kyno_mission"] == "M1"
 
 
-def test_a_state_schema_missing_the_kyno_keys_loses_the_direction(binder):
+def test_given_a_schema_missing_the_kyno_keys_when_running_then_the_direction_is_lost(binder):
     """Pins why KynoState exists: without it the gate judges against v0."""
     bind, _cp = binder
     graph = (
@@ -203,7 +207,7 @@ def test_a_state_schema_missing_the_kyno_keys_loses_the_direction(binder):
     assert "kyno_version" not in graph.invoke({})
 
 
-def test_the_gate_reads_the_output_key_it_was_given():
+def test_given_an_output_key_when_the_gate_reads_then_it_uses_the_key_it_was_given():
     seen = []
 
     class Recorder:
@@ -217,7 +221,7 @@ def test_the_gate_reads_the_output_key_it_was_given():
     assert seen == ["the draft"]
 
 
-def test_the_rendered_block_travels_in_state(binder):
+def test_given_a_wrapped_node_when_state_moves_then_the_rendered_block_travels_in_it(binder):
     """A persisted checkpoint must say which direction the step served."""
     bind, _cp = binder
     update = direction_node(bind)({})
@@ -226,7 +230,7 @@ def test_the_rendered_block_travels_in_state(binder):
     assert "M1" in update["kyno_direction"] and "Be honest" in update["kyno_direction"]
 
 
-def test_the_state_keys_are_exactly_what_the_schema_declares():
+def test_given_the_schema_when_comparing_state_keys_then_they_are_exactly_what_it_declares():
     """A key written but not declared would be dropped between nodes."""
     update = direction_update(
         Direction(constitution="eu", version=4, mission="M", principles=("P",))
@@ -236,18 +240,20 @@ def test_the_state_keys_are_exactly_what_the_schema_declares():
     assert update["kyno_principles"] == [{"title": "P", "description": ""}]
 
 
-def test_a_direction_survives_a_round_trip_through_state():
+def test_given_a_direction_when_round_tripping_through_state_then_it_survives():
     original = Direction(constitution="eu", version=4, mission="M", principles=("P", "Q"))
     assert direction_from_state(direction_update(original)) == original
 
 
-def test_state_without_any_kyno_keys_reads_as_no_direction():
+def test_given_state_without_kyno_keys_when_reading_then_it_is_no_direction():
     direction = direction_from_state({})
     assert direction.constitution == "default" and direction.version == 0
     assert direction.mission == "" and direction.principles == ()
 
 
-def test_a_node_that_returns_nothing_still_records_its_direction(binder):
+def test_given_a_node_that_returns_nothing_when_it_runs_then_its_direction_is_still_recorded(
+    binder,
+):
     bind, _cp = binder
 
     @pull_before(bind)
@@ -257,7 +263,7 @@ def test_a_node_that_returns_nothing_still_records_its_direction(binder):
     assert node({})["kyno_version"] == 1
 
 
-def test_a_node_may_overwrite_what_the_wrapper_wrote(binder):
+def test_given_the_wrapper_wrote_state_when_the_node_writes_too_then_the_node_wins(binder):
     """The node runs last, so its own keys win -- it saw the direction too."""
     bind, _cp = binder
 
@@ -268,7 +274,7 @@ def test_a_node_may_overwrite_what_the_wrapper_wrote(binder):
     assert node({})["kyno_mission"] == "as the node saw it"
 
 
-def test_the_gate_node_records_the_step_it_judged(binder):
+def test_given_the_gate_node_when_it_judges_a_step_then_the_step_is_recorded(binder):
     bind, _cp = binder
     trace = RunTrace(run_id="r1")
     gate = RealignmentGate(StubVerdictSource(Verdict.ALIGNED), can_pause=True)
@@ -281,7 +287,7 @@ def test_the_gate_node_records_the_step_it_judged(binder):
     assert record.agent == "graph" and record.version == 1
 
 
-def test_a_principles_description_survives_a_checkpoint_round_trip():
+def test_given_a_described_principle_when_checkpoint_round_tripping_then_it_survives():
     # State is persisted and re-read, so a description dropped here would
     # reach the gate node as a principle that means something else.
     from kyno.models import Principle
@@ -295,7 +301,9 @@ def test_a_principles_description_survives_a_checkpoint_round_trip():
     assert direction_from_state(direction_update(original)) == original
 
 
-def test_the_block_in_state_carries_the_full_document_when_the_binder_says_so(control_plane):
+def test_given_a_full_binder_when_state_carries_the_block_then_it_is_the_full_document(
+    control_plane,
+):
     control_plane.set_direction(
         mission="M1",
         declaration="The long form.",
@@ -311,7 +319,7 @@ def test_the_block_in_state_carries_the_full_document_when_the_binder_says_so(co
     assert update["kyno_context"] == FULL
 
 
-def test_the_block_in_state_stays_compact_by_default(binder):
+def test_given_no_context_asked_when_state_carries_the_block_then_it_stays_compact(binder):
     bind, control_plane = binder
     control_plane.set_direction(declaration="The long form.", change_note="add the long form")
 
@@ -321,6 +329,6 @@ def test_the_block_in_state_stays_compact_by_default(binder):
     assert update["kyno_context"] == COMPACT
 
 
-def test_the_context_survives_a_round_trip_through_state():
+def test_given_a_context_when_round_tripping_through_state_then_it_survives():
     original = Direction(constitution="eu", version=4, mission="M", principles=("P",), context=FULL)
     assert direction_from_state(direction_update(original)) == original

@@ -35,7 +35,7 @@ def connection():
         connection.close()
 
 
-def test_planning_pulls_the_direction_in_force(connection):
+def test_given_a_plan_when_planning_then_the_direction_in_force_is_pulled(connection):
     conn, control_plane = connection
     control_plane.set_direction(mission="M1", change_note="init")
     tracker = conn.binder().plan()
@@ -43,7 +43,7 @@ def test_planning_pulls_the_direction_in_force(connection):
     assert tracker.direction().version == 1
 
 
-def test_an_unchanged_direction_needs_no_replan(connection):
+def test_given_an_unchanged_direction_when_checking_then_no_replan_is_needed(connection):
     conn, control_plane = connection
     control_plane.set_direction(mission="M1", change_note="init")
     tracker = conn.binder().plan()
@@ -52,7 +52,7 @@ def test_an_unchanged_direction_needs_no_replan(connection):
     assert tracker.changed() is None
 
 
-def test_a_new_version_mid_run_hands_back_the_fresh_direction(connection):
+def test_given_a_new_version_mid_run_when_checking_then_the_fresh_direction_comes_back(connection):
     conn, control_plane = connection
     control_plane.set_direction(mission="M1", change_note="init")
     tracker = conn.binder().plan()
@@ -65,7 +65,9 @@ def test_a_new_version_mid_run_hands_back_the_fresh_direction(connection):
     assert "M2" in fresh.render()
 
 
-def test_replanning_arms_the_tracker_against_the_new_version(connection):
+def test_given_a_replan_when_it_is_applied_then_the_tracker_arms_against_the_new_version(
+    connection,
+):
     conn, control_plane = connection
     control_plane.set_direction(mission="M1", change_note="init")
     tracker = conn.binder().plan()
@@ -79,7 +81,9 @@ def test_replanning_arms_the_tracker_against_the_new_version(connection):
     assert tracker.changed() is None
 
 
-def test_a_plan_before_any_direction_is_version_zero_and_replans_on_the_first(connection):
+def test_given_no_direction_yet_when_planning_then_version_zero_holds_and_the_first_replans(
+    connection,
+):
     conn, control_plane = connection
     tracker = conn.binder().plan()
 
@@ -90,7 +94,7 @@ def test_a_plan_before_any_direction_is_version_zero_and_replans_on_the_first(co
     assert fresh.version == 1
 
 
-def test_an_unreachable_plane_reports_no_change(connection):
+def test_given_an_unreachable_plane_when_checking_then_no_change_is_reported(connection):
     conn, control_plane = connection
     control_plane.set_direction(mission="M1", change_note="init")
     tracker = conn.binder().plan()
@@ -125,7 +129,7 @@ class RegressingSource:
         )
 
 
-def test_a_replica_serving_an_older_version_cannot_roll_a_plan_back():
+def test_given_a_replica_serving_an_older_version_when_checking_then_the_plan_never_rolls_back():
     from kyno.sdk import DirectionBinder
 
     binder = DirectionBinder(RegressingSource())

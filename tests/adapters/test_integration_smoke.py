@@ -11,7 +11,7 @@ pytestmark = [
 ]
 
 
-def test_crewai_hooks_register_against_the_real_api(control_plane):
+def test_given_the_real_crewai_api_when_registering_hooks_then_they_are_registered(control_plane):
     crewai_hooks = pytest.importorskip("crewai.hooks")
     from kyno.adapters.crewai.hooks import CrewAiKyno
     from kyno.sdk.binder import DirectionBinder
@@ -26,7 +26,7 @@ def test_crewai_hooks_register_against_the_real_api(control_plane):
         crewai_hooks.clear_all_hooks()
 
 
-def test_a_real_react_agent_accepts_the_hooks(control_plane):
+def test_given_a_real_react_agent_when_wiring_the_hooks_then_it_accepts_them(control_plane):
     pytest.importorskip("langgraph")
     from langchain_core.language_models import FakeListChatModel
     from langgraph.prebuilt import create_react_agent

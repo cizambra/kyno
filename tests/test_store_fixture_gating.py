@@ -9,7 +9,7 @@ from pathlib import Path
 from tests.conftest import POSTGRES_URL_ENV, _postgres_url, _random_prefix, needs_postgres
 
 
-def test_postgres_env_var_name_is_exact(monkeypatch):
+def test_given_the_postgres_gate_when_reading_its_env_var_then_the_name_is_exact(monkeypatch):
     # This name is the documented way to opt into the Postgres tests; a typo
     # here would silently gate them on a variable nobody sets, so they would
     # skip forever without anyone noticing.
@@ -20,12 +20,12 @@ def test_postgres_env_var_name_is_exact(monkeypatch):
     assert _postgres_url() == "postgresql+psycopg://x/y"
 
 
-def test_skip_reason_names_the_env_var():
+def test_given_a_skipped_postgres_run_when_reading_the_reason_then_it_names_the_env_var():
     reason = needs_postgres.kwargs["reason"]
     assert POSTGRES_URL_ENV in reason
 
 
-def test_random_prefix_is_unique_safe_and_short_enough_for_postgres():
+def test_given_generated_prefixes_when_checked_then_they_are_unique_safe_and_short():
     a, b = _random_prefix(), _random_prefix()
     assert a != b
     for p in (a, b):
@@ -34,7 +34,7 @@ def test_random_prefix_is_unique_safe_and_short_enough_for_postgres():
         assert len(p) + len("uq_constitution_version") <= 63
 
 
-def test_dev_extra_provides_psycopg_for_the_postgres_tests():
+def test_given_the_dev_extra_when_installed_then_psycopg_is_available_for_postgres():
     # The Postgres tests need psycopg, and the dev extra is where it comes
     # from -- dropping it would turn them into a permanent skip.
     pyproject = Path(__file__).parent.parent / "pyproject.toml"

@@ -48,7 +48,7 @@ def crew_kyno(control_plane):
     return adapter, control_plane
 
 
-def test_the_direction_is_injected_before_the_model_call(crew_kyno):
+def test_given_a_model_call_when_the_hook_runs_then_the_direction_is_injected_first(crew_kyno):
     adapter, _cp = crew_kyno
     ctx = FakeCtx(messages=[{"role": "user", "content": "go"}])
 
@@ -60,7 +60,7 @@ def test_the_direction_is_injected_before_the_model_call(crew_kyno):
     assert ctx.messages[-1] == {"role": "user", "content": "go"}
 
 
-def test_a_second_call_replaces_the_block_instead_of_stacking(crew_kyno):
+def test_given_a_second_call_when_injecting_then_the_block_is_replaced_not_stacked(crew_kyno):
     adapter, control_plane = crew_kyno
     ctx = FakeCtx(messages=[{"role": "user", "content": "go"}])
     adapter.before_llm_call(ctx)
@@ -73,7 +73,7 @@ def test_a_second_call_replaces_the_block_instead_of_stacking(crew_kyno):
     assert "M2" in blocks[0]["content"] and "version=2" in blocks[0]["content"]
 
 
-def test_before_llm_call_never_blocks_regardless_of_the_gate(crew_kyno):
+def test_given_any_gate_when_before_llm_call_runs_then_it_never_blocks(crew_kyno):
     # Gating lives in task_callback alone; before_llm_call only injects direction and must
     # inject even when the gate would drift-block, or a drifted task would
     # never get a chance to run and produce the output the gate reviews.
@@ -86,12 +86,12 @@ def test_before_llm_call_never_blocks_regardless_of_the_gate(crew_kyno):
     assert ctx.messages[0]["content"].startswith(DIRECTION_MARKER)
 
 
-def test_the_adapter_reports_which_constitution_it_serves(control_plane):
+def test_given_the_adapter_when_asking_then_it_reports_which_constitution_it_serves(control_plane):
     binder = DirectionBinder(LocalDirectionSource(control_plane))
     assert CrewAiKyno(binder, constitution="eu").constitution == "eu"
 
 
-def test_an_aligned_task_output_is_not_blocked(crew_kyno):
+def test_given_an_aligned_task_output_when_gating_then_it_is_not_blocked(crew_kyno):
     adapter, _cp = crew_kyno
     adapter.gate = RealignmentGate(StubVerdictSource(Verdict.ALIGNED))
     output = FakeTaskOutput(raw="on mission")
@@ -101,7 +101,7 @@ def test_an_aligned_task_output_is_not_blocked(crew_kyno):
     assert adapter.trace.steps[-1].verdict == "aligned" and adapter.trace.steps[-1].checked
 
 
-def test_a_drifted_task_output_is_blocked(crew_kyno):
+def test_given_a_drifted_task_output_when_gating_then_it_is_blocked(crew_kyno):
     adapter, _cp = crew_kyno
     adapter.gate = RealignmentGate(StubVerdictSource(Verdict.DRIFTED))
     output = FakeTaskOutput(raw="off mission")
@@ -111,7 +111,7 @@ def test_a_drifted_task_output_is_blocked(crew_kyno):
     assert adapter.trace.steps[-1].verdict == "drifted"
 
 
-def test_a_pause_capable_gate_still_blocks_here(crew_kyno):
+def test_given_a_pause_capable_gate_when_gating_here_then_it_still_blocks(crew_kyno):
     """One gate may be shared with LangGraph; CrewAI cannot resume, so a
     pause must degrade to a block instead of passing drifted work through."""
     adapter, _cp = crew_kyno
@@ -122,7 +122,7 @@ def test_a_pause_capable_gate_still_blocks_here(crew_kyno):
     assert adapter.trace.steps[-1].verdict == "drifted"
 
 
-def test_an_unjudged_task_output_ships_marked_unchecked(crew_kyno):
+def test_given_an_unjudged_task_output_when_gating_then_it_ships_marked_unchecked(crew_kyno):
     adapter, _cp = crew_kyno
     output = FakeTaskOutput(raw="whatever")
 
@@ -133,7 +133,7 @@ def test_an_unjudged_task_output_ships_marked_unchecked(crew_kyno):
     assert record.constitution == "default" and record.version == 1
 
 
-def test_the_adapter_has_no_after_llm_call_hook(crew_kyno):
+def test_given_the_adapter_when_inspecting_hooks_then_there_is_no_after_llm_call(crew_kyno):
     # Decided: gating is task_callback's job alone. An after_llm_call hook
     # would invite gating to creep back to per-call, so the surface simply
     # does not carry one.
@@ -141,7 +141,7 @@ def test_the_adapter_has_no_after_llm_call_hook(crew_kyno):
     assert not hasattr(adapter, "after_llm_call")
 
 
-def test_registration_installs_and_clears_cleanly(crew_kyno):
+def test_given_a_registration_when_installing_and_clearing_then_both_are_clean(crew_kyno):
     from crewai.hooks import clear_all_hooks
 
     adapter, _cp = crew_kyno
@@ -151,7 +151,7 @@ def test_registration_installs_and_clears_cleanly(crew_kyno):
         clear_all_hooks()
 
 
-def test_registration_lands_the_hook_and_unregistration_removes_it(crew_kyno):
+def test_given_a_registration_when_unregistering_then_the_hook_is_removed(crew_kyno):
     from crewai.hooks import clear_all_hooks, get_before_llm_call_hooks
 
     adapter, _cp = crew_kyno
@@ -164,7 +164,7 @@ def test_registration_lands_the_hook_and_unregistration_removes_it(crew_kyno):
         clear_all_hooks()
 
 
-def test_the_message_list_is_edited_in_place(crew_kyno):
+def test_given_the_message_list_when_injecting_then_it_is_edited_in_place(crew_kyno):
     """CrewAI's executor holds this list; rebinding it drops the injection."""
     adapter, _cp = crew_kyno
     messages = [{"role": "user", "content": "go"}]
@@ -176,7 +176,9 @@ def test_the_message_list_is_edited_in_place(crew_kyno):
     assert messages[0]["content"].startswith(DIRECTION_MARKER)
 
 
-def test_the_block_carries_the_direction_it_was_judged_against(crew_kyno):
+def test_given_a_judged_block_when_reading_then_it_carries_the_direction_it_was_judged_against(
+    crew_kyno,
+):
     adapter, _cp = crew_kyno
     adapter.gate = RealignmentGate(StubVerdictSource(Verdict.DRIFTED))
 
@@ -188,7 +190,7 @@ def test_the_block_carries_the_direction_it_was_judged_against(crew_kyno):
     assert "constitution=default" in str(raised.value)
 
 
-def test_the_gate_judges_against_the_shared_cell_not_its_own_pull(crew_kyno):
+def test_given_a_shared_cell_when_the_gate_judges_then_it_uses_the_cell_not_its_own_pull(crew_kyno):
     """Freshness is the binder's and subscriber's job; a pull here would double it."""
     adapter, control_plane = crew_kyno
     adapter.before_llm_call(FakeCtx(messages=[]))
@@ -199,7 +201,9 @@ def test_the_gate_judges_against_the_shared_cell_not_its_own_pull(crew_kyno):
     assert adapter.trace.steps[-1].version == 1
 
 
-def test_a_non_system_message_carrying_the_marker_is_not_deleted(crew_kyno):
+def test_given_a_non_system_message_with_the_marker_when_refreshing_then_it_is_not_deleted(
+    crew_kyno,
+):
     """Only the block this adapter injected -- a system message -- is its to
     replace. Marker text arriving any other way (a tool result echoed into
     the transcript, a user paste) is data, not a deletion instruction."""
@@ -217,7 +221,9 @@ def test_a_non_system_message_carrying_the_marker_is_not_deleted(crew_kyno):
     assert len(blocks) == 1
 
 
-def test_messages_the_shim_does_not_understand_are_left_alone(crew_kyno):
+def test_given_messages_the_shim_does_not_understand_when_injecting_then_they_are_left_alone(
+    crew_kyno,
+):
     """CrewAI may hand over message objects, not dicts; never drop them."""
     adapter, _cp = crew_kyno
     other = object()
@@ -229,7 +235,7 @@ def test_messages_the_shim_does_not_understand_are_left_alone(crew_kyno):
     assert ctx.messages[0]["content"].startswith(DIRECTION_MARKER)
 
 
-def test_the_tap_records_a_step_without_judging_it(crew_kyno):
+def test_given_the_tap_when_a_step_runs_then_it_is_recorded_without_judgment(crew_kyno):
     adapter, _cp = crew_kyno
 
     adapter.step_callback(FakeTaskOutput(raw="thinking", description="Find lenders"))
@@ -239,7 +245,7 @@ def test_the_tap_records_a_step_without_judging_it(crew_kyno):
     assert record.version == 1
 
 
-def test_the_tap_is_a_no_op_without_a_trace(control_plane):
+def test_given_no_trace_when_the_tap_runs_then_it_is_a_no_op(control_plane):
     control_plane.set_direction(mission="M1", change_note="init")
     adapter = CrewAiKyno(DirectionBinder(LocalDirectionSource(control_plane)))
 
@@ -248,7 +254,7 @@ def test_the_tap_is_a_no_op_without_a_trace(control_plane):
     assert adapter.trace is None
 
 
-def test_an_output_with_nothing_to_read_is_still_recorded(crew_kyno):
+def test_given_an_output_with_nothing_to_read_when_tapping_then_it_is_still_recorded(crew_kyno):
     adapter, _cp = crew_kyno
 
     adapter.task_callback(FakeTaskOutput(raw=""))
@@ -256,7 +262,7 @@ def test_an_output_with_nothing_to_read_is_still_recorded(crew_kyno):
     assert adapter.trace.steps[-1].output == ""
 
 
-def test_a_task_gated_before_any_direction_was_bound_records_version_zero(control_plane):
+def test_given_no_bound_direction_when_gating_a_task_then_version_zero_is_recorded(control_plane):
     """A crew can finish a task before the first pull ever lands."""
     adapter = CrewAiKyno(
         DirectionBinder(LocalDirectionSource(control_plane)), trace=RunTrace(run_id="r1")
@@ -267,7 +273,7 @@ def test_a_task_gated_before_any_direction_was_bound_records_version_zero(contro
     assert adapter.trace.steps[-1].version == 0
 
 
-def test_the_trace_names_the_agent_and_the_goal(crew_kyno):
+def test_given_a_trace_when_reading_it_then_the_agent_and_the_goal_are_named(crew_kyno):
     adapter, _cp = crew_kyno
 
     adapter.task_callback(FakeTaskOutput(raw="a list", agent="researcher", description="Find them"))
@@ -277,7 +283,9 @@ def test_the_trace_names_the_agent_and_the_goal(crew_kyno):
     assert record.output == "a list"
 
 
-def test_the_injected_message_carries_the_full_document_when_the_binder_says_so(control_plane):
+def test_given_a_full_binder_when_injecting_then_the_message_carries_the_full_document(
+    control_plane,
+):
     control_plane.set_direction(
         mission="M1",
         declaration="The long form.",
@@ -295,7 +303,7 @@ def test_the_injected_message_carries_the_full_document_when_the_binder_says_so(
     assert "Say the hard number first." in injected
 
 
-def test_the_injected_message_stays_compact_by_default(control_plane):
+def test_given_no_context_asked_when_injecting_then_the_message_stays_compact(control_plane):
     control_plane.set_direction(
         mission="M1",
         declaration="The long form.",
@@ -313,7 +321,7 @@ def test_the_injected_message_stays_compact_by_default(control_plane):
     assert "Say the hard number first." not in injected
 
 
-def test_an_adapter_with_no_gate_has_none(crew_kyno):
+def test_given_no_gate_when_building_the_adapter_then_it_has_none(crew_kyno):
     """Carrying direction is the whole product; checking the work against it is
     a separate thing an operator opts into, with a judge Kyno does not ship. An
     inert gate that always answers 'unchecked' is a worse story than no gate."""
@@ -321,7 +329,7 @@ def test_an_adapter_with_no_gate_has_none(crew_kyno):
     assert adapter.gate is None
 
 
-def test_a_gateless_adapter_still_records_the_step(crew_kyno):
+def test_given_a_gateless_adapter_when_a_step_runs_then_it_is_still_recorded(crew_kyno):
     adapter, _plane = crew_kyno
 
     adapter.task_callback(FakeTaskOutput(raw="anything at all"))

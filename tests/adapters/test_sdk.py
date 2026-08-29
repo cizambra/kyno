@@ -39,13 +39,13 @@ def in_memory_connection():
         connection.close()
 
 
-def test_connect_refuses_wiring_without_an_endpoint(monkeypatch):
+def test_given_wiring_without_an_endpoint_when_connecting_then_it_is_refused(monkeypatch):
     monkeypatch.delenv("KYNO_URL", raising=False)
     with pytest.raises(KynoUnavailableError):
         connect()
 
 
-def test_connect_builds_the_binding_from_its_arguments(monkeypatch):
+def test_given_arguments_when_connecting_then_the_binding_is_built_from_them(monkeypatch):
     captured = {}
 
     def fake_http_session(binding):
@@ -66,7 +66,7 @@ def test_connect_builds_the_binding_from_its_arguments(monkeypatch):
         connection.close()
 
 
-def test_connect_falls_back_to_the_environment(monkeypatch):
+def test_given_no_arguments_when_connecting_then_the_environment_is_the_fallback(monkeypatch):
     captured = {}
 
     def fake_http_session(binding):
@@ -89,7 +89,9 @@ def test_connect_falls_back_to_the_environment(monkeypatch):
         connection.close()
 
 
-def test_a_binder_from_the_connection_serves_the_direction_in_force(in_memory_connection):
+def test_given_a_connection_when_its_binder_binds_then_the_direction_in_force_serves(
+    in_memory_connection,
+):
     connection, control_plane = in_memory_connection
     control_plane.set_direction(mission="M1", change_note="init")
     binder = connection.binder()
@@ -100,7 +102,7 @@ def test_a_binder_from_the_connection_serves_the_direction_in_force(in_memory_co
     assert "version=2" in binder.bind().render()
 
 
-def test_binders_from_one_connection_share_the_session(in_memory_connection):
+def test_given_one_connection_when_making_binders_then_they_share_the_session(in_memory_connection):
     connection, control_plane = in_memory_connection
     control_plane.set_direction(mission="M1", change_note="init")
 
@@ -116,7 +118,9 @@ def test_binders_from_one_connection_share_the_session(in_memory_connection):
     assert second.bind().version == 1
 
 
-def test_a_closed_connection_degrades_binds_instead_of_crashing(in_memory_connection):
+def test_given_a_closed_connection_when_binding_then_it_degrades_instead_of_crashing(
+    in_memory_connection,
+):
     connection, control_plane = in_memory_connection
     binder = connection.binder()
     connection.close()
@@ -125,5 +129,5 @@ def test_a_closed_connection_degrades_binds_instead_of_crashing(in_memory_connec
     assert direction.version == 0
 
 
-def test_kyno_connect_is_the_sdk_entry_point():
+def test_given_the_sdk_when_looking_for_the_entry_point_then_it_is_kyno_connect():
     assert kyno.connect is connect

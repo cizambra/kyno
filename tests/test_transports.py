@@ -1,21 +1,21 @@
 from kyno.transports import require_token
 
 
-def test_open_when_no_token_configured():
+def test_given_no_token_configured_when_a_request_arrives_then_it_is_allowed():
     assert require_token({}, None) is True
 
 
-def test_requires_matching_bearer():
+def test_given_a_configured_token_when_a_request_arrives_then_only_the_matching_bearer_passes():
     assert require_token({"authorization": "Bearer secret"}, "secret") is True
     assert require_token({"authorization": "Bearer wrong"}, "secret") is False
     assert require_token({}, "secret") is False
 
 
-def test_header_lookup_is_case_insensitive():
+def test_given_a_capitalized_authorization_header_when_checking_the_token_then_it_still_matches():
     assert require_token({"Authorization": "Bearer secret"}, "secret") is True
 
 
-def test_non_ascii_bearer_value_is_rejected_not_crashed():
+def test_given_a_non_ascii_bearer_value_when_checking_the_token_then_it_fails_closed_not_crashes():
     # hmac.compare_digest raises TypeError comparing a non-ASCII str against
     # an ASCII str; that must fail closed (401), not surface as a 500.
     assert require_token({"authorization": "Bearer café"}, "tok") is False
@@ -29,7 +29,7 @@ from kyno.store.sql import SqlConstitutionStore
 
 
 @pytest.mark.asyncio
-async def test_end_to_end_tool_calls_over_memory_session():
+async def test_given_a_memory_session_when_calling_tools_end_to_end_then_the_mission_round_trips():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = SqlConstitutionStore(url="sqlite://")
@@ -76,7 +76,7 @@ _MCP_HEADERS = {
 }
 
 
-def test_http_app_rejects_unauthorized_request():
+def test_given_no_bearer_when_posting_to_the_http_app_then_it_is_401():
     from starlette.testclient import TestClient
 
     from kyno.transports import build_http_app
@@ -89,7 +89,7 @@ def test_http_app_rejects_unauthorized_request():
     assert response.status_code == 401
 
 
-def test_http_app_lifespan_is_wired_so_authorized_requests_reach_the_mcp_handler():
+def test_given_an_authorized_request_when_the_lifespan_runs_then_it_reaches_the_mcp_handler():
     # Regression: without the lifespan, manager._task_group stays None and
     # every authorized request raises RuntimeError("Task group is not
     # initialized"), surfaced as a 500 by Starlette.
@@ -112,7 +112,7 @@ def test_http_app_lifespan_is_wired_so_authorized_requests_reach_the_mcp_handler
     assert '"serverInfo"' in response.text
 
 
-def test_http_app_non_ascii_authorization_header_is_401_not_500():
+def test_given_a_non_ascii_authorization_header_when_posting_then_it_is_401_not_500():
     from starlette.testclient import TestClient
 
     from kyno.transports import build_http_app
@@ -130,7 +130,7 @@ def test_http_app_non_ascii_authorization_header_is_401_not_500():
 
 
 @pytest.mark.asyncio
-async def test_http_handle_non_utf8_header_bytes_is_401_not_500():
+async def test_given_non_utf8_header_bytes_when_handling_the_request_then_it_is_401_not_500():
     # A header value that isn't valid UTF-8 at all (not just non-ASCII) must
     # not crash v.decode() in handle(); it should fail closed as 401.
     from kyno.transports import build_http_app
@@ -160,7 +160,7 @@ async def test_http_handle_non_utf8_header_bytes_is_401_not_500():
     assert status == 401
 
 
-def test_http_end_to_end_tool_call_round_trips_mission():
+def test_given_the_bearer_gate_when_driving_a_full_http_session_then_the_mission_round_trips():
     # Existing HTTP tests stop at initialize; this drives a full session
     # (set_direction then get_constitution) through the real bearer-token gate.
     import json
@@ -217,7 +217,7 @@ def test_http_end_to_end_tool_call_round_trips_mission():
     assert payload["version"] == 1
 
 
-def test_a_declared_body_over_the_cap_is_413_before_the_body_is_read():
+def test_given_a_declared_body_over_the_cap_when_posting_then_it_is_413_before_the_body_is_read():
     from starlette.testclient import TestClient
 
     from kyno.transports import MAX_MCP_BODY_BYTES, build_http_app
@@ -234,7 +234,7 @@ def test_a_declared_body_over_the_cap_is_413_before_the_body_is_read():
     assert response.status_code == 413
 
 
-def test_a_declared_body_at_the_cap_is_not_413():
+def test_given_a_declared_body_at_the_cap_when_posting_then_it_is_not_413():
     from starlette.testclient import TestClient
 
     from kyno.transports import MAX_MCP_BODY_BYTES, build_http_app
@@ -253,7 +253,7 @@ def test_a_declared_body_at_the_cap_is_not_413():
     assert response.status_code not in (413, 500)
 
 
-def test_a_chunked_body_crossing_the_cap_mid_stream_is_413():
+def test_given_a_chunked_body_crossing_the_cap_when_streaming_then_it_is_413():
     # Chunked transfer declares no Content-Length, so only counting the
     # streamed bytes can enforce the cap.
     from starlette.testclient import TestClient
@@ -274,7 +274,7 @@ def test_a_chunked_body_crossing_the_cap_mid_stream_is_413():
     assert response.status_code == 413
 
 
-def test_a_chunked_body_under_the_cap_still_reaches_the_mcp_handler():
+def test_given_a_chunked_body_under_the_cap_when_streaming_then_it_reaches_the_mcp_handler():
     import json
 
     from starlette.testclient import TestClient
@@ -296,7 +296,7 @@ def test_a_chunked_body_under_the_cap_still_reaches_the_mcp_handler():
     assert '"serverInfo"' in response.text
 
 
-def test_a_tokenless_app_requires_the_insecure_opt_in():
+def test_given_no_token_when_building_the_http_app_then_the_insecure_opt_in_is_required():
     # A library embedder opens the write endpoint as loudly as the CLI does.
     from kyno.errors import ConfigError
     from kyno.transports import build_http_app
@@ -305,7 +305,7 @@ def test_a_tokenless_app_requires_the_insecure_opt_in():
         build_http_app(_make_control_plane(), token=None)
 
 
-def test_http_app_lifespan_is_wired_when_no_token_configured():
+def test_given_a_tokenless_opt_in_app_when_posting_then_the_lifespan_still_reaches_the_handler():
     from starlette.testclient import TestClient
 
     from kyno.transports import build_http_app

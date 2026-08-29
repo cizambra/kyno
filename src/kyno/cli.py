@@ -129,7 +129,7 @@ def set_direction_cmd(
             created_by=by if by is not None else _system_user(),
             constitution=target,
         )
-        typer.echo(json.dumps(v.to_dict()))
+        typer.echo(json.dumps(v.to_dict(), indent=2))
     except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
@@ -223,7 +223,7 @@ def current(
         elif as_yaml:
             typer.echo(render_constitution_yaml(v, constitution), nl=False)
         else:
-            typer.echo(json.dumps(v.to_dict()))
+            typer.echo(json.dumps(v.to_dict(), indent=2))
     except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None

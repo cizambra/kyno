@@ -432,7 +432,7 @@ def test_given_an_edit_when_applied_then_the_delta_is_printed(tmp_path, monkeypa
     assert r.exit_code == 0
     assert 'The mission was "M1" and is now "M2".' in r.output
     # stdout stays the version JSON, pipeable; the delta rides stderr.
-    assert json.loads(r.stdout.splitlines()[-1])["version"] == 2
+    assert json.loads(r.stdout)["version"] == 2
 
 
 def test_given_an_empty_store_when_applying_then_the_first_version_is_announced(
@@ -475,3 +475,17 @@ def test_given_dry_run_when_no_note_is_passed_then_it_still_runs(tmp_path, monke
     target.write_text("mission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["set", str(target), "--dry-run"])
     assert r.exit_code == 0
+
+
+def test_given_an_apply_when_reading_stdout_then_the_json_is_indented_for_people(
+    tmp_path, monkeypatch
+):
+    """The JSON is read by people at a terminal as often as by scripts, and
+    indentation costs a script nothing. `current` and `export` match."""
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    applied = apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init")
+    current = runner.invoke(app, ["current"])
+    for out in (applied.stdout, current.stdout):
+        assert out.startswith("{\n  ")
+        assert json.loads(out)["principles"][0]["title"] == "p1"

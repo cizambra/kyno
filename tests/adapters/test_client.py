@@ -3,13 +3,13 @@ import pytest
 from kyno.sdk.client import DirectionSource, KynoBinding, LocalDirectionSource
 
 
-def test_binding_defaults_to_the_default_constitution():
+def test_given_no_name_when_building_a_binding_then_the_default_constitution_is_used():
     binding = KynoBinding()
     assert binding.endpoint is None
     assert binding.endpoint is None and binding.token is None
 
 
-def test_binding_from_env_reads_url_and_token(monkeypatch):
+def test_given_env_wiring_when_building_a_binding_then_the_url_and_token_are_read(monkeypatch):
     monkeypatch.setenv("KYNO_URL", "https://kyno.internal/mcp")
     monkeypatch.setenv("KYNO_TOKEN", "secret")
     binding = KynoBinding.from_env()
@@ -17,13 +17,15 @@ def test_binding_from_env_reads_url_and_token(monkeypatch):
     assert binding.token == "secret"
 
 
-def test_binding_from_env_without_token_is_none_not_empty(monkeypatch):
+def test_given_env_without_a_token_when_building_a_binding_then_the_token_is_none_not_empty(
+    monkeypatch,
+):
     monkeypatch.delenv("KYNO_URL", raising=False)
     monkeypatch.setenv("KYNO_TOKEN", "")
     assert KynoBinding.from_env().token is None
 
 
-def test_local_source_serves_the_named_constitution(control_plane):
+def test_given_a_local_source_when_pulling_a_name_then_that_constitution_serves(control_plane):
     control_plane.set_direction(mission="EU mission", change_note="init", constitution="eu")
     control_plane.set_direction(mission="US mission", change_note="init", constitution="us")
     source = LocalDirectionSource(control_plane)
@@ -32,16 +34,18 @@ def test_local_source_serves_the_named_constitution(control_plane):
     assert source.changes_since(0, "us").mission == "US mission"
 
 
-def test_local_source_reads_an_unwritten_name_as_version_zero(control_plane):
+def test_given_an_unwritten_name_when_a_local_source_reads_then_it_is_version_zero(control_plane):
     changes = LocalDirectionSource(control_plane).changes_since(0, "never-written")
     assert changes.current_version == 0 and changes.changed is False
 
 
-def test_local_source_satisfies_the_protocol(control_plane):
+def test_given_the_local_source_when_checking_the_protocol_then_it_satisfies_it(control_plane):
     assert isinstance(LocalDirectionSource(control_plane), DirectionSource)
 
 
-def test_local_source_propagates_a_future_known_version(control_plane):
+def test_given_a_future_known_version_when_a_local_source_pulls_then_the_error_propagates(
+    control_plane,
+):
     from kyno.errors import UnknownVersionError
 
     control_plane.set_direction(mission="M", change_note="init")
@@ -49,31 +53,31 @@ def test_local_source_propagates_a_future_known_version(control_plane):
         LocalDirectionSource(control_plane).changes_since(99, "default")
 
 
-def test_binding_from_env_treats_an_empty_url_as_unset(monkeypatch):
+def test_given_an_empty_url_in_env_when_building_a_binding_then_it_reads_as_unset(monkeypatch):
     monkeypatch.setenv("KYNO_URL", "")
     assert KynoBinding.from_env().endpoint is None
 
 
-def test_a_binding_cannot_be_repointed_after_construction():
+def test_given_a_built_binding_when_repointing_then_it_is_refused():
     binding = KynoBinding()
     with pytest.raises(Exception):  # noqa: B017 - frozen dataclass raises FrozenInstanceError
         binding.endpoint = "https://elsewhere/mcp"
 
 
-def test_the_repr_of_a_binding_never_contains_the_token():
+def test_given_a_binding_when_reading_its_repr_then_the_token_is_never_there():
     # Bindings travel into logs and tracebacks; the credential must not.
     binding = KynoBinding(endpoint="https://kyno.internal/mcp", token="hunter2")
     assert "hunter2" not in repr(binding)
     assert "kyno.internal" in repr(binding)
 
 
-def test_two_bindings_with_the_same_wiring_are_equal_and_hashable():
+def test_given_two_bindings_with_one_wiring_when_comparing_then_they_are_equal_and_hashable():
     wiring = {"endpoint": "https://kyno.internal/mcp", "token": "t"}
     assert KynoBinding(**wiring) == KynoBinding(**wiring)
     assert len({KynoBinding(**wiring), KynoBinding(**wiring)}) == 1
 
 
-def test_one_source_serves_two_bindings_without_crosstalk(control_plane):
+def test_given_one_source_when_serving_two_bindings_then_there_is_no_crosstalk(control_plane):
     """The use case: one process runs an EU crew and a US crew off one plane."""
     control_plane.set_direction(mission="EU v1", change_note="init", constitution="eu")
     control_plane.set_direction(mission="US v1", change_note="init", constitution="us")
@@ -88,7 +92,9 @@ def test_one_source_serves_two_bindings_without_crosstalk(control_plane):
     assert after_us.changed is False and after_us.mission == "US v1"
 
 
-def test_local_source_reports_every_note_since_the_known_version(control_plane):
+def test_given_a_known_version_when_a_local_source_reports_then_every_note_since_comes(
+    control_plane,
+):
     control_plane.set_direction(mission="M", change_note="init")
     control_plane.set_direction(principles=("P",), change_note="add P")
     control_plane.set_direction(mission="M2", change_note="repoint")

@@ -26,7 +26,7 @@ def plane():
     return plane
 
 
-def test_a_changed_principle_is_named_with_both_wordings(plane):
+def test_given_a_changed_principle_when_reading_the_delta_then_both_wordings_are_named(plane):
     plane.set_direction(
         principles=("Craft first", "Retainer outcomes come first", "Honest scoping"),
         change_note="board decision",
@@ -38,14 +38,14 @@ def test_a_changed_principle_is_named_with_both_wordings(plane):
     assert "Retainer outcomes come first" in delta[0]
 
 
-def test_a_changed_mission_is_named(plane):
+def test_given_a_changed_mission_when_reading_the_delta_then_it_is_named(plane):
     plane.set_direction(mission="Run the studio", change_note="pivot")
     delta = plane.changes_since(1).delta
 
     assert any("Run the agency" in line and "Run the studio" in line for line in delta)
 
 
-def test_an_added_principle_is_named_as_added(plane):
+def test_given_an_added_principle_when_reading_the_delta_then_it_is_named_as_added(plane):
     plane.set_direction(
         principles=(
             "Craft first",
@@ -62,7 +62,7 @@ def test_an_added_principle_is_named_as_added(plane):
     assert "added" in delta[0].lower()
 
 
-def test_a_dropped_principle_is_named_as_dropped(plane):
+def test_given_a_dropped_principle_when_reading_the_delta_then_it_is_named_as_dropped(plane):
     plane.set_direction(principles=("Craft first", "Honest scoping"), change_note="retire one")
     delta = plane.changes_since(1).delta
 
@@ -70,17 +70,17 @@ def test_a_dropped_principle_is_named_as_dropped(plane):
     assert any("dropped" in line.lower() for line in delta)
 
 
-def test_a_consumer_holding_nothing_gets_no_delta(plane):
+def test_given_a_consumer_holding_nothing_when_reading_changes_then_there_is_no_delta(plane):
     """There is no baseline to diff against, and the whole constitution is
     already in front of them."""
     assert plane.changes_since(0).delta == ()
 
 
-def test_a_consumer_already_current_gets_no_delta(plane):
+def test_given_a_current_consumer_when_reading_changes_then_there_is_no_delta(plane):
     assert plane.changes_since(1).delta == ()
 
 
-def test_the_delta_spans_every_version_the_consumer_missed(plane):
+def test_given_missed_versions_when_reading_the_delta_then_it_spans_all_of_them(plane):
     plane.set_direction(mission="Run the studio", change_note="one")
     plane.set_direction(
         principles=("Craft first", "Retainer outcomes come first", "Honest scoping"),
@@ -92,7 +92,7 @@ def test_the_delta_spans_every_version_the_consumer_missed(plane):
     assert any("Retainer outcomes come first" in line for line in delta)
 
 
-def test_the_delta_is_separate_from_the_operator_note(plane):
+def test_given_a_delta_and_a_note_when_reading_changes_then_they_stay_separate(plane):
     """The note carries intent, the delta carries fact. Losing either one
     loses something the other cannot say."""
     plane.set_direction(
@@ -105,7 +105,7 @@ def test_the_delta_is_separate_from_the_operator_note(plane):
     assert changes.delta and "Retainer outcomes come first" in changes.delta[0]
 
 
-def test_the_injected_block_carries_the_delta(plane):
+def test_given_an_injected_block_when_rendered_then_it_carries_the_delta(plane):
     from kyno.sdk.binder import DirectionBinder
     from kyno.sdk.client import LocalDirectionSource
 

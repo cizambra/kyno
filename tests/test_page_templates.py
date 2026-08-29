@@ -40,26 +40,28 @@ RICH = dict(
 # --- the defaults are files ------------------------------------------------
 
 
-def test_the_default_pages_ship_as_templates_beside_the_stylesheet():
+def test_given_the_package_when_inspecting_then_default_pages_ship_as_templates_beside_the_css():
     assert PACKAGED_TEMPLATES == ("constitution.html", "index.html", "page.css")
     for name in PACKAGED_TEMPLATES:
         assert packaged_template(name).strip(), name
 
 
-def test_the_packaged_constitution_template_uses_the_placeholders_it_documents():
+def test_given_the_packaged_template_when_inspecting_then_it_uses_the_placeholders_it_documents():
     text = packaged_template("constitution.html")
     for placeholder in ("$stylesheet", "$name", "$mission", "$declaration", "$principles"):
         assert placeholder in text, placeholder
 
 
-def test_a_packaged_template_that_is_missing_is_a_broken_install_and_raises():
+def test_given_a_missing_packaged_template_when_loading_then_the_broken_install_raises():
     # Unlike an operator's template, which degrades to the built-in page:
     # there is nothing left to degrade to, and silence would hide the break.
     with pytest.raises(FileNotFoundError):
         packaged_template("no-such-page.html")
 
 
-def test_the_built_in_page_is_exactly_what_the_packaged_template_renders(plane, tmp_path):
+def test_given_the_packaged_template_when_rendering_then_the_built_in_page_matches_it_exactly(
+    plane, tmp_path
+):
     # The dogfooding proof: point the operator-template path at a copy of the
     # packaged file and the output is byte-for-byte the built-in page.
     view = published(plane, **RICH)
@@ -71,7 +73,9 @@ def test_the_built_in_page_is_exactly_what_the_packaged_template_renders(plane, 
     )
 
 
-def test_the_built_in_index_is_exactly_what_the_packaged_template_renders(plane, tmp_path):
+def test_given_the_packaged_index_template_when_rendering_then_the_built_in_index_matches_it(
+    plane, tmp_path
+):
     plane.set_direction(mission="Product mission", change_note="init", constitution="product")
     plane.publish(constitution="product")
     views = plane.published_constitutions()
@@ -81,7 +85,9 @@ def test_the_built_in_index_is_exactly_what_the_packaged_template_renders(plane,
     assert render_index(views, PageConfig(index_template=str(copy))) == render_index(views)
 
 
-def test_a_copied_template_still_follows_the_theme_it_is_rendered_with(plane, tmp_path):
+def test_given_a_copied_template_when_rendering_then_it_follows_the_theme_it_is_rendered_with(
+    plane, tmp_path
+):
     copy = tmp_path / "constitution.html"
     copy.write_text(packaged_template("constitution.html"), encoding="utf-8")
     config = PageConfig(theme=PageTheme(accent="#b4531f"), constitution_template=str(copy))
@@ -92,7 +98,9 @@ def test_a_copied_template_still_follows_the_theme_it_is_rendered_with(plane, tm
 # --- $stylesheet -----------------------------------------------------------
 
 
-def test_a_custom_template_can_inherit_the_house_stylesheet(plane, tmp_path):
+def test_given_a_custom_template_when_rendering_then_it_can_inherit_the_house_stylesheet(
+    plane, tmp_path
+):
     path = tmp_path / "mine.html"
     path.write_text("<html><head>$stylesheet</head><body>$mission</body></html>")
 
@@ -106,7 +114,9 @@ def test_a_custom_template_can_inherit_the_house_stylesheet(plane, tmp_path):
     assert "prefers-color-scheme: dark" in page
 
 
-def test_a_custom_template_may_bring_its_own_styles_instead(plane, tmp_path):
+def test_given_a_custom_template_when_rendering_then_it_may_bring_its_own_styles_instead(
+    plane, tmp_path
+):
     path = tmp_path / "mine.html"
     path.write_text("<html><head><style>body{color:red}</style></head><body>$mission</body></html>")
 
@@ -121,7 +131,9 @@ def test_a_custom_template_may_bring_its_own_styles_instead(plane, tmp_path):
 # --- placeholders are whole blocks, so substitution alone can omit them ----
 
 
-def test_the_declaration_placeholder_is_the_whole_block_or_nothing(plane, tmp_path):
+def test_given_the_declaration_placeholder_when_rendering_then_it_is_the_whole_block_or_nothing(
+    plane, tmp_path
+):
     path = tmp_path / "t.html"
     path.write_text("[$declaration]")
 
@@ -141,7 +153,9 @@ def test_the_declaration_placeholder_is_the_whole_block_or_nothing(plane, tmp_pa
     )
 
 
-def test_the_principles_placeholder_carries_its_own_heading_or_nothing(plane, tmp_path):
+def test_given_the_principles_placeholder_when_rendering_then_it_has_its_own_heading_or_nothing(
+    plane, tmp_path
+):
     path = tmp_path / "t.html"
     path.write_text("[$principles]")
 
@@ -162,7 +176,9 @@ def test_the_principles_placeholder_carries_its_own_heading_or_nothing(plane, tm
     )
 
 
-def test_the_index_items_placeholder_carries_the_empty_state_itself(plane, tmp_path):
+def test_given_the_index_items_placeholder_when_rendering_then_it_carries_the_empty_state(
+    plane, tmp_path
+):
     # A pure substitution cannot branch, so "nothing is published" has to be
     # part of the value rather than a conditional in the renderer.
     path = tmp_path / "t.html"

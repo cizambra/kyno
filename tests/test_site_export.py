@@ -13,7 +13,7 @@ SITE = ROOT / "site"
 pytestmark = pytest.mark.skipif(not SITE.exists(), reason="site/ not present")
 
 
-def test_the_exported_page_carries_the_committed_constitution():
+def test_given_the_committed_constitution_when_exporting_the_site_then_the_page_carries_it():
     from kyno.authoring import read_constitution_file
 
     source = read_constitution_file(ROOT / "constitution.yaml")
@@ -23,7 +23,7 @@ def test_the_exported_page_carries_the_committed_constitution():
         assert html.escape(principle.title) in exported
 
 
-def test_the_landing_page_requests_nothing_external():
+def test_given_the_landing_page_when_scanning_its_requests_then_nothing_is_external():
     html = (SITE / "index.html").read_text()
     # Anchors may leave the site; assets (scripts, styles, images) may not,
     # with one deliberate exception: the cookieless Umami analytics script.
@@ -36,7 +36,7 @@ def test_the_landing_page_requests_nothing_external():
             assert not url.startswith(("http://", "https://", "//")), tag
 
 
-def test_the_landing_page_installs_from_pypi_not_a_clone():
+def test_given_the_landing_page_when_reading_the_install_step_then_it_uses_pypi_not_a_clone():
     html = (SITE / "index.html").read_text()
     assert "pip install kyno" in html
     assert "pip install ." not in html

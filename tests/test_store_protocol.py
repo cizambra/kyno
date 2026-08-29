@@ -2,7 +2,7 @@ from kyno import errors
 from kyno.store.base import ConstitutionStore
 
 
-def test_protocol_is_runtime_checkable():
+def test_given_the_store_protocol_when_isinstance_checking_then_it_is_runtime_checkable():
     class Dummy:
         def head(self, constitution): ...
         def get(self, constitution, version): ...
@@ -26,7 +26,7 @@ def test_protocol_is_runtime_checkable():
     assert isinstance(Dummy(), ConstitutionStore)
 
 
-def test_error_hierarchy():
+def test_given_the_error_types_when_checking_ancestry_then_all_derive_from_coherence_error():
     for name in (
         "UnknownConstitutionError",
         "UnknownVersionError",

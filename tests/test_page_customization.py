@@ -37,7 +37,7 @@ def published(plane, **kwargs):
 # --- theme tokens ----------------------------------------------------------
 
 
-def test_the_unconfigured_page_still_carries_the_built_in_tokens(plane):
+def test_given_no_configuration_when_rendering_the_page_then_the_built_in_tokens_are_there(plane):
     # With no configuration, the page must carry exactly the built-in token values.
     page = render_constitution(published(plane))
     for token in (
@@ -52,7 +52,7 @@ def test_the_unconfigured_page_still_carries_the_built_in_tokens(plane):
     assert "prefers-color-scheme: dark" in page
 
 
-def test_configured_tokens_reach_the_root_block(plane):
+def test_given_configured_tokens_when_rendering_then_they_reach_the_root_block(plane):
     theme = PageTheme(
         accent="#b4531f", background="#fffdf7", text="#14110c", font_family="Iowan Old Style, serif"
     )
@@ -63,14 +63,14 @@ def test_configured_tokens_reach_the_root_block(plane):
     assert "Iowan Old Style, serif" in page
 
 
-def test_choosing_your_own_colors_turns_off_the_automatic_dark_swap(plane):
+def test_given_your_own_colors_when_rendering_then_the_automatic_dark_swap_is_off(plane):
     # Deliberate: inverting a palette somebody chose would produce a page
     # they never approved. Picking colors means owning them.
     page = render_constitution(published(plane), PageConfig(theme=PageTheme(background="#fffdf7")))
     assert "prefers-color-scheme" not in page
 
 
-def test_choosing_only_a_font_keeps_the_automatic_dark_swap(plane):
+def test_given_only_a_font_when_rendering_then_the_automatic_dark_swap_stays(plane):
     # A typeface is the same typeface in either scheme, so it is not a
     # reason to stop following the reader's preference.
     theme = PageTheme(font_family="Iowan Old Style, serif")
@@ -79,7 +79,7 @@ def test_choosing_only_a_font_keeps_the_automatic_dark_swap(plane):
     assert "Iowan Old Style, serif" in page
 
 
-def test_the_index_uses_the_same_theme(plane):
+def test_given_a_theme_when_rendering_the_index_then_it_uses_the_same_theme(plane):
     direction(plane, "product", mission="Product mission")
     plane.publish(constitution="product")
     page = render_index(plane.published_constitutions(), PageConfig(theme=PageTheme(accent="#b45")))
@@ -99,7 +99,7 @@ $history
 """
 
 
-def test_a_custom_template_replaces_the_built_in_page(plane, tmp_path):
+def test_given_a_custom_template_when_rendering_then_it_replaces_the_built_in_page(plane, tmp_path):
     path = tmp_path / "constitution.html"
     path.write_text(TEMPLATE)
     view = published(plane, mission="Ship trust")
@@ -114,7 +114,7 @@ def test_a_custom_template_replaces_the_built_in_page(plane, tmp_path):
     assert "eyebrow" not in page
 
 
-def test_values_reach_a_custom_template_already_escaped(plane, tmp_path):
+def test_given_a_custom_template_when_rendering_then_values_arrive_already_escaped(plane, tmp_path):
     # The whole point: an organization's own markup cannot un-escape the
     # organization's own text, so a hostile principle stays inert in it.
     path = tmp_path / "constitution.html"
@@ -138,7 +138,9 @@ def test_values_reach_a_custom_template_already_escaped(plane, tmp_path):
     assert f"Note {escaped}" in page
 
 
-def test_history_is_empty_in_a_template_when_it_is_not_published(plane, tmp_path):
+def test_given_unpublished_history_when_rendering_a_template_then_the_history_is_empty(
+    plane, tmp_path
+):
     path = tmp_path / "constitution.html"
     path.write_text("<html><body>[$history]</body></html>")
     view = published(plane, note="a note nobody may read")
@@ -148,7 +150,7 @@ def test_history_is_empty_in_a_template_when_it_is_not_published(plane, tmp_path
     assert "a note nobody may read" not in page
 
 
-def test_a_template_may_ignore_placeholders_it_does_not_want(plane, tmp_path):
+def test_given_a_template_ignoring_placeholders_when_rendering_then_that_is_fine(plane, tmp_path):
     path = tmp_path / "constitution.html"
     path.write_text("<html><body><h1>$mission</h1></body></html>")
     page = render_constitution(
@@ -157,7 +159,9 @@ def test_a_template_may_ignore_placeholders_it_does_not_want(plane, tmp_path):
     assert "Just this" in page
 
 
-def test_an_unknown_placeholder_is_left_alone_rather_than_exploding(plane, tmp_path):
+def test_given_an_unknown_placeholder_when_rendering_then_it_is_left_alone_not_exploded(
+    plane, tmp_path
+):
     # safe_substitute: a typo in an operator's template must not 500 the page.
     path = tmp_path / "constitution.html"
     path.write_text("<html><body>$mission $mision $$ ${nope}</body></html>")
@@ -168,7 +172,9 @@ def test_an_unknown_placeholder_is_left_alone_rather_than_exploding(plane, tmp_p
     assert "$mision" in page
 
 
-def test_a_missing_template_falls_back_to_the_built_in_page_and_warns(plane, tmp_path, caplog):
+def test_given_a_missing_template_when_rendering_then_the_built_in_page_serves_and_a_warning_logs(
+    plane, tmp_path, caplog
+):
     missing = tmp_path / "gone.html"
     with caplog.at_level("WARNING"):
         page = render_constitution(
@@ -181,7 +187,9 @@ def test_a_missing_template_falls_back_to_the_built_in_page_and_warns(plane, tmp
     assert str(missing) in warnings[0].getMessage()
 
 
-def test_a_template_that_is_not_valid_text_falls_back_too(plane, tmp_path, caplog):
+def test_given_a_template_that_is_not_valid_text_when_rendering_then_the_built_in_page_serves(
+    plane, tmp_path, caplog
+):
     path = tmp_path / "binary.html"
     path.write_bytes(b"\xff\xfe not utf-8 at all")
     with caplog.at_level("WARNING"):
@@ -193,7 +201,9 @@ def test_a_template_that_is_not_valid_text_falls_back_too(plane, tmp_path, caplo
     assert len([r for r in caplog.records if r.levelname == "WARNING"]) == 1
 
 
-def test_a_custom_index_template_replaces_the_built_in_index(plane, tmp_path):
+def test_given_a_custom_index_template_when_rendering_then_it_replaces_the_built_in_index(
+    plane, tmp_path
+):
     path = tmp_path / "index.html"
     path.write_text('<html><body><ul class="ours">$items</ul></body></html>')
     direction(plane, "product", mission="Product mission")
@@ -206,7 +216,9 @@ def test_a_custom_index_template_replaces_the_built_in_index(plane, tmp_path):
     assert "<style>" not in page
 
 
-def test_a_broken_index_template_falls_back_to_the_built_in_index(plane, tmp_path, caplog):
+def test_given_a_broken_index_template_when_rendering_then_the_built_in_index_serves(
+    plane, tmp_path, caplog
+):
     direction(plane, "product", mission="Product mission")
     plane.publish(constitution="product")
     with caplog.at_level("WARNING"):
@@ -221,7 +233,9 @@ def test_a_broken_index_template_falls_back_to_the_built_in_index(plane, tmp_pat
 # --- through the real app --------------------------------------------------
 
 
-def test_a_template_that_disappears_never_takes_the_public_page_down(plane, tmp_path):
+def test_given_a_template_that_disappears_when_serving_then_the_public_page_stays_up(
+    plane, tmp_path
+):
     # The load-bearing behavior: templates are read per request, and a broken
     # one degrades to the built-in page rather than to a 500.
     path = tmp_path / "constitution.html"
@@ -238,7 +252,7 @@ def test_a_template_that_disappears_never_takes_the_public_page_down(plane, tmp_
         assert "<style>" in recovered.text
 
 
-def test_a_custom_template_changes_no_route_semantics(plane, tmp_path):
+def test_given_a_custom_template_when_serving_then_no_route_semantics_change(plane, tmp_path):
     path = tmp_path / "constitution.html"
     path.write_text(TEMPLATE)
     direction(plane, "internal")
@@ -251,7 +265,7 @@ def test_a_custom_template_changes_no_route_semantics(plane, tmp_path):
         assert payload == {"error": "not found"}
 
 
-def test_the_json_view_is_untouched_by_a_template(plane, tmp_path):
+def test_given_a_custom_template_when_reading_the_json_view_then_it_is_untouched(plane, tmp_path):
     # Templates are a presentation choice; the machine-readable view is a
     # contract and must not move with them.
     path = tmp_path / "constitution.html"
@@ -265,7 +279,9 @@ def test_the_json_view_is_untouched_by_a_template(plane, tmp_path):
     assert [p["title"] for p in payload["principles"]] == ["p1", "p2"]
 
 
-def test_the_index_template_can_report_how_many_are_published(plane, tmp_path):
+def test_given_the_index_template_when_rendering_then_it_can_report_how_many_are_published(
+    plane, tmp_path
+):
     path = tmp_path / "index.html"
     path.write_text("<html><body><p>$count published</p>$items</body></html>")
     for name in ("alpha", "beta"):
@@ -276,7 +292,9 @@ def test_the_index_template_can_report_how_many_are_published(plane, tmp_path):
     assert "<p>2 published</p>" in page
 
 
-def test_the_docs_document_the_placeholders_that_actually_exist(plane, tmp_path):
+def test_given_the_docs_when_comparing_to_the_code_then_the_documented_placeholders_exist(
+    plane, tmp_path
+):
     # The publishing page is how an operator learns these names; a placeholder
     # it documents but we do not fill would render as literal text on their page.
     from pathlib import Path as _Path
@@ -306,7 +324,7 @@ def test_the_docs_document_the_placeholders_that_actually_exist(plane, tmp_path)
     assert "$" not in render_index((), PageConfig(index_template=str(index_path)))
 
 
-def test_the_default_accent_is_the_muted_colour_in_both_schemes(plane):
+def test_given_no_accent_configured_when_rendering_then_the_muted_colour_serves_both_schemes(plane):
     # Accent defaults to the muted colour: the rules it covers would otherwise
     # read var(--muted), and an operator who sets nothing must see no
     # difference between the two tokens.
@@ -321,7 +339,9 @@ def test_the_default_accent_is_the_muted_colour_in_both_schemes(plane):
         assert accent == muted, f"{label}: accent {accent} != muted {muted}"
 
 
-def test_a_template_receives_the_declaration_already_rendered_and_escaped(plane, tmp_path):
+def test_given_a_declaration_when_a_template_renders_then_it_arrives_rendered_and_escaped(
+    plane, tmp_path
+):
     path = tmp_path / "constitution.html"
     path.write_text("<html><body><article>$declaration</article></body></html>")
     plane.set_direction(
@@ -339,14 +359,16 @@ def test_a_template_receives_the_declaration_already_rendered_and_escaped(plane,
     assert "&lt;script&gt;alert('xss')&lt;/script&gt;" in page
 
 
-def test_a_template_gets_an_empty_declaration_when_there_is_none(plane, tmp_path):
+def test_given_no_declaration_when_a_template_renders_then_it_gets_an_empty_one(plane, tmp_path):
     path = tmp_path / "constitution.html"
     path.write_text("<html><body>[$declaration]</body></html>")
     page = render_constitution(published(plane), PageConfig(constitution_template=str(path)))
     assert "[]" in page
 
 
-def test_a_template_receives_the_declaration_as_rendered_markdown(plane, tmp_path):
+def test_given_a_markdown_declaration_when_a_template_renders_then_it_arrives_as_html(
+    plane, tmp_path
+):
     # An operator's template gets the document already rendered: markdown is
     # ours to interpret, and their file is markup around the result.
     path = tmp_path / "constitution.html"

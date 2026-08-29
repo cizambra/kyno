@@ -38,7 +38,7 @@ PARAGRAPH = "Lending is a promise about somebody's worst month."
 DESCRIPTION = "A refusal is a sentence, not a maze."
 
 
-def test_an_organization_writes_a_rich_constitution_publishes_it_and_binds_a_crew_to_it(
+def test_given_a_rich_constitution_when_published_and_bound_then_a_crew_serves_it(
     tmp_path, monkeypatch
 ):
     db = tmp_path / "kyno.sqlite3"

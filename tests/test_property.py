@@ -21,7 +21,7 @@ op = st.tuples(
 
 @settings(max_examples=100, deadline=None)
 @given(ops=st.lists(op, min_size=1, max_size=25))
-def test_changes_since_reconstructs_current_and_changed_union(ops):
+def test_given_any_edit_history_when_asking_changes_since_then_current_and_changed_reconstruct(ops):
     store = SqlConstitutionStore(url="sqlite://")
     store.create_all()
     cp = ControlPlane(store)

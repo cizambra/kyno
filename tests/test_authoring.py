@@ -66,7 +66,7 @@ def write(tmp_path, text, name="constitution.yaml"):
 # --- reading the file ------------------------------------------------------
 
 
-def test_a_file_carries_every_field_a_constitution_has(tmp_path):
+def test_given_a_full_file_when_reading_then_every_field_a_constitution_has_is_carried(tmp_path):
     read = read_constitution_file(write(tmp_path, FULL_FILE))
 
     assert read.constitution == "acme"
@@ -81,7 +81,7 @@ def test_a_file_carries_every_field_a_constitution_has(tmp_path):
     )
 
 
-def test_a_block_of_prose_keeps_its_paragraphs(tmp_path):
+def test_given_a_block_of_prose_when_reading_then_its_paragraphs_are_kept(tmp_path):
     # The reason the file exists: this is unwritable as a flag.
     declaration = read_constitution_file(write(tmp_path, FULL_FILE)).declaration
     assert declaration.startswith("# What we are for")
@@ -89,7 +89,7 @@ def test_a_block_of_prose_keeps_its_paragraphs(tmp_path):
     assert declaration.endswith("we cannot keep.")
 
 
-def test_an_omitted_field_reads_as_carry_it_forward(tmp_path):
+def test_given_an_omitted_field_when_reading_then_it_reads_as_carry_it_forward(tmp_path):
     read = read_constitution_file(write(tmp_path, "mission: M\n"))
     assert read.declaration is None and read.principles is None
     assert read.constitution is None
@@ -103,19 +103,19 @@ def test_given_unknown_keys_when_reading_a_file_then_they_are_the_operators_own(
     assert read.mission == "M"
 
 
-def test_an_empty_declaration_is_a_present_value_that_clears_it(tmp_path):
+def test_given_an_empty_declaration_when_reading_then_it_is_a_present_value_that_clears(tmp_path):
     read = read_constitution_file(write(tmp_path, 'mission: M\ndeclaration: ""\n'))
     assert read.declaration == ""
 
 
-def test_a_key_with_no_value_reads_as_omitted_rather_than_empty(tmp_path):
+def test_given_a_key_with_no_value_when_reading_then_it_reads_as_omitted_not_empty(tmp_path):
     # Deliberate: "declaration:" with nothing after it is far more often a
     # half-written file than a deletion, and clearing is spelled "".
     read = read_constitution_file(write(tmp_path, "mission: M\ndeclaration:\n"))
     assert read.declaration is None
 
 
-def test_json_is_read_too_since_it_is_valid_yaml(tmp_path):
+def test_given_a_json_file_when_reading_then_it_is_read_as_valid_yaml(tmp_path):
     body = json.dumps({"mission": "M", "principles": ["p1"]})
     read = read_constitution_file(write(tmp_path, body, "constitution.json"))
     assert read.mission == "M" and read.principles == (Principle("p1"),)
@@ -137,27 +137,27 @@ def test_given_a_mixed_file_when_checking_then_fields_sort_into_kyno_and_custom(
     assert report.custom == ("note", "principals")
 
 
-def test_a_file_that_is_not_a_mapping_is_refused(tmp_path):
+def test_given_a_file_that_is_not_a_mapping_when_reading_then_it_is_refused(tmp_path):
     with pytest.raises(AuthoringError, match="mapping"):
         read_constitution_file(write(tmp_path, "- just\n- a list\n"))
 
 
-def test_a_file_that_does_not_parse_is_refused(tmp_path):
+def test_given_a_file_that_does_not_parse_when_reading_then_it_is_refused(tmp_path):
     with pytest.raises(AuthoringError, match="could not be read"):
         read_constitution_file(write(tmp_path, "mission: [unclosed\n"))
 
 
-def test_a_file_that_is_not_there_is_refused(tmp_path):
+def test_given_a_file_that_is_not_there_when_reading_then_it_is_refused(tmp_path):
     with pytest.raises(AuthoringError, match="could not be read"):
         read_constitution_file(str(tmp_path / "nowhere.yaml"))
 
 
-def test_a_field_that_should_be_text_is_refused_when_it_is_not(tmp_path):
+def test_given_a_non_text_value_in_a_text_field_when_reading_then_it_is_refused(tmp_path):
     with pytest.raises(AuthoringError, match="mission"):
         read_constitution_file(write(tmp_path, "mission:\n  a: map\n"))
 
 
-def test_principles_that_are_not_a_list_are_refused(tmp_path):
+def test_given_principles_that_are_not_a_list_when_reading_then_they_are_refused(tmp_path):
     with pytest.raises(AuthoringError, match="principles"):
         read_constitution_file(write(tmp_path, "principles: just one\n"))
 
@@ -165,7 +165,7 @@ def test_principles_that_are_not_a_list_are_refused(tmp_path):
 # --- through the CLI -------------------------------------------------------
 
 
-def test_setting_a_constitution_from_a_file(db, tmp_path):
+def test_given_a_full_file_when_running_set_then_the_store_carries_its_content(db, tmp_path):
     result = runner.invoke(
         app,
         [
@@ -210,21 +210,21 @@ def test_given_a_content_flag_when_running_set_then_it_is_not_an_option(db, tmp_
     assert "no such option" in plain(result).lower()
 
 
-def test_a_file_with_no_note_and_no_flag_is_refused(db, tmp_path):
+def test_given_no_note_when_running_set_then_it_is_refused(db, tmp_path):
     path = write(tmp_path, "mission: M\n")
     result = runner.invoke(app, ["set", path])
     assert result.exit_code != 0
     assert "note" in plain(result).lower()
 
 
-def test_a_missing_file_reports_a_clean_error(db, tmp_path):
+def test_given_a_missing_file_when_running_set_then_the_error_is_clean(db, tmp_path):
     result = runner.invoke(app, ["set", str(tmp_path / "nowhere.yaml"), "--note", "n"])
     assert result.exit_code == 1
     assert "error:" in plain(result).lower()
     assert "Traceback" not in result.output
 
 
-def test_a_second_file_appends_a_version_and_carries_what_it_omits(db, tmp_path):
+def test_given_a_second_file_when_applying_then_a_version_appends_and_omissions_carry(db, tmp_path):
     runner.invoke(app, ["set", write(tmp_path, FULL_FILE), "--note", "init"])
     second = write(tmp_path, "constitution: acme\nmission: A sharper mission\n", "2.yaml")
 
@@ -237,7 +237,7 @@ def test_a_second_file_appends_a_version_and_carries_what_it_omits(db, tmp_path)
     assert len(head.principles) == 2
 
 
-def test_a_file_can_clear_the_declaration(db, tmp_path):
+def test_given_a_clearing_file_when_applying_then_the_declaration_clears(db, tmp_path):
     runner.invoke(app, ["set", write(tmp_path, FULL_FILE), "--note", "init"])
     clearing = write(tmp_path, 'constitution: acme\ndeclaration: ""\n', "3.yaml")
 

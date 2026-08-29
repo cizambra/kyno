@@ -14,7 +14,9 @@ from kyno.store.sql import SqlConstitutionStore
 runner = CliRunner()
 
 
-def test_exporting_writes_the_pages_and_the_stylesheet(tmp_path):
+def test_given_a_target_directory_when_exporting_then_the_pages_and_stylesheet_are_written(
+    tmp_path,
+):
     result = runner.invoke(app, ["page", "export", str(tmp_path / "pages")])
 
     assert result.exit_code == 0, result.output
@@ -23,13 +25,13 @@ def test_exporting_writes_the_pages_and_the_stylesheet(tmp_path):
         assert (written / name).read_text(encoding="utf-8") == packaged_template(name)
 
 
-def test_exporting_creates_the_directory_when_it_is_not_there(tmp_path):
+def test_given_a_missing_directory_when_exporting_then_it_is_created(tmp_path):
     target = tmp_path / "a" / "b" / "pages"
     assert runner.invoke(app, ["page", "export", str(target)]).exit_code == 0
     assert (target / "constitution.html").exists()
 
 
-def test_the_output_names_the_environment_variables_to_set(tmp_path):
+def test_given_an_export_when_reading_its_output_then_it_names_the_env_vars_to_set(tmp_path):
     # The copy is useless until Kyno is pointed at it, so the command says
     # how rather than leaving it to the README.
     target = tmp_path / "pages"
@@ -41,7 +43,7 @@ def test_the_output_names_the_environment_variables_to_set(tmp_path):
     assert str((target / "index.html").resolve()) in result.output
 
 
-def test_the_output_says_what_the_exported_stylesheet_is_for(tmp_path):
+def test_given_an_export_when_reading_its_output_then_it_says_what_the_stylesheet_is_for(tmp_path):
     # page.css is a starting point for the operator's own template; the
     # built-in $stylesheet keeps serving the packaged copy either way.
     result = runner.invoke(app, ["page", "export", str(tmp_path / "pages")])
@@ -49,7 +51,9 @@ def test_the_output_says_what_the_exported_stylesheet_is_for(tmp_path):
     assert "$stylesheet" in result.output
 
 
-def test_exporting_refuses_to_overwrite_and_writes_nothing(tmp_path):
+def test_given_existing_files_when_exporting_then_it_refuses_to_overwrite_and_writes_nothing(
+    tmp_path,
+):
     target = tmp_path / "pages"
     target.mkdir()
     mine = target / "index.html"
@@ -66,7 +70,7 @@ def test_exporting_refuses_to_overwrite_and_writes_nothing(tmp_path):
     assert not (target / "page.css").exists()
 
 
-def test_a_dangling_symlink_is_refused_not_written_through(tmp_path):
+def test_given_a_dangling_symlink_when_exporting_then_it_is_refused_not_written_through(tmp_path):
     # A link to a missing file passes an exists() check, but writing through
     # it would plant the export wherever the link points.
     target = tmp_path / "pages"
@@ -81,7 +85,9 @@ def test_a_dangling_symlink_is_refused_not_written_through(tmp_path):
     assert not (tmp_path / "elsewhere" / "planted.html").exists()
 
 
-def test_a_file_appearing_mid_write_stops_the_export_and_removes_nothing(tmp_path):
+def test_given_a_file_appearing_mid_write_when_exporting_then_it_stops_and_removes_nothing(
+    tmp_path,
+):
     # The dangling symlink is exactly the shape of the check-then-write race:
     # nothing there at the check, refused at the write. Files exported before
     # the refusal stay put -- deleting them could delete an operator's work.
@@ -97,7 +103,9 @@ def test_a_file_appearing_mid_write_stops_the_export_and_removes_nothing(tmp_pat
     assert not (target / "page.css").exists()
 
 
-def test_an_exported_template_renders_the_page_it_was_copied_from(tmp_path):
+def test_given_an_exported_template_when_rendering_then_it_matches_the_page_it_was_copied_from(
+    tmp_path,
+):
     # The whole point of the workflow: what you export is what is running.
     target = tmp_path / "pages"
     assert runner.invoke(app, ["page", "export", str(target)]).exit_code == 0
@@ -113,7 +121,7 @@ def test_an_exported_template_renders_the_page_it_was_copied_from(tmp_path):
     assert exported == render(view)
 
 
-def test_an_edited_export_is_what_gets_served(tmp_path):
+def test_given_an_edited_export_when_serving_then_the_edit_is_what_gets_served(tmp_path):
     target = tmp_path / "pages"
     runner.invoke(app, ["page", "export", str(target)])
     page = target / "constitution.html"
@@ -130,7 +138,9 @@ def test_an_edited_export_is_what_gets_served(tmp_path):
     assert "Ship trust" in served
 
 
-def test_the_wheel_ships_the_templates_and_the_stylesheet(tmp_path):
+def test_given_the_built_wheel_when_inspecting_then_it_ships_the_templates_and_the_stylesheet(
+    tmp_path,
+):
     # importlib.resources reads them from the source tree in a dev checkout,
     # so only a real build proves an installed copy has them too.
     import zipfile

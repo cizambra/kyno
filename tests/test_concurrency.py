@@ -4,7 +4,9 @@ from kyno.errors import VersionConflictError
 from kyno.service import ControlPlane
 
 
-def test_parallel_appends_serialize_by_unique_index(store):
+def test_given_parallel_appends_when_racing_for_a_version_then_the_unique_index_serializes_them(
+    store,
+):
     store.append(
         "default",
         1,
@@ -71,7 +73,7 @@ def test_given_contending_writers_when_applying_then_conflicts_surface_and_nothi
     assert store.head("default").version == len(landed)
 
 
-def test_concurrent_first_write_to_same_new_constitution_name_maps_to_conflict(store):
+def test_given_concurrent_first_writes_to_a_new_name_when_racing_then_both_map_to_conflict(store):
     # Deliberate: colliding on a brand-new name hits the name's unique constraint,
     # not the version one -- append() maps that IntegrityError to
     # VersionConflictError too, exactly like a version collision.

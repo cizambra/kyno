@@ -22,7 +22,7 @@ def _has_version_uniqueness(insp, versions_table):
     return False
 
 
-def test_alembic_upgrade_creates_expected_tables(tmp_path):
+def test_given_a_fresh_database_when_alembic_upgrades_then_the_expected_tables_exist(tmp_path):
     db = tmp_path / "m.sqlite3"
     cfg = Config("alembic.ini")
     cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db}")
@@ -32,7 +32,9 @@ def test_alembic_upgrade_creates_expected_tables(tmp_path):
     assert {"kyno_constitutions", "kyno_constitution_versions"} <= tables
 
 
-def test_alembic_upgrade_honors_custom_table_prefix(tmp_path, monkeypatch):
+def test_given_a_custom_table_prefix_when_alembic_upgrades_then_the_prefix_is_honored(
+    tmp_path, monkeypatch
+):
     monkeypatch.setenv("KYNO_TABLE_PREFIX", "cptest_")
     db = tmp_path / "prefixed.sqlite3"
     cfg = Config("alembic.ini")
@@ -44,7 +46,9 @@ def test_alembic_upgrade_honors_custom_table_prefix(tmp_path, monkeypatch):
     assert "kyno_constitutions" not in tables
 
 
-def test_alembic_downgrade_drops_tables_then_upgrade_restores_identical_schema(tmp_path):
+def test_given_an_upgraded_database_when_downgrading_and_upgrading_then_the_schema_round_trips(
+    tmp_path,
+):
     # A stray table left by downgrade would silently survive a "reset the DB" workflow.
     db = tmp_path / "roundtrip.sqlite3"
     cfg = Config("alembic.ini")
@@ -79,7 +83,9 @@ def test_alembic_downgrade_drops_tables_then_upgrade_restores_identical_schema(t
     assert _has_version_uniqueness(einsp, versions_table)
 
 
-def test_migration_and_embedded_schema_are_identical(tmp_path):
+def test_given_the_migration_and_the_embedded_schema_when_comparing_then_they_are_identical(
+    tmp_path,
+):
     from kyno.store.sql import SqlConstitutionStore
 
     mdb = tmp_path / "migrated.sqlite3"
@@ -113,7 +119,9 @@ def test_migration_and_embedded_schema_are_identical(tmp_path):
     )
 
 
-def test_migration_and_embedded_schema_both_carry_the_publication_columns(tmp_path):
+def test_given_the_two_schema_paths_when_comparing_then_both_carry_the_publication_columns(
+    tmp_path,
+):
     # Publication state decides what an anonymous visitor can see. A migration
     # that lost these columns would fail open on one deployment and not the other.
     from kyno.store.sql import SqlConstitutionStore
@@ -140,7 +148,7 @@ def test_migration_and_embedded_schema_both_carry_the_publication_columns(tmp_pa
         assert cols["history_public"] is False, f"{label}: history_public must be NOT NULL"
 
 
-def test_upgrading_an_existing_database_leaves_its_constitutions_private(tmp_path):
+def test_given_an_existing_database_when_upgrading_then_its_constitutions_stay_private(tmp_path):
     # The realistic upgrade: a store that already holds constitutions gains
     # the publication columns, and every existing one stays private.
     from kyno.service import ControlPlane
@@ -173,7 +181,7 @@ def test_upgrading_an_existing_database_leaves_its_constitutions_private(tmp_pat
     assert plane.published_constitutions() == ()
 
 
-def test_migration_and_embedded_schema_both_carry_the_declaration_column(tmp_path):
+def test_given_the_two_schema_paths_when_comparing_then_both_carry_the_declaration_column(tmp_path):
     # The declaration is the long-form document; a deployment whose schema
     # lost it would silently serve constitutions with their body missing.
     from kyno.store.sql import SqlConstitutionStore
@@ -198,7 +206,7 @@ def test_migration_and_embedded_schema_both_carry_the_declaration_column(tmp_pat
         )
 
 
-def test_upgrading_an_existing_database_leaves_its_versions_without_a_declaration(tmp_path):
+def test_given_an_existing_database_when_upgrading_then_its_versions_stay_undeclared(tmp_path):
     # The realistic upgrade again, one migration later: rows written before
     # declarations existed keep serving, with no declaration.
     from kyno.service import ControlPlane
@@ -243,7 +251,7 @@ def _packaged_scripts():
     return str(resources.files("kyno") / "migrations")
 
 
-def test_upgrade_db_brings_a_fresh_database_to_head(tmp_path, monkeypatch):
+def test_given_a_fresh_database_when_running_upgrade_db_then_it_reaches_head(tmp_path, monkeypatch):
     from kyno.cli import app
 
     url = _point_cli_at(monkeypatch, tmp_path, "fresh.sqlite3")
@@ -254,7 +262,7 @@ def test_upgrade_db_brings_a_fresh_database_to_head(tmp_path, monkeypatch):
     assert set(inspect(create_engine(url)).get_table_names()) >= TABLES
 
 
-def test_upgrade_db_runs_the_scripts_that_ship_inside_the_package():
+def test_given_the_packaged_scripts_when_running_upgrade_db_then_those_scripts_run():
     # Pinned so a pip-installed kyno, with no repo checkout around, can
     # always find its own migration scripts.
     from kyno.cli import _alembic_config
@@ -264,7 +272,9 @@ def test_upgrade_db_runs_the_scripts_that_ship_inside_the_package():
     assert cfg.get_main_option("script_location") == _packaged_scripts()
 
 
-def test_init_db_stamps_a_fresh_database_at_head(tmp_path, monkeypatch):
+def test_given_a_fresh_database_when_running_init_db_then_it_is_stamped_at_head(
+    tmp_path, monkeypatch
+):
     from alembic.script import ScriptDirectory
 
     from kyno.cli import app
@@ -279,7 +289,9 @@ def test_init_db_stamps_a_fresh_database_at_head(tmp_path, monkeypatch):
     assert stamped == ScriptDirectory(_packaged_scripts()).get_current_head()
 
 
-def test_init_db_then_upgrade_db_upgrades_cleanly_later(tmp_path, monkeypatch):
+def test_given_an_init_db_database_when_running_upgrade_db_later_then_it_upgrades_cleanly(
+    tmp_path, monkeypatch
+):
     from kyno.cli import app
 
     url = _point_cli_at(monkeypatch, tmp_path, "roundtrip.sqlite3")
@@ -292,7 +304,9 @@ def test_init_db_then_upgrade_db_upgrades_cleanly_later(tmp_path, monkeypatch):
     assert set(inspect(create_engine(url)).get_table_names()) >= TABLES
 
 
-def test_a_pip_installed_user_upgrades_a_pre_declaration_database(tmp_path, monkeypatch):
+def test_given_a_pre_declaration_database_when_a_pip_user_upgrades_then_it_upgrades_cleanly(
+    tmp_path, monkeypatch
+):
     # The whole flow: a database built two schema generations ago, holding
     # real rows, brought to the current schema by the CLI alone.
     from kyno.cli import app
@@ -324,7 +338,7 @@ def test_a_pip_installed_user_upgrades_a_pre_declaration_database(tmp_path, monk
     assert head.declaration == ""
 
 
-def test_downgrading_one_step_removes_the_declaration_and_leaves_the_rest(tmp_path):
+def test_given_a_head_database_when_downgrading_one_step_then_only_the_declaration_goes(tmp_path):
     # A downgrade that took a neighbouring column with it would lose data
     # nobody asked to lose.
     db = tmp_path / "step_down.sqlite3"

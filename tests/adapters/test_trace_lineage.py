@@ -26,25 +26,25 @@ def _trace() -> tuple[RunTrace, list]:
     return trace, [parent, *kids]
 
 
-def test_lineage_answers_what_a_goal_was_split_into():
+def test_given_a_split_goal_when_asking_lineage_then_it_answers_what_it_split_into():
     trace, (parent, first, second) = _trace()
     assert [c.step_id for c in trace.children(parent.step_id)] == [first.step_id, second.step_id]
     assert [c.goal for c in trace.children(parent.step_id)] == ["Find lenders", "Draft the copy"]
 
 
-def test_roots_are_the_steps_nothing_split_into():
+def test_given_a_trace_when_asking_for_roots_then_they_are_the_steps_nothing_split_into():
     trace, (parent, _first, _second) = _trace()
     assert [r.step_id for r in trace.roots()] == [parent.step_id]
 
 
-def test_the_edge_records_how_the_split_happened():
+def test_given_a_split_when_reading_the_edge_then_it_records_how_it_happened():
     trace = RunTrace(run_id="r1")
     edge = trace.record_decomposition("a", "b", DELEGATION)
     assert edge.to_dict() == {"parent_id": "a", "child_id": "b", "kind": DELEGATION}
     assert trace.edges == (edge,)
 
 
-def test_an_edge_to_an_unknown_step_is_rejected_on_entry():
+def test_given_an_edge_to_an_unknown_step_when_recording_then_it_is_rejected_on_entry():
     # Canon reads this trace as a graph; a dangling edge would silently make
     # a decomposition look incomplete instead of failing here.
     trace, (parent, _f, _s) = _trace()
@@ -52,7 +52,7 @@ def test_an_edge_to_an_unknown_step_is_rejected_on_entry():
         trace.children("no-such-step")
 
 
-def test_the_atom_fields_are_all_present_in_the_serialized_trace():
+def test_given_a_serialized_trace_when_reading_then_every_atom_field_is_present():
     trace, _steps = _trace()
     payload = trace.to_dict()
     for field_name in DECOMPOSITION_COHERES_FIELDS:
@@ -60,12 +60,12 @@ def test_the_atom_fields_are_all_present_in_the_serialized_trace():
     assert len(payload["edges"]) == 2
 
 
-def test_a_leaf_has_no_children():
+def test_given_a_leaf_step_when_asking_lineage_then_it_has_no_children():
     trace, (_parent, first, _second) = _trace()
     assert trace.children(first.step_id) == ()
 
 
-def test_a_child_of_two_parents_appears_under_both():
+def test_given_a_child_of_two_parents_when_asking_lineage_then_it_appears_under_both():
     """Two agents can converge on one follow-up step; lineage must show it."""
     trace = RunTrace(run_id="r1")
     left = trace.record_step(agent="a", goal="left", output="o", direction=DIRECTION)
@@ -79,7 +79,7 @@ def test_a_child_of_two_parents_appears_under_both():
     assert [r.step_id for r in trace.roots()] == [left.step_id, right.step_id]
 
 
-def test_an_edge_recorded_before_its_child_step_resolves_once_the_step_lands():
+def test_given_an_early_edge_when_the_child_step_is_recorded_then_the_edge_resolves():
     """A graph may record the split first and the child's output later."""
     trace = RunTrace(run_id="r1")
     parent = trace.record_step(agent="a", goal="g", output="o", direction=DIRECTION)
@@ -92,11 +92,11 @@ def test_an_edge_recorded_before_its_child_step_resolves_once_the_step_lands():
     assert trace.children(parent.step_id) == (child,)
 
 
-def test_two_traces_do_not_share_edges():
+def test_given_two_traces_when_recording_edges_then_they_do_not_share_them():
     first, _ = _trace()
     second = RunTrace(run_id="r2")
     assert second.edges == () and len(first.edges) == 2
 
 
-def test_the_three_split_kinds_are_distinct():
+def test_given_the_split_kinds_when_comparing_then_the_three_are_distinct():
     assert len({TASK, DELEGATION, SUBGRAPH}) == 3

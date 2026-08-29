@@ -39,7 +39,7 @@ PRINCIPLE = "Say the hard number before the soft story"
 PRIVATE_NOTE = "dropped a principle because the enterprise deal needed it"
 
 
-def test_an_organization_publishes_one_constitution_and_keeps_the_other_private(
+def test_given_two_constitutions_when_publishing_one_then_the_other_stays_private(
     tmp_path, monkeypatch
 ):
     from starlette.testclient import TestClient
@@ -80,7 +80,7 @@ def test_an_organization_publishes_one_constitution_and_keeps_the_other_private(
         assert "default" not in visitor.get("/constitutions/").text
 
 
-def test_opening_history_exposes_the_change_notes_and_closing_it_hides_them_again(
+def test_given_a_published_history_when_toggled_then_change_notes_show_and_hide(
     tmp_path, monkeypatch
 ):
     from starlette.testclient import TestClient

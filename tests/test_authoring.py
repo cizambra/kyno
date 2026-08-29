@@ -98,7 +98,8 @@ def test_an_omitted_field_reads_as_carry_it_forward(tmp_path):
 def test_given_unknown_keys_when_reading_a_file_then_they_are_the_operators_own(tmp_path):
     # One file can serve other tools too; note and by look like kyno
     # metadata but are not kyno fields, so they read as custom keys.
-    read = read_constitution_file(write(tmp_path, "mission: M\nnote: n\nby: camilo\nteam: lending\n"))
+    body = "mission: M\nnote: n\nby: camilo\nteam: lending\n"
+    read = read_constitution_file(write(tmp_path, body))
     assert read.mission == "M"
 
 
@@ -130,9 +131,7 @@ def test_given_a_misspelled_field_when_reading_a_file_then_it_counts_as_custom(t
 def test_given_a_mixed_file_when_checking_then_fields_sort_into_kyno_and_custom(tmp_path):
     from kyno.authoring import check_constitution_file
 
-    report = check_constitution_file(
-        write(tmp_path, "mission: M\nprincipals:\n  - p1\nnote: n\n")
-    )
+    report = check_constitution_file(write(tmp_path, "mission: M\nprincipals:\n  - p1\nnote: n\n"))
     assert report.present == ("mission",)
     assert report.missing == ("constitution", "declaration", "principles")
     assert report.custom == ("note", "principals")
@@ -169,7 +168,14 @@ def test_principles_that_are_not_a_list_are_refused(tmp_path):
 def test_setting_a_constitution_from_a_file(db, tmp_path):
     result = runner.invoke(
         app,
-        ["set", write(tmp_path, FULL_FILE), "--note", "the constitution as written", "--by", "camilo"],
+        [
+            "set",
+            write(tmp_path, FULL_FILE),
+            "--note",
+            "the constitution as written",
+            "--by",
+            "camilo",
+        ],
     )
     assert result.exit_code == 0, result.output
 

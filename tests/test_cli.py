@@ -8,7 +8,9 @@ from kyno.cli import app
 runner = CliRunner()
 
 
-def apply_yaml(tmp_path, *, mission, principles=(), constitution=None, note=None, by=None, name="applied.yaml"):
+def apply_yaml(
+    tmp_path, *, mission, principles=(), constitution=None, note=None, by=None, name="applied.yaml"
+):
     """Write a constitution file and apply it: the only way content lands."""
     lines = []
     if constitution is not None:
@@ -27,7 +29,9 @@ def apply_yaml(tmp_path, *, mission, principles=(), constitution=None, note=None
     return runner.invoke(app, args)
 
 
-def test_given_an_applied_file_when_reading_current_then_that_content_is_served(tmp_path, monkeypatch):
+def test_given_an_applied_file_when_reading_current_then_that_content_is_served(
+    tmp_path, monkeypatch
+):
     """The whole loop in one breath: init the store, apply a file, and
     `kyno current` serves exactly that content."""
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
@@ -316,7 +320,9 @@ def test_publishing_an_unroutable_name_is_a_clean_error(tmp_path, monkeypatch):
     assert "Traceback" not in r.output
 
 
-def test_given_a_head_when_reading_current_yaml_then_it_prints_in_file_format(tmp_path, monkeypatch):
+def test_given_a_head_when_reading_current_yaml_then_it_prints_in_file_format(
+    tmp_path, monkeypatch
+):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init", by="camilo")
@@ -340,7 +346,9 @@ def test_given_the_yaml_read_out_when_reapplied_then_nothing_changes(tmp_path, m
     assert "no field changed" in r.output
 
 
-def test_given_two_applies_when_reading_current_yaml_then_the_latest_head_prints(tmp_path, monkeypatch):
+def test_given_two_applies_when_reading_current_yaml_then_the_latest_head_prints(
+    tmp_path, monkeypatch
+):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="the old mission", note="first")
@@ -358,7 +366,9 @@ def test_given_an_empty_store_when_reading_current_yaml_then_it_errors(tmp_path,
     assert "nothing to read" in r.output
 
 
-def test_given_a_named_constitution_when_reading_current_yaml_then_the_name_routes_a_reapply(tmp_path, monkeypatch):
+def test_given_a_named_constitution_when_reading_current_yaml_then_the_name_routes_a_reapply(
+    tmp_path, monkeypatch
+):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="EU rules", constitution="eu", note="init")
@@ -381,7 +391,9 @@ def test_given_no_by_flag_when_applying_then_the_system_user_is_recorded(tmp_pat
     assert json.loads(r.stdout)["created_by"] == getpass.getuser()
 
 
-def test_given_typos_and_custom_keys_when_checking_then_the_report_lists_them_without_blocking(tmp_path, monkeypatch):
+def test_given_typos_and_custom_keys_when_checking_then_the_report_lists_them_without_blocking(
+    tmp_path, monkeypatch
+):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     target = tmp_path / "constitution.yaml"
     target.write_text("mission: M\nprincipals:\n  - p1\nnote: n\n", encoding="utf-8")

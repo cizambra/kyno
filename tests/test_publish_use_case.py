@@ -13,7 +13,9 @@ from kyno.transports import build_http_app
 runner = CliRunner()
 
 
-def apply_yaml(tmp_path, *, mission, principles=(), constitution=None, note=None, by=None, name="applied.yaml"):
+def apply_yaml(
+    tmp_path, *, mission, principles=(), constitution=None, note=None, by=None, name="applied.yaml"
+):
     """Write a constitution file and apply it: the only way content lands."""
     lines = []
     if constitution is not None:
@@ -30,6 +32,7 @@ def apply_yaml(tmp_path, *, mission, principles=(), constitution=None, note=None
     if by is not None:
         args += ["--by", by]
     return runner.invoke(cli, args)
+
 
 MISSION = "Ship a lending product people trust with their worst month"
 PRINCIPLE = "Say the hard number before the soft story"

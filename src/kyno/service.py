@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from kyno.errors import (
     EmptyChangeError,
     FieldTooLargeError,
+    NoFieldChangedError,
     ReservedMarkerError,
     UnknownConstitutionError,
     UnknownVersionError,
@@ -297,7 +298,7 @@ class ControlPlane:
             # The two recorded flags stay literally about the fields they
             # name, so a declaration-only edit still appends a version --
             # which is what a polling consumer reads as "changed".
-            raise EmptyChangeError("no field changed")
+            raise NoFieldChangedError("no field changed")
         next_version = 1 if head is None else head.version + 1
         try:
             version = self._store.append(

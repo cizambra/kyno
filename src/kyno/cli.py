@@ -16,7 +16,7 @@ from kyno.authoring import (
     render_constitution_yaml,
 )
 from kyno.config import Settings, store_from_settings
-from kyno.errors import CoherenceError
+from kyno.errors import CoherenceError, NoFieldChangedError
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
 from kyno.service import ControlPlane
 
@@ -97,7 +97,7 @@ def set_direction_cmd(
     """Append a version from a file. The file says what the constitution
     is; the flags say what this edit is. Every apply prints the delta it
     makes; --dry-run prints it and stops."""
-    if not dry_run and not note:
+    if not dry_run and not (note and note.strip()):
         raise typer.BadParameter("a change note is required: pass --note")
     with _clean_errors():
         fields = read_constitution_file(file)
@@ -110,12 +110,19 @@ def set_direction_cmd(
             return
         # The delta goes to stderr so stdout stays the version JSON, pipeable.
         _print_delta(delta, err=True)
-        version = plane.set_direction(
-            **content,
-            change_note=note,
-            created_by=by if by is not None else _system_user(),
-            constitution=target,
-        )
+        try:
+            version = plane.set_direction(
+                **content,
+                change_note=note,
+                created_by=by if by is not None else _system_user(),
+                constitution=target,
+            )
+        except NoFieldChangedError:
+            # The store already says what the file says. Reruns and duplicate
+            # applies are the normal case, so this is a clean exit: the head
+            # in force prints, the same as if it had just been written.
+            typer.echo("no field changed", err=True)
+            version = plane.current(target)
         typer.echo(json.dumps(version.to_dict(), indent=2))
 
 

@@ -14,7 +14,14 @@ runner = CliRunner()
 
 
 def apply_yaml(
-    tmp_path, *, mission, principles=(), constitution=None, note=None, by=None, name="applied.yaml"
+    tmp_path,
+    *,
+    mission,
+    principles=(),
+    constitution="default",
+    note=None,
+    by=None,
+    name="applied.yaml",
 ):
     """Write a constitution file and apply it: the only way content lands."""
     lines = []

@@ -9,7 +9,14 @@ runner = CliRunner()
 
 
 def apply_yaml(
-    tmp_path, *, mission, principles=(), constitution=None, note=None, by=None, name="applied.yaml"
+    tmp_path,
+    *,
+    mission,
+    principles=(),
+    constitution="default",
+    note=None,
+    by=None,
+    name="applied.yaml",
 ):
     """Write a constitution file and apply it: the only way content lands."""
     lines = []
@@ -410,10 +417,12 @@ def test_given_typos_and_custom_keys_when_checking_then_the_report_lists_them_wi
 ):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     target = tmp_path / "constitution.yaml"
-    target.write_text("mission: M\nprincipals:\n  - p1\nnote: n\n", encoding="utf-8")
+    target.write_text(
+        "constitution: default\nmission: M\nprincipals:\n  - p1\nnote: n\n", encoding="utf-8"
+    )
     r = runner.invoke(app, ["check", str(target)])
     assert r.exit_code == 0
-    assert "kyno fields set: mission" in r.output
+    assert "kyno fields set: constitution, mission" in r.output
     assert "principles" in r.output
     assert "note, principals" in r.output
 
@@ -431,7 +440,9 @@ def test_given_custom_fields_when_applying_then_they_are_ignored(tmp_path, monke
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
     target = tmp_path / "constitution.yaml"
-    target.write_text("mission: M1\nnote: the file note\nteam: lending\n", encoding="utf-8")
+    target.write_text(
+        "constitution: default\nmission: M1\nnote: the file note\nteam: lending\n", encoding="utf-8"
+    )
     r = runner.invoke(app, ["set", str(target), "--note", "the real note"])
     assert r.exit_code == 0
     payload = json.loads(r.stdout)
@@ -465,7 +476,7 @@ def test_given_dry_run_when_applying_then_the_delta_prints_and_nothing_is_persis
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="init")
     target = tmp_path / "next.yaml"
-    target.write_text("mission: M2\n", encoding="utf-8")
+    target.write_text("constitution: default\nmission: M2\n", encoding="utf-8")
     r = runner.invoke(app, ["set", str(target), "--dry-run"])
     assert r.exit_code == 0
     assert 'The mission was "M1" and is now "M2".' in r.output
@@ -488,7 +499,7 @@ def test_given_dry_run_when_no_note_is_passed_then_it_still_runs(tmp_path, monke
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
     target = tmp_path / "next.yaml"
-    target.write_text("mission: M1\n", encoding="utf-8")
+    target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["set", str(target), "--dry-run"])
     assert r.exit_code == 0
 
@@ -530,20 +541,30 @@ def test_given_a_whitespace_note_when_applying_then_it_is_refused_as_missing(tmp
     assert "note" in r.output.lower()
 
 
-def test_given_no_name_anywhere_when_applying_then_the_default_constitution_receives_it(
+def test_given_a_file_without_a_constitution_key_when_applying_then_it_is_refused_with_the_fix(
     tmp_path, monkeypatch
 ):
-    """No --constitution flag and no constitution: key in the file: the
-    service's own default takes the version, and no other name does."""
+    """The name is part of the content: a file that does not say which
+    constitution it is cannot be applied anywhere, not even to default."""
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
-    assert apply_yaml(tmp_path, mission="M1", note="init").exit_code == 0
-    assert (
-        json.loads(runner.invoke(app, ["current", "--constitution", "default"]).stdout)["mission"]
-        == "M1"
-    )
-    assert json.loads(runner.invoke(app, ["current"]).stdout)["version"] == 1
-    assert "no constitution set" in runner.invoke(app, ["current", "--constitution", "eu"]).output
+    r = apply_yaml(tmp_path, mission="M1", note="init", constitution=None)
+    assert r.exit_code == 1
+    assert "constitution: <name>" in r.output
+    assert "no constitution set" in runner.invoke(app, ["current"]).output
+
+
+def test_given_a_file_without_a_constitution_key_when_checking_then_the_store_is_not_compared(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    target = tmp_path / "unnamed.yaml"
+    target.write_text("mission: M1\n", encoding="utf-8")
+    r = runner.invoke(app, ["check", str(target)])
+    assert r.exit_code == 1
+    assert "kyno fields not set: constitution" in r.output
+    assert "store: not compared" in r.output and "constitution: <name>" in r.output
 
 
 def test_given_versions_when_reading_log_then_they_list_newest_first(tmp_path, monkeypatch):
@@ -580,7 +601,7 @@ def test_given_a_stale_file_when_checking_then_it_fails_and_shows_the_delta(tmp_
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M2", note="hotfix")
     stale = tmp_path / "stale.yaml"
-    stale.write_text("mission: M1\n", encoding="utf-8")
+    stale.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(stale)])
     assert r.exit_code == 1
     assert "store: differs from 'default' (version 1):" in r.stdout
@@ -591,7 +612,7 @@ def test_given_an_empty_store_when_checking_then_it_fails(tmp_path, monkeypatch)
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
     target = tmp_path / "c.yaml"
-    target.write_text("mission: M1\n", encoding="utf-8")
+    target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(target)])
     assert r.exit_code == 1
     assert "has no versions" in r.stdout
@@ -603,8 +624,8 @@ def test_given_an_unreachable_store_when_checking_then_the_report_still_prints(
     # No init-db: the field report stands, the comparison says why it didn't run.
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'never.sqlite3'}")
     target = tmp_path / "c.yaml"
-    target.write_text("mission: M1\n", encoding="utf-8")
+    target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(target)])
     assert r.exit_code == 0
-    assert "kyno fields set: mission" in r.stdout
+    assert "kyno fields set: constitution, mission" in r.stdout
     assert "store: not compared" in r.stdout

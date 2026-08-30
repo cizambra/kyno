@@ -189,22 +189,22 @@ def test_given_a_full_file_when_running_set_then_the_store_carries_its_content(d
     assert head.created_by == "camilo"
 
 
-def test_given_edit_flags_when_applying_a_file_then_they_route_and_describe_the_edit(db, tmp_path):
+def test_given_a_named_file_when_applying_then_the_name_in_the_file_routes_it(db, tmp_path):
     path = write(tmp_path, FULL_FILE)
-    result = runner.invoke(
-        app,
-        ["set", path, "--constitution", "eu", "--note", "the EU edit", "--by", "ops"],
-    )
+    result = runner.invoke(app, ["set", path, "--note", "the acme edit", "--by", "ops"])
     assert result.exit_code == 0, result.output
 
-    head = plane(db).current("eu")
-    assert head.change_note == "the EU edit" and head.created_by == "ops"
-    assert plane(db).current("acme").version == 0
+    head = plane(db).current("acme")
+    assert head.change_note == "the acme edit" and head.created_by == "ops"
+    assert plane(db).current("default").version == 0
 
 
-@pytest.mark.parametrize("flag", ["--mission", "--declaration", "--principle"])
-def test_given_a_content_flag_when_running_set_then_it_is_not_an_option(db, tmp_path, flag):
-    # The file is the only source of content, so these aren't options at all.
+@pytest.mark.parametrize("flag", ["--mission", "--declaration", "--principle", "--constitution"])
+def test_given_a_content_or_name_flag_when_running_set_then_it_is_rejected_as_unknown(
+    db, tmp_path, flag
+):
+    # The file is the only source of content, the name included. These flags
+    # deliberately don't exist, and the CLI reports them as unknown.
     result = runner.invoke(app, ["set", write(tmp_path, FULL_FILE), flag, "X"])
     assert result.exit_code != 0
     assert "no such option" in plain(result).lower()

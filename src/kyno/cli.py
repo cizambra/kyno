@@ -16,7 +16,7 @@ from kyno.authoring import (
     render_constitution_yaml,
 )
 from kyno.config import Settings, store_from_settings
-from kyno.errors import CoherenceError, NoFieldChangedError
+from kyno.errors import AuthoringError, CoherenceError, NoFieldChangedError
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
 from kyno.service import ControlPlane
 
@@ -87,22 +87,19 @@ def set_direction_cmd(
     by: str | None = typer.Option(
         None, "--by", help="Who made this change. Defaults to your system username."
     ),
-    constitution: str | None = typer.Option(
-        None, "--constitution", help="Which named constitution to act on."
-    ),
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Print what would change, apply nothing."
     ),
 ) -> None:
     """Append a version from a file. The file says what the constitution
-    is; the flags say what this edit is. Every apply prints the delta it
-    makes; --dry-run prints it and stops."""
+    is, including which one it is; the flags say what this edit is. Every
+    apply prints the delta it makes; --dry-run prints it and stops."""
     if not dry_run and not (note and note.strip()):
         raise typer.BadParameter("a change note is required: pass --note")
     with _clean_errors():
         fields = read_constitution_file(file)
         content = _content_of(fields)
-        target = constitution or fields.constitution
+        target = _constitution_name(fields, file)
         plane = _control_plane()
         delta = plane.preview_edit(**content, constitution=target)
         if dry_run:
@@ -135,6 +132,19 @@ def _clean_errors() -> Iterator[None]:
     except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
+
+
+def _constitution_name(fields: ConstitutionFile, path: str) -> str:
+    """Which constitution the file belongs to, read from its `constitution:`
+    key. The key is required: without it, a file could be applied to the
+    wrong constitution by accident, so the file is refused instead and the
+    message says what line to add."""
+    if not fields.constitution:
+        raise AuthoringError(
+            f"{path}: the file does not say which constitution it is; "
+            "add a 'constitution: <name>' line ('default' if you keep only one)"
+        )
+    return fields.constitution
 
 
 def _content_of(fields: ConstitutionFile) -> dict[str, object]:
@@ -249,9 +259,6 @@ def current(
 @app.command()
 def check(
     file: str = typer.Argument(..., help="The constitution file to inspect."),
-    constitution: str | None = typer.Option(
-        None, "--constitution", help="Which named constitution to compare against."
-    ),
 ) -> None:
     """Report how Kyno reads a file, then whether the store agrees with it.
     The field report never blocks anything. The store comparison is the
@@ -267,7 +274,11 @@ def check(
     typer.echo(f"kyno fields not set: {', '.join(report.missing) or 'none'}")
     typer.echo(f"custom fields: {', '.join(report.custom) or 'none'}")
 
-    target = constitution or fields.constitution or "default"
+    try:
+        target = _constitution_name(fields, file)
+    except AuthoringError as exc:
+        typer.echo(f"store: not compared ({exc})")
+        raise typer.Exit(code=1) from None
     try:
         plane = _control_plane()
         head = plane.current(target)

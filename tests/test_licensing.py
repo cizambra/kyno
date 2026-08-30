@@ -11,7 +11,7 @@ MIT_DIRS = ("sdk", "adapters", "conformance")
 HEADER = "# SPDX-License-Identifier: MIT"
 
 
-def test_every_mit_file_starts_with_the_mit_header():
+def test_given_the_mit_subtrees_when_scanning_headers_then_every_file_starts_with_mit():
     missing = []
     for mit_dir in MIT_DIRS:
         for path in sorted((SRC / mit_dir).rglob("*.py")):
@@ -23,7 +23,7 @@ def test_every_mit_file_starts_with_the_mit_header():
     assert not missing, "\n" + "\n".join(missing)
 
 
-def test_no_file_outside_the_mit_subtrees_claims_mit():
+def test_given_files_outside_the_mit_subtrees_when_scanning_headers_then_none_claims_mit():
     wrong = []
     for path in sorted(SRC.rglob("*.py")):
         if "__pycache__" in path.parts or path.relative_to(SRC).parts[0] in MIT_DIRS:

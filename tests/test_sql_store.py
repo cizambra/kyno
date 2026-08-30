@@ -13,7 +13,7 @@ from kyno.store.sql import SqlConstitutionStore
 # by pytest -- no local definition needed here.
 
 
-def test_append_then_head(store):
+def test_given_an_append_when_reading_head_then_it_is_the_appended_version(store):
     v1 = store.append(
         "default",
         1,
@@ -30,7 +30,7 @@ def test_append_then_head(store):
     assert head.principles == (Principle("p1"),)
 
 
-def test_head_created_at_is_tz_aware_and_matches_append(store):
+def test_given_an_append_when_reading_head_then_created_at_is_tz_aware_and_matches(store):
     # SQLite drops tzinfo on read even for a DateTime(timezone=True) column;
     # append()'s and head()'s values must still agree on being tz-aware UTC.
     v1 = store.append(
@@ -49,11 +49,11 @@ def test_head_created_at_is_tz_aware_and_matches_append(store):
     assert head.created_at == v1.created_at
 
 
-def test_head_none_for_unknown(store):
+def test_given_an_unknown_name_when_reading_head_then_it_is_none(store):
     assert store.head("nope") is None
 
 
-def test_versions_after_is_ordered(store):
+def test_given_several_versions_when_reading_versions_after_then_they_are_ordered(store):
     store.append(
         "default",
         1,
@@ -89,7 +89,7 @@ def test_versions_after_is_ordered(store):
     assert after[-1].change_note == "c"
 
 
-def test_duplicate_version_raises_conflict(store):
+def test_given_a_taken_version_number_when_appending_then_a_conflict_raises(store):
     store.append(
         "default",
         1,
@@ -113,7 +113,7 @@ def test_duplicate_version_raises_conflict(store):
         )
 
 
-def test_principles_roundtrip_json(store):
+def test_given_principles_when_writing_and_reading_then_they_round_trip_as_json(store):
     store.append(
         "default",
         1,
@@ -127,7 +127,7 @@ def test_principles_roundtrip_json(store):
     assert store.head("default").principles == (Principle("a, b"), Principle('q"x'))
 
 
-def test_head_raises_corrupt_state_when_pointed_version_row_missing(store):
+def test_given_a_missing_pointed_version_row_when_reading_head_then_corrupt_state_raises(store):
     store.append(
         "default",
         1,
@@ -145,12 +145,12 @@ def test_head_raises_corrupt_state_when_pointed_version_row_missing(store):
         store.head("default")
 
 
-def test_engine_or_url_but_not_both():
+def test_given_both_an_engine_and_a_url_when_building_the_store_then_it_is_refused():
     with pytest.raises(ValueError):
         SqlConstitutionStore()
 
 
-def test_append_only_immutability_via_control_plane(store):
+def test_given_the_control_plane_when_writing_then_the_ledger_is_append_only(store):
     cp = ControlPlane(store)
     cp.set_direction(mission="M1", principles=("p1",), change_note="init")
     cp.set_direction(mission="M2", change_note="pivot")
@@ -165,7 +165,7 @@ def test_append_only_immutability_via_control_plane(store):
     assert len(all_versions) == 3
 
 
-def test_injectable_engine_happy_path(tmp_path):
+def test_given_an_injected_engine_when_using_the_store_then_it_works_end_to_end(tmp_path):
     engine = create_engine(
         f"sqlite:///{tmp_path / 'injected.sqlite3'}", connect_args={"check_same_thread": False}
     )
@@ -186,7 +186,7 @@ def test_injectable_engine_happy_path(tmp_path):
     assert head.mission == "M1" and head.principles == (Principle("p1"),)
 
 
-def test_losing_append_leaves_head_intact(store):
+def test_given_a_losing_append_when_the_conflict_raises_then_the_head_is_intact(store):
     # A stale-version append must roll back the whole transaction -- both the
     # failed insert AND the current_version update that ran earlier in it.
     store.append(
@@ -237,7 +237,7 @@ def test_losing_append_leaves_head_intact(store):
     assert head.mission == "M3"
 
 
-def test_independent_constitution_names_keep_separate_version_sequences(store):
+def test_given_two_names_when_appending_to_each_then_their_version_sequences_stay_separate(store):
     store.append(
         "default",
         1,
@@ -273,12 +273,12 @@ def test_independent_constitution_names_keep_separate_version_sequences(store):
     assert store.head("other").version == 1
 
 
-def test_export_versions_on_empty_store_returns_empty_list(store):
+def test_given_an_empty_store_when_exporting_versions_then_the_list_is_empty(store):
     # Consistent with the read-never-fails contract: empty yields [], not an error.
     assert store.export_versions() == []
 
 
-def test_export_versions_full_range_returns_plain_dicts_in_ascending_order(store):
+def test_given_a_full_range_when_exporting_versions_then_plain_dicts_come_back_ascending(store):
     cp = ControlPlane(store)
     cp.set_direction(mission="M1", principles=("p1",), change_note="init", created_by="alice")
     cp.set_direction(mission="M2", change_note="pivot", created_by="bob")
@@ -304,7 +304,7 @@ def test_export_versions_full_range_returns_plain_dicts_in_ascending_order(store
     assert parsed.tzinfo is not None
 
 
-def test_export_versions_bounds_are_inclusive(store):
+def test_given_range_bounds_when_exporting_versions_then_they_are_inclusive(store):
     cp = ControlPlane(store)
     cp.set_direction(mission="M1", change_note="v1")
     cp.set_direction(mission="M2", change_note="v2")
@@ -315,14 +315,14 @@ def test_export_versions_bounds_are_inclusive(store):
     assert [r["version"] for r in store.export_versions(from_version=2, to_version=2)] == [2]
 
 
-def test_export_versions_out_of_range_bounds_return_empty_list(store):
+def test_given_out_of_range_bounds_when_exporting_versions_then_the_list_is_empty(store):
     cp = ControlPlane(store)
     cp.set_direction(mission="M1", change_note="v1")
 
     assert store.export_versions(from_version=5) == []
 
 
-def test_export_versions_scoped_to_constitution_name(store):
+def test_given_a_name_when_exporting_versions_then_only_that_constitution_exports(store):
     store.append(
         "default",
         1,
@@ -348,7 +348,7 @@ def test_export_versions_scoped_to_constitution_name(store):
     assert len(rows) == 1 and rows[0]["mission"] == "N"
 
 
-def test_in_memory_store_is_shared_across_threads():
+def test_given_an_in_memory_store_when_threads_share_it_then_they_see_one_database():
     import threading
 
     store = SqlConstitutionStore(url="sqlite://")
@@ -388,7 +388,7 @@ def _write(store, constitution="default", mission="M1"):
     )
 
 
-def test_a_written_constitution_starts_unpublished(store):
+def test_given_a_written_constitution_when_reading_publication_then_it_starts_unpublished(store):
     _write(store)
     pub = store.publication("default")
     assert pub.published is False
@@ -396,14 +396,14 @@ def test_a_written_constitution_starts_unpublished(store):
     assert pub.history_public is False
 
 
-def test_publication_of_a_name_never_written_reads_as_private(store):
+def test_given_a_name_never_written_when_reading_publication_then_it_reads_as_private(store):
     # Reads never fail on an absent name elsewhere in this store; publication
     # follows the same rule -- "not published" is the honest answer.
     pub = store.publication("never-written")
     assert pub.published is False and pub.history_public is False
 
 
-def test_set_publication_records_the_stamp_and_the_history_flag(store):
+def test_given_set_publication_when_publishing_then_the_stamp_and_history_flag_are_recorded(store):
     _write(store)
     when = datetime(2026, 8, 12, 9, 30, tzinfo=UTC)
     assert store.set_publication("default", published_at=when, history_public=True) is True
@@ -413,7 +413,7 @@ def test_set_publication_records_the_stamp_and_the_history_flag(store):
     assert pub.history_public is True
 
 
-def test_set_publication_can_clear_back_to_private(store):
+def test_given_a_published_name_when_clearing_publication_then_it_is_private_again(store):
     _write(store)
     store.set_publication("default", published_at=datetime.now(UTC), history_public=True)
     store.set_publication("default", published_at=None, history_public=False)
@@ -421,14 +421,14 @@ def test_set_publication_can_clear_back_to_private(store):
     assert pub.published is False and pub.history_public is False
 
 
-def test_set_publication_reports_a_name_that_does_not_exist(store):
+def test_given_a_name_that_does_not_exist_when_setting_publication_then_it_is_reported(store):
     assert store.set_publication("ghost", published_at=datetime.now(UTC), history_public=False) is (
         False
     )
     assert store.publication("ghost").published is False
 
 
-def test_publication_state_is_per_name(store):
+def test_given_two_names_when_publishing_one_then_the_other_stays_private(store):
     # One Kyno holding an internal constitution and a public one: publishing
     # the public one must leave the internal one invisible.
     _write(store, "internal", "Internal mission")
@@ -440,7 +440,7 @@ def test_publication_state_is_per_name(store):
     assert store.publication("internal").history_public is False
 
 
-def test_several_names_can_be_published_with_different_history_settings(store):
+def test_given_several_names_when_publishing_each_then_history_settings_stay_per_name(store):
     _write(store, "a")
     _write(store, "b")
     store.set_publication("a", published_at=datetime.now(UTC), history_public=True)
@@ -450,7 +450,7 @@ def test_several_names_can_be_published_with_different_history_settings(store):
     assert store.publication("b").published and not store.publication("b").history_public
 
 
-def test_appending_a_version_leaves_publication_state_alone(store):
+def test_given_a_published_name_when_appending_a_version_then_publication_is_untouched(store):
     _write(store)
     when = datetime(2026, 8, 12, 9, 30, tzinfo=UTC)
     store.set_publication("default", published_at=when, history_public=True)
@@ -484,7 +484,7 @@ def _raw_principles(store, version=1, constitution="default"):
         ).scalar_one()
 
 
-def test_a_described_principle_survives_the_store(store):
+def test_given_a_described_principle_when_writing_and_reading_then_it_survives(store):
     store.append(
         "default",
         1,
@@ -500,7 +500,7 @@ def test_a_described_principle_survives_the_store(store):
     )
 
 
-def test_a_title_only_principle_is_written_as_a_plain_json_string(store):
+def test_given_a_title_only_principle_when_writing_then_it_is_stored_as_a_plain_json_string(store):
     # Deliberate: the column holds either shape, and a constitution nobody has
     # described writes exactly the JSON it always did -- so adopting
     # descriptions is what changes the stored bytes, not upgrading.
@@ -520,7 +520,7 @@ def test_a_title_only_principle_is_written_as_a_plain_json_string(store):
     ]
 
 
-def test_a_row_of_plain_strings_reads_back_as_title_only_principles(store):
+def test_given_a_row_of_plain_strings_when_reading_then_they_are_title_only_principles(store):
     # The shape every version written before descriptions existed is in.
     store.append(
         "default",
@@ -535,7 +535,7 @@ def test_a_row_of_plain_strings_reads_back_as_title_only_principles(store):
     assert store.head("default").principles == (Principle("p1"), Principle("p2"))
 
 
-def test_export_carries_each_principles_description(store):
+def test_given_described_principles_when_exporting_then_each_description_is_carried(store):
     ControlPlane(store).set_direction(
         mission="M1",
         principles=("p1", {"title": "p2", "description": "why p2"}),
@@ -550,7 +550,7 @@ def test_export_carries_each_principles_description(store):
 # --- the declaration -------------------------------------------------------
 
 
-def test_a_declaration_survives_the_store(store):
+def test_given_a_declaration_when_writing_and_reading_then_it_survives(store):
     store.append(
         "default",
         1,
@@ -565,7 +565,7 @@ def test_a_declaration_survives_the_store(store):
     assert store.head("default").declaration == "# Our declaration\n\nThe long form."
 
 
-def test_a_version_written_without_a_declaration_reads_as_an_empty_one(store):
+def test_given_a_version_without_a_declaration_when_reading_then_it_is_an_empty_one(store):
     # The column is nullable, so "never written" and "" answer the same way
     # rather than handing callers a None to guard against.
     store.append(
@@ -581,7 +581,7 @@ def test_a_version_written_without_a_declaration_reads_as_an_empty_one(store):
     assert store.head("default").declaration == ""
 
 
-def test_export_carries_the_declaration(store):
+def test_given_a_declaration_when_exporting_then_it_is_carried(store):
     ControlPlane(store).set_direction(
         mission="M1", declaration="The long form.", change_note="init"
     )

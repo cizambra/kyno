@@ -45,7 +45,7 @@ def in_memory_runner():
         runner.close()
 
 
-def test_mcp_source_pulls_the_named_constitution(in_memory_runner):
+def test_given_a_name_when_the_mcp_source_pulls_then_that_constitution_comes(in_memory_runner):
     runner, control_plane = in_memory_runner
     control_plane.set_direction(mission="EU mission", change_note="init", constitution="eu")
     control_plane.set_direction(mission="US mission", change_note="init", constitution="us")
@@ -55,7 +55,9 @@ def test_mcp_source_pulls_the_named_constitution(in_memory_runner):
     assert source.changes_since(0, "us").mission == "US mission"
 
 
-def test_mcp_source_reports_change_notes_since_the_known_version(in_memory_runner):
+def test_given_a_known_version_when_the_mcp_source_reports_then_the_notes_since_come(
+    in_memory_runner,
+):
     runner, control_plane = in_memory_runner
     control_plane.set_direction(mission="M1", change_note="init")
     control_plane.set_direction(mission="M2", change_note="pivot")
@@ -67,12 +69,14 @@ def test_mcp_source_reports_change_notes_since_the_known_version(in_memory_runne
     assert changes.change_notes == ("pivot",)
 
 
-def test_mcp_source_reads_an_unwritten_name_as_version_zero(in_memory_runner):
+def test_given_an_unwritten_name_when_the_mcp_source_reads_then_it_is_version_zero(
+    in_memory_runner,
+):
     runner, _cp = in_memory_runner
     assert McpDirectionSource(runner).changes_since(0, "never-written").current_version == 0
 
 
-def test_a_binder_over_mcp_binds_each_step_to_the_live_version(in_memory_runner):
+def test_given_a_binder_over_mcp_when_steps_run_then_each_binds_the_live_version(in_memory_runner):
     runner, control_plane = in_memory_runner
     control_plane.set_direction(mission="M1", change_note="init", constitution="eu")
     binder = DirectionBinder(McpDirectionSource(runner))
@@ -85,7 +89,9 @@ def test_a_binder_over_mcp_binds_each_step_to_the_live_version(in_memory_runner)
     assert second.mission == "M2"
 
 
-def test_a_closed_runner_raises_unavailable_not_hangs(in_memory_runner):
+def test_given_a_closed_runner_when_pulling_then_unavailable_raises_instead_of_hanging(
+    in_memory_runner,
+):
     runner, _cp = in_memory_runner
     runner.close()
 
@@ -93,12 +99,14 @@ def test_a_closed_runner_raises_unavailable_not_hangs(in_memory_runner):
         McpDirectionSource(runner).changes_since(0, "default")
 
 
-def test_mcp_source_satisfies_the_protocol(in_memory_runner):
+def test_given_the_mcp_source_when_checking_the_protocol_then_it_satisfies_it(in_memory_runner):
     runner, _cp = in_memory_runner
     assert isinstance(McpDirectionSource(runner), DirectionSource)
 
 
-def test_the_two_sources_answer_the_same_question_the_same_way(in_memory_runner):
+def test_given_the_two_sources_when_asking_the_same_question_then_the_answers_match(
+    in_memory_runner,
+):
     """The in-process and MCP paths must stay interchangeable for a binder."""
     runner, control_plane = in_memory_runner
     control_plane.set_direction(mission="M1", change_note="init", constitution="eu")
@@ -110,7 +118,9 @@ def test_the_two_sources_answer_the_same_question_the_same_way(in_memory_runner)
     assert over_mcp == in_process
 
 
-def test_a_crew_keeps_running_on_the_last_direction_when_kyno_goes_away(in_memory_runner):
+def test_given_kyno_going_away_when_a_crew_is_running_then_the_last_direction_carries_it(
+    in_memory_runner,
+):
     runner, control_plane = in_memory_runner
     control_plane.set_direction(mission="M1", change_note="init")
     sink = RecordingSink()
@@ -124,14 +134,14 @@ def test_a_crew_keeps_running_on_the_last_direction_when_kyno_goes_away(in_memor
     assert [e.kind for e in sink.events] == [PULL_FAILED_STALE]
 
 
-def test_a_message_handler_must_be_set_before_the_session_opens(in_memory_runner):
+def test_given_no_message_handler_when_the_session_opens_then_it_is_refused(in_memory_runner):
     """The handler is handed to the session once, at open time."""
     runner, _cp = in_memory_runner
     with pytest.raises(RuntimeError):
         runner.set_message_handler(lambda message: None)
 
 
-def test_a_runner_that_cannot_connect_fails_loudly_at_start():
+def test_given_a_runner_that_cannot_connect_when_starting_then_it_fails_loudly():
     @asynccontextmanager
     async def connect(message_handler=None):
         raise OSError("connection refused")
@@ -141,18 +151,20 @@ def test_a_runner_that_cannot_connect_fails_loudly_at_start():
         SessionRunner(connect).start()
 
 
-def test_closing_a_runner_twice_is_harmless(in_memory_runner):
+def test_given_a_closed_runner_when_closing_again_then_it_is_harmless(in_memory_runner):
     runner, _cp = in_memory_runner
     runner.close()
     runner.close()
 
 
-def test_http_session_needs_an_endpoint():
+def test_given_no_endpoint_when_building_an_http_session_then_it_is_refused():
     with pytest.raises(KynoUnavailableError):
         http_session(KynoBinding())
 
 
-async def test_http_session_sends_the_token_as_a_bearer_header(monkeypatch):
+async def test_given_a_token_when_the_http_session_connects_then_it_goes_as_a_bearer_header(
+    monkeypatch,
+):
     captured = _fake_transport(monkeypatch)
 
     connect = http_session(KynoBinding(endpoint="https://kyno.internal/mcp", token="secret"))
@@ -164,7 +176,7 @@ async def test_http_session_sends_the_token_as_a_bearer_header(monkeypatch):
     assert captured["initialized"] is True
 
 
-async def test_http_session_without_a_token_sends_no_auth_header(monkeypatch):
+async def test_given_no_token_when_the_http_session_connects_then_no_auth_header_goes(monkeypatch):
     captured = _fake_transport(monkeypatch)
 
     connect = http_session(KynoBinding(endpoint="https://kyno.internal/mcp"))
@@ -206,7 +218,9 @@ def _fake_transport(monkeypatch) -> dict:
     return captured
 
 
-def test_a_full_binding_pulls_the_declaration_and_the_descriptions(in_memory_runner):
+def test_given_a_full_binding_when_pulling_then_the_declaration_and_descriptions_come(
+    in_memory_runner,
+):
     runner, control_plane = in_memory_runner
     control_plane.set_direction(
         mission="M1",

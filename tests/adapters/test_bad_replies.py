@@ -85,13 +85,13 @@ MALFORMED = {
 
 
 @pytest.mark.parametrize("shape", sorted(MALFORMED))
-def test_every_malformed_reply_arrives_as_unavailable(shape):
+def test_given_any_malformed_reply_when_pulling_then_it_arrives_as_unavailable(shape):
     with pytest.raises(KynoUnavailableError, match="bad reply"):
         source_for(reply=MALFORMED[shape]).changes_since(0, "default")
 
 
 @pytest.mark.parametrize("shape", sorted(MALFORMED))
-def test_a_crew_on_a_malformed_reply_keeps_running_on_the_last_direction(shape):
+def test_given_a_malformed_reply_when_a_crew_is_running_then_the_last_direction_carries_it(shape):
     # The whole point: a bad reply costs freshness, not the step.
     sink = RecordingSink()
     runner = ScriptedRunner(reply=Reply([Text(json.dumps(good_payload()))]))
@@ -106,7 +106,9 @@ def test_a_crew_on_a_malformed_reply_keeps_running_on_the_last_direction(shape):
 
 
 @pytest.mark.parametrize("shape", sorted(MALFORMED))
-def test_a_malformed_reply_with_nothing_cached_proceeds_on_the_empty_direction(shape):
+def test_given_a_malformed_reply_and_nothing_cached_when_pulling_then_the_empty_direction_serves(
+    shape,
+):
     sink = RecordingSink()
     source = McpDirectionSource(ScriptedRunner(reply=MALFORMED[shape]))
     binder = DirectionBinder(source, telemetry=sink)
@@ -117,13 +119,13 @@ def test_a_malformed_reply_with_nothing_cached_proceeds_on_the_empty_direction(s
     assert [e.kind for e in sink.events] == [PULL_FAILED_EMPTY]
 
 
-def test_a_protocol_error_from_the_session_arrives_as_unavailable():
+def test_given_a_protocol_error_from_the_session_when_pulling_then_it_arrives_as_unavailable():
     # McpError, anyio's closed-resource errors, anything the transport raises.
     with pytest.raises(KynoUnavailableError, match="bad reply"):
         source_for(raises=RuntimeError("peer closed the stream")).changes_since(0, "default")
 
 
-def test_an_unavailable_error_keeps_its_own_message():
+def test_given_an_unavailable_error_when_reading_it_then_its_own_message_is_kept():
     # Already the answer the binder degrades on; re-wrapping it would bury
     # the reason (a timeout, a closed session) under a generic one.
     original = KynoUnavailableError("timed out talking to kyno")
@@ -131,7 +133,7 @@ def test_an_unavailable_error_keeps_its_own_message():
         source_for(raises=original).changes_since(0, "default")
 
 
-def test_an_oversized_reply_is_refused_before_it_is_parsed():
+def test_given_an_oversized_reply_when_receiving_then_it_is_refused_before_parsing():
     from kyno.sdk.client import MAX_REPLY_CHARS
 
     huge = json.dumps(good_payload(mission="x" * (MAX_REPLY_CHARS + 1)))
@@ -139,7 +141,7 @@ def test_an_oversized_reply_is_refused_before_it_is_parsed():
         source_for(huge).changes_since(0, "default")
 
 
-def test_a_reply_at_the_size_limit_is_still_read():
+def test_given_a_reply_at_the_size_limit_when_receiving_then_it_is_still_read():
     from kyno.sdk.client import MAX_REPLY_CHARS
 
     payload = json.dumps(good_payload())
@@ -148,7 +150,7 @@ def test_a_reply_at_the_size_limit_is_still_read():
     assert source_for(padded).changes_since(0, "default").current_version == 2
 
 
-def test_a_version_that_is_text_never_reaches_the_cell():
+def test_given_a_version_that_is_text_when_pulling_then_it_never_reaches_the_cell():
     # A str version poisons the cell's monotonic compare permanently: every
     # later int comparison against it raises, so the crew stops binding.
     runner = ScriptedRunner(reply=Reply([Text(json.dumps(good_payload(current_version="99")))]))
@@ -160,14 +162,16 @@ def test_a_version_that_is_text_never_reaches_the_cell():
     assert binder.bind().version == 100
 
 
-def test_numbers_in_text_fields_are_coerced_rather_than_dropped():
+def test_given_numbers_in_text_fields_when_pulling_then_they_are_coerced_not_dropped():
     payload = json.dumps(good_payload(mission=7, change_notes=[1, 2]))
     changes = source_for(payload).changes_since(0, "default")
     assert changes.mission == "7"
     assert changes.change_notes == ("1", "2")
 
 
-def test_the_loop_closing_between_the_check_and_the_dispatch_is_unavailable(monkeypatch):
+def test_given_a_loop_closing_between_check_and_dispatch_when_pulling_then_it_is_unavailable(
+    monkeypatch,
+):
     # The alive-check and the dispatch cannot be atomic, so the loop can close
     # between them and run_coroutine_threadsafe raises RuntimeError.
     import asyncio

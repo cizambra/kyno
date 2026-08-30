@@ -10,7 +10,7 @@ DIRECTION = Direction(
 )
 
 
-def test_a_step_record_pins_the_direction_it_served():
+def test_given_a_step_when_recording_then_the_direction_it_served_is_pinned():
     trace = RunTrace(run_id="r1", goal="Launch in the EU")
     record = trace.record_step(
         agent="researcher", goal="Find lenders", output="a list", direction=DIRECTION
@@ -23,7 +23,7 @@ def test_a_step_record_pins_the_direction_it_served():
     assert record.verdict == Verdict.UNKNOWN.value and record.checked is False
 
 
-def test_a_gate_decision_lands_on_the_record():
+def test_given_a_gate_decision_when_recording_then_it_is_written_on_the_record():
     trace = RunTrace(run_id="r1")
     decision = GateDecision(
         action=Action.PROCEED,
@@ -39,7 +39,7 @@ def test_a_gate_decision_lands_on_the_record():
     assert record.verdict == "aligned" and record.checked is True
 
 
-def test_step_ids_are_unique_and_ordered():
+def test_given_several_steps_when_recording_then_their_ids_are_unique_and_ordered():
     trace = RunTrace(run_id="r1")
     ids = [
         trace.record_step(agent="a", goal="g", output="o", direction=DIRECTION).step_id
@@ -49,7 +49,7 @@ def test_step_ids_are_unique_and_ordered():
     assert [s.step_id for s in trace.steps] == ids
 
 
-def test_the_atom_fields_are_all_present_in_the_serialized_step():
+def test_given_a_serialized_step_when_reading_then_every_atom_field_is_present():
     trace = RunTrace(run_id="r1")
     trace.record_step(agent="a", goal="g", output="o", direction=DIRECTION)
     payload = trace.to_dict()
@@ -60,13 +60,13 @@ def test_the_atom_fields_are_all_present_in_the_serialized_step():
         assert field_name in step, field_name
 
 
-def test_an_unchecked_run_is_visible_after_the_fact():
+def test_given_an_unchecked_run_when_reading_the_trace_then_it_is_visible_after_the_fact():
     trace = RunTrace(run_id="r1")
     trace.record_step(agent="a", goal="g", output="o", direction=DIRECTION)
     assert [s.step_id for s in trace.steps if not s.checked]
 
 
-def test_two_runs_number_their_steps_independently():
+def test_given_two_runs_when_recording_steps_then_they_number_independently():
     """A shared counter would make step ids collide across concurrent runs."""
     first = RunTrace(run_id="r1")
     second = RunTrace(run_id="r2")
@@ -77,7 +77,7 @@ def test_two_runs_number_their_steps_independently():
     assert record.step_id == "r2-s1"
 
 
-def test_a_caller_supplied_step_id_wins():
+def test_given_a_caller_supplied_step_id_when_recording_then_it_wins():
     """Hosts that already have their own step ids should keep using them."""
     trace = RunTrace(run_id="r1")
     record = trace.record_step(
@@ -86,7 +86,7 @@ def test_a_caller_supplied_step_id_wins():
     assert record.step_id == "task-7" and trace.steps[0].step_id == "task-7"
 
 
-def test_blocked_work_is_recorded_not_dropped():
+def test_given_blocked_work_when_recording_then_it_is_recorded_not_dropped():
     trace = RunTrace(run_id="r1")
     decision = GateDecision(
         action=Action.BLOCK,
@@ -102,14 +102,14 @@ def test_blocked_work_is_recorded_not_dropped():
     assert record.verdict == "drifted" and record.checked is True
 
 
-def test_a_step_is_timestamped_in_utc():
+def test_given_a_step_when_recording_then_its_timestamp_is_utc():
     trace = RunTrace(run_id="r1")
     record = trace.record_step(agent="a", goal="g", output="o", direction=DIRECTION)
     assert record.occurred_at.tzinfo is not None
     assert record.occurred_at.utcoffset() == UTC.utcoffset(None)
 
 
-def test_a_serialized_run_is_json_shaped_and_ordered():
+def test_given_a_serialized_run_when_reading_then_it_is_json_shaped_and_ordered():
     trace = RunTrace(run_id="r1", goal="Launch in the EU")
     trace.record_step(agent="researcher", goal="Find lenders", output="a list", direction=DIRECTION)
     trace.record_step(agent="writer", goal="Draft", output="text", direction=DIRECTION)

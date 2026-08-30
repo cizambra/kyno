@@ -44,14 +44,14 @@ def cp():
     return ControlPlane(store)
 
 
-def test_current_before_init_returns_empty_state(cp):
+def test_given_an_uninitialized_store_when_reading_current_then_the_empty_state_returns(cp):
     v = cp.current()
     assert v.version == 0
     assert v.mission == ""
     assert v.principles == ()
 
 
-def test_changes_since_on_empty_store_returns_zero_no_changes(cp):
+def test_given_an_empty_store_when_asking_changes_since_then_zero_changes_return(cp):
     c = cp.changes_since(0)
     assert c.current_version == 0
     assert c.changed is False
@@ -62,7 +62,7 @@ def test_changes_since_on_empty_store_returns_zero_no_changes(cp):
     assert c.change_notes == ()
 
 
-def test_changes_since_any_known_version_on_empty_store_does_not_raise(cp):
+def test_given_an_empty_store_when_asking_changes_since_any_version_then_it_does_not_raise(cp):
     # No HEAD to compare against on an empty store, so no known_version
     # can be "in the future" -- never UnknownVersionError.
     c = cp.changes_since(5)
@@ -70,7 +70,7 @@ def test_changes_since_any_known_version_on_empty_store_does_not_raise(cp):
     assert c.changed is False
 
 
-def test_first_write_after_empty_reads_still_creates_v1(cp):
+def test_given_prior_empty_reads_when_writing_the_first_version_then_it_is_still_v1(cp):
     assert cp.current().version == 0
     assert cp.changes_since(0).current_version == 0
     v = cp.set_direction(mission="M1", principles=("p1",), change_note="init")
@@ -79,13 +79,13 @@ def test_first_write_after_empty_reads_still_creates_v1(cp):
     assert cp.current().mission == "M1"
 
 
-def test_first_set_direction_is_version_1_all_changed(cp):
+def test_given_a_fresh_store_when_setting_direction_first_then_v1_marks_all_changed(cp):
     v = cp.set_direction(mission="M1", principles=("p1",), change_note="init", created_by="op")
     assert v.version == 1 and v.changed_mission and v.changed_principles
     assert cp.current().mission == "M1"
 
 
-def test_carry_forward_of_omitted_fields(cp):
+def test_given_omitted_fields_when_setting_direction_then_they_carry_forward(cp):
     cp.set_direction(mission="M1", principles=("p1",), change_note="init")
     v2 = cp.set_direction(principles=("p1", "p2"), change_note="add p2")
     assert v2.mission == "M1"
@@ -94,19 +94,19 @@ def test_carry_forward_of_omitted_fields(cp):
     assert v2.principles == (Principle("p1"), Principle("p2"))
 
 
-def test_no_op_change_rejected(cp):
+def test_given_identical_content_when_setting_direction_then_the_no_op_is_rejected(cp):
     cp.set_direction(mission="M1", principles=("p1",), change_note="init")
     with pytest.raises(EmptyChangeError):
         cp.set_direction(mission="M1", principles=("p1",), change_note="noop")
 
 
-def test_changes_since_current_reports_unchanged(cp):
+def test_given_the_current_version_when_asking_changes_since_then_it_reports_unchanged(cp):
     cp.set_direction(mission="M1", principles=("p1",), change_note="init")
     c = cp.changes_since(1)
     assert c.changed is False and c.current_version == 1
 
 
-def test_changes_since_aggregates_notes_and_flags(cp):
+def test_given_several_versions_when_asking_changes_since_then_notes_and_flags_aggregate(cp):
     cp.set_direction(mission="M1", principles=("p1",), change_note="init")
     cp.set_direction(mission="M2", change_note="pivot mission")
     cp.set_direction(principles=("p1", "p2"), change_note="add p2")
@@ -117,20 +117,20 @@ def test_changes_since_aggregates_notes_and_flags(cp):
     assert c.change_notes == ("pivot mission", "add p2")
 
 
-def test_changes_since_zero_returns_full_current(cp):
+def test_given_version_zero_when_asking_changes_since_then_the_full_current_returns(cp):
     cp.set_direction(mission="M1", principles=("p1",), change_note="init")
     c = cp.changes_since(0)
     assert c.changed is True and c.current_version == 1
     assert c.change_notes == ("init",)
 
 
-def test_changes_since_future_version_raises(cp):
+def test_given_a_future_version_when_asking_changes_since_then_it_raises(cp):
     cp.set_direction(mission="M1", principles=("p1",), change_note="init")
     with pytest.raises(UnknownVersionError):
         cp.changes_since(5)
 
 
-def test_on_change_fires_after_commit(cp):
+def test_given_a_subscriber_when_a_write_commits_then_on_change_fires_after(cp):
     seen = []
     cp.on_change(lambda v: seen.append(v.version))
     cp.set_direction(mission="M1", principles=("p1",), change_note="init")
@@ -196,21 +196,21 @@ def test_given_a_conflict_when_applying_then_there_is_one_attempt_never_a_loop()
     assert stub.append_calls == 1
 
 
-def test_whitespace_only_change_note_is_rejected(cp):
+def test_given_a_whitespace_only_change_note_when_setting_direction_then_it_is_rejected(cp):
     # Service strips before checking emptiness (change_note.strip()); a
     # whitespace-only note must raise the same as a truly empty one.
     with pytest.raises(EmptyChangeError):
         cp.set_direction(mission="M1", change_note="   ")
 
 
-def test_changes_since_negative_known_version_behaves_as_zero(cp):
+def test_given_a_negative_known_version_when_asking_changes_since_then_it_behaves_as_zero(cp):
     # Deliberate: a negative known_version clamps to the same floor as 0, rather
     # than being treated as "future".
     cp.set_direction(mission="M1", principles=("p1",), change_note="init")
     assert cp.changes_since(-1) == cp.changes_since(0)
 
 
-def test_set_direction_principles_empty_tuple_clears_non_empty_list(cp):
+def test_given_an_empty_principles_tuple_when_setting_direction_then_the_list_clears(cp):
     # Deliberate: principles=() is a real, present value (distinct from None /
     # "carry forward"), so it clears an existing list rather than being ignored.
     cp.set_direction(mission="M1", principles=("p1", "p2"), change_note="init")
@@ -219,7 +219,7 @@ def test_set_direction_principles_empty_tuple_clears_non_empty_list(cp):
     assert v2.changed_principles is True
 
 
-def test_subscriber_exception_propagates_after_write_commits(cp):
+def test_given_a_raising_subscriber_when_writing_then_the_exception_propagates_after_commit(cp):
     # Deliberate: in-process on_change hooks are NOT isolated -- a raising subscriber
     # propagates straight to the caller, after the write already committed.
     # (The MCP layer's own notify hook swallows exceptions instead.)
@@ -233,7 +233,7 @@ def test_subscriber_exception_propagates_after_write_commits(cp):
     assert cp.current().mission == "M1"
 
 
-def test_empty_constitution_pin_all_empty_v1_is_currently_allowed(cp):
+def test_given_all_empty_fields_when_setting_direction_then_an_empty_v1_is_allowed(cp):
     # Current behavior, kept intentionally. Whether an all-empty v1 should be
     # rejected instead is still an open design question.
     v = cp.set_direction(change_note="x")
@@ -242,7 +242,7 @@ def test_empty_constitution_pin_all_empty_v1_is_currently_allowed(cp):
     assert v.principles == ()
 
 
-def test_changed_flags_computed_against_previous_version():
+def test_given_a_previous_version_when_writing_then_changed_flags_compare_against_it():
     store = SqlConstitutionStore(url="sqlite://")
     store.create_all()
     cp = ControlPlane(store)
@@ -253,7 +253,7 @@ def test_changed_flags_computed_against_previous_version():
     assert v3.changed_mission is False and v3.changed_principles is True
 
 
-def test_named_constitutions_keep_independent_version_sequences(cp):
+def test_given_named_constitutions_when_writing_to_each_then_sequences_stay_independent(cp):
     cp.set_direction(mission="M1", change_note="default init")
     eu = cp.set_direction(mission="EU1", change_note="eu init", constitution="eu")
     assert eu.version == 1
@@ -263,7 +263,7 @@ def test_named_constitutions_keep_independent_version_sequences(cp):
     assert cp.current().version == 1
 
 
-def test_a_per_call_name_does_not_move_the_control_plane_off_its_default(cp):
+def test_given_a_per_call_name_when_writing_then_the_control_plane_keeps_its_default(cp):
     """Deliberate: the name is per call, not state — one named write must not
     silently redirect every later read on the same control plane."""
     cp.set_direction(mission="EU1", change_note="eu init", constitution="eu")
@@ -271,7 +271,7 @@ def test_a_per_call_name_does_not_move_the_control_plane_off_its_default(cp):
     assert cp.changes_since(0).current_version == 0
 
 
-def test_the_constructor_name_is_the_fallback_when_no_name_is_given(store):
+def test_given_no_name_when_calling_then_the_constructor_name_is_the_fallback(store):
     """Backward compatibility: a control plane pinned to one constitution keeps
     behaving as it did before any call took a name."""
     cp = ControlPlane(store, constitution="eu")
@@ -281,7 +281,7 @@ def test_the_constructor_name_is_the_fallback_when_no_name_is_given(store):
     assert store.head("default") is None
 
 
-def test_reads_of_an_unknown_constitution_return_the_empty_state(cp):
+def test_given_an_unknown_constitution_when_reading_then_the_empty_state_returns(cp):
     cp.set_direction(mission="M1", change_note="init")
     unknown = cp.current("never-written")
     assert unknown.version == 0 and unknown.mission == "" and unknown.principles == ()
@@ -301,14 +301,14 @@ def _direction(cp, constitution="default", mission="M1", principles=("p1", "p2")
     )
 
 
-def test_a_constitution_is_private_until_published():
+def test_given_a_written_constitution_when_not_yet_published_then_it_is_private():
     cp = _plane()
     _direction(cp)
     assert cp.publication().published is False
     assert cp.public_constitution() is None
 
 
-def test_publish_exposes_the_current_direction_but_not_the_history():
+def test_given_a_publish_when_reading_the_public_view_then_direction_shows_not_history():
     cp = _plane()
     _direction(cp)
     _direction(cp, mission="M2", note="pivot")
@@ -321,7 +321,7 @@ def test_publish_exposes_the_current_direction_but_not_the_history():
     assert public.history is None
 
 
-def test_history_is_a_separate_act_from_publishing():
+def test_given_a_publish_when_history_is_wanted_then_it_is_a_separate_act():
     # A change note routinely carries internal reasoning, so one flag that
     # exposed both would leak it the first time anyone published.
     cp = _plane()
@@ -334,7 +334,7 @@ def test_history_is_a_separate_act_from_publishing():
     assert public.history[0].change_note == "dropped a principle for the enterprise deal"
 
 
-def test_publishing_with_history_then_republishing_without_it_takes_history_back_private():
+def test_given_public_history_when_republishing_without_it_then_history_goes_private_again():
     cp = _plane()
     _direction(cp)
     cp.publish(with_history=True)
@@ -342,7 +342,7 @@ def test_publishing_with_history_then_republishing_without_it_takes_history_back
     assert cp.public_constitution().history is None
 
 
-def test_unpublish_takes_the_page_away_entirely():
+def test_given_a_published_name_when_unpublishing_then_the_page_goes_away_entirely():
     cp = _plane()
     _direction(cp)
     cp.publish(with_history=True)
@@ -352,7 +352,7 @@ def test_unpublish_takes_the_page_away_entirely():
     assert cp.publication().history_public is False
 
 
-def test_republishing_keeps_the_original_published_at():
+def test_given_a_republish_when_reading_published_at_then_the_original_stamp_stays():
     # The stamp records when this constitution went public; turning history on
     # later is not a new publication and must not rewrite that.
     cp = _plane()
@@ -363,14 +363,14 @@ def test_republishing_keeps_the_original_published_at():
     assert again.history_public is True
 
 
-def test_publishing_a_constitution_with_no_direction_is_an_error():
+def test_given_no_direction_when_publishing_then_it_is_an_error():
     # Publishing an empty name would serve a blank page under a real URL.
     cp = _plane()
     with pytest.raises(UnknownConstitutionError):
         cp.publish(constitution="never-written")
 
 
-def test_unpublishing_a_constitution_that_does_not_exist_is_an_error():
+def test_given_a_constitution_that_does_not_exist_when_unpublishing_then_it_is_an_error():
     # A typo must not report success while the real page stays public.
     cp = _plane()
     _direction(cp)
@@ -379,7 +379,7 @@ def test_unpublishing_a_constitution_that_does_not_exist_is_an_error():
     assert cp.publication().published is False
 
 
-def test_publication_is_per_name_and_several_names_can_be_published_at_once():
+def test_given_several_names_when_publishing_then_publication_is_per_name():
     cp = _plane()
     _direction(cp, "internal", mission="Internal mission")
     _direction(cp, "product", mission="Product mission")
@@ -393,7 +393,7 @@ def test_publication_is_per_name_and_several_names_can_be_published_at_once():
     assert cp.public_constitution("eu").history is None
 
 
-def test_published_constitutions_lists_only_the_published_ones():
+def test_given_a_mix_of_names_when_listing_published_then_only_the_published_appear():
     cp = _plane()
     _direction(cp, "internal", mission="Internal mission")
     _direction(cp, "product", mission="Product mission")
@@ -403,13 +403,13 @@ def test_published_constitutions_lists_only_the_published_ones():
     assert [c.name for c in listed] == ["product"]
 
 
-def test_published_constitutions_is_empty_when_nothing_is_published():
+def test_given_nothing_published_when_listing_published_then_the_list_is_empty():
     cp = _plane()
     _direction(cp)
     assert cp.published_constitutions() == ()
 
 
-def test_published_constitutions_is_ordered_by_name():
+def test_given_several_published_names_when_listing_then_they_are_ordered_by_name():
     # A stable order keeps the index page deterministic across requests.
     cp = _plane()
     for name in ("zeta", "alpha", "mu"):
@@ -418,7 +418,7 @@ def test_published_constitutions_is_ordered_by_name():
     assert [c.name for c in cp.published_constitutions()] == ["alpha", "mu", "zeta"]
 
 
-def test_public_payload_omits_history_entirely_when_it_is_private():
+def test_given_private_history_when_building_the_public_payload_then_history_is_omitted():
     # An empty list would claim there is no history; the truthful machine-
     # readable answer is that history is simply not on offer.
     cp = _plane()
@@ -435,7 +435,7 @@ def test_public_payload_omits_history_entirely_when_it_is_private():
     assert payload["last_changed_at"]
 
 
-def test_public_payload_carries_history_newest_first_when_public():
+def test_given_public_history_when_building_the_public_payload_then_it_is_newest_first():
     cp = _plane()
     _direction(cp)
     _direction(cp, mission="M2", note="pivot")
@@ -446,7 +446,7 @@ def test_public_payload_carries_history_newest_first_when_public():
     assert payload["constitution"] == "default"
 
 
-def test_publishing_refuses_a_name_that_cannot_be_a_url_path_segment():
+def test_given_a_name_that_cannot_be_a_url_segment_when_publishing_then_it_is_refused():
     # The page is served at /constitutions/<name>. A name with a slash in it
     # would report success and then never be reachable.
     cp = _plane()
@@ -456,7 +456,7 @@ def test_publishing_refuses_a_name_that_cannot_be_a_url_path_segment():
     assert cp.publication("acme/eu").published is False
 
 
-def test_publishing_refuses_a_name_ending_in_json():
+def test_given_a_name_ending_in_json_when_publishing_then_it_is_refused():
     # /constitutions/x.json is the machine-readable route for "x", so a
     # constitution named "x.json" would be served as somebody else.
     cp = _plane()
@@ -465,7 +465,7 @@ def test_publishing_refuses_a_name_ending_in_json():
         cp.publish(constitution="policy.json")
 
 
-def test_an_unpublishable_name_still_works_everywhere_else():
+def test_given_an_unpublishable_name_when_used_anywhere_else_then_it_still_works():
     # Only publishing is refused; the constitution itself is untouched.
     cp = _plane()
     _direction(cp, "acme/eu", mission="EU mission")
@@ -480,7 +480,7 @@ def test_an_unpublishable_name_still_works_everywhere_else():
     "name",
     ["acme", "eu", "acme-eu", "acme-eu-west", "policy2", "2026-policy", "index", "a"],
 )
-def test_a_slug_can_be_published(name):
+def test_given_a_slug_name_when_publishing_then_it_is_accepted(name):
     cp = _plane()
     _direction(cp, name)
     assert cp.publish(constitution=name).published is True
@@ -504,7 +504,7 @@ def test_a_slug_can_be_published(name):
         "",
     ],
 )
-def test_a_name_that_is_not_a_slug_is_refused(name):
+def test_given_a_name_that_is_not_a_slug_when_publishing_then_it_is_refused(name):
     cp = _plane()
     _direction(cp, name)
     with pytest.raises(UnpublishableNameError):
@@ -512,7 +512,7 @@ def test_a_name_that_is_not_a_slug_is_refused(name):
     assert cp.publication(name).published is False
 
 
-def test_the_refusal_suggests_the_name_the_caller_probably_meant():
+def test_given_a_refused_name_when_reading_the_error_then_it_suggests_the_likely_slug():
     # Presentation help only: the suggestion is never applied to the name.
     cp = _plane()
     _direction(cp, "Epicurean Digital")
@@ -520,7 +520,7 @@ def test_the_refusal_suggests_the_name_the_caller_probably_meant():
         cp.publish(constitution="Epicurean Digital")
 
 
-def test_a_name_with_nothing_sluggable_in_it_is_refused_without_a_suggestion():
+def test_given_a_name_with_nothing_sluggable_when_publishing_then_no_suggestion_comes():
     cp = _plane()
     _direction(cp, "///")
     with pytest.raises(UnpublishableNameError, match="cannot be published") as refusal:
@@ -528,7 +528,7 @@ def test_a_name_with_nothing_sluggable_in_it_is_refused_without_a_suggestion():
     assert "like ''" not in str(refusal.value)
 
 
-def test_publishing_never_quietly_slugs_the_name_for_you():
+def test_given_a_sluggable_name_when_publishing_then_it_is_never_quietly_slugged():
     # The name in the URL is the name agents pass over MCP. Publishing
     # "Acme EU" as "acme-eu" would silently break that identity.
     cp = _plane()
@@ -539,7 +539,7 @@ def test_publishing_never_quietly_slugs_the_name_for_you():
     assert cp.current("acme-eu").version == 0
 
 
-def test_a_name_refused_for_publishing_still_works_everywhere_else():
+def test_given_a_name_refused_for_publishing_when_used_elsewhere_then_it_still_works():
     cp = _plane()
     _direction(cp, "Acme EU", mission="EU mission")
     assert cp.current("Acme EU").mission == "EU mission"
@@ -554,7 +554,7 @@ def _publish_bypassing_the_rule(cp, name):
     )
 
 
-def test_a_name_published_before_the_rule_keeps_serving_and_can_be_taken_down():
+def test_given_a_name_published_before_the_rule_when_serving_then_it_works_and_can_go_down():
     # Nobody gets stranded: the rule bites when you publish, and reading or
     # withdrawing a publication never validates.
     cp = _plane()
@@ -572,13 +572,13 @@ def test_a_name_published_before_the_rule_keeps_serving_and_can_be_taken_down():
 # --- principles: a title, and an optional description ----------------------
 
 
-def test_plain_strings_are_stored_as_title_only_principles(cp):
+def test_given_plain_strings_when_storing_principles_then_they_are_title_only(cp):
     v = cp.set_direction(mission="M1", principles=("p1", "p2"), change_note="init")
     assert v.principles == (Principle("p1"), Principle("p2"))
     assert all(p.description == "" for p in v.principles)
 
 
-def test_mappings_and_principle_objects_are_accepted_alongside_strings(cp):
+def test_given_mappings_objects_and_strings_when_setting_principles_then_all_are_accepted(cp):
     v = cp.set_direction(
         principles=(
             "plain",
@@ -594,7 +594,7 @@ def test_mappings_and_principle_objects_are_accepted_alongside_strings(cp):
     )
 
 
-def test_rewriting_only_a_description_is_a_real_change(cp):
+def test_given_a_description_only_rewrite_when_setting_direction_then_it_is_a_real_change(cp):
     # The description is the half that disambiguates a principle, so an edit
     # to it must append a version rather than read as "nothing moved".
     cp.set_direction(
@@ -608,14 +608,14 @@ def test_rewriting_only_a_description_is_a_real_change(cp):
     assert v2.principles[0].description == "sharper second try"
 
 
-def test_a_malformed_principle_is_refused_before_a_version_is_appended(cp):
+def test_given_a_malformed_principle_when_setting_direction_then_it_is_refused_before_append(cp):
     cp.set_direction(mission="M1", change_note="init")
     with pytest.raises(MalformedPrincipleError):
         cp.set_direction(principles=({"description": "no title"},), change_note="bad")
     assert cp.current().version == 1
 
 
-def test_descriptions_reach_the_public_view_and_its_payload(cp):
+def test_given_described_principles_when_reading_the_public_view_then_descriptions_show(cp):
     cp.set_direction(
         mission="M1",
         principles=("plain", {"title": "described", "description": "why it matters"}),
@@ -633,13 +633,13 @@ def test_descriptions_reach_the_public_view_and_its_payload(cp):
 # --- the declaration -------------------------------------------------------
 
 
-def test_a_declaration_is_carried_forward_when_it_is_omitted(cp):
+def test_given_an_omitted_declaration_when_setting_direction_then_it_carries_forward(cp):
     cp.set_direction(mission="M1", declaration="The long form.", change_note="init")
     v2 = cp.set_direction(mission="M2", change_note="pivot")
     assert v2.declaration == "The long form."
 
 
-def test_setting_the_declaration_to_empty_clears_it(cp):
+def test_given_an_empty_declaration_when_setting_direction_then_it_clears(cp):
     # Deliberate, and the distinction that matters: omitting it carries the
     # previous one forward, while "" is a present value that removes it.
     cp.set_direction(mission="M1", declaration="The long form.", change_note="init")
@@ -648,13 +648,13 @@ def test_setting_the_declaration_to_empty_clears_it(cp):
     assert cp.current().declaration == ""
 
 
-def test_rewriting_only_the_declaration_is_a_real_change(cp):
+def test_given_a_declaration_only_rewrite_when_setting_direction_then_it_is_a_real_change(cp):
     cp.set_direction(mission="M1", declaration="First draft.", change_note="init")
     v2 = cp.set_direction(declaration="Second draft.", change_note="rewrite the long form")
     assert v2.version == 2 and v2.declaration == "Second draft."
 
 
-def test_a_declaration_only_change_reaches_a_consumer_that_polls(cp):
+def test_given_a_declaration_only_change_when_a_consumer_polls_then_it_reaches_them(cp):
     # The flags stay literally about mission and principles, so `changed` --
     # which is "a version happened" -- is what tells an agent to re-read.
     cp.set_direction(mission="M1", declaration="First draft.", change_note="init")
@@ -665,18 +665,18 @@ def test_a_declaration_only_change_reaches_a_consumer_that_polls(cp):
     assert changes.change_notes == ("rewrite",)
 
 
-def test_an_unchanged_declaration_is_still_no_change_at_all(cp):
+def test_given_an_unchanged_declaration_when_setting_direction_then_it_is_still_no_change(cp):
     cp.set_direction(mission="M1", declaration="Same.", change_note="init")
     with pytest.raises(EmptyChangeError):
         cp.set_direction(mission="M1", declaration="Same.", change_note="noop")
 
 
-def test_the_empty_state_has_no_declaration(cp):
+def test_given_the_empty_state_when_reading_then_there_is_no_declaration(cp):
     assert cp.current().declaration == ""
     assert cp.changes_since(0).declaration == ""
 
 
-def test_the_declaration_reaches_the_public_view(cp):
+def test_given_a_declaration_when_reading_the_public_view_then_it_is_there(cp):
     cp.set_direction(mission="M1", declaration="The long form.", change_note="init")
     cp.publish()
     assert cp.public_constitution().declaration == "The long form."

@@ -16,7 +16,7 @@ def cp():
     return ControlPlane(store)
 
 
-def test_set_then_get_constitution(cp):
+def test_given_a_set_direction_when_getting_the_constitution_then_it_round_trips(cp):
     mcp_server.handle_set_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by="op"
     )
@@ -25,7 +25,7 @@ def test_set_then_get_constitution(cp):
     assert d["principles"] == [{"title": "p1"}]
 
 
-def test_get_changes_since(cp):
+def test_given_versions_when_calling_get_changes_since_then_the_changes_return(cp):
     mcp_server.handle_set_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by=None
     )
@@ -37,14 +37,14 @@ def test_get_changes_since(cp):
     assert d["mission"] == "M2" and d["change_notes"] == ["pivot"]
 
 
-def test_get_constitution_on_fresh_store_returns_empty_state(cp):
+def test_given_a_fresh_store_when_getting_the_constitution_then_the_empty_state_returns(cp):
     d = mcp_server.handle_get_constitution(cp)
     assert d["version"] == 0
     assert d["mission"] == ""
     assert d["principles"] == []
 
 
-def test_get_changes_since_future_version_after_init_still_raises_valueerror(cp):
+def test_given_a_future_version_when_calling_get_changes_since_then_valueerror_raises(cp):
     mcp_server.handle_set_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by=None
     )
@@ -52,14 +52,14 @@ def test_get_changes_since_future_version_after_init_still_raises_valueerror(cp)
         mcp_server.handle_get_changes_since(cp, 9)
 
 
-def test_build_server_registers_expected_names(cp):
+def test_given_a_built_server_when_listing_registrations_then_the_expected_names_are_there(cp):
     server = mcp_server.build_server(cp)
     assert server.name == "kyno"
     assert mcp_server.RESOURCE_URI == "kyno://constitution/current"
 
 
 @pytest.mark.asyncio
-async def test_version_bump_notifies_subscribed_session(cp):
+async def test_given_a_subscribed_session_when_the_version_bumps_then_it_is_notified(cp):
     server = mcp_server.build_server(cp)
 
     received = []
@@ -76,7 +76,7 @@ async def test_version_bump_notifies_subscribed_session(cp):
     assert received == [mcp_server.RESOURCE_URI]
 
 
-def test_notify_with_no_running_loop_is_a_noop(cp):
+def test_given_no_running_loop_when_notifying_then_it_is_a_noop(cp):
     # No running event loop means no async subscribers are reachable;
     # the notify hook must not raise anyway.
     server = mcp_server.build_server(cp)
@@ -86,18 +86,20 @@ def test_notify_with_no_running_loop_is_a_noop(cp):
     )
 
 
-def test_require_missing_known_version_raises_cleanly():
+def test_given_a_missing_known_version_when_requiring_it_then_it_raises_cleanly():
     with pytest.raises(ValueError, match="missing required argument: known_version"):
         mcp_server._require({}, "known_version")
 
 
-def test_require_missing_change_note_raises_cleanly():
+def test_given_a_missing_change_note_when_requiring_it_then_it_raises_cleanly():
     with pytest.raises(ValueError, match="missing required argument: change_note"):
         mcp_server._require({}, "change_note")
 
 
 @pytest.mark.asyncio
-async def test_call_tool_dispatch_rejects_missing_required_args_cleanly(cp):
+async def test_given_missing_required_args_when_dispatching_a_tool_call_then_the_reject_is_clean(
+    cp,
+):
     # Guards against a raw KeyError leaking out of dispatch instead of a clean error result.
     import mcp.types as types
 
@@ -113,7 +115,7 @@ async def test_call_tool_dispatch_rejects_missing_required_args_cleanly(cp):
         assert result.root.isError is True
 
 
-def test_set_direction_no_op_change_maps_to_valueerror(cp):
+def test_given_a_no_op_change_when_calling_set_direction_then_it_maps_to_valueerror(cp):
     mcp_server.handle_set_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by=None
     )
@@ -123,7 +125,7 @@ def test_set_direction_no_op_change_maps_to_valueerror(cp):
         )
 
 
-def test_blank_change_note_maps_to_valueerror(cp):
+def test_given_a_blank_change_note_when_calling_set_direction_then_it_maps_to_valueerror(cp):
     # _require only checks the key is present; a blank value must still be
     # rejected downstream (EmptyChangeError -> ValueError via _guard).
     with pytest.raises(ValueError):
@@ -133,7 +135,7 @@ def test_blank_change_note_maps_to_valueerror(cp):
 
 
 @pytest.mark.asyncio
-async def test_real_subscribe_then_set_direction_notifies_over_server_run():
+async def test_given_a_real_subscription_when_setting_direction_then_the_server_run_notifies():
     # Unlike test_version_bump_notifies_subscribed_session (FakeSession injected
     # directly), this drives the real subscribe handler and server.run().
     from mcp.shared.memory import create_connected_server_and_client_session
@@ -162,7 +164,7 @@ async def test_real_subscribe_then_set_direction_notifies_over_server_run():
 
 
 @pytest.mark.asyncio
-async def test_subscribe_to_non_matching_uri_is_a_noop():
+async def test_given_a_non_matching_uri_when_subscribing_then_it_is_a_noop():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = SqlConstitutionStore(url="sqlite://")
@@ -176,7 +178,7 @@ async def test_subscribe_to_non_matching_uri_is_a_noop():
 
 
 @pytest.mark.asyncio
-async def test_unsubscribe_via_real_handler_removes_session():
+async def test_given_a_subscribed_session_when_unsubscribing_for_real_then_it_is_removed():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = SqlConstitutionStore(url="sqlite://")
@@ -192,7 +194,7 @@ async def test_unsubscribe_via_real_handler_removes_session():
 
 
 @pytest.mark.asyncio
-async def test_unknown_tool_name_is_a_clean_mcp_error_through_real_dispatch():
+async def test_given_an_unknown_tool_name_when_dispatching_then_the_mcp_error_is_clean():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = SqlConstitutionStore(url="sqlite://")
@@ -206,7 +208,7 @@ async def test_unknown_tool_name_is_a_clean_mcp_error_through_real_dispatch():
 
 
 @pytest.mark.asyncio
-async def test_unknown_resource_uri_is_a_clean_mcp_error_through_real_dispatch():
+async def test_given_an_unknown_resource_uri_when_dispatching_then_the_mcp_error_is_clean():
     from mcp.shared.exceptions import McpError
     from mcp.shared.memory import create_connected_server_and_client_session
 
@@ -221,7 +223,7 @@ async def test_unknown_resource_uri_is_a_clean_mcp_error_through_real_dispatch()
 
 
 @pytest.mark.asyncio
-async def test_get_changes_since_non_integer_known_version_is_a_clean_error():
+async def test_given_a_non_integer_version_when_calling_get_changes_since_then_the_error_is_clean():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = SqlConstitutionStore(url="sqlite://")
@@ -245,7 +247,7 @@ def _sse_json_body(response_text: str) -> dict:
 
 
 @pytest.mark.asyncio
-async def test_stdio_session_parity_get_constitution_matches_http_path():
+async def test_given_stdio_and_http_sessions_when_getting_the_constitution_then_they_match():
     # Both transports share build_server()/ControlPlane underneath, so this
     # compares the in-memory harness against the real HTTP transport for the same version.
     from mcp.shared.memory import create_connected_server_and_client_session
@@ -304,7 +306,7 @@ async def test_stdio_session_parity_get_constitution_matches_http_path():
     assert session_payload == http_payload
 
 
-def test_run_stdio_exists_and_is_a_coroutine_function():
+def test_given_the_module_when_looking_up_run_stdio_then_it_is_a_coroutine_function():
     import inspect
 
     from kyno.transports import run_stdio
@@ -313,7 +315,7 @@ def test_run_stdio_exists_and_is_a_coroutine_function():
 
 
 @pytest.mark.asyncio
-async def test_get_constitution_on_fresh_store_through_real_dispatch():
+async def test_given_a_fresh_store_when_getting_the_constitution_for_real_then_it_answers():
     # Unlike test_get_constitution_on_fresh_store_returns_empty_state (handler
     # called directly), this drives the real call_tool dispatch end to end.
     from mcp.shared.memory import create_connected_server_and_client_session
@@ -333,7 +335,7 @@ async def test_get_constitution_on_fresh_store_through_real_dispatch():
 
 
 @pytest.mark.asyncio
-async def test_read_resource_on_fresh_store_returns_empty_state():
+async def test_given_a_fresh_store_when_reading_the_resource_then_the_empty_state_returns():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = SqlConstitutionStore(url="sqlite://")
@@ -348,14 +350,14 @@ async def test_read_resource_on_fresh_store_returns_empty_state():
     assert payload["version"] == 0
 
 
-def test_tool_schemas_offer_constitution_as_an_optional_argument():
+def test_given_the_tool_schemas_when_inspecting_then_constitution_is_an_optional_argument():
     for tool in mcp_server._TOOLS:
         props = tool.inputSchema["properties"]
         assert props["constitution"]["type"] == "string"
         assert "constitution" not in tool.inputSchema.get("required", [])
 
 
-def test_set_then_get_a_named_constitution(cp):
+def test_given_a_named_set_when_getting_that_name_then_it_round_trips(cp):
     mcp_server.handle_set_direction(
         cp, mission="EU1", principles=["p1"], change_note="init", created_by="op", constitution="eu"
     )
@@ -364,7 +366,7 @@ def test_set_then_get_a_named_constitution(cp):
     assert mcp_server.handle_get_constitution(cp)["version"] == 0
 
 
-def test_get_changes_since_reads_the_named_constitution(cp):
+def test_given_a_name_when_calling_get_changes_since_then_it_reads_that_constitution(cp):
     mcp_server.handle_set_direction(
         cp, mission="EU1", principles=["p1"], change_note="init", created_by=None, constitution="eu"
     )
@@ -376,7 +378,7 @@ def test_get_changes_since_reads_the_named_constitution(cp):
     assert d["change_notes"] == ["pivot"]
 
 
-def test_reads_of_an_unknown_constitution_return_empty_state(cp):
+def test_given_an_unknown_constitution_when_reading_over_mcp_then_the_empty_state_returns(cp):
     mcp_server.handle_set_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by=None
     )
@@ -387,7 +389,7 @@ def test_reads_of_an_unknown_constitution_return_empty_state(cp):
 
 
 @pytest.mark.asyncio
-async def test_named_constitutions_have_independent_sequences_through_real_dispatch():
+async def test_given_named_constitutions_when_dispatching_writes_then_sequences_are_independent():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = SqlConstitutionStore(url="sqlite://")
@@ -413,7 +415,7 @@ async def test_named_constitutions_have_independent_sequences_through_real_dispa
 
 
 @pytest.mark.asyncio
-async def test_the_resource_stays_the_default_constitution_after_a_named_write():
+async def test_given_a_named_write_when_reading_the_resource_then_it_stays_the_default():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = SqlConstitutionStore(url="sqlite://")
@@ -439,7 +441,7 @@ RICH = dict(
 )
 
 
-def test_get_constitution_is_compact_unless_the_full_document_is_asked_for(cp):
+def test_given_no_detail_asked_when_getting_the_constitution_then_it_is_compact(cp):
     mcp_server.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
 
     d = mcp_server.handle_get_constitution(cp)
@@ -451,7 +453,7 @@ def test_get_constitution_is_compact_unless_the_full_document_is_asked_for(cp):
     assert d["principles"] == [{"title": "Be honest"}]
 
 
-def test_get_constitution_full_carries_the_declaration_and_the_descriptions(cp):
+def test_given_full_detail_when_getting_the_constitution_then_the_whole_document_comes(cp):
     mcp_server.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
 
     d = mcp_server.handle_get_constitution(cp, detail="full")
@@ -460,7 +462,7 @@ def test_get_constitution_full_carries_the_declaration_and_the_descriptions(cp):
     assert d["principles"] == [{"title": "Be honest", "description": "Say the hard number first."}]
 
 
-def test_get_changes_since_is_compact_but_keeps_its_change_metadata(cp):
+def test_given_no_detail_asked_when_calling_get_changes_since_then_metadata_still_comes(cp):
     mcp_server.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
     mcp_server.handle_set_direction(
         cp, mission="M2", principles=None, change_note="pivot", created_by=None
@@ -474,7 +476,7 @@ def test_get_changes_since_is_compact_but_keeps_its_change_metadata(cp):
     assert d["changed_mission"] is True and d["changed_principles"] is False
 
 
-def test_get_changes_since_full_carries_the_whole_document(cp):
+def test_given_full_detail_when_calling_get_changes_since_then_the_whole_document_comes(cp):
     mcp_server.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
     mcp_server.handle_set_direction(
         cp, mission="M2", principles=None, change_note="pivot", created_by=None
@@ -487,7 +489,7 @@ def test_get_changes_since_full_carries_the_whole_document(cp):
 
 
 @pytest.mark.parametrize("tool", ["get_constitution", "get_changes_since"])
-def test_an_unknown_detail_is_a_clean_error(cp, tool):
+def test_given_an_unknown_detail_when_reading_then_the_error_is_clean(cp, tool):
     with pytest.raises(ValueError, match="verbose"):
         if tool == "get_constitution":
             mcp_server.handle_get_constitution(cp, detail="verbose")
@@ -495,7 +497,7 @@ def test_an_unknown_detail_is_a_clean_error(cp, tool):
             mcp_server.handle_get_changes_since(cp, 0, detail="verbose")
 
 
-def test_both_read_tools_advertise_the_detail_knob():
+def test_given_the_two_read_tools_when_inspecting_schemas_then_both_advertise_detail():
     # An agent reads the schema to learn the knob exists; a tool that hides it
     # would leave the whole document unreachable in practice.
     by_name = {t.name: t for t in mcp_server._TOOLS}
@@ -507,7 +509,7 @@ def test_both_read_tools_advertise_the_detail_knob():
 
 
 @pytest.mark.asyncio
-async def test_the_subscribable_resource_serves_the_compact_form():
+async def test_given_the_subscribable_resource_when_reading_then_it_serves_the_compact_form():
     # A resource takes no parameters, and it is the thing consulted most --
     # the whole document is one tool call away.
     from mcp.shared.memory import create_connected_server_and_client_session
@@ -528,7 +530,7 @@ async def test_the_subscribable_resource_serves_the_compact_form():
 
 
 @pytest.mark.asyncio
-async def test_detail_travels_through_the_real_dispatch():
+async def test_given_a_detail_argument_when_dispatching_for_real_then_it_travels_through():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = SqlConstitutionStore(url="sqlite://")
@@ -550,7 +552,7 @@ async def test_detail_travels_through_the_real_dispatch():
 # --- targeted reads, for the piece you are missing --------------------------
 
 
-def test_get_declaration_returns_the_document_with_the_version_it_belongs_to(cp):
+def test_given_a_declaration_when_calling_get_declaration_then_it_comes_with_its_version(cp):
     mcp_server.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
 
     d = mcp_server.handle_get_declaration(cp)
@@ -559,7 +561,7 @@ def test_get_declaration_returns_the_document_with_the_version_it_belongs_to(cp)
     assert d["version"] == 1
 
 
-def test_get_declaration_on_a_constitution_that_has_none_is_not_an_error(cp):
+def test_given_no_declaration_when_calling_get_declaration_then_it_is_not_an_error(cp):
     # Reads never fail: "there is no declaration" is an answer, not a fault.
     mcp_server.handle_set_direction(
         cp, mission="M1", principles=None, change_note="init", created_by=None
@@ -567,11 +569,11 @@ def test_get_declaration_on_a_constitution_that_has_none_is_not_an_error(cp):
     assert mcp_server.handle_get_declaration(cp) == {"version": 1, "declaration": ""}
 
 
-def test_get_declaration_on_an_empty_store_answers_the_version_zero_state(cp):
+def test_given_an_empty_store_when_calling_get_declaration_then_version_zero_answers(cp):
     assert mcp_server.handle_get_declaration(cp) == {"version": 0, "declaration": ""}
 
 
-def test_get_declaration_reads_the_constitution_it_is_given(cp):
+def test_given_a_name_when_calling_get_declaration_then_it_reads_that_constitution(cp):
     mcp_server.handle_set_direction(
         cp,
         mission="EU",
@@ -585,7 +587,7 @@ def test_get_declaration_reads_the_constitution_it_is_given(cp):
     assert mcp_server.handle_get_declaration(cp)["declaration"] == ""
 
 
-def test_get_principle_returns_one_principle_in_full_with_its_version(cp):
+def test_given_a_title_when_calling_get_principle_then_one_comes_in_full_with_its_version(cp):
     mcp_server.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
 
     d = mcp_server.handle_get_principle(cp, "Be honest")
@@ -597,14 +599,14 @@ def test_get_principle_returns_one_principle_in_full_with_its_version(cp):
     }
 
 
-def test_get_principle_matches_the_title_exactly(cp):
+def test_given_a_title_when_calling_get_principle_then_the_match_is_exact(cp):
     mcp_server.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
     for near_miss in ("be honest", "Be honest ", "honest"):
         with pytest.raises(ValueError, match="honest"):
             mcp_server.handle_get_principle(cp, near_miss)
 
 
-def test_get_principle_names_the_title_it_could_not_find(cp):
+def test_given_a_missing_title_when_calling_get_principle_then_the_error_names_it(cp):
     # Unlike an empty store, asking about a principle that is not there is a
     # real mistake, and the message has to be enough to spot the typo.
     mcp_server.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
@@ -612,7 +614,7 @@ def test_get_principle_names_the_title_it_could_not_find(cp):
         mcp_server.handle_get_principle(cp, "Be hnoest")
 
 
-def test_get_principle_reads_the_constitution_it_is_given(cp):
+def test_given_a_name_when_calling_get_principle_then_it_reads_that_constitution(cp):
     mcp_server.handle_set_direction(
         cp,
         mission="EU",
@@ -626,7 +628,7 @@ def test_get_principle_reads_the_constitution_it_is_given(cp):
         mcp_server.handle_get_principle(cp, "EU only")
 
 
-def test_two_principles_with_the_same_title_answer_with_the_first(cp):
+def test_given_two_principles_with_one_title_when_calling_get_principle_then_the_first_answers(cp):
     mcp_server.handle_set_direction(
         cp,
         mission="M",
@@ -640,7 +642,7 @@ def test_two_principles_with_the_same_title_answer_with_the_first(cp):
     assert mcp_server.handle_get_principle(cp, "Be honest")["description"] == "first"
 
 
-def test_the_targeted_reads_advertise_where_their_arguments_come_from():
+def test_given_the_targeted_reads_when_inspecting_schemas_then_argument_sources_are_stated():
     tools = {t.name: t for t in mcp_server._TOOLS}
     assert "get_constitution" in tools["get_principle"].description
     assert "version" in tools["get_principle"].description
@@ -649,7 +651,7 @@ def test_the_targeted_reads_advertise_where_their_arguments_come_from():
 
 
 @pytest.mark.asyncio
-async def test_the_targeted_reads_work_through_the_real_dispatch():
+async def test_given_the_targeted_reads_when_dispatching_for_real_then_they_work():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = SqlConstitutionStore(url="sqlite://")
@@ -673,7 +675,7 @@ async def test_the_targeted_reads_work_through_the_real_dispatch():
 
 
 @pytest.mark.asyncio
-async def test_an_agent_pulls_compact_then_asks_for_the_piece_it_is_missing():
+async def test_given_a_compact_pull_when_an_agent_needs_more_then_it_asks_for_the_missing_piece():
     # The whole point of the targeted reads: buy the handles once, and buy
     # the paragraph only when something actually needs to read it. The
     # versions agreeing is what says the two answers describe one document.
@@ -700,7 +702,7 @@ async def test_an_agent_pulls_compact_then_asks_for_the_piece_it_is_missing():
     assert principle["description"] == "Say the hard number first."
 
 
-def test_get_mission_returns_the_headline_with_its_version(cp):
+def test_given_a_mission_when_calling_get_mission_then_the_headline_comes_with_its_version(cp):
     mcp_server.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
     assert mcp_server.handle_get_mission(cp) == {
         "version": 1,
@@ -708,11 +710,11 @@ def test_get_mission_returns_the_headline_with_its_version(cp):
     }
 
 
-def test_get_mission_on_an_empty_store_answers_the_version_zero_state(cp):
+def test_given_an_empty_store_when_calling_get_mission_then_version_zero_answers(cp):
     assert mcp_server.handle_get_mission(cp) == {"version": 0, "mission": ""}
 
 
-def test_get_mission_reads_the_constitution_it_is_given(cp):
+def test_given_a_name_when_calling_get_mission_then_it_reads_that_constitution(cp):
     mcp_server.handle_set_direction(
         cp,
         mission="EU",
@@ -725,7 +727,7 @@ def test_get_mission_reads_the_constitution_it_is_given(cp):
     assert mcp_server.handle_get_mission(cp)["mission"] == ""
 
 
-def test_get_principles_is_titles_only_unless_asked(cp):
+def test_given_no_detail_asked_when_calling_get_principles_then_titles_only_come(cp):
     mcp_server.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
     assert mcp_server.handle_get_principles(cp) == {
         "version": 1,
@@ -733,7 +735,7 @@ def test_get_principles_is_titles_only_unless_asked(cp):
     }
 
 
-def test_get_principles_explained_carries_every_description(cp):
+def test_given_explained_detail_when_calling_get_principles_then_every_description_comes(cp):
     # The slice an agent adjudicating between principles wants: all of them,
     # explained, without the mission or the declaration around them.
     mcp_server.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
@@ -743,23 +745,23 @@ def test_get_principles_explained_carries_every_description(cp):
     }
 
 
-def test_get_principles_on_a_constitution_with_none_is_not_an_error(cp):
+def test_given_no_principles_when_calling_get_principles_then_it_is_not_an_error(cp):
     mcp_server.handle_set_direction(
         cp, mission="M1", principles=None, change_note="init", created_by=None
     )
     assert mcp_server.handle_get_principles(cp) == {"version": 1, "principles": []}
 
 
-def test_get_principles_on_an_empty_store_answers_the_version_zero_state(cp):
+def test_given_an_empty_store_when_calling_get_principles_then_version_zero_answers(cp):
     assert mcp_server.handle_get_principles(cp) == {"version": 0, "principles": []}
 
 
-def test_get_principles_refuses_a_detail_it_does_not_offer(cp):
+def test_given_a_detail_it_does_not_offer_when_calling_get_principles_then_it_refuses(cp):
     with pytest.raises(ValueError, match="compact"):
         mcp_server.handle_get_principles(cp, detail="compact")
 
 
-def test_get_principles_reads_the_constitution_it_is_given(cp):
+def test_given_a_name_when_calling_get_principles_then_it_reads_that_constitution(cp):
     mcp_server.handle_set_direction(
         cp,
         mission="EU",
@@ -772,7 +774,7 @@ def test_get_principles_reads_the_constitution_it_is_given(cp):
     assert mcp_server.handle_get_principles(cp)["principles"] == []
 
 
-def test_every_read_answers_with_the_version_it_came_from(cp):
+def test_given_the_read_family_when_answering_then_each_carries_its_source_version(cp):
     # What makes mixing reads safe: two answers with the same version
     # describe one document.
     mcp_server.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
@@ -786,7 +788,7 @@ def test_every_read_answers_with_the_version_it_came_from(cp):
     assert [r["version"] for r in reads] == [1, 1, 1, 1, 1]
 
 
-def test_the_tools_are_the_seven_they_should_be_and_read_as_one_family():
+def test_given_the_server_when_listing_tools_then_the_seven_read_as_one_family():
     names = [t.name for t in mcp_server._TOOLS]
     assert names == [
         "get_constitution",
@@ -806,7 +808,7 @@ def test_the_tools_are_the_seven_they_should_be_and_read_as_one_family():
 
 
 @pytest.mark.asyncio
-async def test_the_whole_read_family_works_through_the_real_dispatch():
+async def test_given_the_whole_read_family_when_dispatching_for_real_then_it_works():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = SqlConstitutionStore(url="sqlite://")
@@ -828,7 +830,7 @@ async def test_the_whole_read_family_works_through_the_real_dispatch():
     assert explained["principles"][0]["description"] == "Say the hard number first."
 
 
-def test_get_declaration_serves_raw_markdown_rather_than_rendered_html(cp):
+def test_given_a_markdown_declaration_when_calling_get_declaration_then_raw_markdown_serves(cp):
     # Data is markdown. Rendering it is the public HTML page's business, and
     # an agent asking for the declaration wants the source, not a document.
     source = "# What we are for\n\n- one\n- two\n"

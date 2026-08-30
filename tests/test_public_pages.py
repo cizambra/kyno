@@ -34,7 +34,9 @@ def direction(plane, constitution="default", mission="M1", principles=("p1", "p2
     )
 
 
-def test_published_constitution_renders_its_mission_principles_and_stamp(plane, client):
+def test_given_a_published_constitution_when_rendering_then_mission_principles_and_stamp_show(
+    plane, client
+):
     direction(plane, mission="Ship lending people trust", principles=("Be plain", "Be fast"))
     plane.publish()
 
@@ -48,7 +50,9 @@ def test_published_constitution_renders_its_mission_principles_and_stamp(plane, 
     assert plane.current().created_at.strftime("%Y-%m-%d") in body
 
 
-def test_an_unpublished_constitution_is_404_not_401(plane, client):
+def test_given_an_unpublished_constitution_when_requesting_its_page_then_it_is_404_not_401(
+    plane, client
+):
     # 401 would confirm the name exists. Whether a private constitution is
     # there at all is exactly what it is private about.
     direction(plane)
@@ -56,7 +60,9 @@ def test_an_unpublished_constitution_is_404_not_401(plane, client):
     assert r.status_code == 404
 
 
-def test_an_unknown_name_answers_exactly_like_an_unpublished_one(plane, client):
+def test_given_an_unknown_name_when_requesting_its_page_then_it_answers_like_unpublished(
+    plane, client
+):
     direction(plane, "internal")
     unpublished = client.get("/constitutions/internal")
     unknown = client.get("/constitutions/no-such-thing")
@@ -64,7 +70,9 @@ def test_an_unknown_name_answers_exactly_like_an_unpublished_one(plane, client):
     assert unpublished.text == unknown.text
 
 
-def test_the_public_page_needs_no_token_while_mcp_still_does(plane, client):
+def test_given_no_token_when_requesting_the_public_page_then_it_serves_while_mcp_refuses(
+    plane, client
+):
     direction(plane)
     plane.publish()
     assert client.get("/constitutions/default").status_code == 200
@@ -76,7 +84,9 @@ def test_the_public_page_needs_no_token_while_mcp_still_does(plane, client):
     assert mcp.status_code == 401
 
 
-def test_history_and_its_change_notes_stay_off_the_page_by_default(plane, client):
+def test_given_a_default_publish_when_rendering_then_history_and_change_notes_stay_off(
+    plane, client
+):
     direction(plane, note="initial constitution")
     direction(plane, mission="M2", note="dropped a principle for the enterprise deal")
     plane.publish()
@@ -87,7 +97,7 @@ def test_history_and_its_change_notes_stay_off_the_page_by_default(plane, client
     assert "M2" in body
 
 
-def test_history_appears_newest_first_once_it_is_published(plane, client):
+def test_given_published_history_when_rendering_then_it_appears_newest_first(plane, client):
     direction(plane, note="first note")
     direction(plane, mission="M2", note="second note")
     direction(plane, mission="M3", note="third note")
@@ -97,7 +107,9 @@ def test_history_appears_newest_first_once_it_is_published(plane, client):
     assert body.index("third note") < body.index("second note") < body.index("first note")
 
 
-def test_organization_authored_text_is_escaped_not_injected(plane, client):
+def test_given_organization_authored_text_when_rendering_then_it_is_escaped_not_injected(
+    plane, client
+):
     hostile = "<script>alert('xss')</script>"
     direction(plane)
     direction(
@@ -116,7 +128,9 @@ def test_organization_authored_text_is_escaped_not_injected(plane, client):
     assert f"Note {escaped}" in body
 
 
-def test_the_page_is_self_contained_with_no_scripts_or_external_assets(plane, client):
+def test_given_the_page_when_inspecting_then_it_is_self_contained_with_no_external_assets(
+    plane, client
+):
     direction(plane)
     plane.publish(with_history=True)
     body = client.get("/constitutions/default").text
@@ -126,7 +140,7 @@ def test_the_page_is_self_contained_with_no_scripts_or_external_assets(plane, cl
     assert "prefers-color-scheme" in body
 
 
-def test_a_constitution_with_no_principles_omits_the_principles_list(plane, client):
+def test_given_no_principles_when_rendering_then_the_principles_list_is_omitted(plane, client):
     plane.set_direction(mission="Mission only", principles=(), change_note="init")
     plane.publish()
     body = client.get("/constitutions/default").text
@@ -134,7 +148,7 @@ def test_a_constitution_with_no_principles_omits_the_principles_list(plane, clie
     assert "Principles" not in body
 
 
-def test_a_constitution_with_no_mission_falls_back_to_its_name_as_the_headline(plane, client):
+def test_given_no_mission_when_rendering_then_the_name_is_the_headline(plane, client):
     # Reachable: `kyno set --principle p --note init` sets no mission. A
     # blank headline would read as a broken page rather than a sparse one.
     plane.set_direction(principles=("p1",), change_note="init", constitution="rules")
@@ -144,7 +158,7 @@ def test_a_constitution_with_no_mission_falls_back_to_its_name_as_the_headline(p
     assert "rules" in body
 
 
-def test_json_route_returns_the_machine_readable_view(plane, client):
+def test_given_the_json_route_when_requesting_then_the_machine_readable_view_returns(plane, client):
     direction(plane, mission="Ship trust")
     plane.publish()
 
@@ -162,21 +176,21 @@ def test_json_route_returns_the_machine_readable_view(plane, client):
     assert "history" not in payload
 
 
-def test_json_route_is_matched_before_the_html_one(plane, client):
+def test_given_a_json_request_when_routing_then_it_matches_before_the_html_route(plane, client):
     # /constitutions/{name} would otherwise swallow "default.json" as a name.
     direction(plane)
     plane.publish()
     assert client.get("/constitutions/default.json").json()["constitution"] == "default"
 
 
-def test_json_route_is_404_for_an_unpublished_name(plane, client):
+def test_given_an_unpublished_name_when_requesting_its_json_then_it_is_404(plane, client):
     direction(plane)
     r = client.get("/constitutions/default.json")
     assert r.status_code == 404
     assert r.headers["content-type"].startswith("application/json")
 
 
-def test_json_route_carries_history_only_when_it_is_published(plane, client):
+def test_given_the_json_route_when_requesting_then_history_comes_only_if_published(plane, client):
     direction(plane, note="first note")
     direction(plane, mission="M2", note="second note")
     plane.publish(with_history=True)
@@ -185,7 +199,9 @@ def test_json_route_carries_history_only_when_it_is_published(plane, client):
     assert payload["history"][0]["change_note"] == "second note"
 
 
-def test_index_lists_published_constitutions_and_links_to_them(plane, client):
+def test_given_published_constitutions_when_rendering_the_index_then_they_list_with_links(
+    plane, client
+):
     direction(plane, "product", mission="Product mission")
     plane.publish(constitution="product")
 
@@ -197,7 +213,9 @@ def test_index_lists_published_constitutions_and_links_to_them(plane, client):
     assert 'href="/constitutions/product"' in r.text
 
 
-def test_index_never_shows_an_unpublished_constitution(plane, client):
+def test_given_an_unpublished_constitution_when_rendering_the_index_then_it_never_shows(
+    plane, client
+):
     direction(plane, "acme-internal", mission="Internal mission nobody may see")
     direction(plane, "product", mission="Product mission")
     plane.publish(constitution="product")
@@ -211,7 +229,9 @@ def test_index_never_shows_an_unpublished_constitution(plane, client):
     assert [c["constitution"] for c in payload["constitutions"]] == ["product"]
 
 
-def test_index_with_nothing_published_is_an_honest_empty_page(plane, client):
+def test_given_nothing_published_when_rendering_the_index_then_the_empty_page_is_honest(
+    plane, client
+):
     direction(plane, "internal")
     r = client.get("/constitutions/")
     assert r.status_code == 200
@@ -219,7 +239,9 @@ def test_index_with_nothing_published_is_an_honest_empty_page(plane, client):
     assert client.get("/constitutions.json").json()["constitutions"] == []
 
 
-def test_index_shows_only_the_first_line_of_a_multi_line_mission(plane, client):
+def test_given_a_multi_line_mission_when_rendering_the_index_then_only_the_first_line_shows(
+    plane, client
+):
     direction(plane, "product", mission="Headline claim\nA long second paragraph nobody needs here")
     plane.publish(constitution="product")
     body = client.get("/constitutions/").text
@@ -237,7 +259,9 @@ def _publish_bypassing_the_name_rule(plane, name):
     )
 
 
-def test_index_escapes_a_constitution_name_and_url_encodes_its_link(plane, client):
+def test_given_a_hostile_name_when_rendering_the_index_then_it_is_escaped_and_url_encoded(
+    plane, client
+):
     direction(plane, "a<b> c", mission="Odd name")
     _publish_bypassing_the_name_rule(plane, "a<b> c")
     body = client.get("/constitutions/").text
@@ -246,7 +270,9 @@ def test_index_escapes_a_constitution_name_and_url_encodes_its_link(plane, clien
     assert "a%3Cb%3E%20c" in body
 
 
-def test_a_constitution_named_index_is_not_shadowed_by_the_index_route(plane, client):
+def test_given_a_constitution_named_index_when_routing_then_the_index_route_does_not_shadow_it(
+    plane, client
+):
     # The index lives at /constitutions.json rather than
     # /constitutions/index.json precisely so this name stays usable.
     direction(plane, "index", mission="A constitution actually named index")
@@ -255,7 +281,7 @@ def test_a_constitution_named_index_is_not_shadowed_by_the_index_route(plane, cl
     assert client.get("/constitutions/index.json").json()["constitution"] == "index"
 
 
-def test_index_is_reachable_without_the_trailing_slash(plane, client):
+def test_given_no_trailing_slash_when_requesting_the_index_then_it_is_reachable(plane, client):
     direction(plane, "product")
     plane.publish(constitution="product")
     assert client.get("/constitutions").status_code == 200
@@ -289,7 +315,9 @@ def _unbalanced_tags(markup: str) -> list[str]:
 
 
 @pytest.mark.parametrize("path", ["/constitutions/default", "/constitutions/", "/constitutions/x"])
-def test_every_page_is_well_formed_markup_even_with_hostile_content(plane, client, path):
+def test_given_hostile_content_when_rendering_any_page_then_the_markup_stays_well_formed(
+    plane, client, path
+):
     # The pages are built by string concatenation, so tag balance is a real
     # property to hold rather than an assumption.
     hostile = "</ol></main><script>alert(1)</script>"
@@ -300,7 +328,7 @@ def test_every_page_is_well_formed_markup_even_with_hostile_content(plane, clien
     assert _unbalanced_tags(client.get(path).text) == []
 
 
-def test_public_endpoints_are_sync_so_their_database_work_leaves_the_event_loop(plane):
+def test_given_the_public_endpoints_when_inspecting_then_they_are_sync_off_the_event_loop(plane):
     # Deliberate: these handlers read the store, which is blocking. Starlette
     # runs a plain `def` endpoint in a threadpool and an `async def` one
     # directly on the event loop, where a slow query would stall every other
@@ -314,7 +342,9 @@ def test_public_endpoints_are_sync_so_their_database_work_leaves_the_event_loop(
         assert not inspect.iscoroutinefunction(route.endpoint), route.path
 
 
-def test_the_title_element_escapes_hostile_content_too(plane, client):
+def test_given_hostile_content_when_rendering_the_title_element_then_it_is_escaped_too(
+    plane, client
+):
     # The title is a second HTML context fed from the same mission, and a
     # regression there would not show up in any body assertion.
     import re
@@ -325,7 +355,9 @@ def test_the_title_element_escapes_hostile_content_too(plane, client):
     assert title == "Mission &lt;script&gt;alert(1)&lt;/script&gt;"
 
 
-def test_the_title_falls_back_to_the_escaped_name_when_there_is_no_mission(plane, client):
+def test_given_no_mission_when_rendering_the_title_then_the_escaped_name_is_the_fallback(
+    plane, client
+):
     import re
 
     plane.set_direction(principles=("p1",), change_note="init", constitution="a<b>")
@@ -339,7 +371,9 @@ def test_the_title_falls_back_to_the_escaped_name_when_there_is_no_mission(plane
 # --- principles render as titled sections ----------------------------------
 
 
-def test_a_described_principle_renders_its_title_and_its_paragraph(plane, client):
+def test_given_a_described_principle_when_rendering_then_its_title_and_paragraph_show(
+    plane, client
+):
     plane.set_direction(
         mission="Ship lending people trust",
         principles=(
@@ -354,7 +388,7 @@ def test_a_described_principle_renders_its_title_and_its_paragraph(plane, client
     assert title_at < body.index("Before any softening story.")
 
 
-def test_a_title_only_principle_renders_without_an_empty_paragraph(plane, client):
+def test_given_a_title_only_principle_when_rendering_then_no_empty_paragraph_shows(plane, client):
     direction(plane, principles=("p1",))
     plane.publish()
     body = client.get("/constitutions/default").text
@@ -362,7 +396,9 @@ def test_a_title_only_principle_renders_without_an_empty_paragraph(plane, client
     assert "<p></p>" not in body
 
 
-def test_a_principles_description_is_escaped_like_everything_else(plane, client):
+def test_given_a_hostile_description_when_rendering_then_it_is_escaped_like_everything(
+    plane, client
+):
     hostile = "<script>alert('xss')</script>"
     plane.set_direction(
         principles=({"title": "t", "description": f"Because {hostile}"},), change_note="init"
@@ -373,7 +409,9 @@ def test_a_principles_description_is_escaped_like_everything_else(plane, client)
     assert "Because &lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;" in body
 
 
-def test_the_json_view_exposes_principles_as_titles_and_descriptions(plane, client):
+def test_given_the_json_view_when_reading_then_principles_come_as_titles_and_descriptions(
+    plane, client
+):
     plane.set_direction(
         principles=("plain", {"title": "described", "description": "why"}), change_note="init"
     )
@@ -388,7 +426,9 @@ def test_the_json_view_exposes_principles_as_titles_and_descriptions(plane, clie
 # --- the declaration renders as the document body --------------------------
 
 
-def test_the_declaration_renders_between_the_mission_and_the_principles(plane, client):
+def test_given_a_declaration_when_rendering_then_it_sits_between_mission_and_principles(
+    plane, client
+):
     plane.set_direction(
         mission="Ship lending people trust",
         declaration="The long form of what that means.",
@@ -402,7 +442,9 @@ def test_the_declaration_renders_between_the_mission_and_the_principles(plane, c
     assert body.index("The long form of what that means.") < body.index("Say the hard number first")
 
 
-def test_a_blank_line_in_the_declaration_starts_a_new_paragraph(plane, client):
+def test_given_a_blank_line_in_the_declaration_when_rendering_then_a_new_paragraph_starts(
+    plane, client
+):
     plane.set_direction(
         mission="M", declaration="First paragraph.\n\nSecond paragraph.", change_note="init"
     )
@@ -412,7 +454,9 @@ def test_a_blank_line_in_the_declaration_starts_a_new_paragraph(plane, client):
     assert "<p>Second paragraph.</p>" in body
 
 
-def test_a_wrapped_line_in_the_declaration_stays_one_paragraph(plane, client):
+def test_given_a_wrapped_line_in_the_declaration_when_rendering_then_it_stays_one_paragraph(
+    plane, client
+):
     # CommonMark: a single newline is a soft break. Somebody wrapping a
     # paragraph in their editor must not get it broken across lines.
     plane.set_direction(mission="M", declaration="One line.\nNext line.", change_note="init")
@@ -420,7 +464,9 @@ def test_a_wrapped_line_in_the_declaration_stays_one_paragraph(plane, client):
     assert "<p>One line.\nNext line.</p>" in client.get("/constitutions/default").text
 
 
-def test_the_declarations_markdown_is_rendered(plane, client):
+def test_given_a_markdown_declaration_when_rendering_the_page_then_the_markdown_renders(
+    plane, client
+):
     plane.set_direction(
         mission="M",
         declaration=(
@@ -441,7 +487,9 @@ def test_the_declarations_markdown_is_rendered(plane, client):
     assert "# What we are for" not in body
 
 
-def test_markup_inside_a_declaration_is_escaped_rather_than_passed_through(plane, client):
+def test_given_markup_in_a_declaration_when_rendering_then_it_is_escaped_not_passed_through(
+    plane, client
+):
     # The load-bearing one: this page serves anonymous visitors, so an
     # organization's own text must never become markup that runs.
     plane.set_direction(
@@ -457,7 +505,7 @@ def test_markup_inside_a_declaration_is_escaped_rather_than_passed_through(plane
     assert "&lt;img src=x onerror=alert(1)&gt;" in body
 
 
-def test_a_javascript_link_in_a_declaration_is_refused(plane, client):
+def test_given_a_javascript_link_in_a_declaration_when_rendering_then_it_is_refused(plane, client):
     plane.set_direction(
         mission="M",
         declaration="[click](javascript:alert(1)) and [ok](https://example.com/policy)",
@@ -471,7 +519,9 @@ def test_a_javascript_link_in_a_declaration_is_refused(plane, client):
     assert '<a href="https://example.com/policy">ok</a>' in body
 
 
-def test_an_image_in_a_declaration_never_becomes_an_external_asset(plane, client):
+def test_given_an_image_in_a_declaration_when_rendering_then_no_external_asset_appears(
+    plane, client
+):
     # Deliberate: the page is self-contained -- one response that
     # renders on a locked-down network and survives being saved to a file.
     plane.set_direction(
@@ -481,14 +531,16 @@ def test_an_image_in_a_declaration_never_becomes_an_external_asset(plane, client
     assert "<img" not in client.get("/constitutions/default").text
 
 
-def test_a_rendered_declaration_leaves_the_page_well_formed(plane, client):
+def test_given_a_rendered_declaration_when_inspecting_the_page_then_it_stays_well_formed(
+    plane, client
+):
     hostile = "</div></main># heading\n\n- <script>alert(1)</script>\n"
     plane.set_direction(mission="M", declaration=hostile, change_note="init")
     plane.publish()
     assert _unbalanced_tags(client.get("/constitutions/default").text) == []
 
 
-def test_the_json_view_serves_the_declaration_as_raw_markdown(plane, client):
+def test_given_the_json_view_when_reading_the_declaration_then_it_is_raw_markdown(plane, client):
     # Data is markdown; rendering is the HTML page's business alone.
     source = "# What we are for\n\n- one\n"
     plane.set_direction(mission="M", declaration=source, change_note="init")
@@ -496,7 +548,7 @@ def test_the_json_view_serves_the_declaration_as_raw_markdown(plane, client):
     assert client.get("/constitutions/default.json").json()["declaration"] == source
 
 
-def test_a_constitution_with_no_declaration_renders_no_empty_block(plane, client):
+def test_given_no_declaration_when_rendering_then_no_empty_block_appears(plane, client):
     direction(plane)
     plane.publish()
     body = client.get("/constitutions/default").text
@@ -504,13 +556,15 @@ def test_a_constitution_with_no_declaration_renders_no_empty_block(plane, client
     assert "<p></p>" not in body
 
 
-def test_the_json_view_exposes_the_declaration(plane, client):
+def test_given_the_json_view_when_reading_then_the_declaration_is_exposed(plane, client):
     plane.set_direction(mission="M", declaration="The long form.", change_note="init")
     plane.publish()
     assert client.get("/constitutions/default.json").json()["declaration"] == "The long form."
 
 
-def test_the_mission_and_the_principles_are_plain_text_not_markdown(plane, client):
+def test_given_markdown_in_mission_and_principles_when_rendering_then_they_stay_plain_text(
+    plane, client
+):
     # Markdown is the declaration's privilege: it is the long-form document.
     # The rest are one-liners, where the literal text is the honest rendering.
     plane.set_direction(
@@ -545,7 +599,9 @@ SECURITY_HEADERS = {
         "/constitutions/never-published.json",
     ],
 )
-def test_every_public_response_carries_the_security_headers(plane, client, path):
+def test_given_any_public_response_when_inspecting_headers_then_the_security_set_is_there(
+    plane, client, path
+):
     # The last two paths answer 404: an error page is served to the same
     # anonymous visitors and carries the same headers.
     direction(plane)
@@ -562,7 +618,9 @@ def _many_versions(plane, count):
         direction(plane, mission=f"M{i}", note=f"note {i}")
 
 
-def test_public_history_stops_at_the_most_recent_hundred_versions(plane, client):
+def test_given_a_long_history_when_serving_the_public_view_then_it_stops_at_a_hundred(
+    plane, client
+):
     from kyno.service import PUBLIC_HISTORY_LIMIT
 
     _many_versions(plane, PUBLIC_HISTORY_LIMIT + 5)
@@ -574,7 +632,9 @@ def test_public_history_stops_at_the_most_recent_hundred_versions(plane, client)
     assert versions[-1] == 6
 
 
-def test_the_page_serves_the_same_bounded_history_as_the_json(plane, client):
+def test_given_the_bounded_history_when_comparing_page_and_json_then_they_serve_the_same(
+    plane, client
+):
     from kyno.service import PUBLIC_HISTORY_LIMIT
 
     _many_versions(plane, PUBLIC_HISTORY_LIMIT + 2)
@@ -586,7 +646,7 @@ def test_the_page_serves_the_same_bounded_history_as_the_json(plane, client):
     assert "note 2</p>" not in body
 
 
-def test_a_history_at_the_bound_is_served_whole(plane, client):
+def test_given_a_history_at_the_bound_when_serving_then_it_comes_whole(plane, client):
     from kyno.service import PUBLIC_HISTORY_LIMIT
 
     _many_versions(plane, PUBLIC_HISTORY_LIMIT)
@@ -596,7 +656,7 @@ def test_a_history_at_the_bound_is_served_whole(plane, client):
     assert [h["version"] for h in history] == list(range(PUBLIC_HISTORY_LIMIT, 0, -1))
 
 
-def test_the_full_history_stays_readable_on_the_authenticated_side(plane):
+def test_given_the_bound_when_reading_authenticated_then_the_full_history_is_still_there(plane):
     from kyno.service import PUBLIC_HISTORY_LIMIT
 
     _many_versions(plane, PUBLIC_HISTORY_LIMIT + 5)
@@ -604,7 +664,9 @@ def test_the_full_history_stays_readable_on_the_authenticated_side(plane):
     assert len(plane.changes_since(0).change_notes) == PUBLIC_HISTORY_LIMIT + 5
 
 
-def test_a_declaration_renders_once_per_text_not_per_visit(plane, client):
+def test_given_repeat_visits_when_rendering_a_declaration_then_it_renders_once_per_text(
+    plane, client
+):
     from kyno.public_page import _declaration_html
 
     _declaration_html.cache_clear()
@@ -619,7 +681,9 @@ def test_a_declaration_renders_once_per_text_not_per_visit(plane, client):
     assert info.misses == 1 and info.hits >= 1
 
 
-def test_the_render_cache_is_keyed_by_the_declaration_text_alone(plane, client):
+def test_given_the_render_cache_when_inspecting_its_key_then_it_is_the_declaration_text(
+    plane, client
+):
     # Two constitutions sharing one declaration share one render: versions
     # are immutable, so the text is the whole identity of the output.
     from kyno.public_page import _declaration_html

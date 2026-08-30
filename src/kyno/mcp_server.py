@@ -63,6 +63,17 @@ def handle_get_changes_since(
 # out to matter rather than the whole document again. Every one of them
 # answers with the version it came from, which is what makes mixing them
 # safe -- two answers on one version describe one document.
+def handle_export_versions(
+    cp: ControlPlane,
+    constitution: str | None = None,
+    from_version: int | None = None,
+    to_version: int | None = None,
+) -> list[dict]:
+    return _guard(
+        lambda: cp.export_versions(constitution, from_version=from_version, to_version=to_version)
+    )
+
+
 def handle_get_mission(cp: ControlPlane, constitution: str | None = None) -> dict:
     def read() -> dict:
         head = cp.current(constitution)
@@ -244,6 +255,21 @@ _TOOLS = [
         },
     ),
     types.Tool(
+        name="export_versions",
+        description=(
+            "Return the full version history, ascending: every version's "
+            "content and its edit metadata. Bounds are inclusive; omitted means all."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "constitution": _CONSTITUTION_ARG,
+                "from_version": {"type": ["integer", "null"]},
+                "to_version": {"type": ["integer", "null"]},
+            },
+        },
+    ),
+    types.Tool(
         name="set_direction",
         description=(
             "Append a new constitution version, with a mission, a declaration "
@@ -277,48 +303,56 @@ def build_server(control_plane: ControlPlane) -> Server:
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
-        if name == "get_constitution":
-            result = handle_get_constitution(
-                control_plane,
-                arguments.get("constitution"),
-                arguments.get("detail", COMPACT),
-            )
-        elif name == "get_changes_since":
-            _require(arguments, "known_version")
-            result = handle_get_changes_since(
-                control_plane,
-                int(arguments["known_version"]),
-                arguments.get("constitution"),
-                arguments.get("detail", COMPACT),
-            )
-        elif name == "get_mission":
-            result = handle_get_mission(control_plane, arguments.get("constitution"))
-        elif name == "get_principles":
-            result = handle_get_principles(
-                control_plane,
-                arguments.get("constitution"),
-                arguments.get("detail", TITLES),
-            )
-        elif name == "get_declaration":
-            result = handle_get_declaration(control_plane, arguments.get("constitution"))
-        elif name == "get_principle":
-            _require(arguments, "title")
-            result = handle_get_principle(
-                control_plane, arguments["title"], arguments.get("constitution")
-            )
-        elif name == "set_direction":
-            _require(arguments, "change_note")
-            result = handle_set_direction(
-                control_plane,
-                mission=arguments.get("mission"),
-                declaration=arguments.get("declaration"),
-                principles=arguments.get("principles"),
-                change_note=arguments["change_note"],
-                created_by=arguments.get("created_by"),
-                constitution=arguments.get("constitution"),
-            )
-        else:
-            raise ValueError(f"unknown tool: {name}")
+        match name:
+            case "get_constitution":
+                result = handle_get_constitution(
+                    control_plane,
+                    arguments.get("constitution"),
+                    arguments.get("detail", COMPACT),
+                )
+            case "get_changes_since":
+                _require(arguments, "known_version")
+                result = handle_get_changes_since(
+                    control_plane,
+                    int(arguments["known_version"]),
+                    arguments.get("constitution"),
+                    arguments.get("detail", COMPACT),
+                )
+            case "get_mission":
+                result = handle_get_mission(control_plane, arguments.get("constitution"))
+            case "get_principles":
+                result = handle_get_principles(
+                    control_plane,
+                    arguments.get("constitution"),
+                    arguments.get("detail", TITLES),
+                )
+            case "get_declaration":
+                result = handle_get_declaration(control_plane, arguments.get("constitution"))
+            case "get_principle":
+                _require(arguments, "title")
+                result = handle_get_principle(
+                    control_plane, arguments["title"], arguments.get("constitution")
+                )
+            case "export_versions":
+                result = handle_export_versions(
+                    control_plane,
+                    arguments.get("constitution"),
+                    from_version=arguments.get("from_version"),
+                    to_version=arguments.get("to_version"),
+                )
+            case "set_direction":
+                _require(arguments, "change_note")
+                result = handle_set_direction(
+                    control_plane,
+                    mission=arguments.get("mission"),
+                    declaration=arguments.get("declaration"),
+                    principles=arguments.get("principles"),
+                    change_note=arguments["change_note"],
+                    created_by=arguments.get("created_by"),
+                    constitution=arguments.get("constitution"),
+                )
+            case _:
+                raise ValueError(f"unknown tool: {name}")
         return [types.TextContent(type="text", text=json.dumps(result))]
 
     @server.list_resources()

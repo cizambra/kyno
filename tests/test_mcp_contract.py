@@ -788,7 +788,7 @@ def test_given_the_read_family_when_answering_then_each_carries_its_source_versi
     assert [r["version"] for r in reads] == [1, 1, 1, 1, 1]
 
 
-def test_given_the_server_when_listing_tools_then_the_seven_read_as_one_family():
+def test_given_the_server_when_listing_tools_then_all_of_them_read_as_one_family():
     names = [t.name for t in mcp_server._TOOLS]
     assert names == [
         "get_constitution",
@@ -797,6 +797,7 @@ def test_given_the_server_when_listing_tools_then_the_seven_read_as_one_family()
         "get_declaration",
         "get_principles",
         "get_principle",
+        "export_versions",
         "set_direction",
     ]
     for tool in mcp_server._TOOLS:
@@ -839,3 +840,48 @@ def test_given_a_markdown_declaration_when_calling_get_declaration_then_raw_mark
     )
     assert mcp_server.handle_get_declaration(cp)["declaration"] == source
     assert mcp_server.handle_get_constitution(cp, detail="full")["declaration"] == source
+
+
+def test_given_versions_when_calling_export_versions_then_the_whole_history_comes_ascending(cp):
+    mcp_server.handle_set_direction(
+        cp, mission="M1", principles=None, change_note="init", created_by="camilo"
+    )
+    mcp_server.handle_set_direction(
+        cp, mission="M2", principles=None, change_note="pivot", created_by=None
+    )
+    rows = mcp_server.handle_export_versions(cp)
+    assert [r["version"] for r in rows] == [1, 2]
+    assert rows[0]["mission"] == "M1" and rows[0]["change_note"] == "init"
+    assert rows[0]["created_by"] == "camilo" and "created_at" in rows[0]
+
+
+def test_given_bounds_when_calling_export_versions_then_they_are_inclusive(cp):
+    for n in (1, 2, 3):
+        mcp_server.handle_set_direction(
+            cp, mission=f"M{n}", principles=None, change_note=f"n{n}", created_by=None
+        )
+    rows = mcp_server.handle_export_versions(cp, from_version=2, to_version=3)
+    assert [r["version"] for r in rows] == [2, 3]
+
+
+def test_given_an_unwritten_name_when_calling_export_versions_then_the_list_is_empty(cp):
+    assert mcp_server.handle_export_versions(cp, "nope") == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.e2e
+async def test_given_a_connected_client_when_calling_export_versions_then_it_is_served(cp):
+    """The seam the handler tests skip: the tool is advertised in the
+    server's listing, the dispatch routes the call to it, and the reply
+    carries the rows as JSON text. One version in, the same version out."""
+    from mcp.shared.memory import create_connected_server_and_client_session
+
+    mcp_server.handle_set_direction(
+        cp, mission="M1", principles=None, change_note="init", created_by=None
+    )
+    async with create_connected_server_and_client_session(mcp_server.build_server(cp)) as client:
+        tools = await client.list_tools()
+        assert "export_versions" in [t.name for t in tools.tools]
+        reply = await client.call_tool("export_versions", {})
+        rows = json.loads(reply.content[0].text)
+    assert [r["version"] for r in rows] == [1] and rows[0]["mission"] == "M1"

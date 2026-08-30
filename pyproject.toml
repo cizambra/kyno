@@ -62,6 +62,7 @@ testpaths = ["tests"]
 filterwarnings = ["ignore:Using `httpx` with `starlette.testclient`:starlette.exceptions.StarletteDeprecationWarning"]
 markers = [
     "integration: exercises a real orchestrator or a live Kyno; run with -m integration",
+    "e2e: drives a real client session against the built server, in memory or over localhost; runs by default, skip with -m 'not e2e'",
 ]
 addopts = "-m 'not integration'"
 

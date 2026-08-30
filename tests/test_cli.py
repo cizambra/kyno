@@ -592,6 +592,7 @@ def test_given_an_unreachable_store_when_checking_then_the_report_still_prints(
     assert r.exit_code == 0
     assert "kyno fields set: constitution, mission" in r.stdout
     assert "store: not compared" in r.stdout
+    assert "[SQL:" not in r.stdout and r.stdout.count("store:") == 1
 
 
 def test_given_a_file_without_a_constitution_key_when_checking_then_the_store_is_not_compared(
@@ -605,3 +606,23 @@ def test_given_a_file_without_a_constitution_key_when_checking_then_the_store_is
     assert r.exit_code == 1
     assert "kyno fields not set: constitution" in r.output
     assert "store: not compared" in r.output and "constitution: <name>" in r.output
+
+
+def test_given_a_check_when_comparing_with_the_store_then_the_head_is_read_once(
+    tmp_path, monkeypatch
+):
+    """One read feeds both the version named and the delta shown, so a
+    writer landing mid-check cannot make the two describe different heads."""
+    from kyno.store.sql import SqlConstitutionStore
+
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    apply_yaml(tmp_path, mission="M1", note="init", name="c.yaml")
+    reads = []
+    real_head = SqlConstitutionStore.head
+    monkeypatch.setattr(
+        SqlConstitutionStore, "head", lambda self, name: reads.append(name) or real_head(self, name)
+    )
+    r = runner.invoke(app, ["check", str(tmp_path / "c.yaml")])
+    assert r.exit_code == 0 and "agrees" in r.output
+    assert reads == ["default"]

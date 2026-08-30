@@ -681,3 +681,32 @@ def test_the_declaration_reaches_the_public_view(cp):
     cp.publish()
     assert cp.public_constitution().declaration == "The long form."
     assert cp.public_constitution().to_dict()["declaration"] == "The long form."
+
+
+def test_given_a_head_when_asking_head_and_delta_then_both_come_from_one_read():
+    from kyno.service import ControlPlane
+    from kyno.store.sql import SqlConstitutionStore
+
+    store = SqlConstitutionStore(url="sqlite://")
+    store.create_all()
+    cp = ControlPlane(store)
+    cp.set_direction(mission="M1", change_note="init")
+    reads = []
+    real_head = store.head
+    store.head = lambda name: reads.append(name) or real_head(name)
+
+    head, delta = cp.head_and_delta(mission="M2")
+
+    assert reads == ["default"]
+    assert head == cp.current()
+    assert delta == cp.preview_edit(mission="M2")
+
+
+def test_given_an_empty_store_when_asking_head_and_delta_then_the_head_is_none():
+    from kyno.service import ControlPlane
+    from kyno.store.sql import SqlConstitutionStore
+
+    store = SqlConstitutionStore(url="sqlite://")
+    store.create_all()
+    head, delta = ControlPlane(store).head_and_delta(mission="M1")
+    assert head is None and delta == ("Creates 'default' at version 1.",)

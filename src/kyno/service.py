@@ -356,6 +356,24 @@ class ControlPlane:
     ) -> tuple[str, ...]:
         """What an apply with these fields would change, as plain sentences.
         Empty means the apply would be refused as no field changed."""
+        return self.head_and_delta(
+            mission=mission,
+            declaration=declaration,
+            principles=principles,
+            constitution=constitution,
+        )[1]
+
+    def head_and_delta(
+        self,
+        *,
+        mission: str | None = None,
+        declaration: str | None = None,
+        principles: tuple[Principle | str, ...] | None = None,
+        constitution: str | None = None,
+    ) -> tuple[ConstitutionVersion | None, tuple[str, ...]]:
+        """The head and what an apply with these fields would change, from
+        one read of the store, so the version and the delta can never
+        describe two different moments. The head is None on an empty store."""
         principles = normalize_principles(principles)
         name = self._name(constitution)
         head, effective = self._effective(
@@ -365,7 +383,7 @@ class ControlPlane:
             effective
         )
         if head is None:
-            return (f"Creates '{name}' at version 1.",)
+            return None, (f"Creates '{name}' at version 1.",)
         after = ConstitutionVersion(
             version=head.version + 1,
             mission=new_mission,
@@ -380,4 +398,4 @@ class ControlPlane:
         lines = list(_delta(head, after))
         if new_declaration != head.declaration:
             lines.append("The declaration changed.")
-        return tuple(lines)
+        return head, tuple(lines)

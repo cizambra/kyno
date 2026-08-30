@@ -71,21 +71,27 @@ imitate it, so nothing should trust a block just for looking like one. Kyno
 refuses constitution text containing the marker, and the adapters only ever
 replace the block they injected themselves.
 
-## Remote profiles
+## Remote mode
 
-To work against a hosted Kyno from your laptop or a pipeline you need two things: where the server is, and which token to show it. Both live in small files under `~/.kyno`, the same path on every machine, and only the commands below write them. They never live next to a repo, so a credentials file can't end up in a commit by mistake.
+Locally, `kyno` talks straight to a store file on your disk. Remote mode points the same commands at a Kyno server instead: you operate production from your laptop or a pipeline, and nobody holds database credentials. Setting it up consists in three steps: save a token, name a destination, and go remote with the commands you already know.
 
-Start with credentials. Each profile holds one token, and the token itself never goes on the command line:
+### 1. Save a token
+
+Each credentials profile holds one token. The token itself never goes on the command line, because command lines end up in shell history:
 
 ```bash
 kyno credentials add --token-env KYNO_TOKEN                   # profile "default"
-kyno credentials add --profile oncall --token-env KYNO_ONCALL # a second one
+kyno credentials add --profile oncall --token-env KYNO_ONCALL # a second identity
 kyno credentials add --profile laptop                         # no flag: asks for it, hidden
 ```
 
-`--token-env` doesn't store the token; it stores a reference (`${KYNO_TOKEN}`) that gets read when you use the profile, so rotating the token is just changing the variable's value. Without it, the token you type is written into the file, and the file is readable only by you.
+`--token-env` stores a reference (`${KYNO_TOKEN}`), read each time you use the profile — so rotating the token is just changing the variable's value. Without it, the token you type is written into the file, and the file is readable only by you.
 
-Then remotes. Each profile is one destination: the URL, and where its token comes from.
+Everything lands in small files under `~/.kyno`, the same path on every machine, written only by these commands. They never live next to a repo, so a credentials file can't end up in a commit by mistake.
+
+### 2. Name a destination
+
+Each remote profile is one destination: the URL, and where its token comes from.
 
 ```bash
 kyno remote add --url https://kyno.mybiz.com                          # "default", on the default credentials
@@ -93,11 +99,39 @@ kyno remote add --url https://kyno.mybiz.com --profile oncall --credentials onca
 kyno remote add --url https://kyno.mybiz.com --profile ci --token-env KYNO_TOKEN
 ```
 
-If you point a remote at credentials that don't exist, the command fails right there and tells you what you do have and what to run. `--token-env` on a remote skips the credentials file entirely, which is what you want in a CI image that carries no credentials at all.
+Pointing at credentials that don't exist fails right there, and the error tells you what you do have and what to run. The `--token-env` form skips the credentials file entirely — right for a CI image that carries no credentials at all.
 
-A profile is configuration that points at other configuration: the remotes file points at a credentials profile, the credentials profile points at a variable, and the variable holds the token. When something breaks, reading one file isn't enough — you'd have to walk all three hops yourself. `kyno remote show --profile X` walks them for you: it prints the URL, where the token comes from, and whether the whole chain resolves right now, with the token itself never shown. `kyno remote list` prints one line per profile. If a profile doesn't resolve, `show` exits 1 and the reason includes the command that fixes it, so you can put it in a setup script and let it gate.
+A profile has exactly one token source. Several profiles can share one credential (three regional servers, one operator token), but one profile never holds two tokens — Kyno would be picking between them silently, and "who wrote this" would become a guess. To act as someone else on the same server, make a second profile with the same URL and different credentials; a production write then visibly says which profile it used.
 
-A profile has exactly one token source. Several profiles can share one credential — say three regional servers that all accept the same operator token — but one profile never holds two tokens, because Kyno would be picking between them silently and "who wrote this" would become a guess. If you want to act as someone else on the same server, make a second profile with the same URL and different credentials; a production write then visibly says which profile it used.
+### 3. Go remote
+
+One flag, on the commands you already use:
+
+```bash
+kyno current --remote
+kyno set constitution.yaml --note "sharpen the mission" --remote
+kyno check constitution.yaml --remote
+kyno log --remote
+kyno export --remote
+```
+
+They work against the profile's endpoint instead of your local store and print exactly what their local versions print. `--profile oncall` picks a different bundle; `--credentials` or `--token-env` beside it swaps the token source for that one run. Without `--remote` you are always on your local store — there is no fallback in either direction.
+
+Two behaviors worth knowing. A remote `set` fetches the server's head and shows you the same delta a local set shows, before it applies; a duplicate apply is the same clean no-op. And a server you can't reach is a plain one-line error — except under `check`, where the field report still prints and the comparison line says why it didn't run.
+
+### Checking your wiring
+
+A profile is a pointer to a pointer: the remote points at credentials, the credentials point at a variable, the variable holds the token. `kyno remote show` walks the whole chain so you never have to:
+
+```console
+$ kyno remote show --profile ci
+profile: ci
+url: https://kyno.mybiz.com
+token from: ${KYNO_TOKEN}
+resolves: no (remote profile 'ci' reads its token from ${KYNO_TOKEN}, which is not set)
+```
+
+The token itself is never shown. A profile that doesn't resolve exits 1 and the reason names the fix, so `remote show` can gate a setup script. `kyno remote list` prints one line per profile.
 
 ## Deploying
 

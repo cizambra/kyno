@@ -26,7 +26,8 @@ from kyno.profiles import (
     remotes_path,
 )
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
-from kyno.service import ControlPlane
+from kyno.remote import RemoteError, dial, version_from_payload
+from kyno.service import ControlPlane, edit_delta
 
 app = typer.Typer(help="Coherence engine control plane.")
 
@@ -87,6 +88,8 @@ _CONSTITUTION_OPTION = typer.Option(
     "default", "--constitution", help="Which named constitution to act on."
 )
 
+_REMOTE_HELP = "Run against a remote profile's endpoint instead of the local store."
+
 
 @app.command("set")
 def set_direction_cmd(
@@ -98,16 +101,28 @@ def set_direction_cmd(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Print what would change, apply nothing."
     ),
+    remote: bool = typer.Option(False, "--remote", help=_REMOTE_HELP),
+    profile: str = typer.Option("default", "--profile", help="Which remote profile to use."),
+    credentials: str | None = typer.Option(
+        None, "--credentials", help="Take the token from this credentials profile, this run."
+    ),
+    token_env: str | None = typer.Option(
+        None, "--token-env", help="Take the token from this variable, this run."
+    ),
 ) -> None:
     """Append a version from a file. The file says what the constitution
     is, including which one it is; the flags say what this edit is. Every
     apply prints the delta it makes; --dry-run prints it and stops."""
     if not dry_run and not (note and note.strip()):
         raise typer.BadParameter("a change note is required: pass --note")
+    _remote_options_guard(remote, profile, credentials, token_env)
     with _clean_errors():
         fields = read_constitution_file(file)
         content = _content_of(fields)
         target = _constitution_name(fields, file)
+        if remote:
+            _remote_set(target, content, note, by, dry_run, profile, credentials, token_env)
+            return
         plane = _control_plane()
         delta = plane.preview_edit(**content, constitution=target)
         if dry_run:
@@ -129,6 +144,53 @@ def set_direction_cmd(
             typer.echo("no field changed", err=True)
             version = plane.current(target)
         typer.echo(json.dumps(version.to_dict(), indent=2))
+
+
+def _remote_set(
+    target: str,
+    content: dict,
+    note: str | None,
+    by: str | None,
+    dry_run: bool,
+    profile: str,
+    credentials: str | None,
+    token_env: str | None,
+) -> None:
+    """The local apply, spoken over the wire: fetch the head, show the same
+    delta the local path would show, then ask the server to append."""
+    client = dial(profile, credentials_profile=credentials, token_env=token_env)
+    try:
+        payload = _fetch_remote_head(client, target)
+        head = version_from_payload(payload)
+        delta = edit_delta(head, target, **content)
+        if dry_run:
+            _print_delta(delta or ("no field changed",))
+            return
+        _print_delta(delta, err=True)
+        principles = content["principles"]
+        arguments = {
+            "mission": content["mission"],
+            "declaration": content["declaration"],
+            "principles": (
+                None
+                if principles is None
+                else [{"title": p.title, "description": p.description} for p in principles]
+            ),
+            "change_note": note,
+            "created_by": by if by is not None else _system_user(),
+            "constitution": target,
+        }
+        try:
+            result = client.call_tool("set_direction", arguments)
+        except RemoteError as refusal:
+            if "no field changed" not in str(refusal):
+                raise
+            # Same clean no-op as the local path: the head in force prints.
+            typer.echo("no field changed", err=True)
+            result = payload
+        typer.echo(json.dumps(result, indent=2))
+    finally:
+        client.close()
 
 
 @contextmanager
@@ -168,6 +230,19 @@ def _content_of(fields: ConstitutionFile) -> dict[str, object]:
 def _print_delta(lines: tuple[str, ...], *, err: bool = False) -> None:
     for line in lines:
         typer.echo(line, err=err)
+
+
+def _remote_options_guard(
+    remote: bool, profile: str, credentials: str | None, token_env: str | None
+) -> None:
+    if not remote and (profile != "default" or credentials is not None or token_env is not None):
+        raise typer.BadParameter(
+            "--profile, --credentials and --token-env are for remote runs; add --remote"
+        )
+
+
+def _fetch_remote_head(client, constitution: str) -> dict:
+    return client.call_tool("get_constitution", {"constitution": constitution, "detail": "full"})
 
 
 def _system_user() -> str | None:
@@ -321,9 +396,38 @@ def current(
         "--yaml",
         help="Print the head in the file format `kyno set --file` reads.",
     ),
+    remote: bool = typer.Option(False, "--remote", help=_REMOTE_HELP),
+    profile: str = typer.Option("default", "--profile", help="Which remote profile to use."),
+    credentials: str | None = typer.Option(
+        None, "--credentials", help="Take the token from this credentials profile, this run."
+    ),
+    token_env: str | None = typer.Option(
+        None, "--token-env", help="Take the token from this variable, this run."
+    ),
 ) -> None:
     """The version in force. JSON by default; --yaml prints it as a
     constitution file, ready to redirect, commit, and re-apply."""
+    _remote_options_guard(remote, profile, credentials, token_env)
+    if remote:
+        with _clean_errors():
+            client = dial(profile, credentials_profile=credentials, token_env=token_env)
+            try:
+                payload = _fetch_remote_head(client, constitution)
+            finally:
+                client.close()
+            head = version_from_payload(payload)
+            if head is None:
+                if as_yaml:
+                    typer.echo(
+                        f"error: nothing to read: '{constitution}' has no versions", err=True
+                    )
+                    raise typer.Exit(code=1)
+                typer.echo("no constitution set (version 0)")
+            elif as_yaml:
+                typer.echo(render_constitution_yaml(head, constitution), nl=False)
+            else:
+                typer.echo(json.dumps(payload, indent=2))
+        return
     try:
         v = _control_plane().current(constitution)
         if v.version == 0:
@@ -343,10 +447,19 @@ def current(
 @app.command()
 def check(
     file: str = typer.Argument(..., help="The constitution file to inspect."),
+    remote: bool = typer.Option(False, "--remote", help=_REMOTE_HELP),
+    profile: str = typer.Option("default", "--profile", help="Which remote profile to use."),
+    credentials: str | None = typer.Option(
+        None, "--credentials", help="Take the token from this credentials profile, this run."
+    ),
+    token_env: str | None = typer.Option(
+        None, "--token-env", help="Take the token from this variable, this run."
+    ),
 ) -> None:
     """Report how Kyno reads a file, then whether the store agrees with it.
     The field report never blocks anything. The store comparison is what a
     pipeline gates on: exit 1 when the file and the head are out of sync."""
+    _remote_options_guard(remote, profile, credentials, token_env)
     try:
         report = check_constitution_file(file)
         fields = read_constitution_file(file)
@@ -356,7 +469,10 @@ def check(
     typer.echo(f"kyno fields set: {', '.join(report.present) or 'none'}")
     typer.echo(f"kyno fields not set: {', '.join(report.missing) or 'none'}")
     typer.echo(f"custom fields: {', '.join(report.custom) or 'none'}")
-    _compare_with_store(fields, file)
+    if remote:
+        _compare_with_remote(fields, file, profile, credentials, token_env)
+    else:
+        _compare_with_store(fields, file)
 
 
 def _compare_with_store(fields: ConstitutionFile, path: str) -> None:
@@ -375,7 +491,39 @@ def _compare_with_store(fields: ConstitutionFile, path: str) -> None:
         # its SQL, which tells an operator nothing about the file.
         typer.echo(f"store: not compared ({str(exc).splitlines()[0]})")
         return
-    if head is None:
+    _render_comparison(target, head, delta)
+
+
+def _compare_with_remote(
+    fields: ConstitutionFile,
+    path: str,
+    profile: str,
+    credentials: str | None,
+    token_env: str | None,
+) -> None:
+    """The same comparison, against a remote head. An endpoint that cannot
+    be reached reads like an unreachable store: the report stands, the
+    comparison says why it did not run."""
+    try:
+        target = _constitution_name(fields, path)
+    except AuthoringError as exc:
+        typer.echo(f"store: not compared ({exc})")
+        raise typer.Exit(code=1) from None
+    try:
+        client = dial(profile, credentials_profile=credentials, token_env=token_env)
+        try:
+            head = version_from_payload(_fetch_remote_head(client, target))
+        finally:
+            client.close()
+        delta = edit_delta(head, target, **_content_of(fields))
+    except CoherenceError as exc:
+        typer.echo(f"store: not compared ({str(exc).splitlines()[0]})")
+        return
+    _render_comparison(target, head, delta)
+
+
+def _render_comparison(target: str, head, delta: tuple[str, ...]) -> None:
+    if head is None or head.version == 0:
         typer.echo(f"store: '{target}' has no versions; applying this file creates version 1")
         raise typer.Exit(code=1)
     if not delta:
@@ -421,11 +569,25 @@ def unpublish(constitution: str = _CONSTITUTION_OPTION) -> None:
 
 
 @app.command()
-def log(constitution: str = _CONSTITUTION_OPTION) -> None:
+def log(
+    constitution: str = _CONSTITUTION_OPTION,
+    remote: bool = typer.Option(False, "--remote", help=_REMOTE_HELP),
+    profile: str = typer.Option("default", "--profile", help="Which remote profile to use."),
+    credentials: str | None = typer.Option(
+        None, "--credentials", help="Take the token from this credentials profile, this run."
+    ),
+    token_env: str | None = typer.Option(
+        None, "--token-env", help="Take the token from this variable, this run."
+    ),
+) -> None:
     """The history, one line per version, newest first: version, date,
     author, and the change note. `kyno export` has the full content."""
+    _remote_options_guard(remote, profile, credentials, token_env)
     try:
-        rows = _store().export_versions(constitution)
+        if remote:
+            rows = _fetch_remote_rows(profile, credentials, token_env, constitution)
+        else:
+            rows = _store().export_versions(constitution)
     except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
@@ -447,15 +609,51 @@ def export(
         None, "--to", help="Last version to include (inclusive)."
     ),
     constitution: str = _CONSTITUTION_OPTION,
+    remote: bool = typer.Option(False, "--remote", help=_REMOTE_HELP),
+    profile: str = typer.Option("default", "--profile", help="Which remote profile to use."),
+    credentials: str | None = typer.Option(
+        None, "--credentials", help="Take the token from this credentials profile, this run."
+    ),
+    token_env: str | None = typer.Option(
+        None, "--token-env", help="Take the token from this variable, this run."
+    ),
 ) -> None:
+    _remote_options_guard(remote, profile, credentials, token_env)
     try:
-        rows = _store().export_versions(
-            constitution, from_version=from_version, to_version=to_version
-        )
+        if remote:
+            rows = _fetch_remote_rows(
+                profile, credentials, token_env, constitution, from_version, to_version
+            )
+        else:
+            rows = _store().export_versions(
+                constitution, from_version=from_version, to_version=to_version
+            )
         typer.echo(json.dumps(rows, indent=2))
     except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
+
+
+def _fetch_remote_rows(
+    profile: str,
+    credentials: str | None,
+    token_env: str | None,
+    constitution: str,
+    from_version: int | None = None,
+    to_version: int | None = None,
+) -> list[dict]:
+    client = dial(profile, credentials_profile=credentials, token_env=token_env)
+    try:
+        return client.call_tool(
+            "export_versions",
+            {
+                "constitution": constitution,
+                "from_version": from_version,
+                "to_version": to_version,
+            },
+        )
+    finally:
+        client.close()
 
 
 @app.command()

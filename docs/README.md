@@ -15,7 +15,8 @@ but each one stands alone.
    framework or language, in five stages with a checker.
 5. [Publishing your constitution](publishing.md). The public page, the
    colors, and your own templates.
-6. [Operating Kyno](operating.md). Storage, auth, deploying, and testing.
+6. [Operating Kyno](operating.md). Storage, auth, remote profiles, deploying,
+   and testing.
 
 ## 💬 Questions?
 

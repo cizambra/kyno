@@ -36,6 +36,7 @@ better written in a file:
 
 ```yaml
 # constitution.yaml
+constitution: default
 mission: Ship a lending product people trust with their worst month
 principles:
   - Say the hard number first
@@ -52,13 +53,10 @@ declaration: |
 
   - We say no early and in plain words.
   - We publish the number before the story that softens it.
-note: the constitution as written
-by: camilo
 ```
 
 ```bash
-kyno set constitution.yaml
-kyno set constitution.yaml --constitution eu --note "the EU edit"
+kyno set constitution.yaml --note "the constitution as written"
 ```
 
 The declaration can be written using markdown. How the published page
@@ -67,26 +65,39 @@ renders and escapes it is covered in
 
 ### The file and the flags
 
-The file is the only source of content. The flags describe the edit:
-`--note` (required, what changed and why), `--by` (who made it, your
-system username when omitted), and `--constitution` (which named
-constitution to write to; the file's own `constitution:` key works too,
-and the flag wins when both are given). Fields the file leaves out are
-carried forward from the previous version; to clear one, write it
-empty, like `declaration: ""`. And every edit appends a new version, so
-nothing you had is ever overwritten.
+The file is the only source of what the constitution is, and that
+includes which one it is: the `constitution:` key names it, and a file
+without one is refused, so a copy, a rename, or a recovery read always
+lands where it says. The flags describe the edit: `--note` (required,
+what changed and why) and `--by` (who made it, your system username when
+omitted). Fields the file leaves out are carried forward from the
+previous version; to clear one, write it empty, like `declaration: ""`.
+And every edit appends a new version, so nothing you had is ever
+overwritten.
 
 ## Multiple constitutions
 
 One Kyno can hold several constitutions side by side, for example one per
-product line or per jurisdiction. Every operation takes an optional
-`constitution` name, over MCP and on the CLI (`--constitution eu`), and
-defaults to `"default"`, so a single-constitution setup never has to mention
-it. Each name has its own version sequence: bumping `eu` to v2 leaves
-`default` at whatever version it was. A name you have never written to reads
-as the same version-0 empty state an untouched store does. The subscribable
-resource is the default constitution's; agents on another one pull it by name
-with `get_changes_since`.
+product line or per jurisdiction. Each file says which one it is:
+
+```yaml
+# eu.yaml
+constitution: eu
+mission: Lend in the EU the way the EU expects
+```
+
+```bash
+kyno set eu.yaml --note "the EU edit"
+kyno current --constitution eu
+```
+
+Reads take the name as an option, over MCP and on the CLI, and default to
+`"default"`, so a single-constitution setup only ever names it in the
+file. Each name has its own version sequence: bumping `eu` to v2 leaves
+`default` at whatever version it was. A name you have never written to
+reads as the same version-0 empty state an untouched store does. The
+subscribable resource is the default constitution's; agents on another
+one pull it by name with `get_changes_since`.
 
 ## 💬 Questions?
 

@@ -17,6 +17,7 @@ from kyno.profiles import (
     credentials_path,
     remotes,
     remotes_path,
+    resolve,
 )
 
 runner = CliRunner()
@@ -178,6 +179,96 @@ def test_given_several_profiles_when_sharing_one_credential_then_each_keeps_its_
     assert remotes()["scl"].url == "https://scl.mybiz.com"
 
 
+def test_given_a_profile_on_env_credentials_when_resolving_then_the_chain_ends_at_the_value(
+    monkeypatch,
+):
+    add_credentials("oncall", token_env="KYNO_ONCALL_TOKEN")
+    add_remote("https://kyno.mybiz.com", "oncall", credentials_profile="oncall")
+    monkeypatch.setenv("KYNO_ONCALL_TOKEN", "t0k")
+    got = resolve("oncall")
+    assert (got.url, got.token) == ("https://kyno.mybiz.com", "t0k")
+    assert (
+        got.chain
+        == "oncall -> https://kyno.mybiz.com -> credentials 'oncall' -> ${KYNO_ONCALL_TOKEN}"
+    )
+    assert "t0k" not in repr(got)
+
+
+def test_given_a_profile_on_a_written_token_when_resolving_then_that_token_is_used():
+    add_credentials(token="s3cret")
+    add_remote("https://kyno.mybiz.com")
+    got = resolve()
+    assert (
+        got.token == "s3cret"
+        and got.chain == "default -> https://kyno.mybiz.com -> credentials 'default'"
+    )
+
+
+def test_given_a_profile_on_a_token_env_when_resolving_then_the_variable_is_read(monkeypatch):
+    add_remote("https://kyno.mybiz.com", "ci", token_env="KYNO_TOKEN")
+    monkeypatch.setenv("KYNO_TOKEN", "ci-token")
+    assert resolve("ci").token == "ci-token"
+
+
+def test_given_an_unset_variable_when_resolving_then_it_fails_loud_naming_the_variable(monkeypatch):
+    add_remote("https://kyno.mybiz.com", "ci", token_env="KYNO_TOKEN")
+    monkeypatch.delenv("KYNO_TOKEN", raising=False)
+    with pytest.raises(
+        ProfileError,
+        match=r"remote profile 'ci' reads its token from \$\{KYNO_TOKEN\}, which is not set",
+    ):
+        resolve("ci")
+
+
+def test_given_a_blank_variable_when_resolving_then_it_is_refused_not_empty(monkeypatch):
+    add_credentials(token_env="KYNO_TOKEN")
+    add_remote("https://kyno.mybiz.com")
+    monkeypatch.setenv("KYNO_TOKEN", "  ")
+    with pytest.raises(ProfileError, match="set but blank"):
+        resolve()
+
+
+def test_given_an_unknown_profile_when_resolving_then_the_error_names_what_exists_and_the_fix():
+    add_remote("https://pdx.mybiz.com", "pdx", token_env="A")
+    with pytest.raises(ProfileError) as refused:
+        resolve("prod")
+    assert "no remote profile 'prod'; you have: pdx" in str(refused.value)
+    assert "kyno remote add --url URL --profile prod" in str(refused.value)
+
+
+def test_given_a_remote_whose_credentials_vanished_when_resolving_then_it_says_so():
+    add_credentials("oncall", token_env="X")
+    add_remote("https://kyno.mybiz.com", "oncall", credentials_profile="oncall")
+    credentials_path().unlink()
+    with pytest.raises(
+        ProfileError, match="points at credentials 'oncall', which do not exist; you have: none"
+    ):
+        resolve("oncall")
+
+
+def test_given_a_per_run_credential_when_resolving_then_it_swaps_the_source_and_leaves_the_files(
+    monkeypatch,
+):
+    add_credentials("default", token_env="READ_TOKEN")
+    add_credentials("oncall", token_env="WRITE_TOKEN")
+    add_remote("https://kyno.mybiz.com")
+    monkeypatch.setenv("READ_TOKEN", "r")
+    monkeypatch.setenv("WRITE_TOKEN", "w")
+    before = remotes_path().read_text()
+    got = resolve(credentials_profile="oncall")
+    assert got.token == "w" and got.chain.endswith(
+        "credentials 'oncall' -> ${WRITE_TOKEN} (this run)"
+    )
+    assert remotes_path().read_text() == before and remotes()["default"].credentials == "default"
+
+
+def test_given_a_per_run_token_env_when_resolving_then_that_variable_is_read(monkeypatch):
+    add_credentials(token_env="READ_TOKEN")
+    add_remote("https://kyno.mybiz.com")
+    monkeypatch.setenv("ONE_OFF", "o")
+    assert resolve(token_env="ONE_OFF").token == "o"
+
+
 def test_given_token_env_when_running_credentials_add_then_it_says_what_it_wrote_and_where():
     r = runner.invoke(
         app, ["credentials", "add", "--profile", "oncall", "--token-env", "KYNO_ONCALL"]
@@ -250,3 +341,9 @@ def test_given_a_positional_name_when_running_remote_add_then_it_is_not_accepted
         app, ["remote", "add", "prod", "--url", "https://kyno.mybiz.com", "--token-env", "X"]
     )
     assert r.exit_code != 0
+
+
+def test_given_nothing_configured_when_resolving_default_then_the_fix_needs_no_profile_flag():
+    with pytest.raises(ProfileError) as refused:
+        resolve()
+    assert str(refused.value).endswith("Create it with: kyno remote add --url URL")

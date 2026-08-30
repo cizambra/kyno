@@ -73,26 +73,29 @@ replace the block they injected themselves.
 
 ## Remote profiles
 
-Working against a hosted Kyno from a laptop or a pipeline takes two things:
-where the server is, and which token to show it. Both live in small files
-under `~/.kyno`, the same path on every machine, written only by the
-commands that own them. Nothing goes next to a repo, so a credentials file
-never ends up in a commit by mistake.
+To work against a hosted Kyno from your laptop or a pipeline you need two things: where the server is, and which token to show it. Both live in small files under `~/.kyno`, the same path on every machine, and only the commands below write them. They never live next to a repo, so a credentials file can't end up in a commit by mistake.
 
-Credentials first. One profile per token, the token itself never on the
-command line:
+Start with credentials. Each profile holds one token, and the token itself never goes on the command line:
 
 ```bash
 kyno credentials add --token-env KYNO_TOKEN                   # profile "default"
 kyno credentials add --profile oncall --token-env KYNO_ONCALL # a second one
-kyno credentials add --profile laptop                         # no flag: asks, hidden
+kyno credentials add --profile laptop                         # no flag: asks for it, hidden
 ```
 
-`--token-env` writes a reference (`${KYNO_TOKEN}`) that is read when the
-profile is used, so the token rotates when the variable does. Without it
-the token you type is written in, and the file is owner-readable only.
+`--token-env` doesn't store the token; it stores a reference (`${KYNO_TOKEN}`) that gets read when you use the profile, so rotating the token is just changing the variable's value. Without it, the token you type is written into the file, and the file is readable only by you.
 
-The remote profiles that point at these credentials are the next step.
+Then remotes. Each profile is one destination: the URL, and where its token comes from.
+
+```bash
+kyno remote add --url https://kyno.mybiz.com                          # "default", on the default credentials
+kyno remote add --url https://kyno.mybiz.com --profile oncall --credentials oncall
+kyno remote add --url https://kyno.mybiz.com --profile ci --token-env KYNO_TOKEN
+```
+
+If you point a remote at credentials that don't exist, the command fails right there and tells you what you do have and what to run. `--token-env` on a remote skips the credentials file entirely, which is what you want in a CI image that carries no credentials at all.
+
+A profile has exactly one token source. Several profiles can share one credential — say three regional servers that all accept the same operator token — but one profile never holds two tokens, because Kyno would be picking between them silently and "who wrote this" would become a guess. If you want to act as someone else on the same server, make a second profile with the same URL and different credentials; a production write then visibly says which profile it used.
 
 ## Deploying
 

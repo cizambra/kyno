@@ -1,8 +1,9 @@
-"""The credentials file behind remote mode.
+"""The two client-side files behind remote mode: remotes and credentials.
 
-It lives in the user config directory and is written only by the command
-that owns it, never by hand and never next to a repo. A credentials
-profile is one token, written in or read from a variable.
+Both live in the user config directory and are written only by the
+commands that own them, never by hand and never next to a repo. A
+remote profile is one destination: a URL and where its token comes from.
+A credentials profile is one token, written in or read from a variable.
 """
 
 from __future__ import annotations
@@ -12,10 +13,12 @@ import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from kyno.errors import ConfigError
 
 DEFAULT_PROFILE = "default"
+REMOTES_FILE = "remotes"
 CREDENTIALS_FILE = "credentials"
 
 _PROFILE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
@@ -34,6 +37,10 @@ def config_dir() -> Path:
     return Path.home() / ".kyno"
 
 
+def remotes_path() -> Path:
+    return config_dir() / REMOTES_FILE
+
+
 def credentials_path() -> Path:
     return config_dir() / CREDENTIALS_FILE
 
@@ -48,6 +55,21 @@ class Credential:
     def env_var(self) -> str | None:
         match = _ENV_REF.fullmatch(self.token)
         return match.group(1) if match else None
+
+
+@dataclass(frozen=True)
+class Remote:
+    profile: str
+    url: str
+    # Exactly one of these is set: the profile's single token source.
+    credentials: str | None = None
+    token_env: str | None = None
+
+    @property
+    def source(self) -> str:
+        if self.credentials is not None:
+            return f"credentials '{self.credentials}'"
+        return f"${{{self.token_env}}}"
 
 
 def _read(path: Path) -> configparser.ConfigParser:
@@ -82,6 +104,28 @@ def _check_env_name(name: str) -> None:
         raise ProfileError(f"'{name}' is not an environment variable name")
 
 
+_HOST_PORT = re.compile(r"[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:\d{1,5})?")
+
+
+def _server_url(url: str) -> bool:
+    """A URL this client could actually dial: http or https, a plain
+    host with an optional port and path, nothing else. Whether anything
+    answers there is the connection's job, not this check's."""
+    parts = urlsplit(url)
+    return (
+        parts.scheme in ("http", "https")
+        and bool(parts.netloc)
+        and "@" not in parts.netloc
+        and _HOST_PORT.fullmatch(parts.netloc) is not None
+        and not parts.query
+        and not parts.fragment
+    )
+
+
+def _listing(names: list[str]) -> str:
+    return ", ".join(names) if names else "none"
+
+
 def credentials() -> dict[str, Credential]:
     parser = _read(credentials_path())
     return {
@@ -112,4 +156,63 @@ def add_credentials(
         parser.add_section(profile)
     parser[profile] = {"token": value}
     _write(credentials_path(), parser, private=True)
+    return outcome
+
+
+def remotes() -> dict[str, Remote]:
+    parser = _read(remotes_path())
+    found = {}
+    for name in parser.sections():
+        section = parser[name]
+        reference = _ENV_REF.fullmatch(section.get("token", ""))
+        found[name] = Remote(
+            profile=name,
+            url=section.get("url", ""),
+            credentials=section.get("credentials") or None,
+            token_env=reference.group(1) if reference else None,
+        )
+    return found
+
+
+def add_remote(
+    url: str,
+    profile: str = DEFAULT_PROFILE,
+    *,
+    credentials_profile: str | None = None,
+    token_env: str | None = None,
+) -> str:
+    """Write one remote profile: the URL and its one token source. With no
+    source named, it points at the 'default' credentials. Pointing at
+    credentials that do not exist is refused: credentials first, then
+    remotes. Returns 'added' or 'updated'."""
+    _check_profile_name(profile)
+    if not _server_url(url):
+        raise ProfileError(
+            f"'{url}' is not a server URL Kyno can dial: use http(s)://host[:port][/path]"
+        )
+    if credentials_profile is not None and token_env is not None:
+        raise ProfileError("give the token one way: --credentials NAME, or --token-env VAR")
+    if token_env is not None:
+        _check_env_name(token_env)
+        section = {"url": url.rstrip("/"), "token": f"${{{token_env}}}"}
+    else:
+        wanted = credentials_profile or DEFAULT_PROFILE
+        _check_profile_name(wanted)
+        have = credentials()
+
+        if wanted not in have:
+            fix = "kyno credentials add" + (
+                "" if wanted == DEFAULT_PROFILE else f" --profile {wanted}"
+            )
+            raise ProfileError(
+                f"no credentials profile '{wanted}'; "
+                f"you have: {_listing(sorted(have))}. Create it with: {fix}"
+            )
+        section = {"url": url.rstrip("/"), "credentials": wanted}
+    parser = _read(remotes_path())
+    outcome = "updated" if parser.has_section(profile) else "added"
+    if outcome == "added":
+        parser.add_section(profile)
+    parser[profile] = section
+    _write(remotes_path(), parser, private=False)
     return outcome

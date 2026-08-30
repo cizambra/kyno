@@ -1,4 +1,4 @@
-"""The credentials file behind remote mode, and the command that owns it."""
+"""The two files behind remote mode, and the commands that own them."""
 
 import pathlib
 import re
@@ -11,9 +11,12 @@ from kyno.cli import app
 from kyno.profiles import (
     ProfileError,
     add_credentials,
+    add_remote,
     config_dir,
     credentials,
     credentials_path,
+    remotes,
+    remotes_path,
 )
 
 runner = CliRunner()
@@ -36,6 +39,7 @@ def plain(output):
 def test_given_any_home_when_locating_the_files_then_they_are_in_dot_kyno_never_cwd(home):
     assert config_dir() == home / ".kyno"
     assert credentials_path() == home / ".kyno" / "credentials"
+    assert remotes_path() == home / ".kyno" / "remotes"
     add_credentials("default", token_env="KYNO_TOKEN")
     assert credentials_path().exists() and not list(pathlib.Path.cwd().glob("*"))
 
@@ -89,6 +93,91 @@ def test_given_the_repr_of_a_credential_when_printed_then_the_token_is_not_in_it
     assert "s3cret" not in repr(credentials()["default"])
 
 
+def test_given_no_credentials_when_adding_a_remote_then_it_is_refused_naming_the_fix():
+    with pytest.raises(ProfileError) as refused:
+        add_remote("https://kyno.mybiz.com")
+    assert "no credentials profile 'default'; you have: none" in str(refused.value)
+    assert str(refused.value).endswith("Create it with: kyno credentials add")
+    assert not remotes_path().exists()
+
+
+def test_given_default_credentials_when_adding_a_remote_then_it_points_at_them():
+    add_credentials(token_env="KYNO_TOKEN")
+    assert add_remote("https://kyno.mybiz.com/") == "added"
+    remote = remotes()["default"]
+    assert remote.url == "https://kyno.mybiz.com" and remote.credentials == "default"
+    assert remote.token_env is None and remote.source == "credentials 'default'"
+
+
+def test_given_a_named_credential_when_adding_a_remote_then_the_pointer_is_that_name():
+    add_credentials("oncall", token_env="KYNO_ONCALL_TOKEN")
+    add_remote("https://kyno.mybiz.com", "oncall", credentials_profile="oncall")
+    assert remotes()["oncall"].credentials == "oncall"
+
+
+def test_given_a_missing_named_credential_when_adding_a_remote_then_the_listing_says_what_exists():
+    add_credentials("default", token_env="KYNO_TOKEN")
+    with pytest.raises(ProfileError, match="no credentials profile 'oncall'; you have: default"):
+        add_remote("https://kyno.mybiz.com", "oncall", credentials_profile="oncall")
+
+
+def test_given_a_token_env_when_adding_a_remote_then_no_credentials_are_needed():
+    add_remote("https://kyno.mybiz.com", "ci", token_env="KYNO_TOKEN")
+    remote = remotes()["ci"]
+    assert remote.token_env == "KYNO_TOKEN" and remote.credentials is None
+    assert (
+        remotes_path().read_text()
+        == "[ci]\nurl = https://kyno.mybiz.com\ntoken = ${KYNO_TOKEN}\n\n"
+    )
+
+
+def test_given_both_sources_when_adding_a_remote_then_it_is_refused():
+    add_credentials(token_env="KYNO_TOKEN")
+    with pytest.raises(ProfileError, match="one way"):
+        add_remote("https://kyno.mybiz.com", credentials_profile="default", token_env="X")
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "kyno.mybiz.com",
+        "https://",
+        "ftp://kyno.mybiz.com",
+        "https:///path",
+        "https://user:pw@kyno.mybiz.com",
+        "https://kyno.mybiz.com?x=1",
+        "https://kyno.mybiz.com#top",
+        "https://kyno .mybiz.com",
+        "https://-kyno.mybiz.com",
+    ],
+)
+def test_given_a_bad_url_when_adding_a_remote_then_it_is_refused(url):
+    with pytest.raises(ProfileError, match="not a server URL"):
+        add_remote(url, token_env="X")
+
+
+@pytest.mark.parametrize(
+    "url", ["http://localhost:8080", "https://kyno.mybiz.com/base/path", "https://10.0.0.7:8443"]
+)
+def test_given_a_dialable_url_when_adding_a_remote_then_it_is_accepted(url):
+    add_remote(url, "p", token_env="X")
+    assert remotes()["p"].url == url.rstrip("/")
+
+
+def test_given_an_existing_profile_when_adding_a_remote_again_then_it_is_replaced():
+    add_remote("https://old.mybiz.com", "pdx", token_env="A")
+    assert add_remote("https://pdx.mybiz.com", "pdx", token_env="B") == "updated"
+    assert remotes()["pdx"].url == "https://pdx.mybiz.com" and len(remotes()) == 1
+
+
+def test_given_several_profiles_when_sharing_one_credential_then_each_keeps_its_own_url():
+    add_credentials("ops", token_env="OPS_TOKEN")
+    for region in ("pdx", "scl", "cdg"):
+        add_remote(f"https://{region}.mybiz.com", region, credentials_profile="ops")
+    assert {r.credentials for r in remotes().values()} == {"ops"}
+    assert remotes()["scl"].url == "https://scl.mybiz.com"
+
+
 def test_given_token_env_when_running_credentials_add_then_it_says_what_it_wrote_and_where():
     r = runner.invoke(
         app, ["credentials", "add", "--profile", "oncall", "--token-env", "KYNO_ONCALL"]
@@ -115,3 +204,49 @@ def test_given_a_token_flag_when_running_credentials_add_then_it_is_rejected_as_
     # Tokens never travel on a command line: shell history and process lists.
     r = runner.invoke(app, ["credentials", "add", "--token", "s3cret"])
     assert r.exit_code != 0 and "no such option" in plain(r.output).lower()
+
+
+def test_given_credentials_when_running_remote_add_then_it_says_the_bundle_and_where():
+    runner.invoke(app, ["credentials", "add", "--token-env", "KYNO_TOKEN"])
+    r = runner.invoke(app, ["remote", "add", "--url", "https://kyno.mybiz.com/"])
+    assert r.exit_code == 0, r.output
+    assert (
+        "added remote profile 'default': https://kyno.mybiz.com, token from credentials 'default'"
+        in r.output
+    )
+    assert str(remotes_path()) in r.output
+
+
+def test_given_no_credentials_when_running_remote_add_then_the_error_names_have_and_fix():
+    r = runner.invoke(app, ["remote", "add", "--url", "https://kyno.mybiz.com", "--profile", "pdx"])
+    assert r.exit_code == 1
+    assert "error: no credentials profile 'default'; you have: none" in plain(r.output)
+    assert "Create it with: kyno credentials add" in plain(r.output)
+    assert "--profile default" not in plain(r.output)
+
+
+def test_given_a_token_env_when_running_remote_add_then_no_credentials_file_is_touched():
+    r = runner.invoke(
+        app,
+        [
+            "remote",
+            "add",
+            "--url",
+            "https://ci.mybiz.com",
+            "--profile",
+            "ci",
+            "--token-env",
+            "KYNO_TOKEN",
+        ],
+    )
+    assert r.exit_code == 0, r.output
+    assert "token from ${KYNO_TOKEN}" in r.output
+    assert not credentials_path().exists() and remotes()["ci"].token_env == "KYNO_TOKEN"
+
+
+def test_given_a_positional_name_when_running_remote_add_then_it_is_not_accepted():
+    # Nothing like `prod` is a keyword; profiles are named with --profile only.
+    r = runner.invoke(
+        app, ["remote", "add", "prod", "--url", "https://kyno.mybiz.com", "--token-env", "X"]
+    )
+    assert r.exit_code != 0

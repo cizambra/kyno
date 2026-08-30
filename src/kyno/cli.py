@@ -17,7 +17,7 @@ from kyno.authoring import (
 )
 from kyno.config import Settings, store_from_settings
 from kyno.errors import AuthoringError, CoherenceError, NoFieldChangedError
-from kyno.profiles import add_credentials, credentials_path
+from kyno.profiles import add_credentials, add_remote, credentials_path, remotes_path
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
 from kyno.service import ControlPlane
 
@@ -176,6 +176,9 @@ def _system_user() -> str | None:
 page_app = typer.Typer(help="Work with the pages Kyno publishes.")
 app.add_typer(page_app, name="page")
 
+remote_app = typer.Typer(help="Where a remote run goes: one profile per destination.")
+app.add_typer(remote_app, name="remote")
+
 credentials_app = typer.Typer(help="The tokens remote runs use: one profile per token.")
 app.add_typer(credentials_app, name="credentials")
 
@@ -197,6 +200,27 @@ def credentials_add(
     source = f"${{{token_env}}}" if token_env else "the token you entered"
     typer.echo(f"{outcome} credentials profile '{profile}': {source}")
     typer.echo(f"written to {credentials_path()} (owner-readable only)")
+
+
+@remote_app.command("add")
+def remote_add(
+    url: str = typer.Option(..., "--url", help="The Kyno server's URL."),
+    profile: str = typer.Option("default", "--profile", help="The remote profile to write."),
+    credentials: str | None = typer.Option(
+        None, "--credentials", help="Take the token from this credentials profile."
+    ),
+    token_env: str | None = typer.Option(
+        None, "--token-env", help="Take the token from this variable instead."
+    ),
+) -> None:
+    """Add or replace one remote profile: the URL and its one token source.
+    With neither --credentials nor --token-env it points at the 'default'
+    credentials, which must already exist."""
+    with _clean_errors():
+        outcome = add_remote(url, profile, credentials_profile=credentials, token_env=token_env)
+    source = f"${{{token_env}}}" if token_env else f"credentials '{credentials or 'default'}'"
+    typer.echo(f"{outcome} remote profile '{profile}': {url.rstrip('/')}, token from {source}")
+    typer.echo(f"written to {remotes_path()}")
 
 
 @page_app.command("export")

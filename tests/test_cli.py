@@ -548,3 +548,81 @@ def test_given_an_empty_store_when_reading_log_then_it_says_so(tmp_path, monkeyp
     r = runner.invoke(app, ["log"])
     assert r.exit_code == 0
     assert "no constitution set" in r.stdout
+
+
+def test_given_a_matching_file_when_checking_then_the_store_agrees(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    apply_yaml(tmp_path, mission="M1", note="init", name="c.yaml")
+    r = runner.invoke(app, ["check", str(tmp_path / "c.yaml")])
+    assert r.exit_code == 0
+    assert "store: agrees with 'default' (version 1)" in r.stdout
+
+
+def test_given_a_stale_file_when_checking_then_it_fails_and_shows_the_delta(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    apply_yaml(tmp_path, mission="M2", note="hotfix")
+    stale = tmp_path / "stale.yaml"
+    stale.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
+    r = runner.invoke(app, ["check", str(stale)])
+    assert r.exit_code == 1
+    assert "store: differs from 'default' (version 1):" in r.stdout
+    assert 'The mission was "M2" and is now "M1".' in r.stdout
+
+
+def test_given_an_empty_store_when_checking_then_it_fails(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    target = tmp_path / "c.yaml"
+    target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
+    r = runner.invoke(app, ["check", str(target)])
+    assert r.exit_code == 1
+    assert "has no versions" in r.stdout
+
+
+def test_given_an_unreachable_store_when_checking_then_the_report_still_prints(
+    tmp_path, monkeypatch
+):
+    # No init-db: the field report stands, the comparison says why it didn't run.
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'never.sqlite3'}")
+    target = tmp_path / "c.yaml"
+    target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
+    r = runner.invoke(app, ["check", str(target)])
+    assert r.exit_code == 0
+    assert "kyno fields set: constitution, mission" in r.stdout
+    assert "store: not compared" in r.stdout
+    assert "[SQL:" not in r.stdout and r.stdout.count("store:") == 1
+
+
+def test_given_a_file_without_a_constitution_key_when_checking_then_the_store_is_not_compared(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    target = tmp_path / "unnamed.yaml"
+    target.write_text("mission: M1\n", encoding="utf-8")
+    r = runner.invoke(app, ["check", str(target)])
+    assert r.exit_code == 1
+    assert "kyno fields not set: constitution" in r.output
+    assert "store: not compared" in r.output and "constitution: <name>" in r.output
+
+
+def test_given_a_check_when_comparing_with_the_store_then_the_head_is_read_once(
+    tmp_path, monkeypatch
+):
+    """One read feeds both the version named and the delta shown, so a
+    writer landing mid-check cannot make the two describe different heads."""
+    from kyno.store.sql import SqlConstitutionStore
+
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    apply_yaml(tmp_path, mission="M1", note="init", name="c.yaml")
+    reads = []
+    real_head = SqlConstitutionStore.head
+    monkeypatch.setattr(
+        SqlConstitutionStore, "head", lambda self, name: reads.append(name) or real_head(self, name)
+    )
+    r = runner.invoke(app, ["check", str(tmp_path / "c.yaml")])
+    assert r.exit_code == 0 and "agrees" in r.output
+    assert reads == ["default"]

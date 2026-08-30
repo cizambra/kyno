@@ -260,17 +260,47 @@ def current(
 def check(
     file: str = typer.Argument(..., help="The constitution file to inspect."),
 ) -> None:
-    """Report which kyno fields a file sets, which it leaves out, and which
-    keys are yours. Nothing here blocks an apply: a field the file leaves
-    out keeps the previous version's value, and a custom key is ignored."""
+    """Report how Kyno reads a file, then whether the store agrees with it.
+    The field report never blocks anything. The store comparison is what a
+    pipeline gates on: exit 1 when the file and the head are out of sync."""
     try:
         report = check_constitution_file(file)
+        fields = read_constitution_file(file)
     except CoherenceError as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
     typer.echo(f"kyno fields set: {', '.join(report.present) or 'none'}")
     typer.echo(f"kyno fields not set: {', '.join(report.missing) or 'none'}")
     typer.echo(f"custom fields: {', '.join(report.custom) or 'none'}")
+    _compare_with_store(fields, file)
+
+
+def _compare_with_store(fields: ConstitutionFile, path: str) -> None:
+    """Say whether the store's head is what the file says. Head and delta
+    come from one read, so the version named and the changes listed belong
+    to the same moment. Exits 1 when they differ or nothing is there yet."""
+    try:
+        target = _constitution_name(fields, path)
+    except AuthoringError as exc:
+        typer.echo(f"store: not compared ({exc})")
+        raise typer.Exit(code=1) from None
+    try:
+        head, delta = _control_plane().head_and_delta(**_content_of(fields), constitution=target)
+    except (CoherenceError, SQLAlchemyError) as exc:
+        # The cause is the first line; a database error goes on to quote
+        # its SQL, which tells an operator nothing about the file.
+        typer.echo(f"store: not compared ({str(exc).splitlines()[0]})")
+        return
+    if head is None:
+        typer.echo(f"store: '{target}' has no versions; applying this file creates version 1")
+        raise typer.Exit(code=1)
+    if not delta:
+        typer.echo(f"store: agrees with '{target}' (version {head.version})")
+        return
+    typer.echo(f"store: differs from '{target}' (version {head.version}):")
+    for line in delta:
+        typer.echo(f"  {line}")
+    raise typer.Exit(code=1)
 
 
 @app.command()

@@ -95,6 +95,8 @@ kyno remote add --url https://kyno.mybiz.com --profile ci --token-env KYNO_TOKEN
 
 If you point a remote at credentials that don't exist, the command fails right there and tells you what you do have and what to run. `--token-env` on a remote skips the credentials file entirely, which is what you want in a CI image that carries no credentials at all.
 
+A profile is configuration that points at other configuration: the remotes file points at a credentials profile, the credentials profile points at a variable, and the variable holds the token. When something breaks, reading one file isn't enough — you'd have to walk all three hops yourself. `kyno remote show --profile X` walks them for you: it prints the URL, where the token comes from, and whether the whole chain resolves right now, with the token itself never shown. `kyno remote list` prints one line per profile. If a profile doesn't resolve, `show` exits 1 and the reason includes the command that fixes it, so you can put it in a setup script and let it gate.
+
 A profile has exactly one token source. Several profiles can share one credential — say three regional servers that all accept the same operator token — but one profile never holds two tokens, because Kyno would be picking between them silently and "who wrote this" would become a guess. If you want to act as someone else on the same server, make a second profile with the same URL and different credentials; a production write then visibly says which profile it used.
 
 ## Deploying

@@ -17,7 +17,14 @@ from kyno.authoring import (
 )
 from kyno.config import Settings, store_from_settings
 from kyno.errors import AuthoringError, CoherenceError, NoFieldChangedError
-from kyno.profiles import add_credentials, add_remote, credentials_path, remotes_path
+from kyno.profiles import (
+    add_credentials,
+    add_remote,
+    credentials_path,
+    inspect,
+    remotes,
+    remotes_path,
+)
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
 from kyno.service import ControlPlane
 
@@ -221,6 +228,36 @@ def remote_add(
     source = f"${{{token_env}}}" if token_env else f"credentials '{credentials or 'default'}'"
     typer.echo(f"{outcome} remote profile '{profile}': {url.rstrip('/')}, token from {source}")
     typer.echo(f"written to {remotes_path()}")
+
+
+@remote_app.command("show")
+def remote_show(
+    profile: str = typer.Option("default", "--profile", help="The remote profile to inspect."),
+) -> None:
+    """One profile's whole chain, token masked, and whether it resolves
+    right now. Exit 1 when it doesn't, so a setup step can gate on it."""
+    with _clean_errors():
+        remote, failure = inspect(profile)
+    typer.echo(f"profile: {remote.profile}")
+    typer.echo(f"url: {remote.url}")
+    typer.echo(f"token from: {remote.source}")
+    if failure is None:
+        typer.echo("resolves: yes")
+        return
+    typer.echo(f"resolves: no ({failure})")
+    raise typer.Exit(code=1)
+
+
+@remote_app.command("list")
+def remote_list() -> None:
+    """Every remote profile, one line each: name, url, token source."""
+    have = remotes()
+    if not have:
+        typer.echo("no remote profiles; create one with: kyno remote add --url URL")
+        return
+    for name in sorted(have):
+        remote = have[name]
+        typer.echo(f"{name}  {remote.url}  token from {remote.source}")
 
 
 @page_app.command("export")

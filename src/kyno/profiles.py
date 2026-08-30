@@ -256,6 +256,26 @@ def _token_from_credentials(name: str, *, owner: str) -> tuple[str, str]:
     return credential.token, f"credentials '{name}'"
 
 
+def inspect(profile: str = DEFAULT_PROFILE) -> tuple[Remote, str | None]:
+    """One profile's chain and whether it resolves right now: the Remote,
+    and None when a token comes out, else the reason it does not. The token
+    itself never comes back from here; this is for showing, not connecting."""
+    have = remotes()
+    if profile not in have:
+        fix = "kyno remote add --url URL" + (
+            "" if profile == DEFAULT_PROFILE else f" --profile {profile}"
+        )
+        raise ProfileError(
+            f"no remote profile '{profile}'; you have: {_listing(sorted(have))}. "
+            f"Create it with: {fix}"
+        )
+    try:
+        resolve(profile)
+    except ProfileError as failure:
+        return have[profile], str(failure)
+    return have[profile], None
+
+
 def resolve(
     profile: str = DEFAULT_PROFILE,
     *,

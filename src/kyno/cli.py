@@ -2,18 +2,21 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import typer
 from sqlalchemy.exc import SQLAlchemyError
 
 from kyno.authoring import (
+    ConstitutionFile,
     check_constitution_file,
     read_constitution_file,
     render_constitution_yaml,
 )
 from kyno.config import Settings, store_from_settings
-from kyno.errors import CoherenceError
+from kyno.errors import CoherenceError, NoFieldChangedError
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
 from kyno.service import ControlPlane
 
@@ -87,29 +90,66 @@ def set_direction_cmd(
     constitution: str | None = typer.Option(
         None, "--constitution", help="Which named constitution to act on."
     ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Print what would change, apply nothing."
+    ),
 ) -> None:
     """Append a version from a file. The file says what the constitution
-    is; the flags say what this edit is."""
-    if not note:
+    is; the flags say what this edit is. Every apply prints the delta it
+    makes; --dry-run prints it and stops."""
+    if not dry_run and not (note and note.strip()):
         raise typer.BadParameter("a change note is required: pass --note")
-    try:
+    with _clean_errors():
         fields = read_constitution_file(file)
-    except CoherenceError as exc:
-        typer.echo(f"error: {exc}", err=True)
-        raise typer.Exit(code=1) from None
+        content = _content_of(fields)
+        target = constitution or fields.constitution
+        plane = _control_plane()
+        delta = plane.preview_edit(**content, constitution=target)
+        if dry_run:
+            _print_delta(delta or ("no field changed",))
+            return
+        # The delta goes to stderr so stdout stays the version JSON, pipeable.
+        _print_delta(delta, err=True)
+        try:
+            version = plane.set_direction(
+                **content,
+                change_note=note,
+                created_by=by if by is not None else _system_user(),
+                constitution=target,
+            )
+        except NoFieldChangedError:
+            # The store already says what the file says. Reruns and duplicate
+            # applies are the normal case, so this is a clean exit: the head
+            # in force prints, the same as if it had just been written.
+            typer.echo("no field changed", err=True)
+            version = plane.current(target)
+        typer.echo(json.dumps(version.to_dict(), indent=2))
+
+
+@contextmanager
+def _clean_errors() -> Iterator[None]:
+    """Kyno's own errors and database failures end the command with one
+    line on stderr and exit 1, never a traceback."""
     try:
-        v = _control_plane().set_direction(
-            mission=fields.mission,
-            declaration=fields.declaration,
-            principles=fields.principles,
-            change_note=note,
-            created_by=by if by is not None else _system_user(),
-            constitution=constitution or fields.constitution or "default",
-        )
-        typer.echo(json.dumps(v.to_dict()))
+        yield
     except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
+
+
+def _content_of(fields: ConstitutionFile) -> dict[str, object]:
+    """The content fields as keyword arguments, so the preview and the
+    apply are guaranteed to describe the same edit."""
+    return {
+        "mission": fields.mission,
+        "declaration": fields.declaration,
+        "principles": fields.principles,
+    }
+
+
+def _print_delta(lines: tuple[str, ...], *, err: bool = False) -> None:
+    for line in lines:
+        typer.echo(line, err=err)
 
 
 def _system_user() -> str | None:
@@ -200,7 +240,7 @@ def current(
         elif as_yaml:
             typer.echo(render_constitution_yaml(v, constitution), nl=False)
         else:
-            typer.echo(json.dumps(v.to_dict()))
+            typer.echo(json.dumps(v.to_dict(), indent=2))
     except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None

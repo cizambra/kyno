@@ -82,16 +82,6 @@ def test_current_on_initialized_but_empty_store_reports_no_constitution_set(tmp_
     assert "error:" not in r.output.lower()
 
 
-def test_given_identical_content_when_applying_then_the_edit_is_refused(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
-    runner.invoke(app, ["init-db"])
-    apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init")
-    r = apply_yaml(tmp_path, mission="M1", principles=["p1"], note="again")
-    assert r.exit_code == 1
-    assert "error:" in r.output.lower()
-    assert "Traceback" not in r.output
-
-
 def test_given_a_by_flag_when_applying_then_the_author_is_recorded(tmp_path, monkeypatch):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
@@ -342,7 +332,7 @@ def test_given_the_yaml_read_out_when_reapplied_then_nothing_changes(tmp_path, m
     target = tmp_path / "recovered.yaml"
     target.write_text(out, encoding="utf-8")
     r = runner.invoke(app, ["set", str(target), "--note", "reapply"])
-    assert r.exit_code == 1
+    assert r.exit_code == 0
     assert "no field changed" in r.output
 
 
@@ -422,3 +412,111 @@ def test_given_custom_fields_when_applying_then_they_are_ignored(tmp_path, monke
     assert r.exit_code == 0
     payload = json.loads(r.stdout)
     assert payload["change_note"] == "the real note"
+
+
+def test_given_an_edit_when_applied_then_the_delta_is_printed(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    apply_yaml(tmp_path, mission="M1", note="init")
+    r = apply_yaml(tmp_path, mission="M2", note="pivot")
+    assert r.exit_code == 0
+    assert 'The mission was "M1" and is now "M2".' in r.output
+    # stdout stays the version JSON, pipeable; the delta rides stderr.
+    assert json.loads(r.stdout)["version"] == 2
+
+
+def test_given_an_empty_store_when_applying_then_the_first_version_is_announced(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    r = apply_yaml(tmp_path, mission="M1", note="init")
+    assert "Creates 'default' at version 1." in r.output
+
+
+def test_given_dry_run_when_applying_then_the_delta_prints_and_nothing_is_persisted(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    apply_yaml(tmp_path, mission="M1", note="init")
+    target = tmp_path / "next.yaml"
+    target.write_text("mission: M2\n", encoding="utf-8")
+    r = runner.invoke(app, ["set", str(target), "--dry-run"])
+    assert r.exit_code == 0
+    assert 'The mission was "M1" and is now "M2".' in r.output
+    head = json.loads(runner.invoke(app, ["current"]).stdout)
+    assert head["version"] == 1 and head["mission"] == "M1"
+
+
+def test_given_identical_content_when_dry_running_then_it_says_no_field_changed(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    apply_yaml(tmp_path, mission="M1", note="init", name="same.yaml")
+    r = runner.invoke(app, ["set", str(tmp_path / "same.yaml"), "--dry-run"])
+    assert r.exit_code == 0
+    assert "no field changed" in r.output
+
+
+def test_given_dry_run_when_no_note_is_passed_then_it_still_runs(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    target = tmp_path / "next.yaml"
+    target.write_text("mission: M1\n", encoding="utf-8")
+    r = runner.invoke(app, ["set", str(target), "--dry-run"])
+    assert r.exit_code == 0
+
+
+def test_given_an_apply_when_reading_stdout_then_the_json_is_indented_for_people(
+    tmp_path, monkeypatch
+):
+    """The JSON is read by people at a terminal as often as by scripts, and
+    indentation costs a script nothing. `current` and `export` match."""
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    applied = apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init")
+    current = runner.invoke(app, ["current"])
+    for out in (applied.stdout, current.stdout):
+        assert out.startswith("{\n  ")
+        assert json.loads(out)["principles"][0]["title"] == "p1"
+
+
+def test_given_identical_content_when_applying_then_nothing_is_written_and_the_exit_is_clean(
+    tmp_path, monkeypatch
+):
+    """A duplicate apply is the normal case for a rerun, not a mistake: no
+    version is written, stderr says so, and stdout is the head in force."""
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    apply_yaml(tmp_path, mission="M1", note="init", name="same.yaml")
+    r = runner.invoke(app, ["set", str(tmp_path / "same.yaml"), "--note", "again"])
+    assert r.exit_code == 0
+    assert "no field changed" in r.output
+    assert json.loads(r.stdout)["version"] == 1
+    assert json.loads(runner.invoke(app, ["current"]).stdout)["version"] == 1
+
+
+def test_given_a_whitespace_note_when_applying_then_it_is_refused_as_missing(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    r = apply_yaml(tmp_path, mission="M1", note="   ")
+    assert r.exit_code != 0
+    assert "note" in r.output.lower()
+
+
+def test_given_no_name_anywhere_when_applying_then_the_default_constitution_receives_it(
+    tmp_path, monkeypatch
+):
+    """No --constitution flag and no constitution: key in the file: the
+    service's own default takes the version, and no other name does."""
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    assert apply_yaml(tmp_path, mission="M1", note="init").exit_code == 0
+    assert (
+        json.loads(runner.invoke(app, ["current", "--constitution", "default"]).stdout)["mission"]
+        == "M1"
+    )
+    assert json.loads(runner.invoke(app, ["current"]).stdout)["version"] == 1
+    assert "no constitution set" in runner.invoke(app, ["current", "--constitution", "eu"]).output

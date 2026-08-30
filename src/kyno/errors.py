@@ -14,6 +14,10 @@ class EmptyChangeError(CoherenceError):
     """set_direction was called with no field that actually changes."""
 
 
+class NoFieldChangedError(EmptyChangeError):
+    """The edit would leave every field exactly as it is."""
+
+
 class UnknownPrincipleError(CoherenceError):
     """No principle in the current version carries that title."""
 

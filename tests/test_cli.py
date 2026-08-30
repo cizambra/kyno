@@ -444,7 +444,9 @@ def test_given_an_empty_store_when_applying_then_the_first_version_is_announced(
     assert "Creates 'default' at version 1." in r.output
 
 
-def test_given_dry_run_when_applying_then_the_delta_prints_and_nothing_lands(tmp_path, monkeypatch):
+def test_given_dry_run_when_applying_then_the_delta_prints_and_nothing_is_persisted(
+    tmp_path, monkeypatch
+):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="init")

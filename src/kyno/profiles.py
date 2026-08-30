@@ -72,6 +72,16 @@ class Remote:
         return f"${{{self.token_env}}}"
 
 
+@dataclass(frozen=True)
+class Resolved:
+    """A remote profile with its token looked up: what a client connects with."""
+
+    profile: str
+    url: str
+    token: str = field(repr=False)
+    chain: str
+
+
 def _read(path: Path) -> configparser.ConfigParser:
     parser = configparser.ConfigParser(interpolation=None)
     if path.exists():
@@ -216,3 +226,69 @@ def add_remote(
     parser[profile] = section
     _write(remotes_path(), parser, private=False)
     return outcome
+
+
+def _token_from_env(name: str, *, owner: str) -> str:
+    value = os.environ.get(name)
+    if value is None:
+        raise ProfileError(f"{owner} reads its token from ${{{name}}}, which is not set")
+    if not value.strip():
+        raise ProfileError(f"{owner} reads its token from ${{{name}}}, which is set but blank")
+    return value
+
+
+def _token_from_credentials(name: str, *, owner: str) -> tuple[str, str]:
+    have = credentials()
+    if name not in have:
+        fix = "kyno credentials add" + ("" if name == DEFAULT_PROFILE else f" --profile {name}")
+        raise ProfileError(
+            f"{owner} points at credentials '{name}', which do not exist; "
+            f"you have: {_listing(sorted(have))}. Create it with: {fix}"
+        )
+    credential = have[name]
+    if credential.env_var is not None:
+        return (
+            _token_from_env(credential.env_var, owner=f"credentials '{name}'"),
+            f"credentials '{name}' -> ${{{credential.env_var}}}",
+        )
+    if not credential.token.strip():
+        raise ProfileError(f"credentials '{name}' hold no token; re-add them")
+    return credential.token, f"credentials '{name}'"
+
+
+def resolve(
+    profile: str = DEFAULT_PROFILE,
+    *,
+    credentials_profile: str | None = None,
+    token_env: str | None = None,
+) -> Resolved:
+    """Follow one chain to a URL and a token. A per-run credentials profile
+    or variable swaps the token source without touching the files. Anything
+    that does not resolve fails loudly, never as a fallback."""
+    have = remotes()
+    if profile not in have:
+        fix = "kyno remote add --url URL" + (
+            "" if profile == DEFAULT_PROFILE else f" --profile {profile}"
+        )
+        raise ProfileError(
+            f"no remote profile '{profile}'; you have: {_listing(sorted(have))}. "
+            f"Create it with: {fix}"
+        )
+    remote = have[profile]
+    owner = f"remote profile '{profile}'"
+    if credentials_profile is not None and token_env is not None:
+        raise ProfileError("give the token one way: --credentials NAME, or --token-env VAR")
+    if token_env is not None:
+        _check_env_name(token_env)
+        token = _token_from_env(token_env, owner="this run")
+        chain = f"{profile} -> {remote.url} -> ${{{token_env}}} (this run)"
+    elif credentials_profile is not None:
+        token, how = _token_from_credentials(credentials_profile, owner="this run")
+        chain = f"{profile} -> {remote.url} -> {how} (this run)"
+    elif remote.token_env is not None:
+        token = _token_from_env(remote.token_env, owner=owner)
+        chain = f"{profile} -> {remote.url} -> ${{{remote.token_env}}}"
+    else:
+        token, how = _token_from_credentials(remote.credentials or DEFAULT_PROFILE, owner=owner)
+        chain = f"{profile} -> {remote.url} -> {how}"
+    return Resolved(profile=profile, url=remote.url, token=token, chain=chain)

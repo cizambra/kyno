@@ -71,6 +71,29 @@ imitate it, so nothing should trust a block just for looking like one. Kyno
 refuses constitution text containing the marker, and the adapters only ever
 replace the block they injected themselves.
 
+## Remote profiles
+
+Working against a hosted Kyno from a laptop or a pipeline takes two things:
+where the server is, and which token to show it. Both live in small files
+under `~/.kyno`, the same path on every machine, written only by the
+commands that own them. Nothing goes next to a repo, so a credentials file
+never ends up in a commit by mistake.
+
+Credentials first. One profile per token, the token itself never on the
+command line:
+
+```bash
+kyno credentials add --token-env KYNO_TOKEN                   # profile "default"
+kyno credentials add --profile oncall --token-env KYNO_ONCALL # a second one
+kyno credentials add --profile laptop                         # no flag: asks, hidden
+```
+
+`--token-env` writes a reference (`${KYNO_TOKEN}`) that is read when the
+profile is used, so the token rotates when the variable does. Without it
+the token you type is written in, and the file is owner-readable only.
+
+The remote profiles that point at these credentials are the next step.
+
 ## Deploying
 
 - Use an absolute `KYNO_DATABASE_URL` in production. The default

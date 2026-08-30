@@ -17,6 +17,7 @@ from kyno.authoring import (
 )
 from kyno.config import Settings, store_from_settings
 from kyno.errors import AuthoringError, CoherenceError, NoFieldChangedError
+from kyno.profiles import add_credentials, credentials_path
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
 from kyno.service import ControlPlane
 
@@ -174,6 +175,28 @@ def _system_user() -> str | None:
 
 page_app = typer.Typer(help="Work with the pages Kyno publishes.")
 app.add_typer(page_app, name="page")
+
+credentials_app = typer.Typer(help="The tokens remote runs use: one profile per token.")
+app.add_typer(credentials_app, name="credentials")
+
+
+@credentials_app.command("add")
+def credentials_add(
+    profile: str = typer.Option("default", "--profile", help="The credentials profile to write."),
+    token_env: str | None = typer.Option(
+        None, "--token-env", help="Read the token from this variable at use time."
+    ),
+) -> None:
+    """Add or replace one credentials profile. Without --token-env the token
+    is asked for with hidden input; it is never a command-line flag."""
+    token = None
+    if token_env is None:
+        token = typer.prompt("Token", hide_input=True)
+    with _clean_errors():
+        outcome = add_credentials(profile, token=token, token_env=token_env)
+    source = f"${{{token_env}}}" if token_env else "the token you entered"
+    typer.echo(f"{outcome} credentials profile '{profile}': {source}")
+    typer.echo(f"written to {credentials_path()} (owner-readable only)")
 
 
 @page_app.command("export")

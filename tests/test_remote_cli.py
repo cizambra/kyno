@@ -68,15 +68,22 @@ class FakeRemote:
                     change_note=arguments["change_note"],
                     created_by=arguments.get("created_by"),
                     constitution=arguments.get("constitution"),
+                    expected_version=arguments.get("expected_version"),
                 )
             else:
                 raise ValueError(f"unknown tool: {name}")
         except ValueError as exc:
             raise RemoteError(str(exc)) from exc
+        if name == "get_constitution" and self.after_fetch is not None:
+            hook, self.after_fetch = self.after_fetch, None
+            hook()
         return json.loads(json.dumps(result))
 
     def close(self):
         self.closed = True
+
+    # A hook for race tests: runs after the head is served, before the write.
+    after_fetch = None
 
 
 @pytest.fixture
@@ -280,3 +287,20 @@ def test_given_a_live_server_when_applying_remotely_then_the_version_lands(tmp_p
     finally:
         server.should_exit = True
         thread.join(timeout=5)
+
+
+def test_given_a_writer_landing_mid_apply_when_applying_remotely_then_nothing_lands(
+    fake_dial, remote_cp, tmp_path
+):
+    """The delta was computed against the head we fetched; if the head moves
+    before the write, the server refuses instead of landing an edit nobody
+    reviewed in that shape."""
+    remote_cp.set_direction(mission="M1", change_note="init")
+    fake_dial.after_fetch = lambda: remote_cp.set_direction(
+        mission="Raced in", change_note="someone else"
+    )
+    path = write_file(tmp_path, mission="M2")
+    r = runner.invoke(app, ["set", path, "--note", "stale", "--remote"])
+    assert r.exit_code == 1
+    assert "moved while applying; read it again and re-apply" in r.output
+    assert remote_cp.current().mission == "Raced in" and remote_cp.current().version == 2

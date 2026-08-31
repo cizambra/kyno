@@ -343,7 +343,12 @@ class ControlPlane:
         change_note: str,
         created_by: str | None = None,
         constitution: str | None = None,
+        expected_version: int | None = None,
     ) -> ConstitutionVersion:
+        """Append a version. With expected_version, the write is pinned to
+        the head the caller reviewed: if the head has moved since, nothing
+        lands and the caller is told to look again. Without it, the edit is
+        computed against whatever the head is now."""
         if not change_note or not change_note.strip():
             raise EmptyChangeError("change_note is required")
         # Before the retry loop: a malformed principle is the caller's
@@ -360,6 +365,10 @@ class ControlPlane:
         head, effective = self._effective(
             name, mission=mission, declaration=declaration, principles=principles
         )
+        if expected_version is not None and (head.version if head else 0) != expected_version:
+            raise VersionConflictError(
+                f"the head of '{name}' moved while applying; read it again and re-apply"
+            )
         new_mission, new_declaration, new_principles, changed_mission, changed_principles = (
             effective
         )

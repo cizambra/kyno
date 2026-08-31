@@ -710,3 +710,32 @@ def test_given_an_empty_store_when_asking_head_and_delta_then_the_head_is_none()
     store.create_all()
     head, delta = ControlPlane(store).head_and_delta(mission="M1")
     assert head is None and delta == ("Creates 'default' at version 1.",)
+
+
+def test_given_a_moved_head_when_applying_with_an_expected_version_then_nothing_lands():
+    """The pin behind every delta: what you reviewed is what lands, or
+    nothing does."""
+    from kyno.errors import VersionConflictError
+    from kyno.service import ControlPlane
+    from kyno.store.sql import SqlConstitutionStore
+
+    store = SqlConstitutionStore(url="sqlite://")
+    store.create_all()
+    cp = ControlPlane(store)
+    cp.set_direction(mission="M1", change_note="init")
+    cp.set_direction(mission="M2", change_note="raced in")
+
+    with pytest.raises(VersionConflictError, match="moved while applying; read it again"):
+        cp.set_direction(mission="M3", change_note="stale", expected_version=1)
+    assert cp.current().version == 2 and cp.current().mission == "M2"
+
+
+def test_given_the_head_it_reviewed_when_applying_with_an_expected_version_then_it_lands():
+    from kyno.service import ControlPlane
+    from kyno.store.sql import SqlConstitutionStore
+
+    store = SqlConstitutionStore(url="sqlite://")
+    store.create_all()
+    cp = ControlPlane(store)
+    assert cp.set_direction(mission="M1", change_note="init", expected_version=0).version == 1
+    assert cp.set_direction(mission="M2", change_note="next", expected_version=1).version == 2

@@ -124,7 +124,7 @@ def set_direction_cmd(
             _remote_set(target, content, note, by, dry_run, profile, credentials, token_env)
             return
         plane = _control_plane()
-        delta = plane.preview_edit(**content, constitution=target)
+        head, delta = plane.head_and_delta(**content, constitution=target)
         if dry_run:
             _print_delta(delta or ("no field changed",))
             return
@@ -136,6 +136,8 @@ def set_direction_cmd(
                 change_note=note,
                 created_by=by if by is not None else _system_user(),
                 constitution=target,
+                # The write lands on the head the delta described, or not at all.
+                expected_version=head.version if head else 0,
             )
         except NoFieldChangedError:
             # The store already says what the file says. Reruns and duplicate
@@ -179,6 +181,8 @@ def _remote_set(
             "change_note": note,
             "created_by": by if by is not None else _system_user(),
             "constitution": target,
+            # The write lands on the head the delta described, or not at all.
+            "expected_version": head.version if head else 0,
         }
         try:
             result = client.call_tool("set_direction", arguments)

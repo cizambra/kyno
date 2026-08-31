@@ -63,9 +63,9 @@ def test_given_any_add_when_the_credentials_file_is_written_then_it_is_owner_rea
 
 
 def test_given_both_or_neither_source_when_adding_credentials_then_it_is_refused():
-    with pytest.raises(ProfileError, match="one way"):
+    with pytest.raises(ProfileError, match="pick one"):
         add_credentials(token="x", token_env="X")
-    with pytest.raises(ProfileError, match="one way"):
+    with pytest.raises(ProfileError, match="pick one"):
         add_credentials()
     assert not credentials_path().exists()
 
@@ -134,7 +134,7 @@ def test_given_a_token_env_when_adding_a_remote_then_no_credentials_are_needed()
 
 def test_given_both_sources_when_adding_a_remote_then_it_is_refused():
     add_credentials(token_env="KYNO_TOKEN")
-    with pytest.raises(ProfileError, match="one way"):
+    with pytest.raises(ProfileError, match="pick one"):
         add_remote("https://kyno.mybiz.com", credentials_profile="default", token_env="X")
 
 
@@ -418,7 +418,7 @@ def test_given_a_listing_when_a_token_is_written_in_then_it_never_appears(monkey
 def test_given_both_credential_sources_at_resolve_time_then_it_is_refused(monkeypatch):
     add_credentials(token_env="KYNO_TOKEN")
     add_remote("https://kyno.mybiz.com")
-    with pytest.raises(ProfileError, match="one way"):
+    with pytest.raises(ProfileError, match="pick one"):
         resolve(credentials_profile="default", token_env="OTHER")
 
 

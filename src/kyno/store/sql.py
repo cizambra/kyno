@@ -64,6 +64,7 @@ class SqlConstitutionStore:
             changed_principles=bool(row.changed_principles),
             created_at=created_at,
             created_by=row.created_by,
+            authorized_by=row.authorized_by,
         )
 
     def _constitution_id(self, conn, constitution: str) -> int | None:
@@ -149,6 +150,7 @@ class SqlConstitutionStore:
                 "principles": [p.to_dict() for p in v.principles],
                 "change_note": v.change_note,
                 "created_by": v.created_by,
+                "authorized_by": v.authorized_by,
                 "created_at": v.created_at.isoformat(),
             }
             for v in versions
@@ -204,6 +206,7 @@ class SqlConstitutionStore:
         changed_mission: bool,
         changed_principles: bool,
         created_by: str | None,
+        authorized_by: str | None = None,
     ) -> ConstitutionVersion:
         now = datetime.now(UTC)
         try:
@@ -235,6 +238,7 @@ class SqlConstitutionStore:
                         changed_principles=changed_principles,
                         created_at=now,
                         created_by=created_by,
+                        authorized_by=authorized_by,
                     )
                 )
         except IntegrityError as exc:
@@ -251,4 +255,5 @@ class SqlConstitutionStore:
             changed_principles=changed_principles,
             created_at=now,
             created_by=created_by,
+            authorized_by=authorized_by,
         )

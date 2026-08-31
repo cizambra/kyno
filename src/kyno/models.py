@@ -19,6 +19,14 @@ COMPACT = "compact"
 FULL = "full"
 DETAIL_LEVELS = (COMPACT, FULL)
 
+# Who stood behind a write. Recorded at write time because it can't be
+# reconstructed later: an operator answered the questions, automation ran
+# under the checks, or the override flag answered yes to everything.
+OPERATOR = "operator"
+AUTOMATION = "automation"
+OVERRIDE = "override"
+AUTHORIZATIONS = (OPERATOR, AUTOMATION, OVERRIDE)
+
 
 def check_detail(detail: str, what: str = "detail") -> str:
     if detail not in DETAIL_LEVELS:
@@ -114,6 +122,8 @@ class ConstitutionVersion(HoldsPrinciples):
     # Optional and last so every existing caller still constructs a version
     # exactly as it did; the payload puts it beside the mission it expands.
     declaration: str = ""
+    # None on local and direct writes: that doorway has no questions to record.
+    authorized_by: str | None = None
 
     def principle(self, title: str) -> Principle:
         """The one principle with this exact title. Titles are not unique, so
@@ -133,6 +143,7 @@ class ConstitutionVersion(HoldsPrinciples):
         payload["changed_principles"] = self.changed_principles
         payload["created_at"] = self.created_at.isoformat()
         payload["created_by"] = self.created_by
+        payload["authorized_by"] = self.authorized_by
         return payload
 
 

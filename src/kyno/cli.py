@@ -17,7 +17,7 @@ from kyno.authoring import (
 )
 from kyno.config import Settings, store_from_settings
 from kyno.errors import AuthoringError, CoherenceError, NoFieldChangedError
-from kyno.models import normalize_principles
+from kyno.models import AUTOMATION, OPERATOR, OVERRIDE, normalize_principles
 from kyno.profiles import (
     add_credentials,
     add_remote,
@@ -216,6 +216,11 @@ def _remote_set(
             "constitution": target,
             # The write lands on the head the delta described, or not at all.
             "expected_version": head.version if head else 0,
+            # Who stood behind this write, recorded on the version: an
+            # operator answered, automation ran, or the override flag did.
+            "authorized_by": (
+                OVERRIDE if unsafe_approval else AUTOMATION if no_interactive else OPERATOR
+            ),
         }
         try:
             result = client.call_tool("set_direction", arguments)
@@ -703,7 +708,8 @@ def log(
     for row in reversed(rows):
         day = str(row.get("created_at", ""))[:10]
         by = row.get("created_by") or "-"
-        typer.echo(f"v{row['version']}  {day}  {by}  {row['change_note']}")
+        authorized_by = row.get("authorized_by") or "-"
+        typer.echo(f"v{row['version']}  {day}  {by}  {authorized_by}  {row['change_note']}")
 
 
 @app.command()

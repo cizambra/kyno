@@ -5,10 +5,10 @@ page uses what ships today, and the sequence scales down: solo you are
 every role, in a team the roles split. Take the rungs in order and stop
 where your team is.
 
-## Keep the constitution in git
+## Keep the constitution in version control
 
-The store serves direction; git explains it. Keep the file in a repo,
-change it by pull request, and let the PR be the approval: what merged is
+The store serves direction; version control explains it. Keep the file
+in a repo, change it by pull request, and let the PR be the approval: what merged is
 what a reviewer read, and the version's note names the commit. Kyno keeps
 no approval records of its own because the audit is the join of the two
 ledgers — the merged PR on one side, `kyno log` on the other.
@@ -39,7 +39,9 @@ applying by hand becomes the exception that stands out in the log.
 
 Two commands. First ask: is the store where this merge assumed it was?
 Compare against the parent commit's file, not your own — differing from
-your own file is normal right before an apply.
+your own file is normal right before an apply. The snippet is the git
+flavor; any VCS that can read a file at the parent revision works the
+same way.
 
 ```bash
 git show HEAD^:constitution.yaml > /tmp/parent.yaml

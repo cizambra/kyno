@@ -1,6 +1,6 @@
 # Best practices
 
-How I run Kyno once real agents depend on the store. Everything on this
+How to run Kyno once real agents depend on the store. Everything on this
 page uses what ships today, and the sequence scales down: solo you are
 every role, in a team the roles split. Take the rungs in order and stop
 where your team is.
@@ -37,7 +37,7 @@ applying by hand becomes the exception that stands out in the log.
 
 ## The CI recipe
 
-Two commands. First ask: is the store where my merge assumed it was?
+Two commands. First ask: is the store where this merge assumed it was?
 Compare against the parent commit's file, not your own — differing from
 your own file is normal right before an apply.
 

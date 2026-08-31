@@ -117,6 +117,18 @@ kyno export --remote
 
 They work against the profile's endpoint instead of your local store and print exactly what their local versions print. `--profile oncall` picks a different bundle; `--credentials` or `--token-env` beside it swaps the token source for that one run. Without `--remote` you are always on your local store — there is no fallback in either direction.
 
+When you run a remote `set` from a terminal, Kyno asks a question after showing the delta: have you evaluated this change against your workflow? The default answer is no, and if the answer is no, nothing is applied.
+
+Two flags skip the questions, in two different spirits, and you pass at most one:
+
+| flags | questions | meaning |
+|---|---|---|
+| none (terminal) | asked | a person answered |
+| `--no-interactive` | skipped | nobody was there; the checks are the protection |
+| `--unsafe-approval` | skipped, yes to all | approved blind, on purpose |
+
+`--no-interactive` is the CI lane: the yes already happened in review, and the version pin plus the `check` step do the guarding. `--unsafe-approval` is for overriding on purpose, and it stands out in review by design.
+
 Two behaviors worth knowing. A remote `set` fetches the server's head and shows you the same delta a local set shows, before it applies; a duplicate apply is the same clean no-op. And a server you can't reach is a plain one-line error — except under `check`, where the field report still prints and the comparison line says why it didn't run.
 
 ### Checking your wiring

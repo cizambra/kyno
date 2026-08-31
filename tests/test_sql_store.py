@@ -592,7 +592,7 @@ def test_given_an_unwritten_name_when_getting_one_version_then_it_is_none(store)
     assert store.get("nope", 1) is None
 
 
-def test_given_a_version_number_never_written_when_getting_it_then_it_is_none(store):
+def test_given_an_existing_constitution_when_getting_a_version_never_reached_then_it_is_none(store):
     store.append(
         "default",
         1,
@@ -606,5 +606,5 @@ def test_given_a_version_number_never_written_when_getting_it_then_it_is_none(st
     assert store.get("default", 9) is None
 
 
-def test_given_an_unwritten_name_when_listing_versions_after_then_it_is_empty(store):
+def test_given_an_unwritten_name_when_pulling_versions_after_zero_then_nothing_comes_back(store):
     assert store.versions_after("nope", 0) == []

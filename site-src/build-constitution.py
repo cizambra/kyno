@@ -13,6 +13,7 @@ script: the page states them, it does not decide them.
 """
 
 import argparse
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -45,6 +46,12 @@ def main() -> None:
     target.write_text(html, encoding="utf-8")
     print(f"wrote {target}")
 
+    # The JSON export beside the page, from the same view, so the two can
+    # never disagree. History stays absent: this site doesn't publish it.
+    data = ROOT / "site" / "constitution" / "constitution.json"
+    data.write_text(json.dumps(view.to_dict(), indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {data}")
+
 
 # The template's own markup for this constitution: labeled sections and
 # numbered clauses. The values inside still come from kyno's renderer.
@@ -63,16 +70,18 @@ def _to_template_markup(html: str) -> str:
         parts = [part for part in re.split(r"(?=<h2>)", m.group(1)) if part.strip()]
         sections = []
         for i, part in enumerate(parts):
-            sid, label = _SECTIONS[i] if i < len(_SECTIONS) else (f"s-{i + 1}", f"0{i + 1} / SECTION")
+            fallback = (f"s-{i + 1}", f"0{i + 1} / SECTION")
+            sid, label = _SECTIONS[i] if i < len(_SECTIONS) else fallback
             sections.append(
-                f'<section id="{sid}">\n<div class="section-rule">{label}</div>\n{part.strip()}\n</section>'
+                f'<section id="{sid}">\n<div class="section-rule">{label}</div>\n'
+                f"{part.strip()}\n</section>"
             )
         html = html.replace(m.group(0), "\n".join(sections))
 
     html = html.replace(
-        '<h2>Operating principles</h2>',
+        "<h2>Operating principles</h2>",
         '<section id="principles">\n<div class="principles-title">\n'
-        '<h2>Operating principles</h2>\n<p>ORDER IS A PRIORITY HINT</p>\n</div>',
+        "<h2>Operating principles</h2>\n<p>ORDER IS A PRIORITY HINT</p>\n</div>",
     )
     counter = 0
 
@@ -89,7 +98,8 @@ def _to_template_markup(html: str) -> str:
         )
 
     html = re.sub(
-        r'<li><div class="claim"><p class="claim-title">(.*?)</p>(?:\n<p class="claim-note">(.*?)</p>)?</div></li>',
+        r'<li><div class="claim"><p class="claim-title">(.*?)</p>'
+        r'(?:\n<p class="claim-note">(.*?)</p>)?</div></li>',
         clause,
         html,
         flags=re.S,
@@ -97,7 +107,6 @@ def _to_template_markup(html: str) -> str:
     html = html.replace('<ol class="claims">', '<ol class="clauses">')
     html = html.replace("</ol>", "</ol>\n</section>", 1) if 'id="principles"' in html else html
     return html
-
 
 
 if __name__ == "__main__":

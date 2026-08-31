@@ -85,7 +85,7 @@ command:
 
 ## Read the ledger
 
-`kyno log` is one line per version: who wrote it, when, how the write was
-authorized, and the note. In a healthy setup almost every line is the
+`kyno log` is one line per version: who wrote it, when, who authorized it
+(`operator`, `automation`, or `override`), and the note. In a healthy setup almost every line is the
 pipeline's. A version somebody applied by hand is not an error — it's a
 line that should have a story.

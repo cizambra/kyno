@@ -135,6 +135,7 @@ def test_given_a_blank_change_note_when_calling_set_direction_then_it_maps_to_va
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_a_real_subscription_when_setting_direction_then_the_server_run_notifies():
     # Unlike test_version_bump_notifies_subscribed_session (FakeSession injected
     # directly), this drives the real subscribe handler and server.run().
@@ -164,6 +165,7 @@ async def test_given_a_real_subscription_when_setting_direction_then_the_server_
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_a_non_matching_uri_when_subscribing_then_it_is_a_noop():
     from mcp.shared.memory import create_connected_server_and_client_session
 
@@ -178,6 +180,7 @@ async def test_given_a_non_matching_uri_when_subscribing_then_it_is_a_noop():
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_a_subscribed_session_when_unsubscribing_for_real_then_it_is_removed():
     from mcp.shared.memory import create_connected_server_and_client_session
 
@@ -194,6 +197,7 @@ async def test_given_a_subscribed_session_when_unsubscribing_for_real_then_it_is
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_an_unknown_tool_name_when_dispatching_then_the_mcp_error_is_clean():
     from mcp.shared.memory import create_connected_server_and_client_session
 
@@ -208,6 +212,7 @@ async def test_given_an_unknown_tool_name_when_dispatching_then_the_mcp_error_is
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_an_unknown_resource_uri_when_dispatching_then_the_mcp_error_is_clean():
     from mcp.shared.exceptions import McpError
     from mcp.shared.memory import create_connected_server_and_client_session
@@ -223,6 +228,7 @@ async def test_given_an_unknown_resource_uri_when_dispatching_then_the_mcp_error
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_a_non_integer_version_when_calling_get_changes_since_then_the_error_is_clean():
     from mcp.shared.memory import create_connected_server_and_client_session
 
@@ -247,6 +253,7 @@ def _sse_json_body(response_text: str) -> dict:
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_stdio_and_http_sessions_when_getting_the_constitution_then_they_match():
     # Both transports share build_server()/ControlPlane underneath, so this
     # compares the in-memory harness against the real HTTP transport for the same version.
@@ -315,6 +322,7 @@ def test_given_the_module_when_looking_up_run_stdio_then_it_is_a_coroutine_funct
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_a_fresh_store_when_getting_the_constitution_for_real_then_it_answers():
     # Unlike test_get_constitution_on_fresh_store_returns_empty_state (handler
     # called directly), this drives the real call_tool dispatch end to end.
@@ -335,6 +343,7 @@ async def test_given_a_fresh_store_when_getting_the_constitution_for_real_then_i
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_a_fresh_store_when_reading_the_resource_then_the_empty_state_returns():
     from mcp.shared.memory import create_connected_server_and_client_session
 
@@ -389,6 +398,7 @@ def test_given_an_unknown_constitution_when_reading_over_mcp_then_the_empty_stat
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_named_constitutions_when_dispatching_writes_then_sequences_are_independent():
     from mcp.shared.memory import create_connected_server_and_client_session
 
@@ -415,6 +425,7 @@ async def test_given_named_constitutions_when_dispatching_writes_then_sequences_
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_a_named_write_when_reading_the_resource_then_it_stays_the_default():
     from mcp.shared.memory import create_connected_server_and_client_session
 
@@ -509,6 +520,7 @@ def test_given_the_two_read_tools_when_inspecting_schemas_then_both_advertise_de
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_the_subscribable_resource_when_reading_then_it_serves_the_compact_form():
     # A resource takes no parameters, and it is the thing consulted most --
     # the whole document is one tool call away.
@@ -530,6 +542,7 @@ async def test_given_the_subscribable_resource_when_reading_then_it_serves_the_c
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_a_detail_argument_when_dispatching_for_real_then_it_travels_through():
     from mcp.shared.memory import create_connected_server_and_client_session
 
@@ -651,6 +664,7 @@ def test_given_the_targeted_reads_when_inspecting_schemas_then_argument_sources_
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_the_targeted_reads_when_dispatching_for_real_then_they_work():
     from mcp.shared.memory import create_connected_server_and_client_session
 
@@ -675,6 +689,7 @@ async def test_given_the_targeted_reads_when_dispatching_for_real_then_they_work
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_a_compact_pull_when_an_agent_needs_more_then_it_asks_for_the_missing_piece():
     # The whole point of the targeted reads: buy the handles once, and buy
     # the paragraph only when something actually needs to read it. The
@@ -809,6 +824,7 @@ def test_given_the_server_when_listing_tools_then_all_of_them_read_as_one_family
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_the_whole_read_family_when_dispatching_for_real_then_it_works():
     from mcp.shared.memory import create_connected_server_and_client_session
 

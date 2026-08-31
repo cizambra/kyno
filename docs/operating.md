@@ -167,7 +167,10 @@ The token itself is never shown. A profile that doesn't resolve exits 1 and the 
 ```bash
 python -m pytest -q                      # SQLite, no network
 KYNO_TEST_POSTGRES_URL=postgresql+psycopg://… python -m pytest -q   # + Postgres
+python -m pytest -q --cov=kyno --cov-fail-under=90   # what CI runs before a merge
 ```
+
+The coverage gate keeps line coverage above 90%, and CI fails a change that drops below it. The gate only guards quantity; the bar for the tests themselves stays the same: one specific case per test, named `given_{x}_when_{y}_then_{z}`.
 
 ## 💬 Questions?
 

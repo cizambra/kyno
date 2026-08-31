@@ -151,7 +151,10 @@ def add_credentials(
     variable that holds it. Returns 'added' or 'updated'."""
     _check_profile_name(profile)
     if (token is None) == (token_env is None):
-        raise ProfileError("give the token one way: --token-env VAR, or enter it at the prompt")
+        raise ProfileError(
+            "pick one: --token-env stores a reference to the variable; "
+            "the prompt stores the token itself"
+        )
     if token_env is not None:
         _check_env_name(token_env)
         value = f"${{{token_env}}}"
@@ -201,7 +204,10 @@ def add_remote(
             f"'{url}' is not a server URL Kyno can dial: use http(s)://host[:port][/path]"
         )
     if credentials_profile is not None and token_env is not None:
-        raise ProfileError("give the token one way: --credentials NAME, or --token-env VAR")
+        raise ProfileError(
+            "pick one: --credentials takes the token from a credentials profile; "
+            "--token-env reads it from a variable"
+        )
     if token_env is not None:
         _check_env_name(token_env)
         section = {"url": url.rstrip("/"), "token": f"${{{token_env}}}"}
@@ -297,7 +303,10 @@ def resolve(
     remote = have[profile]
     owner = f"remote profile '{profile}'"
     if credentials_profile is not None and token_env is not None:
-        raise ProfileError("give the token one way: --credentials NAME, or --token-env VAR")
+        raise ProfileError(
+            "pick one: --credentials takes the token from a credentials profile; "
+            "--token-env reads it from a variable"
+        )
     if token_env is not None:
         _check_env_name(token_env)
         token = _token_from_env(token_env, owner="this run")

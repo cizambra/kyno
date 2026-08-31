@@ -39,9 +39,9 @@ applying by hand becomes the exception that stands out in the log.
 
 Two commands. First ask: is the store where this merge assumed it was?
 Compare against the parent commit's file, not your own — differing from
-your own file is normal right before an apply. The snippet is the git
-flavor; any VCS that can read a file at the parent revision works the
-same way.
+your own file is normal right before an apply. The commands are git's;
+any VCS works, all you need is the file as it was at the parent
+revision.
 
 ```bash
 git show HEAD^:constitution.yaml > /tmp/parent.yaml

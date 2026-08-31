@@ -29,6 +29,7 @@ from kyno.store.sql import SqlConstitutionStore
 
 
 @pytest.mark.asyncio
+@pytest.mark.e2e
 async def test_given_a_memory_session_when_calling_tools_end_to_end_then_the_mission_round_trips():
     from mcp.shared.memory import create_connected_server_and_client_session
 
@@ -160,6 +161,7 @@ async def test_given_non_utf8_header_bytes_when_handling_the_request_then_it_is_
     assert status == 401
 
 
+@pytest.mark.e2e
 def test_given_the_bearer_gate_when_driving_a_full_http_session_then_the_mission_round_trips():
     # Existing HTTP tests stop at initialize; this drives a full session
     # (set_direction then get_constitution) through the real bearer-token gate.

@@ -123,6 +123,7 @@ def handle_set_direction(
     created_by,
     declaration=None,
     constitution: str | None = None,
+    expected_version: int | None = None,
 ) -> dict:
     return _guard(
         lambda: cp.set_direction(
@@ -132,6 +133,7 @@ def handle_set_direction(
             change_note=change_note,
             created_by=created_by,
             constitution=constitution,
+            expected_version=expected_version,
         ).to_dict()
     )
 
@@ -285,6 +287,7 @@ _TOOLS = [
                 "change_note": {"type": "string"},
                 "created_by": {"type": ["string", "null"]},
                 "constitution": _CONSTITUTION_ARG,
+                "expected_version": {"type": ["integer", "null"]},
             },
             "required": ["change_note"],
         },
@@ -350,6 +353,7 @@ def build_server(control_plane: ControlPlane) -> Server:
                     change_note=arguments["change_note"],
                     created_by=arguments.get("created_by"),
                     constitution=arguments.get("constitution"),
+                    expected_version=arguments.get("expected_version"),
                 )
             case _:
                 raise ValueError(f"unknown tool: {name}")

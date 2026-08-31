@@ -155,6 +155,64 @@ def _check_publishable(name: str) -> None:
     )
 
 
+def _carry_forward(head, *, mission, declaration, principles):
+    """What an edit with these fields makes of a head: the new content plus
+    the changed flags. Omitted fields carry forward; on nothing, everything
+    starts. Pure: the head comes in, nothing is read."""
+    if head is None:
+        return (
+            mission if mission is not None else "",
+            declaration if declaration is not None else "",
+            principles if principles is not None else (),
+            True,
+            True,
+        )
+    new_mission = mission if mission is not None else head.mission
+    new_declaration = declaration if declaration is not None else head.declaration
+    new_principles = principles if principles is not None else head.principles
+    return (
+        new_mission,
+        new_declaration,
+        new_principles,
+        new_mission != head.mission,
+        new_principles != head.principles,
+    )
+
+
+def edit_delta(
+    head: ConstitutionVersion | None,
+    name: str,
+    *,
+    mission: str | None = None,
+    declaration: str | None = None,
+    principles: tuple[Principle | str, ...] | None = None,
+) -> tuple[str, ...]:
+    """The plain sentences an apply with these fields would make true,
+    against a head the caller already holds. Pure, so a remote client can
+    show the same delta the local path shows. Empty means no field changes."""
+    principles = normalize_principles(principles)
+    new_mission, new_declaration, new_principles, changed_mission, changed_principles = (
+        _carry_forward(head, mission=mission, declaration=declaration, principles=principles)
+    )
+    if head is None:
+        return (f"Creates '{name}' at version 1.",)
+    after = ConstitutionVersion(
+        version=head.version + 1,
+        mission=new_mission,
+        declaration=new_declaration,
+        principles=new_principles,
+        change_note="",
+        changed_mission=changed_mission,
+        changed_principles=changed_principles,
+        created_at=head.created_at,
+        created_by=None,
+    )
+    lines = list(_delta(head, after))
+    if new_declaration != head.declaration:
+        lines.append("The declaration changed.")
+    return tuple(lines)
+
+
 class ControlPlane:
     def __init__(self, store: ConstitutionStore, constitution: str = "default") -> None:
         self._store = store
@@ -285,7 +343,12 @@ class ControlPlane:
         change_note: str,
         created_by: str | None = None,
         constitution: str | None = None,
+        expected_version: int | None = None,
     ) -> ConstitutionVersion:
+        """Append a version. With expected_version, the write is pinned to
+        the head the caller reviewed: if the head has moved since, nothing
+        lands and the caller is told to look again. Without it, the edit is
+        computed against whatever the head is now."""
         if not change_note or not change_note.strip():
             raise EmptyChangeError("change_note is required")
         # Before the retry loop: a malformed principle is the caller's
@@ -302,6 +365,10 @@ class ControlPlane:
         head, effective = self._effective(
             name, mission=mission, declaration=declaration, principles=principles
         )
+        if expected_version is not None and (head.version if head else 0) != expected_version:
+            raise VersionConflictError(
+                f"the head of '{name}' moved while applying; read it again and re-apply"
+            )
         new_mission, new_declaration, new_principles, changed_mission, changed_principles = (
             effective
         )
@@ -336,27 +403,9 @@ class ControlPlane:
         return version
 
     def _effective(self, name: str, *, mission, declaration, principles):
-        """The head, and what an edit with these fields would make of it:
-        (mission, declaration, principles, changed_mission, changed_principles).
-        Omitted fields carry forward; on an empty store everything starts."""
         head = self._store.head(name)
-        if head is None:
-            return head, (
-                mission if mission is not None else "",
-                declaration if declaration is not None else "",
-                principles if principles is not None else (),
-                True,
-                True,
-            )
-        new_mission = mission if mission is not None else head.mission
-        new_declaration = declaration if declaration is not None else head.declaration
-        new_principles = principles if principles is not None else head.principles
-        return head, (
-            new_mission,
-            new_declaration,
-            new_principles,
-            new_mission != head.mission,
-            new_principles != head.principles,
+        return head, _carry_forward(
+            head, mission=mission, declaration=declaration, principles=principles
         )
 
     def preview_edit(
@@ -387,28 +436,8 @@ class ControlPlane:
         """The head and what an apply with these fields would change, from
         one read of the store, so the version and the delta can never
         describe two different moments. The head is None on an empty store."""
-        principles = normalize_principles(principles)
         name = self._name(constitution)
-        head, effective = self._effective(
-            name, mission=mission, declaration=declaration, principles=principles
+        head = self._store.head(name)
+        return head, edit_delta(
+            head, name, mission=mission, declaration=declaration, principles=principles
         )
-        new_mission, new_declaration, new_principles, changed_mission, changed_principles = (
-            effective
-        )
-        if head is None:
-            return None, (f"Creates '{name}' at version 1.",)
-        after = ConstitutionVersion(
-            version=head.version + 1,
-            mission=new_mission,
-            declaration=new_declaration,
-            principles=new_principles,
-            change_note="",
-            changed_mission=changed_mission,
-            changed_principles=changed_principles,
-            created_at=head.created_at,
-            created_by=None,
-        )
-        lines = list(_delta(head, after))
-        if new_declaration != head.declaration:
-            lines.append("The declaration changed.")
-        return head, tuple(lines)

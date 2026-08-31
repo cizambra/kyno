@@ -532,3 +532,86 @@ def test_given_stdin_ending_at_the_revert_prompt_when_applying_then_nothing_is_a
     assert r.exit_code == 1
     assert "not applied: the revert question had nobody to answer it" in r.output
     assert remote_cp.current().version == 3
+
+
+@pytest.mark.e2e
+def test_given_an_endpoint_nothing_listens_on_when_opening_then_cannot_reach_names_the_profile():
+    from kyno.profiles import Resolved
+    from kyno.remote import RemoteClient
+
+    client = RemoteClient(Resolved(profile="p", url="http://127.0.0.1:9", token="t", chain="c"))
+    with pytest.raises(RemoteError, match="cannot reach 'p' at http://127.0.0.1:9"):
+        client.open()
+
+
+def test_given_an_error_reply_when_decoding_then_the_servers_words_come_back():
+    from types import SimpleNamespace
+
+    from kyno.profiles import Resolved
+    from kyno.remote import RemoteClient
+
+    client = RemoteClient(Resolved(profile="p", url="http://x", token="t", chain="c"))
+    reply = SimpleNamespace(content=[SimpleNamespace(text="no field changed")], isError=True)
+    client._runner = SimpleNamespace(call=lambda fn: reply)
+    with pytest.raises(RemoteError, match="no field changed"):
+        client.call_tool("set_direction", {})
+
+
+def test_given_an_error_reply_with_no_text_when_decoding_then_the_tool_is_named():
+    from types import SimpleNamespace
+
+    from kyno.profiles import Resolved
+    from kyno.remote import RemoteClient
+
+    client = RemoteClient(Resolved(profile="p", url="http://x", token="t", chain="c"))
+    reply = SimpleNamespace(content=[], isError=True)
+    client._runner = SimpleNamespace(call=lambda fn: reply)
+    with pytest.raises(RemoteError, match="the server refused set_direction"):
+        client.call_tool("set_direction", {})
+
+
+@pytest.mark.parametrize("raw", [None, "not-a-date"])
+def test_given_a_payload_without_a_usable_created_at_then_the_version_still_builds(raw):
+    from datetime import datetime
+
+    from kyno.remote import version_from_payload
+
+    payload = {"version": 1, "mission": "M"}
+    if raw is not None:
+        payload["created_at"] = raw
+    version = version_from_payload(payload)
+    assert version.mission == "M" and isinstance(version.created_at, datetime)
+    assert version.created_at.tzinfo is not None
+
+
+def test_given_a_version_zero_payload_then_it_reads_as_no_head():
+    from kyno.remote import version_from_payload
+
+    assert version_from_payload({"version": 0}) is None
+
+
+def test_given_an_empty_remote_when_reading_current_yaml_then_nothing_to_read_exits_1(fake_dial):
+    r = runner.invoke(app, ["current", "--remote", "--yaml"])
+    assert r.exit_code == 1
+    assert "nothing to read: 'default' has no versions" in r.output
+
+
+def test_given_a_file_without_a_constitution_key_when_checking_remotely_then_not_compared(
+    fake_dial, tmp_path
+):
+    target = pathlib.Path(tmp_path) / "unnamed.yaml"
+    target.write_text("mission: M1\n", encoding="utf-8")
+    r = runner.invoke(app, ["check", str(target), "--remote"])
+    assert r.exit_code == 1
+    assert "kyno fields not set: constitution" in r.output
+    assert "store: not compared" in r.output and "constitution: <name>" in r.output
+
+
+def test_given_dial_failing_when_reading_log_remotely_then_the_error_is_one_line(monkeypatch):
+    def dial(profile, **_):
+        raise RemoteError(f"cannot reach '{profile}' at https://kyno.mybiz.com: refused")
+
+    monkeypatch.setattr(cli, "dial", dial)
+    r = runner.invoke(app, ["log", "--remote"])
+    assert r.exit_code == 1
+    assert "error: cannot reach 'default'" in r.output and "Traceback" not in r.output

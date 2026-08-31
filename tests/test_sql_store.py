@@ -611,7 +611,7 @@ def test_given_an_unwritten_name_when_pulling_versions_after_zero_then_nothing_c
     assert store.versions_after("nope", 0) == []
 
 
-def test_given_an_authorization_when_appending_then_it_round_trips(store):
+def test_given_authorized_by_when_appending_then_head_and_export_return_it(store):
     store.append(
         "default",
         1,
@@ -627,7 +627,7 @@ def test_given_an_authorization_when_appending_then_it_round_trips(store):
     assert store.export_versions("default")[0]["authorized_by"] == "automation"
 
 
-def test_given_no_authorization_when_appending_then_none_is_stored(store):
+def test_given_no_authorized_by_when_appending_then_it_reads_back_as_null(store):
     store.append(
         "default",
         1,

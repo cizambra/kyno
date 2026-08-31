@@ -338,7 +338,7 @@ def test_given_a_pre_declaration_database_when_a_pip_user_upgrades_then_it_upgra
     assert head.declaration == ""
 
 
-def test_given_a_head_database_when_downgrading_step_by_step_then_each_column_goes_alone(
+def test_given_a_head_database_when_downgrading_one_migration_then_only_its_own_column_is_dropped(
     tmp_path,
 ):
     # A downgrade that took a neighbouring column with it would lose data
@@ -364,7 +364,7 @@ def test_given_a_head_database_when_downgrading_step_by_step_then_each_column_go
     assert _colmap(inspect(engine), table) == before
 
 
-def test_given_the_two_schema_paths_when_comparing_then_both_carry_the_authorized_column(
+def test_given_migrated_and_create_all_databases_when_comparing_then_both_carry_authorized_by(
     tmp_path,
 ):
     from kyno.store.sql import SqlConstitutionStore

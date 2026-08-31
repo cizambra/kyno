@@ -645,7 +645,7 @@ def test_given_unsafe_approval_when_applying_then_unsafe_approved_is_recorded(
     assert remote_cp.current().authorized_by == "override"
 
 
-def test_given_recorded_authorizations_when_reading_log_remotely_then_the_lane_shows(
+def test_given_recorded_authorizations_when_reading_log_remotely_then_authorized_by_is_printed(
     fake_dial, remote_cp, tmp_path
 ):
     path = write_file(tmp_path, mission="M1")

@@ -3,113 +3,273 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>To help organizations keep multi-agent systems coherent.</title>
-<style>:root {
-  --accent: #6d6d66; --bg: #fbfbf9; --fg: #1b1b19;
-  --muted: #6d6d66; --rule: #e4e3de;
-  --font: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+<title>Kyno Constitution</title>
+<meta name="description" content="The public constitution governing Kyno.">
+<link rel="icon" href="mark.svg" type="image/svg+xml">
+<style>
+:root {
+  --bg:#040913;
+  --panel:#08101c;
+  --ink:#f4f7fc;
+  --body:#b3bdcb;
+  --muted:#7d899b;
+  --muted2:#566276;
+  --line:rgba(174,198,235,.15);
+  --line2:rgba(174,198,235,.27);
+  --cyan:#42d8ff;
+  --blue:#5a8dff;
+  --violet:#9a68ff;
+  --green:#36e5a2;
+  --sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --mono:"SFMono-Regular","Cascadia Code","Roboto Mono",Consolas,monospace;
 }
-@media (prefers-color-scheme: dark) {
-  :root { --bg: #131312; --fg: #ecebe6; --muted: #97968e;
-          --rule: #2b2b28; --accent: #97968e; }
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  min-width:320px;
+  background:
+    radial-gradient(circle at 73% 8%, rgba(57,110,255,.08), transparent 28rem),
+    var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.72;
 }
-* { box-sizing: border-box; }
-body {
-  margin: 0; padding: 4rem 1.5rem 6rem; background: var(--bg); color: var(--fg);
-  font-family: var(--font);
-  font-size: 17px; line-height: 1.6; -webkit-text-size-adjust: 100%;
+body::before{
+  content:"";
+  position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background-image:
+    linear-gradient(rgba(124,151,195,.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124,151,195,.028) 1px, transparent 1px);
+  background-size:64px 64px;
+  mask-image:linear-gradient(to bottom, black, transparent 86%);
 }
-main { max-width: 40rem; margin: 0 auto; }
-.eyebrow {
-  margin: 0 0 1.25rem; font-size: 0.75rem; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--muted);
+a{color:inherit}
+.shell{width:min(1280px, calc(100% - 48px)); margin-inline:auto}
+
+header{
+  min-height:82px;
+  display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid var(--line);
 }
-h1 {
-  margin: 0 0 2.5rem; font-size: clamp(1.55rem, 5vw, 2rem);
-  line-height: 1.25; font-weight: 600; letter-spacing: -0.01em;
+.brand{
+  display:inline-flex; align-items:center; gap:13px;
+  color:var(--ink); text-decoration:none;
+  font-size:16px; font-weight:690; letter-spacing:.16em;
+  text-transform:uppercase;
 }
-h2 {
-  margin: 3rem 0 1rem; font-size: 0.75rem; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--muted); font-weight: 600;
+.brand img{display:block}
+nav{display:flex; gap:30px; align-items:center}
+nav a{text-decoration:none; color:var(--muted); font-size:12px}
+nav a:hover{color:var(--ink)}
+
+.hero{
+  position:relative;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 280px;
+  gap:80px;
+  padding:90px 0 80px;
+  border-bottom:1px solid var(--line);
+  overflow:hidden;
 }
-/* The declaration is rendered markdown, so it brings elements the rest of
-   the page never uses. They are set to the page's own scale, and they undo
-   the label styling h2 carries and the page's bare ol/ul reset. */
-.declaration p { margin: 0 0 1.1rem; }
-.declaration > :last-child { margin-bottom: 0; }
-.declaration h1, .declaration h2, .declaration h3,
-.declaration h4, .declaration h5, .declaration h6 {
-  margin: 2rem 0 0.75rem; color: var(--fg); font-weight: 600;
-  text-transform: none; letter-spacing: -0.01em; line-height: 1.3;
+.hero::after{
+  content:"";
+  position:absolute;
+  width:440px; height:440px; right:-72px; top:-130px;
+  border-radius:50%;
+  border:1px dashed rgba(90,141,255,.15);
+  box-shadow:
+    0 0 0 72px rgba(90,141,255,.018),
+    0 0 0 145px rgba(90,141,255,.012);
+  pointer-events:none;
 }
-.declaration h1 { font-size: 1.3rem; }
-.declaration h2 { font-size: 1.15rem; }
-.declaration h3, .declaration h4, .declaration h5, .declaration h6 { font-size: 1rem; }
-.declaration > :first-child { margin-top: 0; }
-.declaration ul, .declaration ol { margin: 0 0 1.1rem; padding-left: 1.5rem; }
-.declaration ul { list-style: disc; }
-.declaration ol { list-style: decimal; }
-.declaration li { margin: 0.3rem 0; }
-.declaration li::marker { color: var(--muted); }
-.declaration blockquote {
-  margin: 0 0 1.1rem; padding-left: 1rem;
-  border-left: 2px solid var(--rule); color: var(--muted);
+.doc-id{margin-bottom:26px; color:var(--muted); font:10px/1 var(--mono)}
+.doc-id span{color:var(--cyan)}
+.hero h1{
+  margin:0;
+  max-width:13ch;
+  font-size:clamp(46px, 6vw, 76px);
+  line-height:1.02;
+  letter-spacing:-.052em;
+  font-weight:450;
 }
-.declaration code {
-  font-family: var(--mono); font-size: 0.85em;
-  background: var(--rule); padding: 0.1em 0.3em; border-radius: 3px;
+.hero-meta{
+  align-self:end;
+  border-top:1px solid var(--line2);
+  padding-top:18px;
+  position:relative;
+  z-index:1;
 }
-.declaration pre {
-  margin: 0 0 1.1rem; padding: 0.9rem 1rem; overflow-x: auto;
-  border: 1px solid var(--rule); border-radius: 4px;
+.meta-row{
+  display:grid;
+  grid-template-columns:90px 1fr;
+  gap:12px;
+  padding:9px 0;
+  border-bottom:1px solid var(--line);
+  font:10px/1.45 var(--mono);
 }
-.declaration pre code { background: none; padding: 0; font-size: 0.8rem; }
-.declaration hr { border: 0; border-top: 1px solid var(--rule); margin: 2rem 0; }
-.declaration table { border-collapse: collapse; margin: 0 0 1.1rem; }
-.declaration th, .declaration td {
-  border-bottom: 1px solid var(--rule); padding: 0.4rem 0.8rem 0.4rem 0; text-align: left;
+.meta-row span:first-child{color:var(--muted2); text-transform:uppercase}
+.meta-row span:last-child{color:#c8d1dd}
+.meta-row .current{color:var(--green)}
+
+.document{
+  display:grid;
+  grid-template-columns:180px minmax(0,720px);
+  gap:70px;
+  justify-content:center;
+  padding:90px 0 110px;
 }
-ol, ul { margin: 0; padding: 0; list-style: none; }
-.stamp { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); margin: 0; }
-/* Numbered because the order of principles is itself a priority hint. */
-.claims { counter-reset: claim; }
-.claims li {
-  counter-increment: claim; padding: 0.9rem 0; border-top: 1px solid var(--rule);
-  display: grid; grid-template-columns: 2.25rem 1fr; align-items: baseline;
+.rail-inner{position:sticky; top:34px}
+.rail-rule{width:32px; height:1px; background:var(--line2); margin-bottom:18px}
+.rail a{
+  display:block;
+  padding:8px 0;
+  color:var(--muted2);
+  text-decoration:none;
+  font:10px/1.4 var(--mono);
 }
-.claims li:last-child { border-bottom: 1px solid var(--rule); }
-.claims li::before {
-  content: counter(claim, decimal-leading-zero);
-  font-family: var(--mono); font-size: 0.8rem; color: var(--accent);
+.rail a:hover{color:var(--cyan)}
+
+.content section{margin-bottom:74px}
+.section-rule{
+  display:flex; align-items:center; gap:14px;
+  margin-bottom:28px;
+  color:var(--muted2);
+  font:9px/1 var(--mono);
+  letter-spacing:.08em;
 }
-.claim-title { margin: 0; }
-/* The description is the paragraph that disambiguates the title, so it is
-   set quieter than the handle it explains. */
-.claim-note { margin: 0.4rem 0 0; color: var(--muted); }
-.log li { padding: 1.1rem 0; border-top: 1px solid var(--rule); }
-.log li:last-child { border-bottom: 1px solid var(--rule); }
-.log p + p { margin: 0.35rem 0 0; }
-.provenance { margin-top: 3rem; }
-.directory li { padding: 1.25rem 0; border-top: 1px solid var(--rule); }
-.directory li:last-child { border-bottom: 1px solid var(--rule); }
-.directory h2 {
-  margin: 0 0 0.25rem; font-size: 1.05rem; font-weight: 600; color: var(--fg);
-  text-transform: none; letter-spacing: normal;
+.section-rule::after{content:""; height:1px; background:var(--line); flex:1}
+.content h2{
+  margin:0 0 22px;
+  font-size:25px;
+  line-height:1.2;
+  letter-spacing:-.025em;
+  font-weight:520;
 }
-.directory p { margin: 0 0 0.4rem; }
-a {
-  color: inherit; text-decoration-color: var(--accent);
-  text-decoration-thickness: 1px; text-underline-offset: 3px;
+.content h3{
+  margin:0 0 9px;
+  font-size:17px;
+  line-height:1.35;
+  letter-spacing:-.012em;
+  font-weight:540;
 }
-a:hover { text-decoration-color: currentColor; }
+.content p{margin:0 0 1.25em; color:var(--body)}
+.content strong{color:var(--ink); font-weight:600}
+.content em{color:#d8e1ed}
+.content a{
+  text-decoration-color:rgba(66,216,255,.45);
+  text-underline-offset:3px;
+}
+.content a:hover{text-decoration-color:var(--cyan)}
+
+.principles-title{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:24px;
+  align-items:end;
+  margin-bottom:34px;
+}
+.principles-title h2{margin:0; font-size:38px; letter-spacing:-.04em; font-weight:470}
+.principles-title p{margin:0; color:var(--muted); font:10px/1.5 var(--mono)}
+
+.clauses{list-style:none; margin:0; padding:0; border-top:1px solid var(--line2)}
+.clauses li{
+  display:grid;
+  grid-template-columns:54px 1fr;
+  gap:24px;
+  padding:27px 0 29px;
+  border-bottom:1px solid var(--line);
+}
+.clause-no{color:var(--cyan); font:10px/1.4 var(--mono); padding-top:5px}
+.clause-body p{margin:0; color:var(--muted); font-size:14px; line-height:1.65}
+
+.provenance{
+  margin-top:72px;
+  padding:22px 0;
+  display:flex; justify-content:space-between; gap:20px;
+  border-top:1px solid var(--line2);
+  border-bottom:1px solid var(--line);
+  color:var(--muted);
+  font:10px/1.5 var(--mono);
+}
+.provenance strong{color:#c0c9d6; font-weight:500}
+
+footer{
+  min-height:110px;
+  display:flex; align-items:center; justify-content:space-between;
+  color:var(--muted2); font-size:10px;
+  border-top:1px solid var(--line);
+}
+footer .links{display:flex; gap:22px}
+footer .links a{color:var(--muted); text-decoration:none}
+
+@media(max-width:840px){
+  .hero{grid-template-columns:1fr; gap:52px; padding-top:68px}
+  .hero-meta{max-width:390px}
+  .document{grid-template-columns:1fr; gap:34px; padding-top:62px}
+  .rail{display:none}
+}
+@media(max-width:720px){
+  .shell{width:min(100% - 28px, 1280px)}
+}
+@media(max-width:620px){
+  header{min-height:68px}
+  nav a:not(:last-child){display:none}
+  .hero{padding:58px 0}
+  .hero h1{font-size:clamp(40px, 12vw, 58px)}
+  .principles-title{grid-template-columns:1fr}
+  .principles-title h2{font-size:32px}
+  .clauses li{grid-template-columns:38px 1fr; gap:14px}
+  .provenance{flex-direction:column}
+  footer{align-items:flex-start; flex-direction:column; padding:28px 0; gap:20px}
+}
+
 </style>
 </head>
 <body>
-<main>
-<p class="eyebrow">default</p>
-<h1>To help organizations keep multi-agent systems coherent.</h1>
-<div class="declaration">
+<div class="shell">
+  <header>
+    <a class="brand" href="../">
+      <img src="mark.svg" alt="" width="34" height="34">
+      <span>Kyno</span>
+    </a>
+    <nav>
+      <a href="../">Home</a>
+      <a href="#principles">Principles</a>
+      <a href="https://github.com/cizambra/kyno">GitHub ↗</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <div class="doc-id"><span>constitution/default</span> · public direction</div>
+        <h1>To help organizations keep multi-agent systems coherent.</h1>
+      </div>
+
+      <aside class="hero-meta" aria-label="Constitution metadata">
+        <div class="meta-row"><span>Status</span><span class="current">current</span></div>
+        <div class="meta-row"><span>Version</span><span>v6</span></div>
+        <div class="meta-row"><span>Changed</span><span>2026-08-24</span></div>
+        <div class="meta-row"><span>Scope</span><span>Kyno</span></div>
+      </aside>
+    </section>
+
+    <div class="document">
+      <aside class="rail">
+        <div class="rail-inner">
+          <div class="rail-rule"></div>
+          <a href="#what">01 · What is Kyno</a>
+          <a href="#why">02 · Why it exists</a>
+          <a href="#accountability">03 · Accountability</a>
+          <a href="#principles">04 · Principles</a>
+        </div>
+      </aside>
+
+      <article class="content">
+<section id="what">
+<div class="section-rule">01 / DECLARATION</div>
 <h2>What is Kyno</h2>
 <p>Kyno is what I call <em>Coherence-as-Infrastructure</em>.</p>
 <p>When a multi-agent system's goals change, agents holding a stale copy of
@@ -117,6 +277,9 @@ the old direction keep producing work for it — and quality checks against
 the stale copy push the work back toward the obsolete goal. Direction
 needs to live in one place, versioned, where every agent can consult it
 before every step. Kyno is that place, kept deliberately small.</p>
+</section>
+<section id="why">
+<div class="section-rule">02 / WHY THIS PROJECT EXISTS</div>
 <h2>Why this project exists</h2>
 <p>Multi-agent architecture is quickly becoming a trend. With the same speed, this
 trend is uncovering another phenomenon that is silently permeating the direction that products, and
@@ -157,37 +320,114 @@ agency, but agentic workflows don't have a standard layer that helps them exerci
 <p>Kyno is the product of applying my synthesis work, <a href="https://www.adaptable-discipline.com/cdt"><em>Coherence Dynamics Theory</em></a>,
 into solving the problem of drift management, introducing a bottom-up layer of coherence into agentic
 orchestration.</p>
+</section>
+<section id="accountability">
+<div class="section-rule">03 / ACCOUNTABILITY</div>
 <h2>How we hold ourselves to our principles</h2>
 <p>This constitution is set through the same CLI any operator uses, published
 through the same publishing flow, and rendered on the same page. When our
 direction changes, the change note is public. If the project's behavior
 contradicts a principle here, that is a bug in the project.</p>
-</div>
+</section>
+<section id="principles">
+<div class="principles-title">
 <h2>Operating principles</h2>
-<ol class="claims">
-<li><div class="claim"><p class="claim-title">Coherence is the goal</p>
-<p class="claim-note">When we make changes or add new features, we do them because they help support the mission, not personal interests. If a change serves a narrow edge case for a particular individual or organization, then it&#x27;s not a coherent one.</p></div></li>
-<li><div class="claim"><p class="claim-title">Stay simple, stay nimble</p>
-<p class="claim-note">We refuse to build complexity just for the sake of it, or features because they just look cool. Every feature must be justified by a material benefit to the common good. We focus on what matters, because it helps us bring coherence faster.</p></div></li>
-<li><div class="claim"><p class="claim-title">We don&#x27;t judge</p>
-<p class="claim-note">Our focus is on our mission. Not what consumers do with it. We won&#x27;t judge consumers&#x27; constitutions; our role is to help support direction, not to define, score or edit what is valuable for our consumers.</p></div></li>
-<li><div class="claim"><p class="claim-title">We favor two-way door decisions, we mitigate one-way door ones effectively</p>
-<p class="claim-note">When we decide, we put all the cards over the table and establish our tradeoffs transparently. We favor those decisions that are reversible. Sometimes that&#x27;s not an option, and we must choose between decisions that are not reversible. We choose the one we have the most control over during mitigation. We understand we will not always make the right decision, but we know ahead of time what to do in the case that happens.</p></div></li>
-<li><div class="claim"><p class="claim-title">What worked before, works now</p>
-<p class="claim-note">When we build, we build thinking about the future. When we fail to cover future cases and we address them, we make sure nothing that used to work breaks.</p></div></li>
-<li><div class="claim"><p class="claim-title">We are frugal</p>
-<p class="claim-note">Changes in Kyno are consumed by other systems. Mostly agentic AI systems. These systems might call Kyno for their purposes, so every piece of output we serve must have a purpose, otherwise it is dead weight that has financial impact on our consumers.</p></div></li>
-<li><div class="claim"><p class="claim-title">One PR, one meaningful unit of value</p>
-<p class="claim-note">Every PR must have one single responsibility; if it does two things, it&#x27;s already doing too much.</p></div></li>
-<li><div class="claim"><p class="claim-title">We don&#x27;t make promises</p>
-<p class="claim-note">While it is tempting to make guarantees about the product, we are serving stochastic systems where probabilities rule. Nothing is guaranteed. We can mention possibilities and likelihood, but guarantees can backfire. The only guarantee is that whatever change we make will be principled in our constitution.</p></div></li>
-<li><div class="claim"><p class="claim-title">We don&#x27;t assume understanding</p>
-<p class="claim-note">Nobody, not even AI, can hold the context of everything. So when we comment, discuss, review, we want to provide the relevant context in full, with no assumptions. Name who you mean (e.g. the consumers) rather than leave references around (e.g. they).</p></div></li>
-<li><div class="claim"><p class="claim-title">We own it</p>
-<p class="claim-note">When breaking changes happen, we communicate externally and internally with speed and transparency. We don&#x27;t point fingers. We focus on mitigating and supporting our consumers, and learn from what happened so it doesn&#x27;t happen again. In the same way, we own the risks of our decisions.</p></div></li>
+<p>ORDER IS A PRIORITY HINT</p>
+</div>
+<ol class="clauses">
+<li>
+  <span class="clause-no">01</span>
+  <div class="clause-body">
+    <h3>Coherence is the goal</h3>
+    <p>When we make changes or add new features, we do them because they help support the mission, not personal interests. If a change serves a narrow edge case for a particular individual or organization, then it&#x27;s not a coherent one.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">02</span>
+  <div class="clause-body">
+    <h3>Stay simple, stay nimble</h3>
+    <p>We refuse to build complexity just for the sake of it, or features because they just look cool. Every feature must be justified by a material benefit to the common good. We focus on what matters, because it helps us bring coherence faster.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">03</span>
+  <div class="clause-body">
+    <h3>We don&#x27;t judge</h3>
+    <p>Our focus is on our mission. Not what consumers do with it. We won&#x27;t judge consumers&#x27; constitutions; our role is to help support direction, not to define, score or edit what is valuable for our consumers.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">04</span>
+  <div class="clause-body">
+    <h3>We favor two-way door decisions, we mitigate one-way door ones effectively</h3>
+    <p>When we decide, we put all the cards over the table and establish our tradeoffs transparently. We favor those decisions that are reversible. Sometimes that&#x27;s not an option, and we must choose between decisions that are not reversible. We choose the one we have the most control over during mitigation. We understand we will not always make the right decision, but we know ahead of time what to do in the case that happens.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">05</span>
+  <div class="clause-body">
+    <h3>What worked before, works now</h3>
+    <p>When we build, we build thinking about the future. When we fail to cover future cases and we address them, we make sure nothing that used to work breaks.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">06</span>
+  <div class="clause-body">
+    <h3>We are frugal</h3>
+    <p>Changes in Kyno are consumed by other systems. Mostly agentic AI systems. These systems might call Kyno for their purposes, so every piece of output we serve must have a purpose, otherwise it is dead weight that has financial impact on our consumers.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">07</span>
+  <div class="clause-body">
+    <h3>One PR, one meaningful unit of value</h3>
+    <p>Every PR must have one single responsibility; if it does two things, it&#x27;s already doing too much.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">08</span>
+  <div class="clause-body">
+    <h3>We don&#x27;t make promises</h3>
+    <p>While it is tempting to make guarantees about the product, we are serving stochastic systems where probabilities rule. Nothing is guaranteed. We can mention possibilities and likelihood, but guarantees can backfire. The only guarantee is that whatever change we make will be principled in our constitution.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">09</span>
+  <div class="clause-body">
+    <h3>We don&#x27;t assume understanding</h3>
+    <p>Nobody, not even AI, can hold the context of everything. So when we comment, discuss, review, we want to provide the relevant context in full, with no assumptions. Name who you mean (e.g. the consumers) rather than leave references around (e.g. they).</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">10</span>
+  <div class="clause-body">
+    <h3>We own it</h3>
+    <p>When breaking changes happen, we communicate externally and internally with speed and transparency. We don&#x27;t point fingers. We focus on mitigating and supporting our consumers, and learn from what happened so it doesn&#x27;t happen again. In the same way, we own the risks of our decisions.</p>
+  </div>
+</li>
 </ol>
-<p class="stamp provenance">v6 &middot; last changed 2026-08-24</p>
+</section>
 
-</main>
+        <div class="provenance">
+          <span><strong>constitution/default</strong> · v6</span>
+          <span>last changed 2026-08-24</span>
+        </div>
+      </article>
+    </div>
+  </main>
+
+  <footer>
+    <a class="brand" href="../">
+      <img src="mark.svg" alt="" width="23" height="23">
+      <span>Kyno</span>
+    </a>
+    <span>Public direction, versioned.</span>
+    <div class="links">
+      <a href="../">Home</a>
+      <a href="https://github.com/cizambra/kyno">GitHub</a>
+    </div>
+  </footer>
+</div>
+
 </body>
 </html>

@@ -31,8 +31,9 @@ flowchart LR
 
 Grow toward the pipeline being the only thing that applies. People edit,
 review, and read; CI writes. On day one you'll apply from a laptop, and
-that's fine — remote mode asks you the consent question precisely because
-there's no reviewer between you and production. The day CI takes over,
+that's fine — remote mode asks you the [consent
+question](operating.md#3-go-remote) precisely because there's no
+reviewer between you and production. The day CI takes over,
 applying by hand becomes the exception that stands out in the log.
 
 ## The CI recipe

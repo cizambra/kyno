@@ -586,3 +586,25 @@ def test_given_a_declaration_when_exporting_then_it_is_carried(store):
         mission="M1", declaration="The long form.", change_note="init"
     )
     assert store.export_versions()[0]["declaration"] == "The long form."
+
+
+def test_given_an_unwritten_name_when_getting_one_version_then_it_is_none(store):
+    assert store.get("nope", 1) is None
+
+
+def test_given_an_existing_constitution_when_getting_a_version_never_reached_then_it_is_none(store):
+    store.append(
+        "default",
+        1,
+        mission="M",
+        principles=(),
+        change_note="n",
+        changed_mission=True,
+        changed_principles=False,
+        created_by=None,
+    )
+    assert store.get("default", 9) is None
+
+
+def test_given_an_unwritten_name_when_pulling_versions_after_zero_then_nothing_comes_back(store):
+    assert store.versions_after("nope", 0) == []

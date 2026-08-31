@@ -263,6 +263,19 @@ class ControlPlane:
         views = (self.public_constitution(name) for name in self._store.published_names())
         return tuple(v for v in views if v is not None)
 
+    def export_versions(
+        self,
+        constitution: str | None = None,
+        *,
+        from_version: int | None = None,
+        to_version: int | None = None,
+    ) -> list[dict]:
+        """The version history as plain dicts, ascending, bounds inclusive.
+        What `kyno export` prints locally, and what a remote client reads."""
+        return self._store.export_versions(
+            self._name(constitution), from_version=from_version, to_version=to_version
+        )
+
     def set_direction(
         self,
         *,

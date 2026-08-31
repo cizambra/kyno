@@ -901,3 +901,13 @@ async def test_given_a_connected_client_when_calling_export_versions_then_it_is_
         reply = await client.call_tool("export_versions", {})
         rows = json.loads(reply.content[0].text)
     assert [r["version"] for r in rows] == [1] and rows[0]["mission"] == "M1"
+
+
+@pytest.mark.asyncio
+@pytest.mark.e2e
+async def test_given_a_connected_client_when_listing_resources_then_the_constitution_is_there(cp):
+    from mcp.shared.memory import create_connected_server_and_client_session
+
+    async with create_connected_server_and_client_session(mcp_server.build_server(cp)) as client:
+        listed = await client.list_resources()
+    assert [str(r.uri) for r in listed.resources] == [mcp_server.RESOURCE_URI]

@@ -130,3 +130,8 @@ def test_given_a_declaration_when_serializing_then_it_sits_beside_the_mission_it
         declaration="## Why\n\nBecause the mission is one line.",
     )
     assert v.to_dict()["declaration"] == "## Why\n\nBecause the mission is one line."
+
+
+def test_given_a_principle_whose_description_is_not_text_when_normalizing_then_it_is_refused():
+    with pytest.raises(MalformedPrincipleError, match="must be text"):
+        normalize_principles(({"title": "t", "description": 123},))

@@ -321,3 +321,32 @@ def test_given_a_tokenless_opt_in_app_when_posting_then_the_lifespan_still_reach
     assert "Task group is not initialized" not in response.text
     assert response.status_code == 200
     assert '"serverInfo"' in response.text
+
+
+def test_given_an_mcp_release_without_the_body_cap_when_building_the_app_then_it_still_serves(
+    monkeypatch,
+):
+    """Old mcp releases have no max_request_body_size; the app falls back to
+    building the manager without it instead of failing to start."""
+    import mcp.server.streamable_http_manager as manager_module
+
+    from kyno.transports import build_http_app
+
+    real = manager_module.StreamableHTTPSessionManager
+
+    class OldRelease:
+        def __new__(cls, app=None, **kwargs):
+            if "max_request_body_size" in kwargs:
+                raise TypeError("unexpected keyword argument")
+            return real(app=app)
+
+    monkeypatch.setattr(manager_module, "StreamableHTTPSessionManager", OldRelease)
+    from starlette.testclient import TestClient
+
+    with TestClient(build_http_app(_make_control_plane(), token="secret")) as client:
+        response = client.post(
+            "/mcp",
+            json=_initialize_payload(),
+            headers={**_MCP_HEADERS, "Authorization": "Bearer secret"},
+        )
+    assert response.status_code == 200

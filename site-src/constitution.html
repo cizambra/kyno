@@ -46,7 +46,7 @@ body::before{
   mask-image:linear-gradient(to bottom, black, transparent 86%);
 }
 a{color:inherit}
-.shell{width:min(1180px, calc(100% - 48px)); margin:auto}
+.shell{width:min(1280px, calc(100% - 48px)); margin-inline:auto}
 
 header{
   min-height:82px;
@@ -210,8 +210,10 @@ footer .links a{color:var(--muted); text-decoration:none}
   .document{grid-template-columns:1fr; gap:34px; padding-top:62px}
   .rail{display:none}
 }
+@media(max-width:720px){
+  .shell{width:min(100% - 28px, 1280px)}
+}
 @media(max-width:620px){
-  .shell{width:min(100% - 28px, 1180px)}
   header{min-height:68px}
   nav a:not(:last-child){display:none}
   .hero{padding:58px 0}

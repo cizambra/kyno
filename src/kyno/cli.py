@@ -109,6 +109,12 @@ def set_direction_cmd(
     token_env: str | None = typer.Option(
         None, "--token-env", help="Take the token from this variable, this run."
     ),
+    no_interactive: bool = typer.Option(
+        False, "--no-interactive", help="Tells Kyno nobody is at the keyboard, so it never asks."
+    ),
+    unsafe_approval: bool = typer.Option(
+        False, "--unsafe-approval", help="Skip the questions, answering yes to all of them."
+    ),
 ) -> None:
     """Append a version from a file. The file says what the constitution
     is, including which one it is; the flags say what this edit is. Every
@@ -116,12 +122,32 @@ def set_direction_cmd(
     if not dry_run and not (note and note.strip()):
         raise typer.BadParameter("a change note is required: pass --note")
     _remote_options_guard(remote, profile, credentials, token_env)
+    if not remote and (no_interactive or unsafe_approval):
+        raise typer.BadParameter(
+            "--no-interactive and --unsafe-approval are for remote runs; add --remote"
+        )
+    if unsafe_approval and no_interactive:
+        raise typer.BadParameter(
+            "pick one: --no-interactive skips the questions; "
+            "--unsafe-approval skips them answering yes to all"
+        )
     with _clean_errors():
         fields = read_constitution_file(file)
         content = _content_of(fields)
         target = _constitution_name(fields, file)
         if remote:
-            _remote_set(target, content, note, by, dry_run, profile, credentials, token_env)
+            _remote_set(
+                target,
+                content,
+                note,
+                by,
+                dry_run,
+                profile,
+                credentials,
+                token_env,
+                no_interactive=no_interactive,
+                unsafe_approval=unsafe_approval,
+            )
             return
         plane = _control_plane()
         head, delta = plane.head_and_delta(**content, constitution=target)
@@ -157,6 +183,9 @@ def _remote_set(
     profile: str,
     credentials: str | None,
     token_env: str | None,
+    *,
+    no_interactive: bool = False,
+    unsafe_approval: bool = False,
 ) -> None:
     """The local apply, spoken over the wire: fetch the head, show the same
     delta the local path would show, then ask the server to append."""
@@ -169,6 +198,7 @@ def _remote_set(
             _print_delta(delta or ("no field changed",))
             return
         _print_delta(delta, err=True)
+        _answer_consent(target, client.url, no_interactive, unsafe_approval)
         principles = content["principles"]
         arguments = {
             "mission": content["mission"],
@@ -195,6 +225,32 @@ def _remote_set(
         typer.echo(json.dumps(result, indent=2))
     finally:
         client.close()
+
+
+def _answer_consent(target: str, url: str, no_interactive: bool, unsafe_approval: bool) -> None:
+    """Asks the consent question on interactive remote applies.
+    --no-interactive skips the questions; --unsafe-approval skips them
+    answering yes to all. If the answer is no, nothing is applied."""
+    if no_interactive or unsafe_approval:
+        return
+    typer.echo(f"You are applying to '{target}' at {url}.", err=True)
+    typer.echo("Every agent using it will follow this change on its next pull.", err=True)
+    try:
+        answered_yes = typer.confirm(
+            "Have you evaluated it against your workflow?", default=False, err=True
+        )
+    except typer.Abort:
+        # stdin is closed, so nobody can answer the question.
+        typer.echo(
+            "not applied: the consent question had nobody to answer it; "
+            "pass --no-interactive on a machine, "
+            "or --unsafe-approval to answer yes to everything",
+            err=True,
+        )
+        raise typer.Exit(code=1) from None
+    if not answered_yes:
+        typer.echo("not applied: the consent question was answered no", err=True)
+        raise typer.Exit(code=1)
 
 
 @contextmanager

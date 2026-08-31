@@ -45,6 +45,7 @@ class FakeRemote:
     def __init__(self, cp):
         self.cp = cp
         self.closed = False
+        self.url = "https://fake.kyno.test"
 
     def call_tool(self, name, arguments):
         try:
@@ -128,11 +129,14 @@ def test_given_a_remote_head_when_reading_current_yaml_remotely_then_the_file_fo
     assert "constitution: default" in r.stdout and "mission: M-remote" in r.stdout
 
 
-def test_given_a_file_when_applying_remotely_then_the_delta_shows_and_the_version_lands(
+def test_given_a_file_when_applying_remotely_then_the_delta_shows_and_the_version_is_applied(
     fake_dial, remote_cp, tmp_path
 ):
     path = write_file(tmp_path, mission="Ship it")
-    r = runner.invoke(app, ["set", path, "--note", "over the wire", "--remote", "--by", "camilo"])
+    r = runner.invoke(
+        app,
+        ["set", path, "--note", "over the wire", "--remote", "--by", "camilo", "--no-interactive"],
+    )
     assert r.exit_code == 0, r.output
     assert "Creates 'default' at version 1." in r.output
     assert json.loads(r.stdout)["version"] == 1
@@ -145,7 +149,7 @@ def test_given_identical_content_when_applying_remotely_then_it_is_a_clean_no_op
 ):
     remote_cp.set_direction(mission="Same", change_note="init")
     path = write_file(tmp_path, mission="Same")
-    r = runner.invoke(app, ["set", path, "--note", "again", "--remote"])
+    r = runner.invoke(app, ["set", path, "--note", "again", "--remote", "--no-interactive"])
     assert r.exit_code == 0, r.output
     assert "no field changed" in r.output
     assert json.loads(r.stdout)["version"] == 1
@@ -243,7 +247,9 @@ def test_given_no_profiles_when_going_remote_then_the_error_names_have_and_fix()
 
 
 @pytest.mark.e2e
-def test_given_a_live_server_when_applying_remotely_then_the_version_lands(tmp_path, monkeypatch):
+def test_given_a_live_server_when_applying_remotely_then_the_version_is_applied(
+    tmp_path, monkeypatch
+):
     """The one true end-to-end: a real HTTP server, the real bearer gate,
     the real client. Everything else in this file skips the wire."""
     import socket
@@ -279,7 +285,7 @@ def test_given_a_live_server_when_applying_remotely_then_the_version_lands(tmp_p
             == 0
         )
         path = write_file(tmp_path, mission="Live over the wire")
-        r = runner.invoke(app, ["set", path, "--note", "e2e", "--remote"])
+        r = runner.invoke(app, ["set", path, "--note", "e2e", "--remote", "--no-interactive"])
         assert r.exit_code == 0, r.output
         assert store.head("default").mission == "Live over the wire"
         r = runner.invoke(app, ["log", "--remote"])
@@ -289,18 +295,115 @@ def test_given_a_live_server_when_applying_remotely_then_the_version_lands(tmp_p
         thread.join(timeout=5)
 
 
-def test_given_a_writer_landing_mid_apply_when_applying_remotely_then_nothing_lands(
+def test_given_a_writer_racing_in_mid_apply_when_applying_remotely_then_nothing_is_applied(
     fake_dial, remote_cp, tmp_path
 ):
     """The delta was computed against the head we fetched; if the head moves
-    before the write, the server refuses instead of landing an edit nobody
+    before the write, the server refuses instead of applying an edit nobody
     reviewed in that shape."""
     remote_cp.set_direction(mission="M1", change_note="init")
     fake_dial.after_fetch = lambda: remote_cp.set_direction(
         mission="Raced in", change_note="someone else"
     )
     path = write_file(tmp_path, mission="M2")
-    r = runner.invoke(app, ["set", path, "--note", "stale", "--remote"])
+    r = runner.invoke(app, ["set", path, "--note", "stale", "--remote", "--no-interactive"])
     assert r.exit_code == 1
     assert "moved while applying; read it again and re-apply" in r.output
     assert remote_cp.current().mission == "Raced in" and remote_cp.current().version == 2
+
+
+def test_given_a_yes_at_the_consent_question_when_applying_remotely_then_the_version_is_applied(
+    fake_dial, remote_cp, tmp_path
+):
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "init", "--remote"], input="y\n")
+    assert r.exit_code == 0, r.output
+    assert "Have you evaluated it against your workflow?" in r.output
+    assert remote_cp.current().version == 1
+
+
+def test_given_a_no_at_the_consent_question_when_applying_remotely_then_nothing_is_applied(
+    fake_dial, remote_cp, tmp_path
+):
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "init", "--remote"], input="n\n")
+    assert r.exit_code == 1
+    assert "not applied: the consent question was answered no" in r.output
+    assert remote_cp.current().version == 0
+
+
+def test_given_nobody_at_the_keyboard_when_the_consent_question_asks_then_nothing_is_applied(
+    fake_dial, remote_cp, tmp_path
+):
+    """Without --no-interactive and without stdin, the command fails and
+    the error says what to pass, instead of hanging or trying to guess
+    whether a terminal is attached."""
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "init", "--remote"])
+    assert r.exit_code == 1
+    assert "nobody to answer it" in r.output
+    assert "--no-interactive" in r.output and "--unsafe-approval" in r.output
+    assert remote_cp.current().version == 0
+
+
+def test_given_unsafe_approval_when_applying_remotely_then_no_question_is_asked(
+    fake_dial, remote_cp, tmp_path
+):
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "init", "--remote", "--unsafe-approval"])
+    assert r.exit_code == 0, r.output
+    assert "evaluated it against your workflow" not in r.output
+    assert remote_cp.current().version == 1
+
+
+def test_given_no_interactive_when_applying_remotely_then_no_question_is_asked(
+    fake_dial, remote_cp, tmp_path
+):
+    """CI passes --no-interactive and is never asked anything."""
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "init", "--remote", "--no-interactive"])
+    assert r.exit_code == 0, r.output
+    assert "evaluated it against your workflow" not in r.output
+
+
+def test_given_a_local_apply_when_running_set_then_no_question_is_asked(tmp_path, monkeypatch):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "init"])
+    assert r.exit_code == 0, r.output
+    assert "evaluated it against your workflow" not in r.output
+
+
+def test_given_a_dry_run_when_applying_remotely_then_no_question_is_asked(
+    fake_dial, remote_cp, tmp_path
+):
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--dry-run", "--remote"])
+    assert r.exit_code == 0, r.output
+    assert "evaluated it against your workflow" not in r.output
+
+
+@pytest.mark.parametrize("flag", ["--no-interactive", "--unsafe-approval"])
+def test_given_a_question_flag_without_remote_when_applying_then_it_is_refused(
+    tmp_path, monkeypatch, flag
+):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "init", flag])
+    assert r.exit_code != 0
+    assert "add --remote" in plain(r.output)
+
+
+def test_given_both_question_flags_when_applying_then_it_is_refused_as_redundant(
+    fake_dial, remote_cp, tmp_path
+):
+    """The flags are two different ways to skip the questions, so passing
+    both means nothing extra; Kyno asks you to pick one."""
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(
+        app, ["set", path, "--note", "init", "--remote", "--no-interactive", "--unsafe-approval"]
+    )
+    assert r.exit_code != 0
+    assert "pick one" in plain(r.output)
+    assert remote_cp.current().version == 0

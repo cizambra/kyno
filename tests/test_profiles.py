@@ -347,3 +347,69 @@ def test_given_nothing_configured_when_resolving_default_then_the_fix_needs_no_p
     with pytest.raises(ProfileError) as refused:
         resolve()
     assert str(refused.value).endswith("Create it with: kyno remote add --url URL")
+
+
+def test_given_a_resolving_profile_when_showing_then_the_chain_prints_and_exit_is_0(monkeypatch):
+    add_credentials("oncall", token_env="KYNO_ONCALL_TOKEN")
+    add_remote("https://kyno.mybiz.com", "oncall", credentials_profile="oncall")
+    monkeypatch.setenv("KYNO_ONCALL_TOKEN", "t0k")
+    r = runner.invoke(app, ["remote", "show", "--profile", "oncall"])
+    assert r.exit_code == 0, r.output
+    assert "profile: oncall" in r.output and "url: https://kyno.mybiz.com" in r.output
+    assert "token from: credentials 'oncall'" in r.output and "resolves: yes" in r.output
+    assert "t0k" not in r.output
+
+
+def test_given_an_unset_variable_when_showing_then_it_says_no_and_why_and_exits_1(monkeypatch):
+    add_remote("https://kyno.mybiz.com", "ci", token_env="KYNO_TOKEN")
+    monkeypatch.delenv("KYNO_TOKEN", raising=False)
+    r = runner.invoke(app, ["remote", "show", "--profile", "ci"])
+    assert r.exit_code == 1
+    assert "token from: ${KYNO_TOKEN}" in r.output
+    assert (
+        "resolves: no (remote profile 'ci' reads its token from ${KYNO_TOKEN}, which is not set)"
+        in r.output
+    )
+
+
+def test_given_missing_credentials_when_showing_then_the_reason_carries_the_fix():
+    add_credentials("oncall", token_env="X")
+    add_remote("https://kyno.mybiz.com", "oncall", credentials_profile="oncall")
+    credentials_path().unlink()
+    r = runner.invoke(app, ["remote", "show", "--profile", "oncall"])
+    assert r.exit_code == 1
+    assert "resolves: no (" in r.output and "kyno credentials add --profile oncall" in r.output
+
+
+def test_given_an_unknown_profile_when_showing_then_the_error_names_have_and_fix():
+    r = runner.invoke(app, ["remote", "show", "--profile", "prod"])
+    assert r.exit_code == 1
+    assert "error: no remote profile 'prod'; you have: none" in plain(r.output)
+
+
+def test_given_several_profiles_when_listing_then_each_is_one_line_sorted_by_name(monkeypatch):
+    add_credentials(token_env="KYNO_TOKEN")
+    add_remote("https://kyno.mybiz.com")
+    add_remote("https://kyno.mybiz.com", "oncall", token_env="KYNO_ONCALL")
+    add_remote("https://scl.mybiz.com", "scl", credentials_profile="default")
+    r = runner.invoke(app, ["remote", "list"])
+    assert r.exit_code == 0
+    lines = r.output.strip().splitlines()
+    assert lines == [
+        "default  https://kyno.mybiz.com  token from credentials 'default'",
+        "oncall  https://kyno.mybiz.com  token from ${KYNO_ONCALL}",
+        "scl  https://scl.mybiz.com  token from credentials 'default'",
+    ]
+
+
+def test_given_no_profiles_when_listing_then_it_says_so_with_the_fix_and_exits_0():
+    r = runner.invoke(app, ["remote", "list"])
+    assert r.exit_code == 0
+    assert "no remote profiles; create one with: kyno remote add --url URL" in r.output
+
+
+def test_given_a_listing_when_a_token_is_written_in_then_it_never_appears(monkeypatch):
+    add_credentials(token="s3cret")
+    add_remote("https://kyno.mybiz.com")
+    for command in (["remote", "list"], ["remote", "show"]):
+        assert "s3cret" not in runner.invoke(app, command).output

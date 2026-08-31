@@ -13,6 +13,7 @@ script: the page states them, it does not decide them.
 """
 
 import argparse
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -44,6 +45,12 @@ def main() -> None:
     target = ROOT / "site" / "constitution" / "index.html"
     target.write_text(html, encoding="utf-8")
     print(f"wrote {target}")
+
+    # The JSON export beside the page, from the same view, so the two can
+    # never disagree. History stays absent: this site doesn't publish it.
+    data = ROOT / "site" / "constitution" / "constitution.json"
+    data.write_text(json.dumps(view.to_dict(), indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {data}")
 
 
 # The template's own markup for this constitution: labeled sections and

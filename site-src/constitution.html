@@ -289,14 +289,14 @@ ol.log p{margin:0; color:var(--muted); font-size:14px}
   <main>
     <section class="hero">
       <div>
-        <div class="doc-id"><span>constitution/default</span> · public direction</div>
-        <h1>To help organizations keep multi-agent systems coherent.</h1>
+        <div class="doc-id"><span>constitution/$name</span> · public direction</div>
+        <h1>$mission</h1>
       </div>
 
       <aside class="hero-meta" aria-label="Constitution metadata">
         <div class="meta-row"><span>Status</span><span class="current">current</span></div>
-        <div class="meta-row"><span>Version</span><span>v6</span></div>
-        <div class="meta-row"><span>Changed</span><span>2026-08-24</span></div>
+        <div class="meta-row"><span>Version</span><span>v$version</span></div>
+        <div class="meta-row"><span>Changed</span><span>$updated</span></div>
         <div class="meta-row"><span>Scope</span><span>Kyno</span></div>
       </aside>
     </section>
@@ -310,87 +310,12 @@ ol.log p{margin:0; color:var(--muted); font-size:14px}
       </aside>
 
       <article class="content">
-<div class="declaration">
-<h2>What is Kyno</h2>
-<p>Kyno is what I call <em>Coherence-as-Infrastructure</em>.</p>
-<p>When a multi-agent system's goals change, agents holding a stale copy of
-the old direction keep producing work for it — and quality checks against
-the stale copy push the work back toward the obsolete goal. Direction
-needs to live in one place, versioned, where every agent can consult it
-before every step. Kyno is that place, kept deliberately small.</p>
-<h2>Why this project exists</h2>
-<p>Multi-agent architecture is quickly becoming a trend. With the same speed, this
-trend is uncovering another phenomenon that is silently permeating the direction that products, and
-in consequence businesses and organizations, are taking: <em>agentic drifting</em>. By agentic drifting,
-we understand it as &quot;the gradual, hidden process where an AI agent slowly loses alignment with
-its intended goals, policies, or workflows over time&quot;<a href="https://medium.com/@ravikumar.singi_16677/agentic-drift-keeping-ai-aligned-reliable-and-roi-driven-a099fa554d08">1</a>.</p>
-<p>But drift goes <em>beyond</em> that. Let me explain.</p>
-<p>I've been talking about drift for a while. Drift is not a phenomenon that only occurs in AI agents.
-It's a phenomenon that also happens at a human level. Drift is a behavioral force that applies a pull on humans
-and makes them act out of coherence. Furthermore, drift is a property shared by <em>all</em> systems that operate
-under a <em>directional regime</em> over time. Agents and humans are a manifestation of this same dynamic.</p>
-<p>I think we have all observed this drift in different systems, but we are just now able to name it
-more clearly.</p>
-<p>As a consequence of my research on coherence, I developed one thesis — or more like a hot take: <strong>drift is the default</strong>.
-A behavioral cousin of entropy. If you leave a room untouched, it tends to get cluttered over time.
-Same happens with the behavior of the systems I just described. Bringing coherence, just like cleaning a room,
-demands energy and alignment.</p>
-<p>So...drift is the default, <em>cool</em>. What does it mean for agents?</p>
-<p>It means that agents will keep drifting if there is no active drift-management process that helps bring coherence
-to the system. The hard truth is that drift is not a property that can be eliminated; because it's the
-default, it can only be managed.</p>
-<p>On top of all that, drift is also fractal. It happens at different scales. Humans drift, and when you
-assemble teams, the team itself experiences combined drift, along with the structure's own drift. So
-drift compounds, individually and fractally. Furthermore, drift spreads, in an effect I call <em>resonance</em>.
-Like the rotten apple principle. One apple rots, and the rot starts spreading to all the apples around.
-And because drift is the default, it doesn't take effort for that to happen. Like a bad telephone game.</p>
-<p>At this point you are probably familiar with it: you have a swarm of agents doing work, and it takes one
-agent drifting on its result to have the rest of the system drift upon the handoff of that result.</p>
-<p>The literature has started to describe this problem already <a href="https://arxiv.org/pdf/2601.04170">2</a>.
-And because drift is the default, I think we need to invest in coherence and alignment.</p>
-<p>Agentic workflows today practice what I call <em>top-bottom governance</em>: systems that draw the boundaries
-of what agents within a system can do, and enforce them through rules and policies.
-While this works not only for agents but also for human individuals and human groups, you also want them
-to have the ability to exercise self-governance and make the right judgment calls when making decisions
-and taking actions on behalf of themselves and of the systems they are inserted into. This is what I call
-<em>bottom-up agency</em>. Human organizations already rely heavily on both top-bottom governance and bottom-up
-agency, but agentic workflows don't have a standard layer that helps them exercise bottom-up agency.</p>
-<p>Kyno is the product of applying my synthesis work, <a href="https://www.adaptable-discipline.com/cdt"><em>Coherence Dynamics Theory</em></a>,
-into solving the problem of drift management, introducing a bottom-up layer of coherence into agentic
-orchestration.</p>
-<h2>How we hold ourselves to our principles</h2>
-<p>This constitution is set through the same CLI any operator uses, published
-through the same publishing flow, and rendered on the same page. When our
-direction changes, the change note is public. If the project's behavior
-contradicts a principle here, that is a bug in the project.</p>
-</div>
-<h2>Operating principles</h2>
-<ol class="claims">
-<li><div class="claim"><p class="claim-title">Coherence is the goal</p>
-<p class="claim-note">When we make changes or add new features, we do them because they help support the mission, not personal interests. If a change serves a narrow edge case for a particular individual or organization, then it&#x27;s not a coherent one.</p></div></li>
-<li><div class="claim"><p class="claim-title">Stay simple, stay nimble</p>
-<p class="claim-note">We refuse to build complexity just for the sake of it, or features because they just look cool. Every feature must be justified by a material benefit to the common good. We focus on what matters, because it helps us bring coherence faster.</p></div></li>
-<li><div class="claim"><p class="claim-title">We don&#x27;t judge</p>
-<p class="claim-note">Our focus is on our mission. Not what consumers do with it. We won&#x27;t judge consumers&#x27; constitutions; our role is to help support direction, not to define, score or edit what is valuable for our consumers.</p></div></li>
-<li><div class="claim"><p class="claim-title">We favor two-way door decisions, we mitigate one-way door ones effectively</p>
-<p class="claim-note">When we decide, we put all the cards over the table and establish our tradeoffs transparently. We favor those decisions that are reversible. Sometimes that&#x27;s not an option, and we must choose between decisions that are not reversible. We choose the one we have the most control over during mitigation. We understand we will not always make the right decision, but we know ahead of time what to do in the case that happens.</p></div></li>
-<li><div class="claim"><p class="claim-title">What worked before, works now</p>
-<p class="claim-note">When we build, we build thinking about the future. When we fail to cover future cases and we address them, we make sure nothing that used to work breaks.</p></div></li>
-<li><div class="claim"><p class="claim-title">We are frugal</p>
-<p class="claim-note">Changes in Kyno are consumed by other systems. Mostly agentic AI systems. These systems might call Kyno for their purposes, so every piece of output we serve must have a purpose, otherwise it is dead weight that has financial impact on our consumers.</p></div></li>
-<li><div class="claim"><p class="claim-title">One PR, one meaningful unit of value</p>
-<p class="claim-note">Every PR must have one single responsibility; if it does two things, it&#x27;s already doing too much.</p></div></li>
-<li><div class="claim"><p class="claim-title">We don&#x27;t make promises</p>
-<p class="claim-note">While it is tempting to make guarantees about the product, we are serving stochastic systems where probabilities rule. Nothing is guaranteed. We can mention possibilities and likelihood, but guarantees can backfire. The only guarantee is that whatever change we make will be principled in our constitution.</p></div></li>
-<li><div class="claim"><p class="claim-title">We don&#x27;t assume understanding</p>
-<p class="claim-note">Nobody, not even AI, can hold the context of everything. So when we comment, discuss, review, we want to provide the relevant context in full, with no assumptions. Name who you mean (e.g. the consumers) rather than leave references around (e.g. they).</p></div></li>
-<li><div class="claim"><p class="claim-title">We own it</p>
-<p class="claim-note">When breaking changes happen, we communicate externally and internally with speed and transparency. We don&#x27;t point fingers. We focus on mitigating and supporting our consumers, and learn from what happened so it doesn&#x27;t happen again. In the same way, we own the risks of our decisions.</p></div></li>
-</ol>
-
+$declaration
+$principles
+$history
         <div class="provenance">
-          <span><strong>constitution/default</strong> · v6</span>
-          <span>last changed 2026-08-24</span>
+          <span><strong>constitution/$name</strong> · v$version</span>
+          <span>last changed $updated</span>
         </div>
       </article>
     </div>

@@ -238,6 +238,11 @@ footer .links a{color:var(--muted); text-decoration:none}
   margin-bottom:28px; color:var(--muted2);
   font:9px/1 var(--mono); letter-spacing:.08em;
 }
+/* This template belongs to this constitution, so it may know its sections.
+   A section beyond these falls back to the generic label above. */
+.declaration h2:nth-of-type(1)::before{content:"01 / DECLARATION"}
+.declaration h2:nth-of-type(2)::before{content:"02 / WHY THIS PROJECT EXISTS"}
+.declaration h2:nth-of-type(3)::before{content:"03 / ACCOUNTABILITY"}
 .declaration > h2:first-child{margin-top:0}
 .content > h2{
   margin:74px 0 6px; font-size:38px; letter-spacing:-.04em; font-weight:470;

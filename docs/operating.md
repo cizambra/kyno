@@ -117,7 +117,7 @@ kyno export --remote
 
 They work against the profile's endpoint instead of your local store and print exactly what their local versions print. `--profile oncall` picks a different bundle; `--credentials` or `--token-env` beside it swaps the token source for that one run. Without `--remote` you are always on your local store — there is no fallback in either direction.
 
-When you run a remote `set` from a terminal, Kyno asks a question after showing the delta: have you evaluated this change against your workflow? The default answer is no, and if the answer is no, nothing is applied.
+When you run a remote `set` from a terminal, Kyno asks a question after showing the delta: have you evaluated this change against your workflow? The default answer is no, and if the answer is no, nothing is applied. If the file has the same content as an older version, Kyno also asks whether this is a deliberate revert, to catch applies from stale files.
 
 Two flags skip the questions, in two different spirits, and you pass at most one:
 

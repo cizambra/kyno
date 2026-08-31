@@ -407,3 +407,128 @@ def test_given_both_question_flags_when_applying_then_it_is_refused_as_redundant
     assert r.exit_code != 0
     assert "pick one" in plain(r.output)
     assert remote_cp.current().version == 0
+
+
+def _three_versions(remote_cp):
+    remote_cp.set_direction(mission="M1", change_note="v1")
+    remote_cp.set_direction(mission="M2", change_note="v2")
+    remote_cp.set_direction(mission="M3", change_note="v3")
+
+
+def test_given_an_older_versions_content_when_applying_interactively_then_the_revert_asks(
+    fake_dial, remote_cp, tmp_path
+):
+    _three_versions(remote_cp)
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "back to v1", "--remote"], input="y\ny\n")
+    assert r.exit_code == 0, r.output
+    assert "the same content as v1" in r.output and "back as v4" in r.output
+    assert remote_cp.current().version == 4 and remote_cp.current().mission == "M1"
+
+
+def test_given_a_no_at_the_revert_question_when_applying_then_nothing_is_applied(
+    fake_dial, remote_cp, tmp_path
+):
+    _three_versions(remote_cp)
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "back", "--remote"], input="y\nn\n")
+    assert r.exit_code == 1
+    assert "not applied: the revert question was answered no" in r.output
+    assert remote_cp.current().version == 3
+
+
+def test_given_fresh_content_when_applying_interactively_then_only_consent_is_asked(
+    fake_dial, remote_cp, tmp_path
+):
+    _three_versions(remote_cp)
+    path = write_file(tmp_path, mission="M4")
+    r = runner.invoke(app, ["set", path, "--note", "new", "--remote"], input="y\n")
+    assert r.exit_code == 0, r.output
+    assert "deliberate revert" not in r.output
+
+
+def test_given_an_older_versions_content_when_applying_headless_then_no_question_fires(
+    fake_dial, remote_cp, tmp_path
+):
+    """A headless run can't tell a deliberate revert from a stale file, so
+    it isn't asked; in CI the parent-commit comparison covers this case."""
+    _three_versions(remote_cp)
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "back", "--remote", "--no-interactive"])
+    assert r.exit_code == 0, r.output
+    assert "revert" not in r.output
+    assert remote_cp.current().version == 4
+
+
+def test_given_unsafe_approval_when_re_landing_old_content_then_it_proceeds_unasked(
+    fake_dial, remote_cp, tmp_path
+):
+    _three_versions(remote_cp)
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "back", "--remote", "--unsafe-approval"])
+    assert r.exit_code == 0, r.output
+    assert "deliberate revert" not in r.output and remote_cp.current().version == 4
+
+
+def test_given_content_equal_to_the_head_when_applying_interactively_then_no_revert_asks(
+    fake_dial, remote_cp, tmp_path
+):
+    """Only versions below the head count as a revert; matching the head is
+    the ordinary no-op."""
+    _three_versions(remote_cp)
+    path = write_file(tmp_path, mission="M3")
+    r = runner.invoke(app, ["set", path, "--note", "same", "--remote"], input="y\n")
+    assert r.exit_code == 0, r.output
+    assert "deliberate revert" not in r.output
+    assert "no field changed" in r.output
+    assert remote_cp.current().version == 3
+
+
+def test_given_two_older_versions_with_the_same_content_when_asking_then_the_newest_is_named(
+    fake_dial, remote_cp, tmp_path
+):
+    remote_cp.set_direction(mission="M1", change_note="v1")
+    remote_cp.set_direction(mission="M2", change_note="v2")
+    remote_cp.set_direction(mission="M1", change_note="v3, back to v1")
+    remote_cp.set_direction(mission="M4", change_note="v4")
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "back", "--remote"], input="y\ny\n")
+    assert r.exit_code == 0, r.output
+    assert "the same content as v3." in r.output and "as v1." not in r.output
+
+
+def test_given_a_file_omitting_fields_when_carry_forward_matches_an_old_version_then_it_asks(
+    fake_dial, remote_cp, tmp_path
+):
+    """The comparison uses the effective content: what the apply would
+    write after omitted fields carry forward from the head."""
+    remote_cp.set_direction(mission="M1", principles=["p1"], change_note="v1")
+    remote_cp.set_direction(mission="M2", principles=["p1"], change_note="v2")
+    # The file omits principles; p1 carries forward, so the result is v1.
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "back", "--remote"], input="y\ny\n")
+    assert r.exit_code == 0, r.output
+    assert "the same content as v1." in r.output
+
+
+def test_given_the_same_mission_but_different_principles_when_applying_then_no_revert_asks(
+    fake_dial, remote_cp, tmp_path
+):
+    remote_cp.set_direction(mission="M1", principles=["p1"], change_note="v1")
+    remote_cp.set_direction(mission="M2", principles=["p1"], change_note="v2")
+    p = pathlib.Path(tmp_path) / "c.yaml"
+    p.write_text("constitution: default\nmission: M1\nprinciples:\n  - p2\n", encoding="utf-8")
+    r = runner.invoke(app, ["set", str(p), "--note", "new mix", "--remote"], input="y\n")
+    assert r.exit_code == 0, r.output
+    assert "deliberate revert" not in r.output
+
+
+def test_given_stdin_ending_at_the_revert_prompt_when_applying_then_nothing_is_applied(
+    fake_dial, remote_cp, tmp_path
+):
+    _three_versions(remote_cp)
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "back", "--remote"], input="y\n")
+    assert r.exit_code == 1
+    assert "not applied: the revert question had nobody to answer it" in r.output
+    assert remote_cp.current().version == 3

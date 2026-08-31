@@ -413,3 +413,18 @@ def test_given_a_listing_when_a_token_is_written_in_then_it_never_appears(monkey
     add_remote("https://kyno.mybiz.com")
     for command in (["remote", "list"], ["remote", "show"]):
         assert "s3cret" not in runner.invoke(app, command).output
+
+
+def test_given_both_credential_sources_at_resolve_time_then_it_is_refused(monkeypatch):
+    add_credentials(token_env="KYNO_TOKEN")
+    add_remote("https://kyno.mybiz.com")
+    with pytest.raises(ProfileError, match="one way"):
+        resolve(credentials_profile="default", token_env="OTHER")
+
+
+def test_given_a_credentials_file_whose_token_went_blank_when_resolving_then_it_says_re_add():
+    add_credentials(token="good")
+    add_remote("https://kyno.mybiz.com")
+    credentials_path().write_text("[default]\ntoken =\n", encoding="utf-8")
+    with pytest.raises(ProfileError, match="credentials 'default' hold no token; re-add them"):
+        resolve()

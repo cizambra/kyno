@@ -179,6 +179,22 @@ def _carry_forward(head, *, mission, declaration, principles):
     )
 
 
+def effective_content(
+    head: ConstitutionVersion | None,
+    *,
+    mission: str | None = None,
+    declaration: str | None = None,
+    principles: tuple[Principle | str, ...] | None = None,
+) -> tuple[str, str, tuple[Principle, ...]]:
+    """What an apply with these fields would make the content: mission,
+    declaration, principles, after carry-forward and normalization."""
+    principles = normalize_principles(principles)
+    new_mission, new_declaration, new_principles, _, _ = _carry_forward(
+        head, mission=mission, declaration=declaration, principles=principles
+    )
+    return new_mission, new_declaration, tuple(new_principles)
+
+
 def edit_delta(
     head: ConstitutionVersion | None,
     name: str,

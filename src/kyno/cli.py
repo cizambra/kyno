@@ -17,6 +17,7 @@ from kyno.authoring import (
 )
 from kyno.config import Settings, store_from_settings
 from kyno.errors import AuthoringError, CoherenceError, NoFieldChangedError
+from kyno.models import normalize_principles
 from kyno.profiles import (
     add_credentials,
     add_remote,
@@ -27,7 +28,7 @@ from kyno.profiles import (
 )
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
 from kyno.remote import RemoteError, dial, version_from_payload
-from kyno.service import ControlPlane, edit_delta
+from kyno.service import ControlPlane, edit_delta, effective_content
 
 app = typer.Typer(help="Coherence engine control plane.")
 
@@ -199,6 +200,8 @@ def _remote_set(
             return
         _print_delta(delta, err=True)
         _answer_consent(target, client.url, no_interactive, unsafe_approval)
+        if not no_interactive and not unsafe_approval:
+            _answer_revert_signature(client, target, head, content)
         principles = content["principles"]
         arguments = {
             "mission": content["mission"],
@@ -251,6 +254,49 @@ def _answer_consent(target: str, url: str, no_interactive: bool, unsafe_approval
     if not answered_yes:
         typer.echo("not applied: the consent question was answered no", err=True)
         raise typer.Exit(code=1)
+
+
+def _answer_revert_signature(client, target: str, head, content: dict) -> None:
+    """Asks whether this is a deliberate revert when the file has the same
+    content as an older version. Only on interactive remote applies: a
+    headless run can't tell a deliberate revert from a stale file, so it
+    isn't asked."""
+    if head is None:
+        return
+    match = _matching_older_version(client, target, head, content)
+    if match is None:
+        return
+    typer.echo(f"This file has exactly the same content as v{match}.", err=True)
+    typer.echo(f"Applying it will bring that content back as v{head.version + 1}.", err=True)
+    try:
+        answered_yes = typer.confirm("Is this a deliberate revert?", default=False, err=True)
+    except typer.Abort:
+        typer.echo("not applied: the revert question had nobody to answer it", err=True)
+        raise typer.Exit(code=1) from None
+    if not answered_yes:
+        typer.echo("not applied: the revert question was answered no", err=True)
+        raise typer.Exit(code=1)
+
+
+def _matching_older_version(client, target: str, head, content: dict) -> int | None:
+    """The newest version below the head whose content is the same as what
+    this apply would write, or None when there is no match."""
+    rows = client.call_tool("export_versions", {"constitution": target})
+    incoming = effective_content(head, **content)
+    match = None
+    for row in rows:
+        if row["version"] < head.version and _row_content(row) == incoming:
+            match = row["version"]
+    return match
+
+
+def _row_content(row: dict) -> tuple:
+    """One exported version's content fields, normalized for comparison."""
+    return (
+        row.get("mission") or "",
+        row.get("declaration") or "",
+        tuple(normalize_principles(tuple(row.get("principles") or ()))),
+    )
 
 
 @contextmanager

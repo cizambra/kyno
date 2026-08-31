@@ -17,6 +17,8 @@ but each one stands alone.
    colors, and your own templates.
 6. [Operating Kyno](operating.md). Storage, auth, remote mode, deploying,
    and testing.
+7. [Best practices](best-practices.md). The operating sequence once real
+   agents depend on the store: review, CI, rehearsal, and repair.
 
 ## 💬 Questions?
 

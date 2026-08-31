@@ -1,242 +1,172 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kyno: one versioned source of direction for multi-agent systems</title>
-<meta name="description" content="A coherence control plane for multi-agent systems: one versioned source of truth for your system's mission and principles, served over MCP.">
-<link rel="stylesheet" href="style.css">
-<script defer src="https://cloud.umami.is/script.js" data-website-id="1ac0032b-f63c-44fa-a68d-7ed07ecd34b6"></script>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23171a21'/%3E%3Ctext x='8' y='12' font-family='monospace' font-size='11' fill='%237d95ff' text-anchor='middle'%3Ek%3C/text%3E%3C/svg%3E">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kyno — one direction, every agent, every step</title>
+  <meta name="description" content="Kyno is a coherence control plane for multi-agent systems: one versioned source of direction, pulled at the moment each agent needs it.">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
 </head>
 <body>
+  <div class="page-grid" aria-hidden="true"></div>
 
-<header class="top">
-  <div class="wrap">
-    <a class="brand" href="./">kyno</a>
+  <header class="topbar wrap">
+    <a class="brand" href="./" aria-label="Kyno home">
+      <img src="mark.svg" width="34" height="34" alt="">
+      <span>Kyno</span>
+    </a>
     <nav>
       <a href="#how">How it works</a>
       <a href="#start">Quick start</a>
-      <a href="constitution/">Our constitution</a>
-      <a href="https://github.com/cizambra/kyno">GitHub</a>
+      <a href="constitution/">Constitution</a>
+      <a href="https://github.com/cizambra/kyno">GitHub ↗</a>
     </nav>
-  </div>
-</header>
+  </header>
 
-<main>
-  <div class="hero wrap">
-    <h1>Your agents are playing a bad telephone game.</h1>
-    <p class="sub">Kyno holds one versioned source of direction, and your agents
-    pull it before every step. Change the mission once and the very next step
-    runs on it.</p>
-
-    <div class="cta">
-      <div class="install">
-        <span class="prompt">$</span>
-        <span id="pip-cmd">pip install kyno</span>
-        <button class="copy-btn" data-copy="pip install kyno">copy</button>
-      </div>
-      <a class="btn btn-ghost" href="https://github.com/cizambra/kyno">Star on GitHub</a>
-    </div>
-
-    <figure class="flow-card">
-      <svg viewBox="0 0 760 310" role="img" aria-label="A workflow of four agents. Each pulls the current direction from Kyno before its step. A new version reaches each agent at its own next pull.">
-        <defs>
-          <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M0,0 L8,4 L0,8 z" class="arr-head"/>
-          </marker>
-          <marker id="arr-stale" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M0,0 L8,4 L0,8 z" class="arr-head-stale"/>
-          </marker>
-        </defs>
-
-        <!-- the operator: where direction changes come from -->
-        <g class="operator" id="operator">
-          <rect x="52" y="31" width="130" height="58" rx="9"/>
-          <text x="117" y="55" text-anchor="middle" class="op-name">operator</text>
-          <text x="117" y="73" text-anchor="middle" class="op-sub">your organization</text>
-        </g>
-        <path d="M186 60 H 272" class="op-arrow" id="op-arrow" marker-end="url(#arr)"/>
-        <g class="doc" id="doc" aria-hidden="true">
-          <path d="M0 0 h9 l5 5 v13 h-14 z" class="doc-body"/>
-          <path d="M9 0 v5 h5" class="doc-fold"/>
-          <path d="M3 9 h8 M3 12 h8 M3 15 h5" class="doc-lines"/>
-        </g>
-
-        <!-- the store -->
-        <g class="store">
-          <rect x="280" y="14" width="200" height="92" rx="10" class="store-box"/>
-          <text x="380" y="42" text-anchor="middle" class="store-name">Kyno</text>
-          <text x="380" y="60" text-anchor="middle" class="store-sub">direction store</text>
-          <g class="versions">
-            <text x="316" y="88" text-anchor="middle" class="v-old" id="ver-old1">v7</text>
-            <text x="352" y="88" text-anchor="middle" class="v-old" id="ver-old2">v8</text>
-            <g class="v-now">
-              <rect x="376" y="72" width="66" height="22" rx="5"/>
-              <text x="409" y="87" text-anchor="middle" id="ver-new">v9 new</text>
-            </g>
-          </g>
-        </g>
-
-        <!-- one rail from the store, one drop into each step -->
-        <g class="pulls">
-          <path d="M380 106 V 150" class="pull"/>
-          <path d="M122 150 H 638" class="pull rail"/>
-          <path d="M122 150 V 192" class="pull" id="drop-1" marker-end="url(#arr)"/>
-          <path d="M294 150 V 192" class="pull" id="drop-2" marker-end="url(#arr)"/>
-          <path d="M466 150 V 192" class="pull" id="drop-3" marker-end="url(#arr)"/>
-          <path d="M638 150 V 192" class="pull" id="drop-4" marker-end="url(#arr)"/>
-          <text x="390" y="136" class="pull-label">pull before each step</text>
-        </g>
-
-        <!-- the workflow -->
-        <g class="agents">
-          <g class="agent fresh" id="agent-1">
-            <rect x="62" y="200" width="120" height="58" rx="9"/>
-            <text x="122" y="224" text-anchor="middle" class="a-name">researcher</text>
-            <text x="122" y="244" text-anchor="middle" class="a-v" id="agent-v-1">v9</text>
-          </g>
-          <path d="M186 229 H 228" class="step" marker-end="url(#arr)"/>
-          <g class="agent fresh" id="agent-2">
-            <rect x="234" y="200" width="120" height="58" rx="9"/>
-            <text x="294" y="224" text-anchor="middle" class="a-name">planner</text>
-            <text x="294" y="244" text-anchor="middle" class="a-v" id="agent-v-2">v9</text>
-          </g>
-          <path d="M358 229 H 400" class="step" marker-end="url(#arr)"/>
-          <g class="agent fresh" id="agent-3">
-            <rect x="406" y="200" width="120" height="58" rx="9"/>
-            <text x="466" y="224" text-anchor="middle" class="a-name">writer</text>
-            <text x="466" y="244" text-anchor="middle" class="a-v" id="agent-v-3">v9</text>
-          </g>
-          <path d="M530 229 H 572" class="step" marker-end="url(#arr)"/>
-          <g class="agent stale" id="agent-4">
-            <rect x="578" y="200" width="120" height="58" rx="9"/>
-            <text x="638" y="224" text-anchor="middle" class="a-name">reviewer</text>
-            <text x="638" y="244" text-anchor="middle" class="a-v" id="agent-v-4">v8 → pulls next</text>
-          </g>
-        </g>
-
-        <text x="380" y="298" text-anchor="middle" class="flow-caption" id="flow-event">mid-flight: three agents already on v9, the reviewer picks it up at its next step</text>
-      </svg>
-      <figcaption><code>set_direction</code> appends a new version, and an
-      agent picks it up at its next pull. The adapter decides where that pull
-      runs: before every model call, or at whatever boundary your workflow
-      already has. Nothing restarts; the next pull simply brings the new
-      version.</figcaption>
-    </figure>
-  </div>
-
-  <section id="problem">
-    <div class="wrap narrow section-head">
-      <p class="eyebrow">The problem</p>
-      <h2>Stale direction is worse than no direction</h2>
-      <p class="lede">When goals change, an agent holding the old copy keeps
-      working toward it, and your quality checks push finished work back
-      toward the obsolete goal.</p>
-      <p class="lede">Kyno removes the copy: one versioned store, pulled
-      before every step, subscribers notified the moment it changes.</p>
-    </div>
-  </section>
-
-  <section id="how">
-    <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">How it works</p>
-        <h2>Every step pulls, and every answer says its version</h2>
-      </div>
-      <div class="rows">
-        <div class="row">
-          <div class="row-text">
-            <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <h3>Pull before every step</h3>
-            <p>An agent binds the direction in force at its step boundary.
-            This block is what lands in its context before the step
-            runs.</p>
-          </div>
-          <pre><span class="hl">[kyno:direction constitution=default version=1]</span>
-Mission: To help organizations keep
-multi-agent systems coherent.
-Principles:
-- Coherence is the goal
-- Stay simple, stay nimble
-- We don't judge
-…
-Recent changes:
-- Kyno adopts its own constitution</pre>
-        </div>
-        <div class="row rev">
-          <div class="row-text">
-            <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 12l-8 8-9-9V4h7l10 8zM7.5 7.5h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <h3>Every answer carries its version</h3>
-            <p>Ask what changed since the version you knew, and get the
-            delta. A transcript can always say which direction each step
-            served.</p>
-          </div>
-          <pre>get_changes_since(known_version=0)
-→ {
-  "current_version": <span class="hl">1</span>,
-  "changed": true,
-  "mission": "To help organizations keep
-    multi-agent systems coherent.",
-  …
-}</pre>
+  <main>
+    <section class="hero wrap">
+      <div class="hero-copy">
+        <h1><span class="headline-line headline-plain">One direction.</span><span class="headline-line">Every agent.</span><span class="headline-line violet">Every step.</span></h1>
+        <p>Kyno is the versioned source of truth for multi-agent systems. Change direction once, and every agent picks up the current version at its next step.</p>
+        <div class="actions">
+          <button class="install" data-copy="pip install kyno" aria-label="Copy pip install kyno">
+            <span class="prompt">›_</span><code>pip install kyno</code><span class="copy-label">copy</span>
+          </button>
+          <a class="secondary" href="https://github.com/cizambra/kyno">GitHub / Docs ↗</a>
         </div>
       </div>
-    </div>
-  </section>
 
-  <section id="start">
-    <div class="wrap narrow">
-      <div class="section-head">
-        <p class="eyebrow">Quick start</p>
-        <h2>Running in a minute</h2>
+      <figure class="lifecycle" aria-labelledby="lifecycle-title lifecycle-caption">
+        <div class="lifecycle-head">
+          <div class="stage is-active" data-stage="1"><b>1</b><span>Direction changed</span></div>
+          <div class="stage-line"><i></i></div>
+          <div class="stage" data-stage="2"><b>2</b><span>Store updated</span></div>
+          <div class="stage-line"><i></i></div>
+          <div class="stage" data-stage="3"><b>3</b><span>Agents pull</span></div>
+          <div class="stage-line"><i></i></div>
+          <div class="stage" data-stage="4"><b>4</b><span>System aligned</span></div>
+        </div>
+
+        <div class="lifecycle-body">
+          <svg class="routes" viewBox="0 0 820 390" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="routeGradient" x1="0" x2="1">
+                <stop offset="0" stop-color="#58d8ff"/>
+                <stop offset="1" stop-color="#8b65ff"/>
+              </linearGradient>
+              <filter id="routeGlow" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="2" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <path id="route-operator" class="route route-main" d="M190 195 C230 195 240 195 285 195"/>
+            <path id="route-agent-1" class="route" d="M500 160 C555 160 558 70 635 70"/>
+            <path id="route-agent-2" class="route" d="M500 180 C560 180 566 150 635 150"/>
+            <path id="route-agent-3" class="route" d="M500 210 C560 210 566 235 635 235"/>
+            <path id="route-agent-4" class="route" d="M500 230 C555 230 558 320 635 320"/>
+          </svg>
+
+          <article class="operator-card" id="operator-card">
+            <header>
+              <span class="icon-person" aria-hidden="true">○</span>
+              <strong>OPERATOR</strong>
+            </header>
+            <p>Updates direction</p>
+            <div class="change-copy" id="change-copy">Say the hard number first.</div>
+            <time id="demo-time">10:42:18</time>
+          </article>
+
+          <article class="store-card" id="store-card">
+            <small>KYNO DIRECTION STORE</small>
+            <div class="store-mark"><img src="mark.svg" alt="" width="48" height="48"></div>
+            <strong id="store-version">v7</strong>
+            <span class="latest"><i></i> LATEST</span>
+            <time id="store-time">current</time>
+          </article>
+
+          <div class="agents" aria-label="Example agents">
+            <article class="agent-card" id="agent-1">
+              <span class="agent-icon">⌕</span>
+              <div><strong>researcher</strong><span>next step</span><time class="agent-version">v7</time></div>
+            </article>
+            <article class="agent-card" id="agent-2">
+              <span class="agent-icon">≡</span>
+              <div><strong>planner</strong><span>next step</span><time class="agent-version">v7</time></div>
+            </article>
+            <article class="agent-card" id="agent-3">
+              <span class="agent-icon">&lt;/&gt;</span>
+              <div><strong>writer</strong><span>next step</span><time class="agent-version">v7</time></div>
+            </article>
+            <article class="agent-card" id="agent-4">
+              <span class="agent-icon">✓</span>
+              <div><strong>reviewer</strong><span>next step</span><time class="agent-version">v7</time></div>
+            </article>
+          </div>
+        </div>
+
+        <figcaption id="lifecycle-caption">
+          <span><i class="dot blue"></i> Direction flows</span>
+          <span><i class="dash"></i> Agents pull at their next step</span>
+          <strong id="flow-event">All four agents are on v7.</strong>
+        </figcaption>
+      </figure>
+    </section>
+
+    <section class="status wrap" aria-label="Product properties">
+      <div class="status-label"><span>CORE MODEL</span><i></i>Current direction stays authoritative</div>
+      <div><small>DIRECTION</small><strong>Versioned</strong></div>
+      <div><small>PROPAGATION</small><strong>At step boundaries</strong></div>
+      <div><small>TRANSPORT</small><strong>MCP</strong></div>
+    </section>
+
+    <section class="pillars wrap" id="how">
+      <article>
+        <span class="pillar-icon layers">▱</span>
+        <div><h2>Versioned direction</h2><p>Every change appends a new immutable version. You always know what direction was in force.</p></div>
+      </article>
+      <article>
+        <span class="pillar-icon signal">◉</span>
+        <div><h2>Live propagation</h2><p>Agents pull the latest direction when they reach the boundary where your workflow needs it.</p></div>
+      </article>
+      <article>
+        <span class="pillar-icon shield">◇</span>
+        <div><h2>Auditability built in</h2><p>Every answer can say which version it served, making direction inspectable after the run.</p></div>
+      </article>
+    </section>
+
+    <section class="start wrap" id="start">
+      <div class="start-copy">
+        <h2>Run a control plane locally.</h2>
+        <p>Start with SQLite and stdio. Add HTTP or your own adapter when the workflow needs it.</p>
+        <a href="https://github.com/cizambra/kyno/blob/main/docs/integrating.md">Build an adapter →</a>
       </div>
-      <div class="qs">
-        <button class="copy-btn" data-copy="pip install kyno
-kyno init-db
-printf 'constitution: default\nmission: Ship a lending product people trust\n' > constitution.yaml
-kyno set constitution.yaml --note &quot;initial constitution&quot;
-kyno current
-kyno serve --transport stdio">copy</button>
-        <pre>pip install kyno
-kyno init-db
-printf 'constitution: default\nmission: Ship a lending product people trust\n' > constitution.yaml
-kyno set constitution.yaml --note "initial constitution"
-kyno current
-kyno serve --transport stdio    <span class="comment"># or --transport http</span></pre>
+      <div class="terminal">
+        <header><span>~/kyno</span><button data-copy-target="#quick-code">copy</button></header>
+        <pre id="quick-code"><code><b>$</b> pip install kyno
+<b>$</b> kyno init-db
+<b>$</b> printf 'constitution: default\nmission: Ship a lending product people trust\n' &gt; constitution.yaml
+<b>$</b> kyno set constitution.yaml --note "initial constitution"
+<b>$</b> kyno serve --transport stdio</code></pre>
       </div>
-      <p class="aside">Building for a framework we don't ship an adapter for,
-      or for another language entirely? Building your own adapter is
-      <a href="https://github.com/cizambra/kyno/blob/main/docs/integrating.md">one page</a>,
-      and it comes with a checker.</p>
-    </div>
-  </section>
+    </section>
 
-  <section id="constitution">
-    <div class="wrap narrow">
-      <div class="section-head">
-        <p class="eyebrow">Our constitution</p>
+    <section class="constitution wrap">
+      <div>
+        <span class="tiny-orbit" aria-hidden="true"><i></i><b></b></span>
+        <div><h2>Kyno runs on one too.</h2></div>
       </div>
-      <a class="constitution-card" href="constitution/">
-        <span class="marker">[kyno:direction constitution=default version=1]</span>
-        <strong>We run on one too. Hold us to it.</strong>
-        <span class="tail">Kyno's own constitution, set through the same CLI any
-        operator uses, published through the same flow, rendered on the same
-        page. →</span>
-      </a>
-    </div>
-  </section>
-</main>
+      <p>We publish the mission and principles governing Kyno through the same system available to operators.</p>
+      <a href="constitution/">Read it →</a>
+    </section>
+  </main>
 
-<footer>
-  <div class="wrap">
-    <a href="https://github.com/cizambra/kyno">GitHub</a>
-    <a href="https://github.com/cizambra/kyno/blob/main/docs/integrating.md">Build an adapter</a>
-    <a href="https://github.com/cizambra/kyno/blob/main/LICENSE">MIT + Elastic 2.0</a>
-    <a href="https://github.com/cizambra/canon">Sibling project: Canon (coherence testing)</a>
-  </div>
-</footer>
+  <footer class="wrap">
+    <div class="brand mini"><img src="mark.svg" width="25" height="25" alt=""><span>Kyno</span></div>
+    <span>Coherence as infrastructure.</span>
+    <nav><a href="https://github.com/cizambra/kyno">GitHub</a><a href="constitution/">Constitution</a><a href="https://github.com/cizambra/kyno/blob/main/LICENSE">License</a></nav>
+  </footer>
 
-<script src="main.js"></script>
+  <script src="main.js"></script>
 </body>
 </html>

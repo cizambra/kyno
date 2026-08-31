@@ -650,3 +650,60 @@ def test_given_a_check_when_comparing_with_the_store_then_the_head_is_read_once(
     r = runner.invoke(app, ["check", str(tmp_path / "c.yaml")])
     assert r.exit_code == 0 and "agrees" in r.output
     assert reads == ["default"]
+
+
+@pytest.mark.parametrize("command", ["init-db", "upgrade-db"])
+def test_given_a_malformed_database_url_when_preparing_the_db_then_the_error_is_clean(
+    monkeypatch, command
+):
+    monkeypatch.setenv("KYNO_DATABASE_URL", "not-a-database-url")
+    r = runner.invoke(app, [command])
+    assert r.exit_code == 1
+    assert "error:" in r.output and "Traceback" not in r.output
+
+
+def test_given_no_system_username_when_applying_then_created_by_is_empty(tmp_path, monkeypatch):
+    """getpass can fail on stripped-down systems; the apply still works and
+    the author is simply not recorded."""
+    import getpass
+
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+
+    def refuse():
+        raise OSError("no user database")
+
+    monkeypatch.setattr(getpass, "getuser", refuse)
+    r = apply_yaml(tmp_path, mission="M1", note="init")
+    assert r.exit_code == 0, r.output
+    assert json.loads(r.stdout)["created_by"] is None
+
+
+def test_given_an_unwritable_target_when_exporting_pages_then_the_error_is_clean(
+    tmp_path, monkeypatch
+):
+    import os
+
+    if os.geteuid() == 0:
+        pytest.skip("root ignores directory permissions")
+    target = tmp_path / "locked"
+    target.mkdir()
+    target.chmod(0o500)
+    r = runner.invoke(app, ["page", "export", str(target / "inside")])
+    assert r.exit_code == 1
+    assert "error:" in r.output and "Traceback" not in r.output
+
+
+def test_given_the_stdio_transport_when_serving_then_run_stdio_is_dispatched(tmp_path, monkeypatch):
+    import anyio
+
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    dispatched = {}
+    monkeypatch.setattr(anyio, "run", lambda fn, cp: dispatched.update(fn=fn.__name__, cp=cp))
+    r = runner.invoke(app, ["serve", "--transport", "stdio"])
+    assert r.exit_code == 0, r.output
+    assert dispatched["fn"] == "run_stdio"
+    from kyno.service import ControlPlane
+
+    assert isinstance(dispatched["cp"], ControlPlane)

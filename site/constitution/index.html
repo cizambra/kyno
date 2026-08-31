@@ -225,59 +225,6 @@ footer .links a{color:var(--muted); text-decoration:none}
   footer{align-items:flex-start; flex-direction:column; padding:28px 0; gap:20px}
 }
 
-/* Styles for the blocks kyno's renderer fills in. */
-.declaration{counter-reset:sec}
-.declaration h2{
-  counter-increment:sec;
-  margin:74px 0 22px; font-size:25px; line-height:1.2;
-  letter-spacing:-.025em; font-weight:520;
-}
-.declaration h2::before{
-  content:"0" counter(sec) " / SECTION";
-  display:flex; align-items:center; gap:14px;
-  margin-bottom:28px; color:var(--muted2);
-  font:9px/1 var(--mono); letter-spacing:.08em;
-}
-/* This template belongs to this constitution, so it may know its sections.
-   A section beyond these falls back to the generic label above. */
-.declaration h2:nth-of-type(1)::before{content:"01 / DECLARATION"}
-.declaration h2:nth-of-type(2)::before{content:"02 / WHY THIS PROJECT EXISTS"}
-.declaration h2:nth-of-type(3)::before{content:"03 / ACCOUNTABILITY"}
-.declaration > h2:first-child{margin-top:0}
-.content > h2{
-  margin:74px 0 6px; font-size:38px; letter-spacing:-.04em; font-weight:470;
-}
-.content > h2::after{
-  content:"ORDER IS A PRIORITY HINT";
-  display:block; margin-top:10px;
-  color:var(--muted); font:10px/1.5 var(--mono); letter-spacing:.06em; font-weight:400;
-}
-ol.claims{
-  list-style:none; margin:26px 0 0; padding:0;
-  border-top:1px solid var(--line2); counter-reset:clause;
-}
-ol.claims li{
-  counter-increment:clause;
-  display:grid; grid-template-columns:44px 1fr; gap:18px;
-  padding:22px 0; border-bottom:1px solid var(--line);
-}
-ol.claims li::before{
-  content:counter(clause, decimal-leading-zero);
-  color:var(--cyan); font:10px/1.4 var(--mono); padding-top:5px;
-}
-.claim-title{
-  margin:0 0 9px; font-size:17px; line-height:1.35;
-  letter-spacing:-.012em; font-weight:540; color:var(--ink);
-}
-.claim-note{margin:0; color:var(--muted); font-size:14px; line-height:1.65}
-ol.log{list-style:none; margin:26px 0 0; padding:0; border-top:1px solid var(--line2)}
-ol.log li{padding:16px 0; border-bottom:1px solid var(--line)}
-ol.log .stamp{margin:0 0 6px; color:var(--cyan); font:10px/1.4 var(--mono)}
-ol.log p{margin:0; color:var(--muted); font-size:14px}
-@media (max-width:760px){
-  .content > h2{font-size:32px}
-  ol.claims li{grid-template-columns:38px 1fr; gap:14px}
-}
 </style>
 </head>
 <body>
@@ -313,12 +260,16 @@ ol.log p{margin:0; color:var(--muted); font-size:14px}
       <aside class="rail">
         <div class="rail-inner">
           <div class="rail-rule"></div>
-          <div class="rail-links"></div>
+          <a href="#what">01 · What is Kyno</a>
+          <a href="#why">02 · Why it exists</a>
+          <a href="#accountability">03 · Accountability</a>
+          <a href="#principles">04 · Principles</a>
         </div>
       </aside>
 
       <article class="content">
-<div class="declaration">
+<section id="what">
+<div class="section-rule">01 / DECLARATION</div>
 <h2>What is Kyno</h2>
 <p>Kyno is what I call <em>Coherence-as-Infrastructure</em>.</p>
 <p>When a multi-agent system's goals change, agents holding a stale copy of
@@ -326,6 +277,9 @@ the old direction keep producing work for it — and quality checks against
 the stale copy push the work back toward the obsolete goal. Direction
 needs to live in one place, versioned, where every agent can consult it
 before every step. Kyno is that place, kept deliberately small.</p>
+</section>
+<section id="why">
+<div class="section-rule">02 / WHY THIS PROJECT EXISTS</div>
 <h2>Why this project exists</h2>
 <p>Multi-agent architecture is quickly becoming a trend. With the same speed, this
 trend is uncovering another phenomenon that is silently permeating the direction that products, and
@@ -366,35 +320,93 @@ agency, but agentic workflows don't have a standard layer that helps them exerci
 <p>Kyno is the product of applying my synthesis work, <a href="https://www.adaptable-discipline.com/cdt"><em>Coherence Dynamics Theory</em></a>,
 into solving the problem of drift management, introducing a bottom-up layer of coherence into agentic
 orchestration.</p>
+</section>
+<section id="accountability">
+<div class="section-rule">03 / ACCOUNTABILITY</div>
 <h2>How we hold ourselves to our principles</h2>
 <p>This constitution is set through the same CLI any operator uses, published
 through the same publishing flow, and rendered on the same page. When our
 direction changes, the change note is public. If the project's behavior
 contradicts a principle here, that is a bug in the project.</p>
-</div>
+</section>
+<section id="principles">
+<div class="principles-title">
 <h2>Operating principles</h2>
-<ol class="claims">
-<li><div class="claim"><p class="claim-title">Coherence is the goal</p>
-<p class="claim-note">When we make changes or add new features, we do them because they help support the mission, not personal interests. If a change serves a narrow edge case for a particular individual or organization, then it&#x27;s not a coherent one.</p></div></li>
-<li><div class="claim"><p class="claim-title">Stay simple, stay nimble</p>
-<p class="claim-note">We refuse to build complexity just for the sake of it, or features because they just look cool. Every feature must be justified by a material benefit to the common good. We focus on what matters, because it helps us bring coherence faster.</p></div></li>
-<li><div class="claim"><p class="claim-title">We don&#x27;t judge</p>
-<p class="claim-note">Our focus is on our mission. Not what consumers do with it. We won&#x27;t judge consumers&#x27; constitutions; our role is to help support direction, not to define, score or edit what is valuable for our consumers.</p></div></li>
-<li><div class="claim"><p class="claim-title">We favor two-way door decisions, we mitigate one-way door ones effectively</p>
-<p class="claim-note">When we decide, we put all the cards over the table and establish our tradeoffs transparently. We favor those decisions that are reversible. Sometimes that&#x27;s not an option, and we must choose between decisions that are not reversible. We choose the one we have the most control over during mitigation. We understand we will not always make the right decision, but we know ahead of time what to do in the case that happens.</p></div></li>
-<li><div class="claim"><p class="claim-title">What worked before, works now</p>
-<p class="claim-note">When we build, we build thinking about the future. When we fail to cover future cases and we address them, we make sure nothing that used to work breaks.</p></div></li>
-<li><div class="claim"><p class="claim-title">We are frugal</p>
-<p class="claim-note">Changes in Kyno are consumed by other systems. Mostly agentic AI systems. These systems might call Kyno for their purposes, so every piece of output we serve must have a purpose, otherwise it is dead weight that has financial impact on our consumers.</p></div></li>
-<li><div class="claim"><p class="claim-title">One PR, one meaningful unit of value</p>
-<p class="claim-note">Every PR must have one single responsibility; if it does two things, it&#x27;s already doing too much.</p></div></li>
-<li><div class="claim"><p class="claim-title">We don&#x27;t make promises</p>
-<p class="claim-note">While it is tempting to make guarantees about the product, we are serving stochastic systems where probabilities rule. Nothing is guaranteed. We can mention possibilities and likelihood, but guarantees can backfire. The only guarantee is that whatever change we make will be principled in our constitution.</p></div></li>
-<li><div class="claim"><p class="claim-title">We don&#x27;t assume understanding</p>
-<p class="claim-note">Nobody, not even AI, can hold the context of everything. So when we comment, discuss, review, we want to provide the relevant context in full, with no assumptions. Name who you mean (e.g. the consumers) rather than leave references around (e.g. they).</p></div></li>
-<li><div class="claim"><p class="claim-title">We own it</p>
-<p class="claim-note">When breaking changes happen, we communicate externally and internally with speed and transparency. We don&#x27;t point fingers. We focus on mitigating and supporting our consumers, and learn from what happened so it doesn&#x27;t happen again. In the same way, we own the risks of our decisions.</p></div></li>
+<p>ORDER IS A PRIORITY HINT</p>
+</div>
+<ol class="clauses">
+<li>
+  <span class="clause-no">01</span>
+  <div class="clause-body">
+    <h3>Coherence is the goal</h3>
+    <p>When we make changes or add new features, we do them because they help support the mission, not personal interests. If a change serves a narrow edge case for a particular individual or organization, then it&#x27;s not a coherent one.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">02</span>
+  <div class="clause-body">
+    <h3>Stay simple, stay nimble</h3>
+    <p>We refuse to build complexity just for the sake of it, or features because they just look cool. Every feature must be justified by a material benefit to the common good. We focus on what matters, because it helps us bring coherence faster.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">03</span>
+  <div class="clause-body">
+    <h3>We don&#x27;t judge</h3>
+    <p>Our focus is on our mission. Not what consumers do with it. We won&#x27;t judge consumers&#x27; constitutions; our role is to help support direction, not to define, score or edit what is valuable for our consumers.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">04</span>
+  <div class="clause-body">
+    <h3>We favor two-way door decisions, we mitigate one-way door ones effectively</h3>
+    <p>When we decide, we put all the cards over the table and establish our tradeoffs transparently. We favor those decisions that are reversible. Sometimes that&#x27;s not an option, and we must choose between decisions that are not reversible. We choose the one we have the most control over during mitigation. We understand we will not always make the right decision, but we know ahead of time what to do in the case that happens.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">05</span>
+  <div class="clause-body">
+    <h3>What worked before, works now</h3>
+    <p>When we build, we build thinking about the future. When we fail to cover future cases and we address them, we make sure nothing that used to work breaks.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">06</span>
+  <div class="clause-body">
+    <h3>We are frugal</h3>
+    <p>Changes in Kyno are consumed by other systems. Mostly agentic AI systems. These systems might call Kyno for their purposes, so every piece of output we serve must have a purpose, otherwise it is dead weight that has financial impact on our consumers.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">07</span>
+  <div class="clause-body">
+    <h3>One PR, one meaningful unit of value</h3>
+    <p>Every PR must have one single responsibility; if it does two things, it&#x27;s already doing too much.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">08</span>
+  <div class="clause-body">
+    <h3>We don&#x27;t make promises</h3>
+    <p>While it is tempting to make guarantees about the product, we are serving stochastic systems where probabilities rule. Nothing is guaranteed. We can mention possibilities and likelihood, but guarantees can backfire. The only guarantee is that whatever change we make will be principled in our constitution.</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">09</span>
+  <div class="clause-body">
+    <h3>We don&#x27;t assume understanding</h3>
+    <p>Nobody, not even AI, can hold the context of everything. So when we comment, discuss, review, we want to provide the relevant context in full, with no assumptions. Name who you mean (e.g. the consumers) rather than leave references around (e.g. they).</p>
+  </div>
+</li>
+<li>
+  <span class="clause-no">10</span>
+  <div class="clause-body">
+    <h3>We own it</h3>
+    <p>When breaking changes happen, we communicate externally and internally with speed and transparency. We don&#x27;t point fingers. We focus on mitigating and supporting our consumers, and learn from what happened so it doesn&#x27;t happen again. In the same way, we own the risks of our decisions.</p>
+  </div>
+</li>
 </ol>
+</section>
 
         <div class="provenance">
           <span><strong>constitution/default</strong> · v6</span>
@@ -417,23 +429,5 @@ contradicts a principle here, that is a bug in the project.</p>
   </footer>
 </div>
 
-<script>
-(function () {
-  var rail = document.querySelector(".rail-links");
-  if (!rail) return;
-  var heads = document.querySelectorAll(".content h2");
-  for (var i = 0; i < heads.length; i++) {
-    var h = heads[i];
-    if (!h.id) {
-      var direct = h.parentElement.classList.contains("content");
-      h.id = direct ? "principles" : "s-" + (i + 1);
-    }
-    var a = document.createElement("a");
-    a.href = "#" + h.id;
-    a.textContent = "0" + (i + 1) + " · " + h.textContent;
-    rail.appendChild(a);
-  }
-})();
-</script>
 </body>
 </html>

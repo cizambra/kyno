@@ -40,9 +40,64 @@ def main() -> None:
         declaration=fields.declaration or "",
     )
     config = PageConfig(constitution_template=str(ROOT / "site-src" / "constitution.html"))
+    html = _to_template_markup(render_constitution(view, config))
     target = ROOT / "site" / "constitution" / "index.html"
-    target.write_text(render_constitution(view, config), encoding="utf-8")
+    target.write_text(html, encoding="utf-8")
     print(f"wrote {target}")
+
+
+# The template's own markup for this constitution: labeled sections and
+# numbered clauses. The values inside still come from kyno's renderer.
+_SECTIONS = (
+    ("what", "01 / DECLARATION"),
+    ("why", "02 / WHY THIS PROJECT EXISTS"),
+    ("accountability", "03 / ACCOUNTABILITY"),
+)
+
+
+def _to_template_markup(html: str) -> str:
+    import re
+
+    m = re.search(r'<div class="declaration">\n(.*?)\n</div>', html, re.S)
+    if m:
+        parts = [part for part in re.split(r"(?=<h2>)", m.group(1)) if part.strip()]
+        sections = []
+        for i, part in enumerate(parts):
+            sid, label = _SECTIONS[i] if i < len(_SECTIONS) else (f"s-{i + 1}", f"0{i + 1} / SECTION")
+            sections.append(
+                f'<section id="{sid}">\n<div class="section-rule">{label}</div>\n{part.strip()}\n</section>'
+            )
+        html = html.replace(m.group(0), "\n".join(sections))
+
+    html = html.replace(
+        '<h2>Operating principles</h2>',
+        '<section id="principles">\n<div class="principles-title">\n'
+        '<h2>Operating principles</h2>\n<p>ORDER IS A PRIORITY HINT</p>\n</div>',
+    )
+    counter = 0
+
+    def clause(match: re.Match) -> str:
+        nonlocal counter
+        counter += 1
+        title, note = match.group(1), match.group(2)
+        body = f"<h3>{title}</h3>"
+        if note is not None:
+            body += f"\n    <p>{note}</p>"
+        return (
+            f'<li>\n  <span class="clause-no">{counter:02d}</span>\n'
+            f'  <div class="clause-body">\n    {body}\n  </div>\n</li>'
+        )
+
+    html = re.sub(
+        r'<li><div class="claim"><p class="claim-title">(.*?)</p>(?:\n<p class="claim-note">(.*?)</p>)?</div></li>',
+        clause,
+        html,
+        flags=re.S,
+    )
+    html = html.replace('<ol class="claims">', '<ol class="clauses">')
+    html = html.replace("</ol>", "</ol>\n</section>", 1) if 'id="principles"' in html else html
+    return html
+
 
 
 if __name__ == "__main__":

@@ -225,59 +225,6 @@ footer .links a{color:var(--muted); text-decoration:none}
   footer{align-items:flex-start; flex-direction:column; padding:28px 0; gap:20px}
 }
 
-/* Styles for the blocks kyno's renderer fills in. */
-.declaration{counter-reset:sec}
-.declaration h2{
-  counter-increment:sec;
-  margin:74px 0 22px; font-size:25px; line-height:1.2;
-  letter-spacing:-.025em; font-weight:520;
-}
-.declaration h2::before{
-  content:"0" counter(sec) " / SECTION";
-  display:flex; align-items:center; gap:14px;
-  margin-bottom:28px; color:var(--muted2);
-  font:9px/1 var(--mono); letter-spacing:.08em;
-}
-/* This template belongs to this constitution, so it may know its sections.
-   A section beyond these falls back to the generic label above. */
-.declaration h2:nth-of-type(1)::before{content:"01 / DECLARATION"}
-.declaration h2:nth-of-type(2)::before{content:"02 / WHY THIS PROJECT EXISTS"}
-.declaration h2:nth-of-type(3)::before{content:"03 / ACCOUNTABILITY"}
-.declaration > h2:first-child{margin-top:0}
-.content > h2{
-  margin:74px 0 6px; font-size:38px; letter-spacing:-.04em; font-weight:470;
-}
-.content > h2::after{
-  content:"ORDER IS A PRIORITY HINT";
-  display:block; margin-top:10px;
-  color:var(--muted); font:10px/1.5 var(--mono); letter-spacing:.06em; font-weight:400;
-}
-ol.claims{
-  list-style:none; margin:26px 0 0; padding:0;
-  border-top:1px solid var(--line2); counter-reset:clause;
-}
-ol.claims li{
-  counter-increment:clause;
-  display:grid; grid-template-columns:44px 1fr; gap:18px;
-  padding:22px 0; border-bottom:1px solid var(--line);
-}
-ol.claims li::before{
-  content:counter(clause, decimal-leading-zero);
-  color:var(--cyan); font:10px/1.4 var(--mono); padding-top:5px;
-}
-.claim-title{
-  margin:0 0 9px; font-size:17px; line-height:1.35;
-  letter-spacing:-.012em; font-weight:540; color:var(--ink);
-}
-.claim-note{margin:0; color:var(--muted); font-size:14px; line-height:1.65}
-ol.log{list-style:none; margin:26px 0 0; padding:0; border-top:1px solid var(--line2)}
-ol.log li{padding:16px 0; border-bottom:1px solid var(--line)}
-ol.log .stamp{margin:0 0 6px; color:var(--cyan); font:10px/1.4 var(--mono)}
-ol.log p{margin:0; color:var(--muted); font-size:14px}
-@media (max-width:760px){
-  .content > h2{font-size:32px}
-  ol.claims li{grid-template-columns:38px 1fr; gap:14px}
-}
 </style>
 </head>
 <body>
@@ -313,7 +260,10 @@ ol.log p{margin:0; color:var(--muted); font-size:14px}
       <aside class="rail">
         <div class="rail-inner">
           <div class="rail-rule"></div>
-          <div class="rail-links"></div>
+          <a href="#what">01 · What is Kyno</a>
+          <a href="#why">02 · Why it exists</a>
+          <a href="#accountability">03 · Accountability</a>
+          <a href="#principles">04 · Principles</a>
         </div>
       </aside>
 
@@ -342,23 +292,5 @@ $history
   </footer>
 </div>
 
-<script>
-(function () {
-  var rail = document.querySelector(".rail-links");
-  if (!rail) return;
-  var heads = document.querySelectorAll(".content h2");
-  for (var i = 0; i < heads.length; i++) {
-    var h = heads[i];
-    if (!h.id) {
-      var direct = h.parentElement.classList.contains("content");
-      h.id = direct ? "principles" : "s-" + (i + 1);
-    }
-    var a = document.createElement("a");
-    a.href = "#" + h.id;
-    a.textContent = "0" + (i + 1) + " · " + h.textContent;
-    rail.appendChild(a);
-  }
-})();
-</script>
 </body>
 </html>

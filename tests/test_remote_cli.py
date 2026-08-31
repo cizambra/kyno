@@ -70,6 +70,7 @@ class FakeRemote:
                     created_by=arguments.get("created_by"),
                     constitution=arguments.get("constitution"),
                     expected_version=arguments.get("expected_version"),
+                    authorized_by=arguments.get("authorized_by"),
                 )
             else:
                 raise ValueError(f"unknown tool: {name}")
@@ -615,3 +616,40 @@ def test_given_dial_failing_when_reading_log_remotely_then_the_error_is_one_line
     r = runner.invoke(app, ["log", "--remote"])
     assert r.exit_code == 1
     assert "error: cannot reach 'default'" in r.output and "Traceback" not in r.output
+
+
+def test_given_a_person_answering_yes_when_applying_then_person_answered_is_recorded(
+    fake_dial, remote_cp, tmp_path
+):
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "init", "--remote"], input="y\n")
+    assert r.exit_code == 0, r.output
+    assert remote_cp.current().authorized_by == "operator"
+
+
+def test_given_no_interactive_when_applying_then_automation_is_recorded(
+    fake_dial, remote_cp, tmp_path
+):
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "init", "--remote", "--no-interactive"])
+    assert r.exit_code == 0, r.output
+    assert remote_cp.current().authorized_by == "automation"
+
+
+def test_given_unsafe_approval_when_applying_then_unsafe_approved_is_recorded(
+    fake_dial, remote_cp, tmp_path
+):
+    path = write_file(tmp_path, mission="M1")
+    r = runner.invoke(app, ["set", path, "--note", "init", "--remote", "--unsafe-approval"])
+    assert r.exit_code == 0, r.output
+    assert remote_cp.current().authorized_by == "override"
+
+
+def test_given_recorded_authorizations_when_reading_log_remotely_then_the_lane_shows(
+    fake_dial, remote_cp, tmp_path
+):
+    path = write_file(tmp_path, mission="M1")
+    runner.invoke(app, ["set", path, "--note", "init", "--remote", "--unsafe-approval"])
+    r = runner.invoke(app, ["log", "--remote"])
+    assert r.exit_code == 0
+    assert "override" in r.stdout

@@ -338,7 +338,9 @@ def test_given_a_pre_declaration_database_when_a_pip_user_upgrades_then_it_upgra
     assert head.declaration == ""
 
 
-def test_given_a_head_database_when_downgrading_one_step_then_only_the_declaration_goes(tmp_path):
+def test_given_a_head_database_when_downgrading_step_by_step_then_each_column_goes_alone(
+    tmp_path,
+):
     # A downgrade that took a neighbouring column with it would lose data
     # nobody asked to lose.
     db = tmp_path / "step_down.sqlite3"
@@ -350,10 +352,69 @@ def test_given_a_head_database_when_downgrading_one_step_then_only_the_declarati
     command.upgrade(cfg, "head")
     before = _colmap(inspect(engine), table)
 
+    command.downgrade(cfg, "0003")
+    after = _colmap(inspect(engine), table)
+    assert set(before) - set(after) == {"authorized_by"}
+
     command.downgrade(cfg, "0002")
     after = _colmap(inspect(engine), table)
-    assert "declaration" not in after
-    assert set(before) - set(after) == {"declaration"}
+    assert set(before) - set(after) == {"authorized_by", "declaration"}
 
     command.upgrade(cfg, "head")
     assert _colmap(inspect(engine), table) == before
+
+
+def test_given_the_two_schema_paths_when_comparing_then_both_carry_the_authorized_column(
+    tmp_path,
+):
+    from kyno.store.sql import SqlConstitutionStore
+
+    mdb = tmp_path / "auth_migrated.sqlite3"
+    cfg = Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", f"sqlite:///{mdb}")
+    command.upgrade(cfg, "head")
+    minsp = inspect(create_engine(f"sqlite:///{mdb}"))
+
+    edb = tmp_path / "auth_embedded.sqlite3"
+    store = SqlConstitutionStore(url=f"sqlite:///{edb}")
+    store.create_all()
+    einsp = inspect(store.engine)
+
+    table = "kyno_constitution_versions"
+    for insp, label in ((minsp, "migrated"), (einsp, "embedded")):
+        cols = _colmap(insp, table)
+        assert "authorized_by" in cols, f"{label} schema is missing authorized"
+        assert cols["authorized_by"] is True, (
+            f"{label}: authorized_by must be nullable (null = nothing to record)"
+        )
+
+
+def test_given_an_existing_database_when_upgrading_then_its_versions_stay_unauthorized(tmp_path):
+    # The realistic upgrade one migration later: rows written before the
+    # questions existed keep serving, recording nothing.
+    from kyno.service import ControlPlane
+    from kyno.store.sql import SqlConstitutionStore
+
+    db = tmp_path / "pre_authorized.sqlite3"
+    url = f"sqlite:///{db}"
+    cfg = Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", url)
+
+    command.upgrade(cfg, "0003")
+    engine = create_engine(url)
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            "INSERT INTO kyno_constitutions (name, current_version, created_at) "
+            "VALUES ('legacy', 1, '2026-01-01 00:00:00')"
+        )
+        conn.exec_driver_sql(
+            "INSERT INTO kyno_constitution_versions (constitution_id, version, mission, "
+            "principles, change_note, changed_mission, changed_principles, created_at) "
+            "VALUES (1, 1, 'Old mission', '[\"p1\"]', 'init', 1, 1, '2026-01-01 00:00:00')"
+        )
+
+    command.upgrade(cfg, "head")
+
+    head = ControlPlane(SqlConstitutionStore(url=url)).current("legacy")
+    assert head.mission == "Old mission"
+    assert head.authorized_by is None

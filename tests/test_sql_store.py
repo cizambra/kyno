@@ -294,6 +294,7 @@ def test_given_a_full_range_when_exporting_versions_then_plain_dicts_come_back_a
         "principles": [{"title": "p1", "description": ""}],
         "change_note": "init",
         "created_by": "alice",
+        "authorized_by": None,
         "created_at": rows[0]["created_at"],
     }
     assert rows[1]["mission"] == "M2" and rows[1]["created_by"] == "bob"
@@ -608,3 +609,33 @@ def test_given_an_existing_constitution_when_getting_a_version_never_reached_the
 
 def test_given_an_unwritten_name_when_pulling_versions_after_zero_then_nothing_comes_back(store):
     assert store.versions_after("nope", 0) == []
+
+
+def test_given_an_authorization_when_appending_then_it_round_trips(store):
+    store.append(
+        "default",
+        1,
+        mission="M",
+        principles=(),
+        change_note="n",
+        changed_mission=True,
+        changed_principles=False,
+        created_by="ci",
+        authorized_by="automation",
+    )
+    assert store.head("default").authorized_by == "automation"
+    assert store.export_versions("default")[0]["authorized_by"] == "automation"
+
+
+def test_given_no_authorization_when_appending_then_none_is_stored(store):
+    store.append(
+        "default",
+        1,
+        mission="M",
+        principles=(),
+        change_note="n",
+        changed_mission=True,
+        changed_principles=False,
+        created_by=None,
+    )
+    assert store.head("default").authorized_by is None

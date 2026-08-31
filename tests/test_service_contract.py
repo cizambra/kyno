@@ -739,3 +739,22 @@ def test_given_the_head_it_reviewed_when_applying_with_an_expected_version_then_
     cp = ControlPlane(store)
     assert cp.set_direction(mission="M1", change_note="init", expected_version=0).version == 1
     assert cp.set_direction(mission="M2", change_note="next", expected_version=1).version == 2
+
+
+def test_given_an_unknown_authorization_when_applying_then_it_is_refused():
+    from kyno.errors import AuthoringError
+
+    store = SqlConstitutionStore(url="sqlite://")
+    store.create_all()
+    cp = ControlPlane(store)
+    with pytest.raises(AuthoringError, match="unknown authorized_by 'sudo'"):
+        cp.set_direction(mission="M", change_note="init", authorized_by="sudo")
+
+
+def test_given_an_authorization_when_applying_then_the_version_carries_it():
+    store = SqlConstitutionStore(url="sqlite://")
+    store.create_all()
+    cp = ControlPlane(store)
+    v = cp.set_direction(mission="M", change_note="init", authorized_by="operator")
+    assert v.authorized_by == "operator"
+    assert v.to_dict()["authorized_by"] == "operator"

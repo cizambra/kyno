@@ -707,3 +707,24 @@ def test_given_the_stdio_transport_when_serving_then_run_stdio_is_dispatched(tmp
     from kyno.service import ControlPlane
 
     assert isinstance(dispatched["cp"], ControlPlane)
+
+
+def test_given_a_local_apply_when_reading_the_version_then_no_authorization_is_recorded(
+    tmp_path, monkeypatch
+):
+    """Local applies have no questions, so there is nothing to record."""
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    r = apply_yaml(tmp_path, mission="M1", note="init")
+    assert r.exit_code == 0, r.output
+    assert json.loads(r.stdout)["authorized_by"] is None
+
+
+def test_given_a_local_version_when_reading_log_then_the_authorization_column_is_a_dash(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    runner.invoke(app, ["init-db"])
+    apply_yaml(tmp_path, mission="M1", note="first", by="camilo")
+    line = runner.invoke(app, ["log"]).stdout.strip().splitlines()[0]
+    assert line.split()[:4] == ["v1", line.split()[1], "camilo", "-"]

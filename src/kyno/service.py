@@ -5,6 +5,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 
 from kyno.errors import (
+    AuthoringError,
     EmptyChangeError,
     FieldTooLargeError,
     NoFieldChangedError,
@@ -15,6 +16,7 @@ from kyno.errors import (
     VersionConflictError,
 )
 from kyno.models import (
+    AUTHORIZATIONS,
     DIRECTION_MARKER,
     ChangesSince,
     ConstitutionVersion,
@@ -360,6 +362,7 @@ class ControlPlane:
         created_by: str | None = None,
         constitution: str | None = None,
         expected_version: int | None = None,
+        authorized_by: str | None = None,
     ) -> ConstitutionVersion:
         """Append a version. With expected_version, the write is pinned to
         the head the caller reviewed: if the head has moved since, nothing
@@ -367,6 +370,11 @@ class ControlPlane:
         computed against whatever the head is now."""
         if not change_note or not change_note.strip():
             raise EmptyChangeError("change_note is required")
+        if authorized_by is not None and authorized_by not in AUTHORIZATIONS:
+            raise AuthoringError(
+                f"unknown authorized_by '{authorized_by}': "
+                f"one of {', '.join(AUTHORIZATIONS)}, or nothing"
+            )
         # Before the retry loop: a malformed principle is the caller's
         # mistake, and re-discovering it on every attempt tells nobody more.
         principles = normalize_principles(principles)
@@ -407,6 +415,7 @@ class ControlPlane:
                 changed_mission=changed_mission,
                 changed_principles=changed_principles,
                 created_by=created_by,
+                authorized_by=authorized_by,
             )
         except VersionConflictError:
             # A concurrent writer took this version. Nothing lands: whoever

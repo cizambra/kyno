@@ -124,6 +124,7 @@ def handle_set_direction(
     declaration=None,
     constitution: str | None = None,
     expected_version: int | None = None,
+    authorized_by: str | None = None,
 ) -> dict:
     return _guard(
         lambda: cp.set_direction(
@@ -134,6 +135,7 @@ def handle_set_direction(
             created_by=created_by,
             constitution=constitution,
             expected_version=expected_version,
+            authorized_by=authorized_by,
         ).to_dict()
     )
 
@@ -288,6 +290,10 @@ _TOOLS = [
                 "created_by": {"type": ["string", "null"]},
                 "constitution": _CONSTITUTION_ARG,
                 "expected_version": {"type": ["integer", "null"]},
+                "authorized_by": {
+                    "type": ["string", "null"],
+                    "enum": ["operator", "automation", "override", None],
+                },
             },
             "required": ["change_note"],
         },
@@ -354,6 +360,7 @@ def build_server(control_plane: ControlPlane) -> Server:
                     created_by=arguments.get("created_by"),
                     constitution=arguments.get("constitution"),
                     expected_version=arguments.get("expected_version"),
+                    authorized_by=arguments.get("authorized_by"),
                 )
             case _:
                 raise ValueError(f"unknown tool: {name}")

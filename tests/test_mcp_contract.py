@@ -911,3 +911,15 @@ async def test_given_a_connected_client_when_listing_resources_then_the_constitu
     async with create_connected_server_and_client_session(mcp_server.build_server(cp)) as client:
         listed = await client.list_resources()
     assert [str(r.uri) for r in listed.resources] == [mcp_server.RESOURCE_URI]
+
+
+def test_given_an_authorization_argument_when_setting_direction_then_it_is_recorded(cp):
+    result = mcp_server.handle_set_direction(
+        cp,
+        mission="M1",
+        principles=None,
+        change_note="init",
+        created_by="ci",
+        authorized_by="automation",
+    )
+    assert result["authorized_by"] == "automation"

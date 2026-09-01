@@ -7,7 +7,7 @@ from sqlalchemy import Engine, create_engine, insert, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 
-from kyno.errors import CorruptStateError, VersionConflictError
+from kyno.errors import ConfigError, CorruptStateError, VersionConflictError
 from kyno.models import ConstitutionVersion, Principle, Publication, normalize_principles
 from kyno.store.schema import build_metadata
 
@@ -39,7 +39,19 @@ class SqlConstitutionStore:
                     # A file-backed SQLite database is shared through the
                     # file itself, so it only needs the thread guard off.
                     kwargs = {"connect_args": {"check_same_thread": False}}
-            self.engine = create_engine(url, **kwargs)
+            try:
+                self.engine = create_engine(url, **kwargs)
+            except ModuleNotFoundError as exc:
+                # The URL picked a dialect whose driver isn't installed; the
+                # fix is one install away, so the error names it.
+                hint = (
+                    "install it with: pip install kyno[postgres]"
+                    if url.startswith("postgres")
+                    else f"install the '{exc.name}' package"
+                )
+                raise ConfigError(
+                    f"the database at this URL needs a driver that is not installed; {hint}"
+                ) from None
         else:
             self.engine = engine
         self.metadata, self._constitutions, self._versions = build_metadata(prefix)

@@ -639,3 +639,17 @@ def test_given_no_authorized_by_when_appending_then_it_reads_back_as_null(store)
         created_by=None,
     )
     assert store.head("default").authorized_by is None
+
+
+def test_given_a_url_whose_driver_is_missing_when_building_the_store_then_the_error_names_the_fix(
+    monkeypatch,
+):
+    import kyno.store.sql as sql_module
+    from kyno.errors import ConfigError
+
+    def refuse(url, **kwargs):
+        raise ModuleNotFoundError("No module named 'psycopg'", name="psycopg")
+
+    monkeypatch.setattr(sql_module, "create_engine", refuse)
+    with pytest.raises(ConfigError, match="pip install kyno"):
+        SqlConstitutionStore(url="postgresql+psycopg://u:p@h/db")

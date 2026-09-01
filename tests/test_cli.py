@@ -143,6 +143,21 @@ def test_given_the_insecure_opt_in_when_serving_http_then_the_server_starts_with
     assert "WARNING" in r.output and "KYNO_TOKEN" in r.output
 
 
+def test_given_workspace_host_and_port_when_serving_then_uvicorn_receives_them(
+    monkeypatch, tmp_path
+):
+    root = cli_workspace(monkeypatch, tmp_path)
+    _config_lines(root, "[server]", "host = 0.0.0.0", "port = 4242")
+    monkeypatch.setenv("KYNO_TOKEN", "secret")
+    import uvicorn
+
+    heard = {}
+    monkeypatch.setattr(uvicorn, "run", lambda served, **kwargs: heard.update(kwargs))
+    r = runner.invoke(app, ["serve", "--transport", "http"])
+    assert r.exit_code == 0, r.output
+    assert heard["host"] == "0.0.0.0" and heard["port"] == 4242
+
+
 def test_given_a_word_that_is_not_a_boolean_when_serving_http_then_the_error_names_the_key(
     monkeypatch, tmp_path
 ):

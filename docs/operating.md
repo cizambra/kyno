@@ -46,9 +46,9 @@ The rules for the `config/server` file:
 - A value is written in, or is one `${VAR}` reference to an environment
   variable you named. References resolve at startup; an unset variable
   fails startup and the error names the variable.
-- Kyno never requires a reference: a password written in works. Keep
-  secrets as references and the workspace is safe to commit and to
-  mount on a host; that call is yours.
+- Kyno never requires a reference: a password written in works. When to
+  keep secrets as references is a practice call — see
+  [Best practices](best-practices.md#secrets-stay-references).
 - An unknown key or section fails startup and names the typo.
 
 The `[database]` section describes the database with split keys, like

@@ -86,6 +86,16 @@ command:
   discard it: apply main's file — the delta says it reverts, and this
   time that's the point.
 
+## Secrets stay references
+
+A workspace's `config/server` accepts any value written in — Kyno forces
+nothing. The practice: write secrets only as `${VAR}` references.
+
+- `password = ${DB_PASSWORD}` commits safely. `password = hunter2` is one
+  push away from being public.
+- A workspace holding only references can live in git and mount on any
+  host; the secrets travel through your platform's secret store instead.
+
 ## Read the ledger
 
 `kyno log` is one line per version: who wrote it, when, who authorized it

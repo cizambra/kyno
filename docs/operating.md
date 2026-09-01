@@ -21,7 +21,7 @@ workspace by walking up from the current directory, the way git does.
 
 ```console
 $ kyno new my-instance
-$ cd my-instance && kyno init-db && kyno serve --transport http
+$ cd my-instance && kyno db init && kyno serve --transport http
 ```
 
 `kyno new` writes four files:

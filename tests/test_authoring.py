@@ -50,7 +50,7 @@ principles:
 def db(tmp_path, monkeypatch):
     path = tmp_path / "kyno.sqlite3"
     cli_workspace(monkeypatch, tmp_path, path)
-    assert runner.invoke(app, ["init-db"]).exit_code == 0
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
     return path
 
 

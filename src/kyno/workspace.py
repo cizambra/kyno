@@ -65,7 +65,7 @@ This directory is a Kyno instance: its configuration and, on SQLite,
 its store. The direction itself lives in your team's repo and arrives
 over the wire.
 
-    kyno init-db                 create the store
+    kyno db init                 create the store
     kyno serve --transport http  serve it
 """
 

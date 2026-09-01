@@ -63,7 +63,7 @@ Start a local Kyno with the sample constitution:
 
 ```bash
 pip install kyno
-kyno init-db
+kyno db init
 kyno set --file conformance/v1.yaml
 KYNO_TOKEN=test-token kyno serve --transport http
 ```

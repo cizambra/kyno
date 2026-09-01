@@ -43,7 +43,7 @@ def test_given_an_applied_file_when_reading_current_then_that_content_is_served(
     """The whole loop in one breath: init the store, apply a file, and
     `kyno current` serves exactly that content."""
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    assert runner.invoke(app, ["init-db"]).exit_code == 0
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
     r = apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init")
     assert r.exit_code == 0
     out = runner.invoke(app, ["current"])
@@ -58,7 +58,7 @@ def test_given_no_note_when_applying_then_the_apply_is_refused(tmp_path, monkeyp
     changed?", so an apply without --note is refused. (--dry-run is the
     one exception, tested with the dry-run behavior.)"""
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     r = apply_yaml(tmp_path, mission="M1")
     assert r.exit_code != 0
 
@@ -66,7 +66,7 @@ def test_given_no_note_when_applying_then_the_apply_is_refused(tmp_path, monkeyp
 def test_given_an_uninitialized_db_when_running_current_then_the_error_is_clean(
     tmp_path, monkeypatch
 ):
-    # No init-db here: the store raises sqlalchemy.exc.OperationalError,
+    # No db init here: the store raises sqlalchemy.exc.OperationalError,
     # not a kyno CoherenceError -- both must still surface as a clean CLI error.
     cli_workspace(monkeypatch, tmp_path, tmp_path / "never_init.sqlite3")
     r = runner.invoke(app, ["current"])
@@ -87,7 +87,7 @@ def test_given_an_empty_store_when_running_current_then_it_reports_no_constituti
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     r = runner.invoke(app, ["current"])
     assert r.exit_code == 0
     assert "version 0" in r.output
@@ -96,7 +96,7 @@ def test_given_an_empty_store_when_running_current_then_it_reports_no_constituti
 
 def test_given_a_by_flag_when_applying_then_the_author_is_recorded(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     r = apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init", by="alice")
     assert r.exit_code == 0
     out = runner.invoke(app, ["current"])
@@ -173,7 +173,7 @@ def test_given_written_versions_when_exporting_then_the_history_prints_and_from_
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="v1")
     apply_yaml(tmp_path, mission="M2", note="v2")
     apply_yaml(tmp_path, mission="M3", note="v3")
@@ -194,7 +194,7 @@ def test_given_written_versions_when_exporting_then_the_history_prints_and_from_
 
 def test_given_an_empty_store_when_exporting_then_an_empty_json_array_prints(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     r = runner.invoke(app, ["export"])
     assert r.exit_code == 0
     assert json.loads(r.stdout) == []
@@ -220,7 +220,7 @@ def test_given_an_apply_to_eu_when_reading_with_the_flag_then_eu_answers_and_def
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     r = apply_yaml(tmp_path, mission="EU1", principles=["p1"], constitution="eu", note="init")
     assert r.exit_code == 0
     out = runner.invoke(app, ["current", "--constitution", "eu"])
@@ -232,7 +232,7 @@ def test_given_two_constitutions_when_applying_to_each_then_their_versions_stay_
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init")
     apply_yaml(tmp_path, mission="EU1", constitution="eu", note="init")
     apply_yaml(tmp_path, mission="EU2", constitution="eu", note="pivot")
@@ -250,7 +250,7 @@ def test_given_an_unknown_constitution_when_reading_then_the_empty_state_is_repo
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init")
     r = runner.invoke(app, ["current", "--constitution", "never-written"])
     assert r.exit_code == 0 and "version 0" in r.output
@@ -262,7 +262,7 @@ def test_given_a_constitution_when_publishing_and_unpublishing_then_each_reports
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init")
 
     pub = runner.invoke(app, ["publish"])
@@ -281,7 +281,7 @@ def test_given_the_history_flag_when_publishing_then_the_output_says_whether_his
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init")
 
     quiet = runner.invoke(app, ["publish"])
@@ -298,7 +298,7 @@ def test_given_no_name_when_publishing_then_the_default_is_used_and_the_flag_ove
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init")
     apply_yaml(tmp_path, mission="EU1", constitution="eu", note="init")
 
@@ -311,7 +311,7 @@ def test_given_a_constitution_with_no_direction_when_publishing_then_the_error_i
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     r = runner.invoke(app, ["publish", "--constitution", "never-written"])
     assert r.exit_code == 1
     assert "error:" in r.output.lower()
@@ -323,7 +323,7 @@ def test_given_an_unknown_constitution_when_unpublishing_then_the_error_is_clean
 ):
     # A typo here must not print success while the real page stays public.
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init")
     r = runner.invoke(app, ["unpublish", "--constitution", "defualt"])
     assert r.exit_code == 1
@@ -343,7 +343,7 @@ def test_given_a_name_with_a_slash_when_publishing_then_it_is_refused_without_a_
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", constitution="acme/eu", note="init")
     r = runner.invoke(app, ["publish", "--constitution", "acme/eu"])
     assert r.exit_code == 1
@@ -355,7 +355,7 @@ def test_given_a_head_when_reading_current_yaml_then_it_prints_in_file_format(
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init", by="camilo")
     r = runner.invoke(app, ["current", "--yaml"])
     assert r.exit_code == 0
@@ -367,7 +367,7 @@ def test_given_a_head_when_reading_current_yaml_then_it_prints_in_file_format(
 
 def test_given_the_yaml_read_out_when_reapplied_then_nothing_changes(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init")
     out = runner.invoke(app, ["current", "--yaml"]).stdout
     target = tmp_path / "recovered.yaml"
@@ -381,7 +381,7 @@ def test_given_two_applies_when_reading_current_yaml_then_the_latest_head_prints
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="the old mission", note="first")
     apply_yaml(tmp_path, mission="the hotfix mission", note="hotfix")
     out = runner.invoke(app, ["current", "--yaml"]).stdout
@@ -391,7 +391,7 @@ def test_given_two_applies_when_reading_current_yaml_then_the_latest_head_prints
 
 def test_given_an_empty_store_when_reading_current_yaml_then_it_errors(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     r = runner.invoke(app, ["current", "--yaml"])
     assert r.exit_code == 1
     assert "nothing to read" in r.output
@@ -401,7 +401,7 @@ def test_given_a_named_constitution_when_reading_current_yaml_then_the_name_rout
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="EU rules", constitution="eu", note="init")
     out = runner.invoke(app, ["current", "--yaml", "--constitution", "eu"]).stdout
     assert "constitution: eu" in out
@@ -416,7 +416,7 @@ def test_given_no_by_flag_when_applying_then_the_system_user_is_recorded(tmp_pat
     import getpass
 
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     r = apply_yaml(tmp_path, mission="M1", note="init")
     assert r.exit_code == 0
     assert json.loads(r.stdout)["created_by"] == getpass.getuser()
@@ -448,7 +448,7 @@ def test_given_an_unparseable_file_when_checking_then_it_errors(tmp_path, monkey
 
 def test_given_custom_fields_when_applying_then_they_are_ignored(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     target = tmp_path / "constitution.yaml"
     target.write_text(
         "constitution: default\nmission: M1\nnote: the file note\nteam: lending\n", encoding="utf-8"
@@ -461,7 +461,7 @@ def test_given_custom_fields_when_applying_then_they_are_ignored(tmp_path, monke
 
 def test_given_an_edit_when_applied_then_the_delta_is_printed(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init")
     r = apply_yaml(tmp_path, mission="M2", note="pivot")
     assert r.exit_code == 0
@@ -474,7 +474,7 @@ def test_given_an_empty_store_when_applying_then_the_first_version_is_announced(
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     r = apply_yaml(tmp_path, mission="M1", note="init")
     assert "Creates 'default' at version 1." in r.output
 
@@ -483,7 +483,7 @@ def test_given_dry_run_when_applying_then_the_delta_prints_and_nothing_is_persis
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init")
     target = tmp_path / "next.yaml"
     target.write_text("constitution: default\nmission: M2\n", encoding="utf-8")
@@ -498,7 +498,7 @@ def test_given_identical_content_when_dry_running_then_it_says_no_field_changed(
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init", name="same.yaml")
     r = runner.invoke(app, ["set", str(tmp_path / "same.yaml"), "--dry-run"])
     assert r.exit_code == 0
@@ -507,7 +507,7 @@ def test_given_identical_content_when_dry_running_then_it_says_no_field_changed(
 
 def test_given_dry_run_when_no_note_is_passed_then_it_still_runs(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     target = tmp_path / "next.yaml"
     target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["set", str(target), "--dry-run"])
@@ -520,7 +520,7 @@ def test_given_an_apply_when_reading_stdout_then_the_json_is_indented_for_people
     """The JSON is read by people at a terminal as often as by scripts, and
     indentation costs a script nothing. `current` and `export` match."""
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     applied = apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init")
     current = runner.invoke(app, ["current"])
     for out in (applied.stdout, current.stdout):
@@ -534,7 +534,7 @@ def test_given_identical_content_when_applying_then_nothing_is_written_and_the_e
     """A duplicate apply is the normal case for a rerun, not a mistake: no
     version is written, stderr says so, and stdout is the head in force."""
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init", name="same.yaml")
     r = runner.invoke(app, ["set", str(tmp_path / "same.yaml"), "--note", "again"])
     assert r.exit_code == 0
@@ -545,7 +545,7 @@ def test_given_identical_content_when_applying_then_nothing_is_written_and_the_e
 
 def test_given_a_whitespace_note_when_applying_then_it_is_refused_as_missing(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     r = apply_yaml(tmp_path, mission="M1", note="   ")
     assert r.exit_code != 0
     assert "note" in r.output.lower()
@@ -557,7 +557,7 @@ def test_given_a_file_without_a_constitution_key_when_applying_then_it_is_refuse
     """The name is part of the content: a file that does not say which
     constitution it is cannot be applied anywhere, not even to default."""
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     r = apply_yaml(tmp_path, mission="M1", note="init", constitution=None)
     assert r.exit_code == 1
     assert "constitution: <name>" in r.output
@@ -566,7 +566,7 @@ def test_given_a_file_without_a_constitution_key_when_applying_then_it_is_refuse
 
 def test_given_versions_when_reading_log_then_they_list_newest_first(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="first", by="camilo")
     apply_yaml(tmp_path, mission="M2", note="second", by="ci")
     r = runner.invoke(app, ["log"])
@@ -578,7 +578,7 @@ def test_given_versions_when_reading_log_then_they_list_newest_first(tmp_path, m
 
 def test_given_an_empty_store_when_reading_log_then_it_says_so(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     r = runner.invoke(app, ["log"])
     assert r.exit_code == 0
     assert "no constitution set" in r.stdout
@@ -586,7 +586,7 @@ def test_given_an_empty_store_when_reading_log_then_it_says_so(tmp_path, monkeyp
 
 def test_given_a_matching_file_when_checking_then_the_store_agrees(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init", name="c.yaml")
     r = runner.invoke(app, ["check", str(tmp_path / "c.yaml")])
     assert r.exit_code == 0
@@ -595,7 +595,7 @@ def test_given_a_matching_file_when_checking_then_the_store_agrees(tmp_path, mon
 
 def test_given_a_stale_file_when_checking_then_it_fails_and_shows_the_delta(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M2", note="hotfix")
     stale = tmp_path / "stale.yaml"
     stale.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
@@ -607,7 +607,7 @@ def test_given_a_stale_file_when_checking_then_it_fails_and_shows_the_delta(tmp_
 
 def test_given_an_empty_store_when_checking_then_it_fails(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     target = tmp_path / "c.yaml"
     target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(target)])
@@ -618,7 +618,7 @@ def test_given_an_empty_store_when_checking_then_it_fails(tmp_path, monkeypatch)
 def test_given_an_unreachable_store_when_checking_then_the_report_still_prints(
     tmp_path, monkeypatch
 ):
-    # No init-db: the field report stands, the comparison says why it didn't run.
+    # No db init: the field report stands, the comparison says why it didn't run.
     cli_workspace(monkeypatch, tmp_path, tmp_path / "never.sqlite3")
     target = tmp_path / "c.yaml"
     target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
@@ -633,7 +633,7 @@ def test_given_a_file_without_a_constitution_key_when_checking_then_the_store_is
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     target = tmp_path / "unnamed.yaml"
     target.write_text("mission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(target)])
@@ -650,7 +650,7 @@ def test_given_a_check_when_comparing_with_the_store_then_the_head_is_read_once(
     from kyno.store.sql import SqlConstitutionStore
 
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init", name="c.yaml")
     reads = []
     real_head = SqlConstitutionStore.head
@@ -662,12 +662,15 @@ def test_given_a_check_when_comparing_with_the_store_then_the_head_is_read_once(
     assert reads == ["default"]
 
 
-@pytest.mark.parametrize("command", ["init-db", "upgrade-db"])
+@pytest.mark.parametrize("command", [["db", "init"], ["db", "upgrade"]])
 def test_given_a_malformed_database_url_when_preparing_the_db_then_the_error_is_clean(
-    monkeypatch, command
+    monkeypatch, tmp_path, command
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", "not-a-database-url")
-    r = runner.invoke(app, [command])
+    root = cli_workspace(monkeypatch, tmp_path)
+    (root / "config" / "server").write_text(
+        "[database]\nurl = not-a-database-url\n", encoding="utf-8"
+    )
+    r = runner.invoke(app, command)
     assert r.exit_code == 1
     assert "error:" in r.output and "Traceback" not in r.output
 
@@ -678,7 +681,7 @@ def test_given_no_system_username_when_applying_then_created_by_is_empty(tmp_pat
     import getpass
 
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
 
     def refuse():
         raise OSError("no user database")
@@ -708,7 +711,7 @@ def test_given_the_stdio_transport_when_serving_then_run_stdio_is_dispatched(tmp
     import anyio
 
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     dispatched = {}
     monkeypatch.setattr(anyio, "run", lambda fn, cp: dispatched.update(fn=fn.__name__, cp=cp))
     r = runner.invoke(app, ["serve", "--transport", "stdio"])
@@ -724,7 +727,7 @@ def test_given_a_local_apply_when_reading_the_version_then_no_authorization_is_r
 ):
     """Local applies have no questions, so there is nothing to record."""
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     r = apply_yaml(tmp_path, mission="M1", note="init")
     assert r.exit_code == 0, r.output
     assert json.loads(r.stdout)["authorized_by"] is None
@@ -734,7 +737,7 @@ def test_given_a_local_version_when_reading_log_then_the_authorization_column_is
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="first", by="camilo")
     line = runner.invoke(app, ["log"]).stdout.strip().splitlines()[0]
     assert line.split()[:4] == ["v1", line.split()[1], "camilo", "-"]

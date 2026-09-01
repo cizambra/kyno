@@ -55,10 +55,14 @@ def _alembic_config(database_url: str):
     return cfg
 
 
-@app.command("init-db")
-def init_db() -> None:
+db_app = typer.Typer(help="The database under this workspace's store.")
+app.add_typer(db_app, name="db")
+
+
+@db_app.command("init")
+def db_init() -> None:
     """Create the schema on a fresh database, stamped at the current
-    migration head so `kyno upgrade-db` can take it from here later."""
+    migration head so `kyno db upgrade` can take it from here later."""
     from alembic import command
 
     try:
@@ -71,8 +75,8 @@ def init_db() -> None:
         raise typer.Exit(code=1) from None
 
 
-@app.command("upgrade-db")
-def upgrade_db() -> None:
+@db_app.command("upgrade")
+def db_upgrade() -> None:
     """Bring an existing database up to the current schema."""
     from alembic import command
     from alembic.util.exc import CommandError
@@ -782,7 +786,7 @@ def new(
     typer.echo(f"created workspace '{root.name}'")
     for rel in ("README.md", ".gitignore", "config/server", "db/.keep"):
         typer.echo(f"  {rel}")
-    typer.echo(f"next: cd {name} && kyno init-db")
+    typer.echo(f"next: cd {name} && kyno db init")
 
 
 @app.command()

@@ -54,7 +54,7 @@ def test_given_two_constitutions_when_publishing_one_then_the_other_stays_privat
 
     db = tmp_path / "kyno.sqlite3"
     cli_workspace(monkeypatch, tmp_path, db)
-    assert runner.invoke(cli, ["init-db"]).exit_code == 0
+    assert runner.invoke(cli, ["db", "init"]).exit_code == 0
 
     apply_yaml(tmp_path, mission=MISSION, principles=[PRINCIPLE], note="initial")
     apply_yaml(tmp_path, mission=f"{MISSION}, everywhere", note=PRIVATE_NOTE)
@@ -95,7 +95,7 @@ def test_given_a_published_history_when_toggled_then_change_notes_show_and_hide(
 
     db = tmp_path / "kyno.sqlite3"
     cli_workspace(monkeypatch, tmp_path, db)
-    runner.invoke(cli, ["init-db"])
+    runner.invoke(cli, ["db", "init"])
     apply_yaml(tmp_path, mission=MISSION, note="initial")
     apply_yaml(tmp_path, mission=f"{MISSION}, everywhere", note=PRIVATE_NOTE)
 

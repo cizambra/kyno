@@ -202,3 +202,18 @@ def test_given_mysql_without_a_database_name_when_reading_then_it_is_refused(tmp
     write_config(root, "[database]\nadapter = mysql\nhost = db.internal\n")
     with pytest.raises(ConfigError, match="database.database is required for mysql"):
         read_config(root)
+
+
+def test_given_only_host_and_database_when_assembling_then_defaults_fill_the_rest(tmp_path):
+    root = make(tmp_path)
+    write_config(root, "[database]\nadapter = mysql\nhost = db.internal\ndatabase = kyno\n")
+    assert read_config(root).database_url == "mysql+pymysql://db.internal/kyno"
+
+
+def test_given_a_username_without_a_password_when_assembling_then_only_the_user_rides(tmp_path):
+    root = make(tmp_path)
+    write_config(
+        root,
+        "[database]\nadapter = postgresql\nhost = db.internal\ndatabase = kyno\nusername = kyno\n",
+    )
+    assert read_config(root).database_url == "postgresql+psycopg://kyno@db.internal/kyno"

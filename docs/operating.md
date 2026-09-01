@@ -14,19 +14,34 @@ On this page:
 
 ## The workspace
 
-Every Kyno instance lives in a directory. `kyno new acme` creates it:
-`config/server` says what this Kyno is, `db/` holds the SQLite default,
-and commands find the workspace by walking up from where you stand, the
-way git does. The files under `~/.kyno` are a different thing: those are
-yours -- your credentials, your remote pointers -- and they travel with
-you, never with a deploy.
+A workspace is a directory that defines one Kyno instance. `kyno new`
+creates it, and every command that needs the store finds it by walking
+up from the current directory, the way git does.
 
-A value in `config/server` is written in, or is one `${VAR}` reference
-to a variable you named. An unset variable fails startup, and the error
-names the variable. Secrets only ever enter as references, so you can
-commit the workspace and mount it on a host; the secrets never ride
-along. The `[database]` section splits what the database is from how you
-authenticate to it, like Rails does:
+```console
+$ kyno new acme
+$ cd acme && kyno init-db && kyno serve --transport http
+```
+
+Two directories, two owners:
+
+- `~/.kyno` holds what belongs to a person: credentials and remotes. It
+  never ships with a deploy.
+- The workspace holds what belongs to the instance: `config/server` and,
+  on SQLite, the store under `db/`.
+
+The rules for `config/server`:
+
+- A value is written in, or is one `${VAR}` reference to an environment
+  variable you named. References resolve at startup; an unset variable
+  fails startup and the error names the variable.
+- Secrets only enter as references, so the workspace is safe to commit
+  and to mount on a host.
+- An unknown key or section fails startup and names the typo.
+
+The `[database]` section describes the database with split keys, like
+Rails' `database.yml`. The facts are written in; the password is the one
+reference:
 
 ```ini
 [database]
@@ -37,11 +52,11 @@ username = kyno
 password = ${DB_PASSWORD}
 ```
 
-Leave the section as `kyno new` wrote it and you run on the workspace's
-own `db/kyno.sqlite3` -- a real production choice on one box, not just a
-toy. Platforms that hand you a single connection string get
-`url = ${DATABASE_URL}` instead of the split keys. Pick one; both at
-once is refused.
+- The default, as `kyno new` writes it: `adapter = sqlite3` with the
+  store at `db/kyno.sqlite3`. This runs production on a single box.
+- A platform that hands you one connection string uses
+  `url = ${DATABASE_URL}` instead. `url` beside the split keys is
+  refused.
 
 ## Storage
 

@@ -88,13 +88,12 @@ command:
 
 ## Secrets stay references
 
-A workspace's `config/server` accepts any value written in — Kyno forces
-nothing. The practice: write secrets only as `${VAR}` references.
-
-- `password = ${DB_PASSWORD}` commits safely. `password = hunter2` is one
-  push away from being public.
-- A workspace holding only references can live in git and mount on any
-  host; the secrets travel through your platform's secret store instead.
+`config/server` takes any value written in; Kyno forces nothing. The
+practice is to write secrets only as `${VAR}` references.
+`password = ${DB_PASSWORD}` commits safely — `password = hunter2` is one
+push away from being public. A workspace that holds only references can
+live in git and mount on any host, and the secrets travel through your
+platform's secret store instead of through the repo.
 
 ## Read the ledger
 

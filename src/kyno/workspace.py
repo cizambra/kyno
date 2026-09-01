@@ -15,9 +15,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import quote
 
+from kyno.coerce import to_bool as _bool
+from kyno.coerce import to_int as _int
 from kyno.envref import resolve as _resolve_ref
-from kyno.envref import to_bool as _bool
-from kyno.envref import to_int as _int
 from kyno.errors import ConfigError
 
 CONFIG_RELPATH = Path("config") / "server"

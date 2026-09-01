@@ -158,3 +158,24 @@ def test_given_the_cli_when_running_new_then_the_workspace_lands_and_repeats_ref
     again = runner.invoke(app, ["new", "acme"])
     assert again.exit_code == 1
     assert "already a workspace" in again.output
+
+
+def test_given_a_file_that_is_not_ini_when_reading_then_the_error_says_so(tmp_path):
+    root = make(tmp_path)
+    write_config(root, "not ini at all\n[")
+    with pytest.raises(ConfigError, match="is not valid INI"):
+        read_config(root)
+
+
+def test_given_an_unreadable_config_when_reading_then_the_error_is_clean(tmp_path):
+    import os
+
+    if os.geteuid() == 0:
+        pytest.skip("root ignores file permissions")
+    root = make(tmp_path)
+    (root / "config" / "server").chmod(0o000)
+    try:
+        with pytest.raises(ConfigError, match="cannot read"):
+            read_config(root)
+    finally:
+        (root / "config" / "server").chmod(0o600)

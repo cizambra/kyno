@@ -210,7 +210,7 @@ def test_given_only_host_and_database_when_assembling_then_defaults_fill_the_res
     assert read_config(root).database_url == "mysql+pymysql://db.internal/kyno"
 
 
-def test_given_a_username_without_a_password_when_assembling_then_only_the_user_rides(tmp_path):
+def test_given_a_username_without_a_password_when_assembling_then_the_url_has_no_password(tmp_path):
     root = make(tmp_path)
     write_config(
         root,

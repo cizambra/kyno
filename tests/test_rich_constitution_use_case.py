@@ -13,6 +13,7 @@ from kyno.sdk.client import LocalDirectionSource
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 from kyno.transports import build_http_app
+from tests.workspaces import cli_workspace
 
 runner = CliRunner()
 
@@ -42,7 +43,7 @@ def test_given_a_rich_constitution_when_published_and_bound_then_a_crew_serves_i
     tmp_path, monkeypatch
 ):
     db = tmp_path / "kyno.sqlite3"
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{db}")
+    cli_workspace(monkeypatch, tmp_path, db)
     path = tmp_path / "constitution.yaml"
     path.write_text(CONSTITUTION)
 

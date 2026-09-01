@@ -61,16 +61,17 @@ not exist does. Nothing on the public side reveals which of the two it was.
 
 ### Changing the colors
 
-Six environment variables. Set the ones you care about and leave the rest:
+Six keys in the workspace's `[page]` section. Set the ones you care
+about and leave the rest:
 
-| Variable | Default | What it colors |
+| Key | Default | What it colors |
 | --- | --- | --- |
-| `KYNO_PAGE_ACCENT` | `#6d6d66` | link underlines, principle numbers |
-| `KYNO_PAGE_BACKGROUND` | `#fbfbf9` | the page |
-| `KYNO_PAGE_TEXT` | `#1b1b19` | body text |
-| `KYNO_PAGE_MUTED` | `#6d6d66` | labels, dates, the version stamp |
-| `KYNO_PAGE_RULE` | `#e4e3de` | the hairlines between items |
-| `KYNO_PAGE_FONT` | system sans | `font-family` for the page |
+| `accent` | `#6d6d66` | link underlines, principle numbers |
+| `background` | `#fbfbf9` | the page |
+| `text` | `#1b1b19` | body text |
+| `muted` | `#6d6d66` | labels, dates, the version stamp |
+| `rule` | `#e4e3de` | the hairlines between items |
+| `font_family` | system sans | `font-family` for the page |
 
 Unset, you get the built-in look, with its automatic dark mode. Set any color
 and Kyno stops swapping the palette for dark mode, because inverting colors
@@ -85,11 +86,13 @@ The pages Kyno serves are template files, and it will hand you the real ones:
 kyno page export ./pages          # constitution.html, index.html, page.css
 ```
 
-Edit them, then point Kyno at your copies. It prints these two lines for you:
+Edit them, then point your workspace at your copies -- the command
+prints the lines for you:
 
-```bash
-export KYNO_CONSTITUTION_TEMPLATE=/srv/pages/constitution.html
-export KYNO_INDEX_TEMPLATE=/srv/pages/index.html      # optional
+```ini
+[page]
+constitution_template = /srv/pages/constitution.html
+index_template = /srv/pages/index.html
 ```
 
 That's the whole workflow. What you exported is what Kyno was already

@@ -3,6 +3,8 @@ from alembic.config import Config
 from sqlalchemy import create_engine, inspect
 from typer.testing import CliRunner
 
+from tests.workspaces import cli_workspace
+
 TABLES = {"kyno_constitutions", "kyno_constitution_versions"}
 
 
@@ -241,7 +243,7 @@ def test_given_an_existing_database_when_upgrading_then_its_versions_stay_undecl
 
 def _point_cli_at(monkeypatch, tmp_path, name):
     url = f"sqlite:///{tmp_path / name}"
-    monkeypatch.setenv("KYNO_DATABASE_URL", url)
+    cli_workspace(monkeypatch, tmp_path, tmp_path / name)
     return url
 
 
@@ -328,7 +330,7 @@ def test_given_a_pre_declaration_database_when_a_pip_user_upgrades_then_it_upgra
             "principles, change_note, changed_mission, changed_principles, created_at) "
             "VALUES (1, 1, 'Old mission', '[\"p1\"]', 'init', 1, 1, '2026-01-01 00:00:00')"
         )
-    monkeypatch.setenv("KYNO_DATABASE_URL", url)
+    cli_workspace(monkeypatch, tmp_path, db)
 
     result = CliRunner().invoke(app, ["upgrade-db"])
 

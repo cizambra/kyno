@@ -4,6 +4,7 @@ Storage, auth, deployment, and testing for a production Kyno.
 
 On this page:
 
+- [The workspace](#the-workspace)
 - [Storage](#storage)
 - [Running Kyno embedded](#running-kyno-embedded)
 - [Auth](#auth)
@@ -11,9 +12,71 @@ On this page:
 - [Testing](#testing)
 
 
+## The workspace
+
+A workspace is a directory that defines one Kyno instance. `kyno new`
+creates it; the argument is the name of the directory to create, so pick
+any name you like. Every command that needs the store finds the
+workspace by walking up from the current directory, the way git does.
+
+```console
+$ kyno new my-instance
+$ cd my-instance && kyno init-db && kyno serve --transport http
+```
+
+`kyno new` writes four files:
+
+```
+my-instance/
+  README.md          what this directory is
+  .gitignore         keeps the SQLite store out of git
+  config/server      the instance's configuration
+  db/.keep           where the SQLite store will live
+```
+
+Two directories, two owners:
+
+- `~/.kyno` holds what belongs to a person: credentials and remotes. It
+  never ships with a deploy.
+- The workspace holds what belongs to the instance: the `config/server`
+  file and, on SQLite, the store under `db/`.
+
+The rules for the `config/server` file:
+
+- A value is written in, or is one `${VAR}` reference to an environment
+  variable you named. References resolve at startup; an unset variable
+  fails startup and the error names the variable.
+- Kyno never requires a reference: a password written in works. When to
+  keep secrets as references is a practice call — see
+  [Best practices](best-practices.md#secrets-stay-references).
+- An unknown key or section fails startup and names the typo.
+
+The `[database]` section describes the database with split keys, like
+Rails' `database.yml`. In this example everything is written in except
+the password, which comes from a variable:
+
+```ini
+[database]
+adapter = postgresql
+host = db.internal
+database = kyno
+username = kyno
+password = ${DB_PASSWORD}
+```
+
+- The default, as `kyno new` writes it: `adapter = sqlite3` with the
+  store at `db/kyno.sqlite3`. SQLite can run production on a single
+  box.
+- A platform that hands you one connection string uses
+  `url = ${DATABASE_URL}` instead. `url` beside the split keys is
+  refused.
+
 ## Storage
 
-SQLite out of the box; PostgreSQL for production via `KYNO_DATABASE_URL`.
+SQLite and PostgreSQL, declared in the workspace's `[database]` section.
+Which engine runs where is the operator's call: SQLite handles a
+single-box production, and PostgreSQL works for local development if
+that is your setup.
 Storage is pluggable: hand `SqlConstitutionStore` your own SQLAlchemy
 `Engine` to live inside an existing database, or implement the small store
 protocol to bring your own persistence entirely. Concurrent writers are safe:
@@ -36,7 +99,7 @@ from kyno.config import Settings, store_from_settings
 from kyno.service import ControlPlane
 from kyno.sdk import DirectionBinder, LocalDirectionSource
 
-store = store_from_settings(Settings.from_env())  # reads KYNO_DATABASE_URL
+store = store_from_settings(Settings.load())  # finds the workspace at or above cwd
 control_plane = ControlPlane(store)
 binder = DirectionBinder(LocalDirectionSource(control_plane))
 ```
@@ -53,8 +116,9 @@ working against the same database for edits and inspection.
   protection.
 - **HTTP** is gated by a shared bearer token (`KYNO_TOKEN`) gates every request to the
   MCP endpoint (`/mcp`). The server refuses to start tokenless over HTTP
-  unless you explicitly opt in (`KYNO_ALLOW_INSECURE_HTTP`, for local
-  experimentation only; it warns), and a `KYNO_TOKEN` that's set but blank
+  unless you explicitly opt in (`allow_insecure = true` in
+  `config/server`, for local experimentation only; it warns), and a
+  `KYNO_TOKEN` that's set but blank
   is a configuration error rather than silently no auth. Embedders building
   the app in code opt in the same way:
   `build_http_app(..., allow_insecure=True)`. The published constitution
@@ -149,9 +213,9 @@ The token itself is never shown. A profile that doesn't resolve exits 1 and the 
 
 ## Deploying
 
-- Use an absolute `KYNO_DATABASE_URL` in production. The default
-  (`sqlite:///kyno.sqlite3`) is a dev convenience that resolves against
-  whatever working directory the process starts in.
+- Deploying is putting the workspace on the host and running
+  `kyno serve` in it. Paths in `config/server` resolve against the
+  workspace, never against whatever directory the process starts in.
 - Run a hosted Kyno behind a reverse proxy that enforces rate limits.
   The public pages answer anonymous traffic, and rate limiting is the
   proxy's job, not Kyno's.

@@ -3,45 +3,45 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from kyno.errors import ConfigError
 from kyno.public_page import PageConfig, PageTheme
 from kyno.store.sql import SqlConstitutionStore
+from kyno.workspace import find_workspace, read_config
 
 # Theme values are written straight into a <style> block, so anything that
 # could close it or start a rule of its own is refused rather than escaped.
 _UNSAFE_STYLE_VALUE = re.compile(r"[<>{};@\\]")
 
-_THEME_ENV = {
-    "accent": "KYNO_PAGE_ACCENT",
-    "background": "KYNO_PAGE_BACKGROUND",
-    "text": "KYNO_PAGE_TEXT",
-    "muted": "KYNO_PAGE_MUTED",
-    "rule": "KYNO_PAGE_RULE",
-    "font_family": "KYNO_PAGE_FONT",
-}
+_THEME_KEYS = ("accent", "background", "text", "muted", "rule", "font_family")
 
 
-def _page_from_env() -> PageConfig:
+def _page_from_workspace(page: dict[str, str], root: Path) -> PageConfig:
     defaults = PageTheme()
     values = {}
-    for field_name, env_name in _THEME_ENV.items():
-        value = os.environ.get(env_name) or getattr(defaults, field_name)
+    for name in _THEME_KEYS:
+        value = page.get(name) or getattr(defaults, name)
         if _UNSAFE_STYLE_VALUE.search(value):
             raise ConfigError(
-                f"{env_name} contains characters that are not allowed in a style value: {value!r}"
+                f"page.{name} contains characters that are not allowed in a style value: {value!r}"
             )
-        values[field_name] = value
+        values[name] = value
+
+    def template(key: str) -> str | None:
+        raw = page.get(key)
+        if not raw:
+            return None
+        path = Path(raw)
+        # Anchored at the workspace, like the SQLite path: a command run
+        # from a subdirectory still finds the same template.
+        return str(path if path.is_absolute() else root / path)
+
     return PageConfig(
         theme=PageTheme(**values),
-        constitution_template=os.environ.get("KYNO_CONSTITUTION_TEMPLATE") or None,
-        index_template=os.environ.get("KYNO_INDEX_TEMPLATE") or None,
+        constitution_template=template("constitution_template"),
+        index_template=template("index_template"),
     )
-
-
-# The prefix lands inside DDL identifiers (store/schema.py and the packaged
-# migrations), so only a plain identifier fragment is ever accepted.
-_TABLE_PREFIX = re.compile(r"[A-Za-z0-9_]+")
 
 
 def _token_from_env() -> str | None:
@@ -55,15 +55,6 @@ def _token_from_env() -> str | None:
     return token
 
 
-def _table_prefix_from_env() -> str:
-    prefix = os.environ.get("KYNO_TABLE_PREFIX", "kyno_")
-    if not _TABLE_PREFIX.fullmatch(prefix):
-        raise ConfigError(
-            f"KYNO_TABLE_PREFIX must be letters, digits and underscores, got {prefix!r}"
-        )
-    return prefix
-
-
 @dataclass(frozen=True)
 class Settings:
     database_url: str
@@ -73,21 +64,27 @@ class Settings:
     host: str
     port: int
     page: PageConfig
+    allow_insecure: bool = False
 
     @classmethod
-    def from_env(cls) -> Settings:
-        raw_port = os.environ.get("KYNO_PORT", "8080")
-        try:
-            port = int(raw_port)
-        except ValueError:
-            raise ConfigError(f"KYNO_PORT must be an integer, got '{raw_port}'") from None
+    def load(cls) -> Settings:
+        """The settings of the workspace at or above the current directory.
+
+        The workspace is the only config surface; the one environment
+        variable left is KYNO_TOKEN, and it retires with the tokens
+        design."""
+        root = find_workspace()
+        if root is None:
+            raise ConfigError("no workspace here or above; create one with: kyno new NAME")
+        ws = read_config(root)
         return cls(
-            page=_page_from_env(),
-            database_url=os.environ.get("KYNO_DATABASE_URL", "sqlite:///kyno.sqlite3"),
+            database_url=ws.database_url,
             token=_token_from_env(),
-            table_prefix=_table_prefix_from_env(),
-            host=os.environ.get("KYNO_HOST", "127.0.0.1"),
-            port=port,
+            table_prefix="kyno_",
+            host=ws.host,
+            port=ws.port,
+            page=_page_from_workspace(ws.page, ws.root),
+            allow_insecure=ws.allow_insecure,
         )
 
 

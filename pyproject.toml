@@ -70,6 +70,11 @@ markers = [
 addopts = "-m 'not integration'"
 
 [tool.coverage.run]
+# Count branches, not just lines. A line counts as covered when it runs,
+# even if it holds an if whose other side no test ever took; branch mode
+# catches that. One-line ternaries are invisible even here, so if a
+# decision carries a real case, write it as a multi-line if.
+branch = true
 # What the suite is responsible for. Runtime-only scripts are left out so
 # the number means "how much of the shipped behavior is exercised":
 # alembic drives the migration env and version scripts, and the

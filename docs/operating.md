@@ -4,6 +4,7 @@ Storage, auth, deployment, and testing for a production Kyno.
 
 On this page:
 
+- [The workspace](#the-workspace)
 - [Storage](#storage)
 - [Running Kyno embedded](#running-kyno-embedded)
 - [Auth](#auth)
@@ -14,16 +15,18 @@ On this page:
 ## The workspace
 
 Every Kyno instance lives in a directory. `kyno new acme` creates it:
-`config/server` holds the definition, `db/` holds the SQLite default, and
-commands find the workspace by walking up from where you stand, like git.
-The files under `~/.kyno` stay user-bound -- credentials and remotes
-travel with a person; the workspace is the instance.
+`config/server` says what this Kyno is, `db/` holds the SQLite default,
+and commands find the workspace by walking up from where you stand, the
+way git does. The files under `~/.kyno` are a different thing: those are
+yours -- your credentials, your remote pointers -- and they travel with
+you, never with a deploy.
 
-A value in `config/server` is written in, or is one `${VAR}` reference to
-a variable you named; an unset variable fails startup naming the
-variable. Secrets only ever enter as references, so the workspace is
-committable and mountable. The `[database]` section splits the topology
-from the credentials, like Rails:
+A value in `config/server` is written in, or is one `${VAR}` reference
+to a variable you named. An unset variable fails startup, and the error
+names the variable. Secrets only ever enter as references, so you can
+commit the workspace and mount it on a host; the secrets never ride
+along. The `[database]` section splits what the database is from how you
+authenticate to it, like Rails does:
 
 ```ini
 [database]
@@ -36,9 +39,9 @@ password = ${DB_PASSWORD}
 
 Leave the section as `kyno new` wrote it and you run on the workspace's
 own `db/kyno.sqlite3` -- a real production choice on one box, not just a
-toy. Platforms that hand you a single connection string use
-`url = ${DATABASE_URL}` instead of the split keys; both at once is
-refused.
+toy. Platforms that hand you a single connection string get
+`url = ${DATABASE_URL}` instead of the split keys. Pick one; both at
+once is refused.
 
 ## Storage
 

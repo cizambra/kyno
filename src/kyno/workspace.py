@@ -16,6 +16,8 @@ from pathlib import Path
 from urllib.parse import quote
 
 from kyno.envref import resolve as _resolve_ref
+from kyno.envref import to_bool as _bool
+from kyno.envref import to_int as _int
 from kyno.errors import ConfigError
 
 CONFIG_RELPATH = Path("config") / "server"
@@ -109,8 +111,22 @@ def read_config(root: Path) -> WorkspaceConfig:
     Anything that doesn't resolve fails loudly and names the fix: an
     unknown key is a typo, an unset ${VAR} is a missing export. Stopping
     at startup beats serving half-configured."""
+    parser = _parse(root / CONFIG_RELPATH)
+    host, port, allow_insecure = _server_values(parser)
+    database = dict(parser["database"]) if parser.has_section("database") else {}
+    return WorkspaceConfig(
+        root=root,
+        database_url=_database_url(database, root),
+        host=host,
+        port=port,
+        allow_insecure=allow_insecure,
+        page=_page_values(parser),
+    )
+
+
+def _parse(config_path: Path) -> configparser.ConfigParser:
+    """The INI itself, with every section and key checked for typos."""
     parser = configparser.ConfigParser(interpolation=None)
-    config_path = root / CONFIG_RELPATH
     try:
         with open(config_path, encoding="utf-8") as handle:
             parser.read_file(handle)
@@ -118,7 +134,6 @@ def read_config(root: Path) -> WorkspaceConfig:
         raise ConfigError(f"cannot read {config_path}: {exc.strerror or exc}") from None
     except configparser.Error as exc:
         raise ConfigError(f"{config_path} is not valid INI: {exc}") from None
-
     for section in parser.sections():
         if section not in ("server", "database", "page"):
             raise ConfigError(
@@ -128,7 +143,10 @@ def read_config(root: Path) -> WorkspaceConfig:
     _check_keys(parser, "server", _SERVER_KEYS, config_path)
     _check_keys(parser, "database", _DATABASE_KEYS, config_path)
     _check_keys(parser, "page", _PAGE_KEYS, config_path)
+    return parser
 
+
+def _server_values(parser: configparser.ConfigParser) -> tuple[str, int, bool]:
     server = parser["server"] if parser.has_section("server") else {}
     host = _resolve_ref(server.get("host", "127.0.0.1"), owner="server.host")
     port = _int(_resolve_ref(server.get("port", "2256"), owner="server.port"), owner="server.port")
@@ -136,23 +154,13 @@ def read_config(root: Path) -> WorkspaceConfig:
         _resolve_ref(server.get("allow_insecure", "false"), owner="server.allow_insecure"),
         owner="server.allow_insecure",
     )
+    return host, port, allow_insecure
 
-    database = dict(parser["database"]) if parser.has_section("database") else {}
-    database_url = _database_url(database, root)
 
-    page = {}
-    if parser.has_section("page"):
-        for key, value in parser["page"].items():
-            page[key] = _resolve_ref(value, owner=f"page.{key}")
-
-    return WorkspaceConfig(
-        root=root,
-        database_url=database_url,
-        host=host,
-        port=port,
-        allow_insecure=allow_insecure,
-        page=page,
-    )
+def _page_values(parser: configparser.ConfigParser) -> dict[str, str]:
+    if not parser.has_section("page"):
+        return {}
+    return {key: _resolve_ref(value, owner=f"page.{key}") for key, value in parser["page"].items()}
 
 
 def _database_url(values: dict, root: Path) -> str:
@@ -215,20 +223,3 @@ def _check_keys(parser, section: str, allowed: tuple, config_path: Path) -> None
                 f"unknown key '{key}' in [{section}] of {config_path}; "
                 f"the keys are: {', '.join(allowed)}"
             )
-
-
-def _int(value: str, *, owner: str) -> int:
-    # int() alone raises without saying which key went wrong.
-    try:
-        return int(value)
-    except ValueError:
-        raise ConfigError(f"{owner} must be an integer, got '{value}'") from None
-
-
-def _bool(value: str, *, owner: str) -> bool:
-    # configparser's own truth table (true/false, 1/0, yes/no, on/off);
-    # only the refusal is ours, so it names the key.
-    try:
-        return configparser.ConfigParser.BOOLEAN_STATES[value.lower()]
-    except KeyError:
-        raise ConfigError(f"{owner} must be true or false, got '{value}'") from None

@@ -49,7 +49,9 @@ def test_given_no_workspace_above_when_finding_then_there_is_none(tmp_path):
     assert find_workspace(tmp_path) is None
 
 
-def test_given_a_reference_value_when_reading_then_the_variable_answers(tmp_path, monkeypatch):
+def test_given_a_reference_value_when_reading_then_the_environment_variable_supplies_it(
+    tmp_path, monkeypatch
+):
     root = make(tmp_path)
     write_config(root, "[server]\nport = ${ACME_PORT}\n")
     monkeypatch.setenv("ACME_PORT", "9001")
@@ -71,7 +73,7 @@ def test_given_a_blank_reference_when_reading_then_it_is_refused_not_empty(tmp_p
         read_config(root)
 
 
-def test_given_an_unknown_key_when_reading_then_the_typo_is_caught(tmp_path):
+def test_given_an_unknown_key_with_a_typo_when_reading_then_it_is_refused(tmp_path):
     root = make(tmp_path)
     write_config(root, "[server]\nhots = x\n")
     with pytest.raises(ConfigError, match="unknown key 'hots'"):
@@ -147,7 +149,7 @@ def test_given_page_keys_when_reading_then_they_come_back_resolved(tmp_path, mon
     assert read_config(root).page == {"accent": "#123456", "background": "#fff"}
 
 
-def test_given_the_cli_when_running_new_then_the_workspace_lands_and_repeats_refuse(
+def test_given_kyno_new_run_twice_then_the_first_creates_and_the_second_is_refused(
     tmp_path, monkeypatch
 ):
     monkeypatch.chdir(tmp_path)

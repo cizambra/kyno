@@ -47,7 +47,7 @@ def test_given_a_rich_constitution_when_published_and_bound_then_a_crew_serves_i
     path = tmp_path / "constitution.yaml"
     path.write_text(CONSTITUTION)
 
-    assert runner.invoke(cli, ["init-db"]).exit_code == 0
+    assert runner.invoke(cli, ["db", "init"]).exit_code == 0
     apply = ["set", str(path), "--note", "the constitution as written", "--by", "camilo"]
     assert runner.invoke(cli, apply).exit_code == 0
     assert runner.invoke(cli, ["publish", "--constitution", "acme"]).exit_code == 0

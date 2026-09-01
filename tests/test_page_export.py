@@ -156,7 +156,7 @@ def test_given_the_built_wheel_when_inspecting_then_it_ships_the_templates_and_t
     for name in PACKAGED_TEMPLATES:
         assert f"kyno/templates/{name}" in members, name
 
-    # The migration scripts ship the same way: `kyno upgrade-db` must work
+    # The migration scripts ship the same way: `kyno db upgrade` must work
     # from an installed wheel, with no repo checkout around.
     assert "kyno/migrations/env.py" in members
     assert "kyno/migrations/script.py.mako" in members

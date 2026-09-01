@@ -258,7 +258,7 @@ def test_given_a_fresh_database_when_running_upgrade_db_then_it_reaches_head(tmp
 
     url = _point_cli_at(monkeypatch, tmp_path, "fresh.sqlite3")
 
-    result = CliRunner().invoke(app, ["upgrade-db"])
+    result = CliRunner().invoke(app, ["db", "upgrade"])
 
     assert result.exit_code == 0, result.output
     assert set(inspect(create_engine(url)).get_table_names()) >= TABLES
@@ -283,7 +283,7 @@ def test_given_a_fresh_database_when_running_init_db_then_it_is_stamped_at_head(
 
     url = _point_cli_at(monkeypatch, tmp_path, "stamped.sqlite3")
 
-    result = CliRunner().invoke(app, ["init-db"])
+    result = CliRunner().invoke(app, ["db", "init"])
 
     assert result.exit_code == 0, result.output
     with create_engine(url).connect() as conn:
@@ -299,8 +299,8 @@ def test_given_an_init_db_database_when_running_upgrade_db_later_then_it_upgrade
     url = _point_cli_at(monkeypatch, tmp_path, "roundtrip.sqlite3")
     runner = CliRunner()
 
-    assert runner.invoke(app, ["init-db"]).exit_code == 0
-    result = runner.invoke(app, ["upgrade-db"])
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    result = runner.invoke(app, ["db", "upgrade"])
 
     assert result.exit_code == 0, result.output
     assert set(inspect(create_engine(url)).get_table_names()) >= TABLES
@@ -332,7 +332,7 @@ def test_given_a_pre_declaration_database_when_a_pip_user_upgrades_then_it_upgra
         )
     cli_workspace(monkeypatch, tmp_path, db)
 
-    result = CliRunner().invoke(app, ["upgrade-db"])
+    result = CliRunner().invoke(app, ["db", "upgrade"])
 
     assert result.exit_code == 0, result.output
     head = ControlPlane(SqlConstitutionStore(url=url)).current("legacy")

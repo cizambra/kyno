@@ -21,7 +21,7 @@ workspace by walking up from the current directory, the way git does.
 
 ```console
 $ kyno new my-instance
-$ cd my-instance && kyno init-db && kyno serve --transport http
+$ cd my-instance && kyno db init && kyno serve --transport http
 ```
 
 `kyno new` writes four files:
@@ -104,7 +104,7 @@ control_plane = ControlPlane(store)
 binder = DirectionBinder(LocalDirectionSource(control_plane))
 ```
 
-The schema has to exist before the first read, so run `kyno init-db` once
+The schema has to exist before the first read, so run `kyno db init` once
 against the same database, or call `store.create_all()` from code. From
 here the binder behaves exactly as it does over MCP, and the CLI keeps
 working against the same database for edits and inspection.
@@ -224,8 +224,8 @@ The token itself is never shown. A profile that doesn't resolve exits 1 and the 
   titles ≤ 300 and descriptions ≤ 4,000, constitution names ≤ 200.
   `set_direction` refuses anything larger, and `/mcp` request bodies are
   capped at 5 MB.
-- A pip-installed Kyno ships with its own migration scripts: `kyno init-db`
-  creates a fresh schema stamped at the current head, and `kyno upgrade-db`
+- A pip-installed Kyno ships with its own migration scripts: `kyno db init`
+  creates a fresh schema stamped at the current head, and `kyno db upgrade`
   brings an existing database up to date after an upgrade.
 
 ## Testing

@@ -368,7 +368,7 @@ def test_given_no_interactive_when_applying_remotely_then_no_question_is_asked(
 
 def test_given_a_local_apply_when_running_set_then_no_question_is_asked(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["init-db"])
+    runner.invoke(app, ["db", "init"])
     path = write_file(tmp_path, mission="M1")
     r = runner.invoke(app, ["set", path, "--note", "init"])
     assert r.exit_code == 0, r.output

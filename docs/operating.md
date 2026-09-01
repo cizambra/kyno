@@ -76,7 +76,8 @@ password = ${DB_PASSWORD}
 SQLite and PostgreSQL, declared in the workspace's `[database]` section.
 Which engine runs where is the operator's call: SQLite handles a
 single-box production, and PostgreSQL works for local development if
-that is your setup.
+that is your setup. The Postgres driver ships as an extra:
+`pip install kyno[postgres]`.
 Storage is pluggable: hand `SqlConstitutionStore` your own SQLAlchemy
 `Engine` to live inside an existing database, or implement the small store
 protocol to bring your own persistence entirely. Concurrent writers are safe:

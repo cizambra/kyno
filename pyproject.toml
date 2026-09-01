@@ -47,6 +47,8 @@ dev = [
     # Formatting is CI-checked; a ruff minor can reformat, so the bound is tight.
     "ruff>=0.16,<0.17",
 ]
+# The Postgres driver, for production databases: pip install kyno[postgres]
+postgres = ["psycopg[binary]>=3.1"]
 crewai = ["crewai>=1.15.3"]
 langgraph = ["langgraph>=0.4", "langchain-core>=0.3"]
 

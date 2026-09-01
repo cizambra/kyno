@@ -29,6 +29,7 @@ from kyno.profiles import (
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
 from kyno.remote import RemoteError, dial, version_from_payload
 from kyno.service import ControlPlane, edit_delta, effective_content
+from kyno.workspace import create_workspace
 
 app = typer.Typer(help="Coherence engine control plane.")
 
@@ -766,6 +767,22 @@ def _fetch_remote_rows(
         )
     finally:
         client.close()
+
+
+@app.command()
+def new(
+    name: str = typer.Argument(..., help="Directory to create the workspace in."),
+) -> None:
+    """Create a workspace: the directory that defines one Kyno instance.
+    Configuration and, on SQLite, the store live here; the constitution
+    file does not -- it stays in your team's repo and arrives over the
+    wire."""
+    with _clean_errors():
+        root = create_workspace(Path(name))
+    typer.echo(f"created workspace '{root.name}'")
+    for rel in ("README.md", ".gitignore", "config/server", "db/.keep"):
+        typer.echo(f"  {rel}")
+    typer.echo(f"next: cd {name} && kyno init-db")
 
 
 @app.command()

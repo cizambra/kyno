@@ -105,12 +105,11 @@ def create_workspace(path: Path) -> Path:
 
 
 def read_config(root: Path) -> WorkspaceConfig:
-    """The workspace's config/server, checked and resolved.
+    """What config/server says, checked and resolved.
 
     Anything that doesn't resolve fails loudly and names the fix: an
-    unknown key is a typo, an unset ${VAR} is a missing export, and both
-    are better caught at startup than discovered as a half-configured
-    server."""
+    unknown key is a typo, an unset ${VAR} is a missing export. Stopping
+    at startup beats serving half-configured."""
     parser = configparser.ConfigParser(interpolation=None)
     config_path = root / CONFIG_RELPATH
     try:

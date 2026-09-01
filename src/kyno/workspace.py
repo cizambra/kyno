@@ -11,17 +11,14 @@ as ${VAR} references to variables the operator named.
 from __future__ import annotations
 
 import configparser
-import os
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import quote
 
+from kyno.envref import resolve as _resolve_ref
 from kyno.errors import ConfigError
 
 CONFIG_RELPATH = Path("config") / "server"
-
-_ENV_REF = re.compile(r"^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$")
 
 # adapter key -> the SQLAlchemy dialect (and driver) it stands for
 _ADAPTERS = {"sqlite3": "sqlite", "postgresql": "postgresql+psycopg"}
@@ -133,11 +130,11 @@ def read_config(root: Path) -> WorkspaceConfig:
     _check_keys(parser, "page", _PAGE_KEYS, config_path)
 
     server = parser["server"] if parser.has_section("server") else {}
-    host = _resolve(server.get("host", "127.0.0.1"), key="server.host")
-    port = _int(_resolve(server.get("port", "2256"), key="server.port"), key="server.port")
+    host = _resolve_ref(server.get("host", "127.0.0.1"), owner="server.host")
+    port = _int(_resolve_ref(server.get("port", "2256"), owner="server.port"), owner="server.port")
     allow_insecure = _bool(
-        _resolve(server.get("allow_insecure", "false"), key="server.allow_insecure"),
-        key="server.allow_insecure",
+        _resolve_ref(server.get("allow_insecure", "false"), owner="server.allow_insecure"),
+        owner="server.allow_insecure",
     )
 
     database = dict(parser["database"]) if parser.has_section("database") else {}
@@ -146,7 +143,7 @@ def read_config(root: Path) -> WorkspaceConfig:
     page = {}
     if parser.has_section("page"):
         for key, value in parser["page"].items():
-            page[key] = _resolve(value, key=f"page.{key}")
+            page[key] = _resolve_ref(value, owner=f"page.{key}")
 
     return WorkspaceConfig(
         root=root,
@@ -159,46 +156,53 @@ def read_config(root: Path) -> WorkspaceConfig:
 
 
 def _database_url(values: dict, root: Path) -> str:
+    """One URL out of [database], whichever shape the section took."""
     url = values.get("url")
-    split_keys = [k for k in values if k != "url"]
-    if url is not None and split_keys:
+    if url is not None and any(k != "url" for k in values):
         raise ConfigError(
             "pick one: url carries the whole connection; "
             "the split database keys describe it piece by piece"
         )
     if url is not None:
-        return _resolve(url, key="database.url")
-
-    adapter = _resolve(values.get("adapter", "sqlite3"), key="database.adapter")
+        return _resolve_ref(url, owner="database.url")
+    adapter = _resolve_ref(values.get("adapter", "sqlite3"), owner="database.adapter")
     if adapter not in _ADAPTERS:
         raise ConfigError(f"unknown adapter '{adapter}': one of {', '.join(sorted(_ADAPTERS))}")
     if adapter == "sqlite3":
-        raw = _resolve(values.get("database", "db/kyno.sqlite3"), key="database.database")
-        path = Path(raw)
-        if not path.is_absolute():
-            # Anchored at the workspace, so a command run from a
-            # subdirectory still finds the same store.
-            path = root / path
-        return f"sqlite:///{path}"
+        return _sqlite_url(values, root)
+    return _postgres_url(values, adapter)
 
+
+def _sqlite_url(values: dict, root: Path) -> str:
+    raw = _resolve_ref(values.get("database", "db/kyno.sqlite3"), owner="database.database")
+    path = Path(raw)
+    if not path.is_absolute():
+        # Anchored at the workspace, so a command run from a
+        # subdirectory still finds the same store.
+        path = root / path
+    return f"sqlite:///{path}"
+
+
+def _postgres_url(values: dict, adapter: str) -> str:
     database = values.get("database")
     if not database:
         raise ConfigError("database.database is required for postgresql")
-    host = _resolve(values.get("host", "localhost"), key="database.host")
+    host = _resolve_ref(values.get("host", "localhost"), owner="database.host")
     port = values.get("port")
     userinfo = ""
     username = values.get("username")
     password = values.get("password")
     if username:
-        userinfo = quote(_resolve(username, key="database.username"), safe="")
+        userinfo = quote(_resolve_ref(username, owner="database.username"), safe="")
         if password:
-            userinfo += ":" + quote(_resolve(password, key="database.password"), safe="")
+            userinfo += ":" + quote(_resolve_ref(password, owner="database.password"), safe="")
         userinfo += "@"
     if port is None:
         hostport = host
     else:
-        hostport = f"{host}:{_int(_resolve(port, key='database.port'), key='database.port')}"
-    name = quote(_resolve(database, key="database.database"), safe="")
+        resolved = _resolve_ref(port, owner="database.port")
+        hostport = f"{host}:{_int(resolved, owner='database.port')}"
+    name = quote(_resolve_ref(database, owner="database.database"), safe="")
     return f"{_ADAPTERS[adapter]}://{userinfo}{hostport}/{name}"
 
 
@@ -213,30 +217,18 @@ def _check_keys(parser, section: str, allowed: tuple, config_path: Path) -> None
             )
 
 
-def _resolve(value: str, *, key: str) -> str:
-    match = _ENV_REF.match(value.strip())
-    if match is None:
-        return value.strip()
-    var = match.group(1)
-    got = os.environ.get(var)
-    if got is None:
-        raise ConfigError(f"{key} reads ${{{var}}}, which is not set")
-    if not got.strip():
-        raise ConfigError(f"{key} reads ${{{var}}}, which is blank")
-    return got
-
-
-def _int(value: str, *, key: str) -> int:
+def _int(value: str, *, owner: str) -> int:
+    # int() alone raises without saying which key went wrong.
     try:
         return int(value)
     except ValueError:
-        raise ConfigError(f"{key} must be an integer, got '{value}'") from None
+        raise ConfigError(f"{owner} must be an integer, got '{value}'") from None
 
 
-def _bool(value: str, *, key: str) -> bool:
-    lowered = value.lower()
-    if lowered in ("true", "1", "yes"):
-        return True
-    if lowered in ("false", "0", "no"):
-        return False
-    raise ConfigError(f"{key} must be true or false, got '{value}'")
+def _bool(value: str, *, owner: str) -> bool:
+    # configparser's own truth table (true/false, 1/0, yes/no, on/off);
+    # only the refusal is ours, so it names the key.
+    try:
+        return configparser.ConfigParser.BOOLEAN_STATES[value.lower()]
+    except KeyError:
+        raise ConfigError(f"{owner} must be true or false, got '{value}'") from None

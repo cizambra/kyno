@@ -15,33 +15,45 @@ On this page:
 ## The workspace
 
 A workspace is a directory that defines one Kyno instance. `kyno new`
-creates it, and every command that needs the store finds it by walking
-up from the current directory, the way git does.
+creates it; the argument is the name of the directory to create, so pick
+any name you like. Every command that needs the store finds the
+workspace by walking up from the current directory, the way git does.
 
 ```console
-$ kyno new acme
-$ cd acme && kyno init-db && kyno serve --transport http
+$ kyno new my-instance
+$ cd my-instance && kyno init-db && kyno serve --transport http
+```
+
+`kyno new` writes four files:
+
+```
+my-instance/
+  README.md          what this directory is
+  .gitignore         keeps the SQLite store out of git
+  config/server      the instance's configuration
+  db/.keep           where the SQLite store will live
 ```
 
 Two directories, two owners:
 
 - `~/.kyno` holds what belongs to a person: credentials and remotes. It
   never ships with a deploy.
-- The workspace holds what belongs to the instance: `config/server` and,
-  on SQLite, the store under `db/`.
+- The workspace holds what belongs to the instance: the `config/server`
+  file and, on SQLite, the store under `db/`.
 
-The rules for `config/server`:
+The rules for the `config/server` file:
 
 - A value is written in, or is one `${VAR}` reference to an environment
   variable you named. References resolve at startup; an unset variable
   fails startup and the error names the variable.
-- Secrets only enter as references, so the workspace is safe to commit
-  and to mount on a host.
+- Kyno never requires a reference: a password written in works. Keep
+  secrets as references and the workspace is safe to commit and to
+  mount on a host; that call is yours.
 - An unknown key or section fails startup and names the typo.
 
 The `[database]` section describes the database with split keys, like
-Rails' `database.yml`. The facts are written in; the password is the one
-reference:
+Rails' `database.yml`. In this example everything is written in except
+the password, which comes from a variable:
 
 ```ini
 [database]
@@ -53,15 +65,18 @@ password = ${DB_PASSWORD}
 ```
 
 - The default, as `kyno new` writes it: `adapter = sqlite3` with the
-  store at `db/kyno.sqlite3`. This runs production on a single box.
+  store at `db/kyno.sqlite3`. SQLite can run production on a single
+  box.
 - A platform that hands you one connection string uses
   `url = ${DATABASE_URL}` instead. `url` beside the split keys is
   refused.
 
 ## Storage
 
-SQLite out of the box; PostgreSQL for production -- both declared in the
-workspace's `[database]` section.
+SQLite and PostgreSQL, declared in the workspace's `[database]` section.
+Which engine runs where is the operator's call: SQLite handles a
+single-box production, and PostgreSQL works for local development if
+that is your setup.
 Storage is pluggable: hand `SqlConstitutionStore` your own SQLAlchemy
 `Engine` to live inside an existing database, or implement the small store
 protocol to bring your own persistence entirely. Concurrent writers are safe:

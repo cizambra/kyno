@@ -128,7 +128,7 @@ def test_given_no_token_when_serving_http_then_it_is_refused(monkeypatch, tmp_pa
 
 
 @pytest.mark.parametrize("value", ["true", "TRUE", "1", "yes"])
-def test_given_the_insecure_opt_in_when_serving_http_then_it_is_allowed(
+def test_given_the_insecure_opt_in_when_serving_http_then_the_server_starts_with_a_warning(
     monkeypatch, tmp_path, value
 ):
     root = cli_workspace(monkeypatch, tmp_path)
@@ -154,7 +154,9 @@ def test_given_a_word_that_is_not_a_boolean_when_serving_http_then_the_error_nam
     assert "Traceback" not in r.output
 
 
-def test_given_written_versions_when_exporting_then_they_round_trip(tmp_path, monkeypatch):
+def test_given_written_versions_when_exporting_then_the_history_prints_and_from_bounds_it(
+    tmp_path, monkeypatch
+):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="v1")
@@ -199,7 +201,7 @@ def test_given_a_bogus_transport_when_running_serve_then_the_exit_is_argparse_st
     assert r.exit_code == 2
 
 
-def test_given_the_constitution_flag_when_applying_and_reading_then_the_name_round_trips(
+def test_given_an_apply_to_eu_when_reading_with_the_flag_then_eu_answers_and_default_is_empty(
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
@@ -322,7 +324,9 @@ def test_given_an_uninitialized_db_when_publishing_then_the_error_is_clean(tmp_p
     assert "Traceback" not in r.output
 
 
-def test_given_an_unroutable_name_when_publishing_then_the_error_is_clean(tmp_path, monkeypatch):
+def test_given_a_name_with_a_slash_when_publishing_then_it_is_refused_without_a_traceback(
+    tmp_path, monkeypatch
+):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", constitution="acme/eu", note="init")

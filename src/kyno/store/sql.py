@@ -17,6 +17,10 @@ def _encode_principles(principles) -> str:
     return json.dumps([p.to_dict() if p.description else p.title for p in normalized])
 
 
+# missing driver module -> the pip extra that ships it
+_DRIVER_EXTRAS = {"psycopg": "postgres", "pymysql": "mysql"}
+
+
 class SqlConstitutionStore:
     def __init__(
         self, engine: Engine | None = None, *, url: str | None = None, prefix: str = "kyno_"
@@ -42,11 +46,12 @@ class SqlConstitutionStore:
             try:
                 self.engine = create_engine(url, **kwargs)
             except ModuleNotFoundError as exc:
-                # The URL picked a dialect whose driver isn't installed; the
-                # fix is one install away, so the error names it.
+                # The exception already names the missing driver; the map
+                # turns it into the extra that installs it.
+                extra = _DRIVER_EXTRAS.get(exc.name)
                 hint = (
-                    "install it with: pip install kyno[postgres]"
-                    if url.startswith("postgres")
+                    f"install it with: pip install kyno[{extra}]"
+                    if extra
                     else f"install the '{exc.name}' package"
                 )
                 raise ConfigError(

@@ -89,8 +89,10 @@ def test_given_an_unknown_section_when_reading_then_it_is_refused(tmp_path):
 
 def test_given_an_unknown_adapter_when_reading_then_the_choices_are_named(tmp_path):
     root = make(tmp_path)
-    write_config(root, "[database]\nadapter = mysql\n")
-    with pytest.raises(ConfigError, match="unknown adapter 'mysql': one of postgresql, sqlite3"):
+    write_config(root, "[database]\nadapter = oracle\n")
+    with pytest.raises(
+        ConfigError, match="unknown adapter 'oracle': one of mysql, postgresql, sqlite3"
+    ):
         read_config(root)
 
 
@@ -181,3 +183,37 @@ def test_given_an_unreadable_config_when_reading_then_the_error_is_clean(tmp_pat
             read_config(root)
     finally:
         (root / "config" / "server").chmod(0o600)
+
+
+def test_given_split_mysql_keys_when_reading_then_the_url_is_assembled(tmp_path, monkeypatch):
+    root = make(tmp_path)
+    write_config(
+        root,
+        "[database]\nadapter = mysql\nhost = db.internal\nport = 3306\n"
+        "database = kyno\nusername = kyno\npassword = ${ACME_DB_PASSWORD}\n",
+    )
+    monkeypatch.setenv("ACME_DB_PASSWORD", "s3cret")
+    url = read_config(root).database_url
+    assert url == "mysql+pymysql://kyno:s3cret@db.internal:3306/kyno"
+
+
+def test_given_mysql_without_a_database_name_when_reading_then_it_is_refused(tmp_path):
+    root = make(tmp_path)
+    write_config(root, "[database]\nadapter = mysql\nhost = db.internal\n")
+    with pytest.raises(ConfigError, match="database.database is required for mysql"):
+        read_config(root)
+
+
+def test_given_only_host_and_database_when_assembling_then_defaults_fill_the_rest(tmp_path):
+    root = make(tmp_path)
+    write_config(root, "[database]\nadapter = mysql\nhost = db.internal\ndatabase = kyno\n")
+    assert read_config(root).database_url == "mysql+pymysql://db.internal/kyno"
+
+
+def test_given_a_username_without_a_password_when_assembling_then_the_url_has_no_password(tmp_path):
+    root = make(tmp_path)
+    write_config(
+        root,
+        "[database]\nadapter = postgresql\nhost = db.internal\ndatabase = kyno\nusername = kyno\n",
+    )
+    assert read_config(root).database_url == "postgresql+psycopg://kyno@db.internal/kyno"

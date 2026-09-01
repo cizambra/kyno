@@ -653,3 +653,29 @@ def test_given_a_url_whose_driver_is_missing_when_building_the_store_then_the_er
     monkeypatch.setattr(sql_module, "create_engine", refuse)
     with pytest.raises(ConfigError, match="pip install kyno"):
         SqlConstitutionStore(url="postgresql+psycopg://u:p@h/db")
+
+
+def test_given_a_mysql_url_whose_driver_is_missing_when_building_then_the_error_names_the_fix(
+    monkeypatch,
+):
+    import kyno.store.sql as sql_module
+    from kyno.errors import ConfigError
+
+    def refuse(url, **kwargs):
+        raise ModuleNotFoundError("No module named 'pymysql'", name="pymysql")
+
+    monkeypatch.setattr(sql_module, "create_engine", refuse)
+    with pytest.raises(ConfigError, match="pip install kyno"):
+        SqlConstitutionStore(url="mysql+pymysql://u:p@h/db")
+
+
+def test_given_a_driver_outside_the_extras_map_when_missing_then_the_module_is_named(monkeypatch):
+    import kyno.store.sql as sql_module
+    from kyno.errors import ConfigError
+
+    def refuse(url, **kwargs):
+        raise ModuleNotFoundError("No module named 'oracledb'", name="oracledb")
+
+    monkeypatch.setattr(sql_module, "create_engine", refuse)
+    with pytest.raises(ConfigError, match="install the 'oracledb' package"):
+        SqlConstitutionStore(url="oracle+oracledb://u:p@h/db")

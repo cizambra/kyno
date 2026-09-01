@@ -73,14 +73,15 @@ password = ${DB_PASSWORD}
 
 ## Storage
 
-SQLite and PostgreSQL, declared in the workspace's `[database]` section.
-Which engine runs where is the operator's call: SQLite handles a
-single-box production, and PostgreSQL works for local development if
-that is your setup. If you want to use postgres, you need to install
+SQLite, PostgreSQL and MySQL, declared in the workspace's `[database]`
+section. Which engine runs where is the operator's call: SQLite handles
+a single-box production, and the others work for local development if
+that is your setup. If you want postgres or mysql, you need to install
 the adapter first:
 
 ```console
 $ pip install kyno[postgres]
+$ pip install kyno[mysql]     # MariaDB uses this one too
 ```
 Storage is pluggable: hand `SqlConstitutionStore` your own SQLAlchemy
 `Engine` to live inside an existing database, or implement the small store

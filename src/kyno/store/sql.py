@@ -44,11 +44,12 @@ class SqlConstitutionStore:
             except ModuleNotFoundError as exc:
                 # The URL picked a dialect whose driver isn't installed; the
                 # fix is one install away, so the error names it.
-                hint = (
-                    "install it with: pip install kyno[postgres]"
-                    if url.startswith("postgres")
-                    else f"install the '{exc.name}' package"
-                )
+                if url.startswith("postgres"):
+                    hint = "install it with: pip install kyno[postgres]"
+                elif url.startswith("mysql"):
+                    hint = "install it with: pip install kyno[mysql]"
+                else:
+                    hint = f"install the '{exc.name}' package"
                 raise ConfigError(
                     f"the database at this URL needs a driver that is not installed; {hint}"
                 ) from None

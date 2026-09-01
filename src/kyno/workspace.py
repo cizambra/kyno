@@ -23,7 +23,7 @@ from kyno.errors import ConfigError
 CONFIG_RELPATH = Path("config") / "server"
 
 # adapter key -> the SQLAlchemy dialect (and driver) it stands for
-_ADAPTERS = {"sqlite3": "sqlite", "postgresql": "postgresql+psycopg"}
+_ADAPTERS = {"sqlite3": "sqlite", "postgresql": "postgresql+psycopg", "mysql": "mysql+pymysql"}
 
 _SERVER_KEYS = ("host", "port", "allow_insecure")
 _DATABASE_KEYS = ("url", "adapter", "host", "port", "database", "username", "password")
@@ -178,7 +178,7 @@ def _database_url(values: dict, root: Path) -> str:
         raise ConfigError(f"unknown adapter '{adapter}': one of {', '.join(sorted(_ADAPTERS))}")
     if adapter == "sqlite3":
         return _sqlite_url(values, root)
-    return _postgres_url(values, adapter)
+    return _server_url(values, adapter)
 
 
 def _sqlite_url(values: dict, root: Path) -> str:
@@ -191,10 +191,10 @@ def _sqlite_url(values: dict, root: Path) -> str:
     return f"sqlite:///{path}"
 
 
-def _postgres_url(values: dict, adapter: str) -> str:
+def _server_url(values: dict, adapter: str) -> str:
     database = values.get("database")
     if not database:
-        raise ConfigError("database.database is required for postgresql")
+        raise ConfigError(f"database.database is required for {adapter}")
     host = _resolve_ref(values.get("host", "localhost"), owner="database.host")
     port = values.get("port")
     userinfo = ""

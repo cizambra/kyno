@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from kyno.envref import ENV_REF as _ENV_REF
 from kyno.errors import ConfigError
 
 DEFAULT_PROFILE = "default"
@@ -23,7 +24,6 @@ CREDENTIALS_FILE = "credentials"
 
 _PROFILE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 _ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-_ENV_REF = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
 
 class ProfileError(ConfigError):

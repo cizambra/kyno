@@ -69,7 +69,7 @@ def test_given_a_blank_reference_when_reading_then_it_is_refused_not_empty(tmp_p
     root = make(tmp_path)
     write_config(root, "[database]\nurl = ${ACME_DB}\n")
     monkeypatch.setenv("ACME_DB", "   ")
-    with pytest.raises(ConfigError, match="which is blank"):
+    with pytest.raises(ConfigError, match="which is set but blank"):
         read_config(root)
 
 

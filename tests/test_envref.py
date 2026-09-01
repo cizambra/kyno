@@ -23,7 +23,7 @@ def test_given_an_unset_reference_when_resolving_then_owner_and_variable_are_nam
 
 def test_given_a_blank_reference_when_resolving_then_it_is_refused_not_empty(monkeypatch):
     monkeypatch.setenv("ACME_BLANK", "   ")
-    with pytest.raises(ConfigError, match="which is blank"):
+    with pytest.raises(ConfigError, match="which is set but blank"):
         resolve("${ACME_BLANK}", owner="database.password")
 
 

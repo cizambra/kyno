@@ -8,3 +8,4 @@ dist/
 
 # Local agent scratch (brainstorm server state, execution ledgers)
 .superpowers/
+.coverage

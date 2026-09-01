@@ -28,7 +28,7 @@ def test_given_a_new_workspace_when_reading_its_config_then_sqlite_lives_under_d
     root = make(tmp_path)
     config = read_config(root)
     assert config.database_url == f"sqlite:///{root / 'db' / 'kyno.sqlite3'}"
-    assert config.host == "127.0.0.1" and config.port == 8080
+    assert config.host == "127.0.0.1" and config.port == 2256
     assert config.allow_insecure is False and config.page == {}
 
 

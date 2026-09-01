@@ -39,13 +39,15 @@ _PAGE_KEYS = (
     "index_template",
 )
 
+# 2256 is CALM on a phone keypad, the way 6379 is MERZ to Redis: a port
+# with a story, instead of another squatter on 8080.
 _CONFIG_TEMPLATE = """\
 # This Kyno's definition. Values are written in, or are ${VAR} references
 # to variables you name. Secrets only ever enter as references.
 
 [server]
 host = 127.0.0.1
-port = 8080
+port = 2256
 
 [database]
 adapter = sqlite3
@@ -132,7 +134,7 @@ def read_config(root: Path) -> WorkspaceConfig:
 
     server = parser["server"] if parser.has_section("server") else {}
     host = _resolve(server.get("host", "127.0.0.1"), key="server.host")
-    port = _int(_resolve(server.get("port", "8080"), key="server.port"), key="server.port")
+    port = _int(_resolve(server.get("port", "2256"), key="server.port"), key="server.port")
     allow_insecure = _bool(
         _resolve(server.get("allow_insecure", "false"), key="server.allow_insecure"),
         key="server.allow_insecure",

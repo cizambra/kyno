@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -35,11 +34,11 @@ app = typer.Typer(help="Coherence engine control plane.")
 
 
 def _control_plane() -> ControlPlane:
-    return ControlPlane(store_from_settings(Settings.from_env()))
+    return ControlPlane(store_from_settings(Settings.load()))
 
 
 def _store():
-    return store_from_settings(Settings.from_env())
+    return store_from_settings(Settings.load())
 
 
 def _alembic_config(database_url: str):
@@ -63,7 +62,7 @@ def init_db() -> None:
     from alembic import command
 
     try:
-        settings = Settings.from_env()
+        settings = Settings.load()
         store_from_settings(settings).create_all()
         command.stamp(_alembic_config(settings.database_url), "head")
         typer.echo("ok")
@@ -79,7 +78,7 @@ def upgrade_db() -> None:
     from alembic.util.exc import CommandError
 
     try:
-        command.upgrade(_alembic_config(Settings.from_env().database_url), "head")
+        command.upgrade(_alembic_config(Settings.load().database_url), "head")
         typer.echo("ok")
     except (CoherenceError, SQLAlchemyError, CommandError) as exc:
         typer.echo(f"error: {exc}", err=True)
@@ -490,9 +489,10 @@ def page_export(
     typer.echo(f"wrote {len(PACKAGED_TEMPLATES)} files to {target}")
     for name in PACKAGED_TEMPLATES:
         typer.echo(f"  {name}")
-    typer.echo("\nedit them, then point kyno at your copies:")
-    typer.echo(f"  export KYNO_CONSTITUTION_TEMPLATE={(target / 'constitution.html').resolve()}")
-    typer.echo(f"  export KYNO_INDEX_TEMPLATE={(target / 'index.html').resolve()}")
+    typer.echo("\nedit them, then point your workspace at your copies -- in config/server:")
+    typer.echo("  [page]")
+    typer.echo(f"  constitution_template = {(target / 'constitution.html').resolve()}")
+    typer.echo(f"  index_template = {(target / 'index.html').resolve()}")
     typer.echo(
         "\npage.css is a starting point for your own template's styles -- link or "
         "inline it yourself.\nThe $stylesheet placeholder always serves the styles "
@@ -788,7 +788,7 @@ def new(
 @app.command()
 def serve(transport: str = typer.Option("stdio", "--transport")) -> None:
     try:
-        settings = Settings.from_env()
+        settings = Settings.load()
     except CoherenceError as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
@@ -800,16 +800,16 @@ def serve(transport: str = typer.Option("stdio", "--transport")) -> None:
 
         anyio.run(run_stdio, cp)
     elif transport == "http":
-        allow_insecure = os.environ.get("KYNO_ALLOW_INSECURE_HTTP", "").lower() in ("1", "true")
+        allow_insecure = settings.allow_insecure
         if settings.token is None and not allow_insecure:
             raise typer.BadParameter(
-                "refusing to serve HTTP without a token: set KYNO_TOKEN, "
-                "or set KYNO_ALLOW_INSECURE_HTTP=1 to override for local use"
+                "refusing to serve HTTP without a token: set KYNO_TOKEN, or set "
+                "allow_insecure = true in config/server to override for local use"
             )
         if settings.token is None:
             typer.echo(
                 "WARNING: serving HTTP with no KYNO_TOKEN set "
-                "(KYNO_ALLOW_INSECURE_HTTP is set) — the constitution can be "
+                "(allow_insecure is on) — the constitution can be "
                 "rewritten by anyone who can reach this endpoint",
                 err=True,
             )

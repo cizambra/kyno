@@ -4,6 +4,7 @@ import pytest
 from typer.testing import CliRunner
 
 from kyno.cli import app
+from tests.workspaces import cli_workspace
 
 runner = CliRunner()
 
@@ -41,7 +42,7 @@ def test_given_an_applied_file_when_reading_current_then_that_content_is_served(
 ):
     """The whole loop in one breath: init the store, apply a file, and
     `kyno current` serves exactly that content."""
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     assert runner.invoke(app, ["init-db"]).exit_code == 0
     r = apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init")
     assert r.exit_code == 0
@@ -56,7 +57,7 @@ def test_given_no_note_when_applying_then_the_apply_is_refused(tmp_path, monkeyp
     """Notes are not optional: every applied version answers "what
     changed?", so an apply without --note is refused. (--dry-run is the
     one exception, tested with the dry-run behavior.)"""
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     r = apply_yaml(tmp_path, mission="M1")
     assert r.exit_code != 0
@@ -67,7 +68,7 @@ def test_given_an_uninitialized_db_when_running_current_then_the_error_is_clean(
 ):
     # No init-db here: the store raises sqlalchemy.exc.OperationalError,
     # not a kyno CoherenceError -- both must still surface as a clean CLI error.
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'never_init.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "never_init.sqlite3")
     r = runner.invoke(app, ["current"])
     assert r.exit_code == 1
     assert "error:" in r.output.lower()
@@ -75,7 +76,7 @@ def test_given_an_uninitialized_db_when_running_current_then_the_error_is_clean(
 
 
 def test_given_an_uninitialized_db_when_running_set_then_the_error_is_clean(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'never_init.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "never_init.sqlite3")
     r = apply_yaml(tmp_path, mission="M1", note="init")
     assert r.exit_code == 1
     assert "error:" in r.output.lower()
@@ -85,7 +86,7 @@ def test_given_an_uninitialized_db_when_running_set_then_the_error_is_clean(tmp_
 def test_given_an_empty_store_when_running_current_then_it_reports_no_constitution_set(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     r = runner.invoke(app, ["current"])
     assert r.exit_code == 0
@@ -94,7 +95,7 @@ def test_given_an_empty_store_when_running_current_then_it_reports_no_constituti
 
 
 def test_given_a_by_flag_when_applying_then_the_author_is_recorded(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     r = apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init", by="alice")
     assert r.exit_code == 0
@@ -104,9 +105,14 @@ def test_given_a_by_flag_when_applying_then_the_author_is_recorded(tmp_path, mon
     assert payload["created_by"] == "alice"
 
 
+def _config_lines(root, *lines):
+    body = "[database]\nadapter = sqlite3\ndatabase = db/kyno.sqlite3\n" + "\n".join(lines) + "\n"
+    (root / "config" / "server").write_text(body, encoding="utf-8")
+
+
 def test_given_an_invalid_port_when_running_serve_then_the_error_is_clean(monkeypatch, tmp_path):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
-    monkeypatch.setenv("KYNO_PORT", "abc")
+    root = cli_workspace(monkeypatch, tmp_path)
+    _config_lines(root, "[server]", "port = abc")
     r = runner.invoke(app, ["serve", "--transport", "http"])
     assert r.exit_code == 1
     assert "error:" in r.output.lower()
@@ -114,57 +120,42 @@ def test_given_an_invalid_port_when_running_serve_then_the_error_is_clean(monkey
 
 
 def test_given_no_token_when_serving_http_then_it_is_refused(monkeypatch, tmp_path):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path)
     monkeypatch.delenv("KYNO_TOKEN", raising=False)
-    monkeypatch.delenv("KYNO_ALLOW_INSECURE_HTTP", raising=False)
     r = runner.invoke(app, ["serve", "--transport", "http"])
     assert r.exit_code != 0
     assert "token" in r.output.lower()
 
 
-def test_given_the_insecure_opt_in_when_serving_http_then_it_is_allowed(monkeypatch, tmp_path):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
-    monkeypatch.delenv("KYNO_TOKEN", raising=False)
-    monkeypatch.setenv("KYNO_ALLOW_INSECURE_HTTP", "1")
-    import uvicorn
-
-    ran = {}
-    monkeypatch.setattr(uvicorn, "run", lambda *a, **k: ran.setdefault("ran", True))
-    runner.invoke(app, ["serve", "--transport", "http"])
-    assert ran.get("ran") is True
-
-
-@pytest.mark.parametrize("value", ["TRUE", "true", "1"])
-def test_given_a_mixed_case_insecure_opt_in_when_serving_http_then_it_is_accepted_with_a_warning(
+@pytest.mark.parametrize("value", ["true", "TRUE", "1", "yes"])
+def test_given_the_insecure_opt_in_when_serving_http_then_it_is_allowed(
     monkeypatch, tmp_path, value
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    root = cli_workspace(monkeypatch, tmp_path)
+    _config_lines(root, "[server]", f"allow_insecure = {value}")
     monkeypatch.delenv("KYNO_TOKEN", raising=False)
-    monkeypatch.setenv("KYNO_ALLOW_INSECURE_HTTP", value)
     import uvicorn
 
     ran = {}
     monkeypatch.setattr(uvicorn, "run", lambda *a, **k: ran.setdefault("ran", True))
     r = runner.invoke(app, ["serve", "--transport", "http"])
     assert ran.get("ran") is True
-    assert "WARNING" in r.output
-    assert "KYNO_TOKEN" in r.output
+    assert "WARNING" in r.output and "KYNO_TOKEN" in r.output
 
 
-@pytest.mark.parametrize("value", ["yes", "0"])
-def test_given_a_non_matching_insecure_opt_in_when_serving_http_then_it_is_refused(
-    monkeypatch, tmp_path, value
+def test_given_a_word_that_is_not_a_boolean_when_serving_http_then_the_error_names_the_key(
+    monkeypatch, tmp_path
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
-    monkeypatch.delenv("KYNO_TOKEN", raising=False)
-    monkeypatch.setenv("KYNO_ALLOW_INSECURE_HTTP", value)
+    root = cli_workspace(monkeypatch, tmp_path)
+    _config_lines(root, "[server]", "allow_insecure = maybe")
     r = runner.invoke(app, ["serve", "--transport", "http"])
-    assert r.exit_code != 0
-    assert "token" in r.output.lower()
+    assert r.exit_code == 1
+    assert "server.allow_insecure must be true or false" in r.output
+    assert "Traceback" not in r.output
 
 
 def test_given_written_versions_when_exporting_then_they_round_trip(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="v1")
     apply_yaml(tmp_path, mission="M2", note="v2")
@@ -185,7 +176,7 @@ def test_given_written_versions_when_exporting_then_they_round_trip(tmp_path, mo
 
 
 def test_given_an_empty_store_when_exporting_then_an_empty_json_array_prints(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     r = runner.invoke(app, ["export"])
     assert r.exit_code == 0
@@ -193,7 +184,7 @@ def test_given_an_empty_store_when_exporting_then_an_empty_json_array_prints(tmp
 
 
 def test_given_an_uninitialized_db_when_exporting_then_the_error_is_clean(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'never_init.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "never_init.sqlite3")
     r = runner.invoke(app, ["export"])
     assert r.exit_code == 1
     assert "error:" in r.output.lower()
@@ -203,7 +194,7 @@ def test_given_an_uninitialized_db_when_exporting_then_the_error_is_clean(tmp_pa
 def test_given_a_bogus_transport_when_running_serve_then_the_exit_is_argparse_style_2(
     monkeypatch, tmp_path
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     r = runner.invoke(app, ["serve", "--transport", "bogus"])
     assert r.exit_code == 2
 
@@ -211,7 +202,7 @@ def test_given_a_bogus_transport_when_running_serve_then_the_exit_is_argparse_st
 def test_given_the_constitution_flag_when_applying_and_reading_then_the_name_round_trips(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     r = apply_yaml(tmp_path, mission="EU1", principles=["p1"], constitution="eu", note="init")
     assert r.exit_code == 0
@@ -223,7 +214,7 @@ def test_given_the_constitution_flag_when_applying_and_reading_then_the_name_rou
 def test_given_two_constitutions_when_applying_to_each_then_their_versions_stay_independent(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="init")
     apply_yaml(tmp_path, mission="EU1", constitution="eu", note="init")
@@ -241,7 +232,7 @@ def test_given_two_constitutions_when_applying_to_each_then_their_versions_stay_
 def test_given_an_unknown_constitution_when_reading_then_the_empty_state_is_reported(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="init")
     r = runner.invoke(app, ["current", "--constitution", "never-written"])
@@ -253,7 +244,7 @@ def test_given_an_unknown_constitution_when_reading_then_the_empty_state_is_repo
 def test_given_a_constitution_when_publishing_and_unpublishing_then_each_reports_what_changed(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="init")
 
@@ -272,7 +263,7 @@ def test_given_a_constitution_when_publishing_and_unpublishing_then_each_reports
 def test_given_the_history_flag_when_publishing_then_the_output_says_whether_history_is_public(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="init")
 
@@ -289,7 +280,7 @@ def test_given_the_history_flag_when_publishing_then_the_output_says_whether_his
 def test_given_no_name_when_publishing_then_the_default_is_used_and_the_flag_overrides(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="init")
     apply_yaml(tmp_path, mission="EU1", constitution="eu", note="init")
@@ -302,7 +293,7 @@ def test_given_no_name_when_publishing_then_the_default_is_used_and_the_flag_ove
 def test_given_a_constitution_with_no_direction_when_publishing_then_the_error_is_clean(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     r = runner.invoke(app, ["publish", "--constitution", "never-written"])
     assert r.exit_code == 1
@@ -314,7 +305,7 @@ def test_given_an_unknown_constitution_when_unpublishing_then_the_error_is_clean
     tmp_path, monkeypatch
 ):
     # A typo here must not print success while the real page stays public.
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="init")
     r = runner.invoke(app, ["unpublish", "--constitution", "defualt"])
@@ -324,7 +315,7 @@ def test_given_an_unknown_constitution_when_unpublishing_then_the_error_is_clean
 
 
 def test_given_an_uninitialized_db_when_publishing_then_the_error_is_clean(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'never_init.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "never_init.sqlite3")
     r = runner.invoke(app, ["publish"])
     assert r.exit_code == 1
     assert "error:" in r.output.lower()
@@ -332,7 +323,7 @@ def test_given_an_uninitialized_db_when_publishing_then_the_error_is_clean(tmp_p
 
 
 def test_given_an_unroutable_name_when_publishing_then_the_error_is_clean(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", constitution="acme/eu", note="init")
     r = runner.invoke(app, ["publish", "--constitution", "acme/eu"])
@@ -344,7 +335,7 @@ def test_given_an_unroutable_name_when_publishing_then_the_error_is_clean(tmp_pa
 def test_given_a_head_when_reading_current_yaml_then_it_prints_in_file_format(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init", by="camilo")
     r = runner.invoke(app, ["current", "--yaml"])
@@ -356,7 +347,7 @@ def test_given_a_head_when_reading_current_yaml_then_it_prints_in_file_format(
 
 
 def test_given_the_yaml_read_out_when_reapplied_then_nothing_changes(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init")
     out = runner.invoke(app, ["current", "--yaml"]).stdout
@@ -370,7 +361,7 @@ def test_given_the_yaml_read_out_when_reapplied_then_nothing_changes(tmp_path, m
 def test_given_two_applies_when_reading_current_yaml_then_the_latest_head_prints(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="the old mission", note="first")
     apply_yaml(tmp_path, mission="the hotfix mission", note="hotfix")
@@ -380,7 +371,7 @@ def test_given_two_applies_when_reading_current_yaml_then_the_latest_head_prints
 
 
 def test_given_an_empty_store_when_reading_current_yaml_then_it_errors(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     r = runner.invoke(app, ["current", "--yaml"])
     assert r.exit_code == 1
@@ -390,7 +381,7 @@ def test_given_an_empty_store_when_reading_current_yaml_then_it_errors(tmp_path,
 def test_given_a_named_constitution_when_reading_current_yaml_then_the_name_routes_a_reapply(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="EU rules", constitution="eu", note="init")
     out = runner.invoke(app, ["current", "--yaml", "--constitution", "eu"]).stdout
@@ -405,7 +396,7 @@ def test_given_a_named_constitution_when_reading_current_yaml_then_the_name_rout
 def test_given_no_by_flag_when_applying_then_the_system_user_is_recorded(tmp_path, monkeypatch):
     import getpass
 
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     r = apply_yaml(tmp_path, mission="M1", note="init")
     assert r.exit_code == 0
@@ -415,7 +406,7 @@ def test_given_no_by_flag_when_applying_then_the_system_user_is_recorded(tmp_pat
 def test_given_typos_and_custom_keys_when_checking_then_the_report_lists_them_without_blocking(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     target = tmp_path / "constitution.yaml"
     target.write_text(
         "constitution: default\nmission: M\nprincipals:\n  - p1\nnote: n\n", encoding="utf-8"
@@ -428,7 +419,7 @@ def test_given_typos_and_custom_keys_when_checking_then_the_report_lists_them_wi
 
 
 def test_given_an_unparseable_file_when_checking_then_it_errors(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     target = tmp_path / "constitution.yaml"
     target.write_text("mission: [unclosed\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(target)])
@@ -437,7 +428,7 @@ def test_given_an_unparseable_file_when_checking_then_it_errors(tmp_path, monkey
 
 
 def test_given_custom_fields_when_applying_then_they_are_ignored(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     target = tmp_path / "constitution.yaml"
     target.write_text(
@@ -450,7 +441,7 @@ def test_given_custom_fields_when_applying_then_they_are_ignored(tmp_path, monke
 
 
 def test_given_an_edit_when_applied_then_the_delta_is_printed(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="init")
     r = apply_yaml(tmp_path, mission="M2", note="pivot")
@@ -463,7 +454,7 @@ def test_given_an_edit_when_applied_then_the_delta_is_printed(tmp_path, monkeypa
 def test_given_an_empty_store_when_applying_then_the_first_version_is_announced(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     r = apply_yaml(tmp_path, mission="M1", note="init")
     assert "Creates 'default' at version 1." in r.output
@@ -472,7 +463,7 @@ def test_given_an_empty_store_when_applying_then_the_first_version_is_announced(
 def test_given_dry_run_when_applying_then_the_delta_prints_and_nothing_is_persisted(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="init")
     target = tmp_path / "next.yaml"
@@ -487,7 +478,7 @@ def test_given_dry_run_when_applying_then_the_delta_prints_and_nothing_is_persis
 def test_given_identical_content_when_dry_running_then_it_says_no_field_changed(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="init", name="same.yaml")
     r = runner.invoke(app, ["set", str(tmp_path / "same.yaml"), "--dry-run"])
@@ -496,7 +487,7 @@ def test_given_identical_content_when_dry_running_then_it_says_no_field_changed(
 
 
 def test_given_dry_run_when_no_note_is_passed_then_it_still_runs(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     target = tmp_path / "next.yaml"
     target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
@@ -509,7 +500,7 @@ def test_given_an_apply_when_reading_stdout_then_the_json_is_indented_for_people
 ):
     """The JSON is read by people at a terminal as often as by scripts, and
     indentation costs a script nothing. `current` and `export` match."""
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     applied = apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init")
     current = runner.invoke(app, ["current"])
@@ -523,7 +514,7 @@ def test_given_identical_content_when_applying_then_nothing_is_written_and_the_e
 ):
     """A duplicate apply is the normal case for a rerun, not a mistake: no
     version is written, stderr says so, and stdout is the head in force."""
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="init", name="same.yaml")
     r = runner.invoke(app, ["set", str(tmp_path / "same.yaml"), "--note", "again"])
@@ -534,7 +525,7 @@ def test_given_identical_content_when_applying_then_nothing_is_written_and_the_e
 
 
 def test_given_a_whitespace_note_when_applying_then_it_is_refused_as_missing(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     r = apply_yaml(tmp_path, mission="M1", note="   ")
     assert r.exit_code != 0
@@ -546,7 +537,7 @@ def test_given_a_file_without_a_constitution_key_when_applying_then_it_is_refuse
 ):
     """The name is part of the content: a file that does not say which
     constitution it is cannot be applied anywhere, not even to default."""
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     r = apply_yaml(tmp_path, mission="M1", note="init", constitution=None)
     assert r.exit_code == 1
@@ -555,7 +546,7 @@ def test_given_a_file_without_a_constitution_key_when_applying_then_it_is_refuse
 
 
 def test_given_versions_when_reading_log_then_they_list_newest_first(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="first", by="camilo")
     apply_yaml(tmp_path, mission="M2", note="second", by="ci")
@@ -567,7 +558,7 @@ def test_given_versions_when_reading_log_then_they_list_newest_first(tmp_path, m
 
 
 def test_given_an_empty_store_when_reading_log_then_it_says_so(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     r = runner.invoke(app, ["log"])
     assert r.exit_code == 0
@@ -575,7 +566,7 @@ def test_given_an_empty_store_when_reading_log_then_it_says_so(tmp_path, monkeyp
 
 
 def test_given_a_matching_file_when_checking_then_the_store_agrees(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="init", name="c.yaml")
     r = runner.invoke(app, ["check", str(tmp_path / "c.yaml")])
@@ -584,7 +575,7 @@ def test_given_a_matching_file_when_checking_then_the_store_agrees(tmp_path, mon
 
 
 def test_given_a_stale_file_when_checking_then_it_fails_and_shows_the_delta(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M2", note="hotfix")
     stale = tmp_path / "stale.yaml"
@@ -596,7 +587,7 @@ def test_given_a_stale_file_when_checking_then_it_fails_and_shows_the_delta(tmp_
 
 
 def test_given_an_empty_store_when_checking_then_it_fails(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     target = tmp_path / "c.yaml"
     target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
@@ -609,7 +600,7 @@ def test_given_an_unreachable_store_when_checking_then_the_report_still_prints(
     tmp_path, monkeypatch
 ):
     # No init-db: the field report stands, the comparison says why it didn't run.
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'never.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "never.sqlite3")
     target = tmp_path / "c.yaml"
     target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(target)])
@@ -622,7 +613,7 @@ def test_given_an_unreachable_store_when_checking_then_the_report_still_prints(
 def test_given_a_file_without_a_constitution_key_when_checking_then_the_store_is_not_compared(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     target = tmp_path / "unnamed.yaml"
     target.write_text("mission: M1\n", encoding="utf-8")
@@ -639,7 +630,7 @@ def test_given_a_check_when_comparing_with_the_store_then_the_head_is_read_once(
     writer landing mid-check cannot make the two describe different heads."""
     from kyno.store.sql import SqlConstitutionStore
 
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="init", name="c.yaml")
     reads = []
@@ -667,7 +658,7 @@ def test_given_no_system_username_when_applying_then_created_by_is_empty(tmp_pat
     the author is simply not recorded."""
     import getpass
 
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
 
     def refuse():
@@ -697,7 +688,7 @@ def test_given_an_unwritable_target_when_exporting_pages_then_the_error_is_clean
 def test_given_the_stdio_transport_when_serving_then_run_stdio_is_dispatched(tmp_path, monkeypatch):
     import anyio
 
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     dispatched = {}
     monkeypatch.setattr(anyio, "run", lambda fn, cp: dispatched.update(fn=fn.__name__, cp=cp))
@@ -713,7 +704,7 @@ def test_given_a_local_apply_when_reading_the_version_then_no_authorization_is_r
     tmp_path, monkeypatch
 ):
     """Local applies have no questions, so there is nothing to record."""
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     r = apply_yaml(tmp_path, mission="M1", note="init")
     assert r.exit_code == 0, r.output
@@ -723,7 +714,7 @@ def test_given_a_local_apply_when_reading_the_version_then_no_authorization_is_r
 def test_given_a_local_version_when_reading_log_then_the_authorization_column_is_a_dash(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     apply_yaml(tmp_path, mission="M1", note="first", by="camilo")
     line = runner.invoke(app, ["log"]).stdout.strip().splitlines()[0]

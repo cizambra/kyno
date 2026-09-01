@@ -13,6 +13,7 @@ from kyno.cli import app
 from kyno.remote import RemoteError
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
+from tests.workspaces import cli_workspace
 
 runner = CliRunner()
 
@@ -21,9 +22,7 @@ runner = CliRunner()
 def home(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
-    (tmp_path / "work").mkdir()
-    monkeypatch.chdir(tmp_path / "work")
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'local.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "local.sqlite3", root=tmp_path / "work")
     return tmp_path
 
 
@@ -368,7 +367,7 @@ def test_given_no_interactive_when_applying_remotely_then_no_question_is_asked(
 
 
 def test_given_a_local_apply_when_running_set_then_no_question_is_asked(tmp_path, monkeypatch):
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["init-db"])
     path = write_file(tmp_path, mission="M1")
     r = runner.invoke(app, ["set", path, "--note", "init"])

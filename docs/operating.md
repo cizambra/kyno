@@ -11,9 +11,39 @@ On this page:
 - [Testing](#testing)
 
 
+## The workspace
+
+Every Kyno instance lives in a directory. `kyno new acme` creates it:
+`config/server` holds the definition, `db/` holds the SQLite default, and
+commands find the workspace by walking up from where you stand, like git.
+The files under `~/.kyno` stay user-bound -- credentials and remotes
+travel with a person; the workspace is the instance.
+
+A value in `config/server` is written in, or is one `${VAR}` reference to
+a variable you named; an unset variable fails startup naming the
+variable. Secrets only ever enter as references, so the workspace is
+committable and mountable. The `[database]` section splits the topology
+from the credentials, like Rails:
+
+```ini
+[database]
+adapter = postgresql
+host = db.internal
+database = kyno
+username = kyno
+password = ${DB_PASSWORD}
+```
+
+Leave the section as `kyno new` wrote it and you run on the workspace's
+own `db/kyno.sqlite3` -- a real production choice on one box, not just a
+toy. Platforms that hand you a single connection string use
+`url = ${DATABASE_URL}` instead of the split keys; both at once is
+refused.
+
 ## Storage
 
-SQLite out of the box; PostgreSQL for production via `KYNO_DATABASE_URL`.
+SQLite out of the box; PostgreSQL for production -- both declared in the
+workspace's `[database]` section.
 Storage is pluggable: hand `SqlConstitutionStore` your own SQLAlchemy
 `Engine` to live inside an existing database, or implement the small store
 protocol to bring your own persistence entirely. Concurrent writers are safe:
@@ -36,7 +66,7 @@ from kyno.config import Settings, store_from_settings
 from kyno.service import ControlPlane
 from kyno.sdk import DirectionBinder, LocalDirectionSource
 
-store = store_from_settings(Settings.from_env())  # reads KYNO_DATABASE_URL
+store = store_from_settings(Settings.load())  # finds the workspace at or above cwd
 control_plane = ControlPlane(store)
 binder = DirectionBinder(LocalDirectionSource(control_plane))
 ```
@@ -53,8 +83,9 @@ working against the same database for edits and inspection.
   protection.
 - **HTTP** is gated by a shared bearer token (`KYNO_TOKEN`) gates every request to the
   MCP endpoint (`/mcp`). The server refuses to start tokenless over HTTP
-  unless you explicitly opt in (`KYNO_ALLOW_INSECURE_HTTP`, for local
-  experimentation only; it warns), and a `KYNO_TOKEN` that's set but blank
+  unless you explicitly opt in (`allow_insecure = true` in
+  `config/server`, for local experimentation only; it warns), and a
+  `KYNO_TOKEN` that's set but blank
   is a configuration error rather than silently no auth. Embedders building
   the app in code opt in the same way:
   `build_http_app(..., allow_insecure=True)`. The published constitution
@@ -149,9 +180,9 @@ The token itself is never shown. A profile that doesn't resolve exits 1 and the 
 
 ## Deploying
 
-- Use an absolute `KYNO_DATABASE_URL` in production. The default
-  (`sqlite:///kyno.sqlite3`) is a dev convenience that resolves against
-  whatever working directory the process starts in.
+- Deploying is putting the workspace on the host and running
+  `kyno serve` in it. Paths in `config/server` resolve against the
+  workspace, never against whatever directory the process starts in.
 - Run a hosted Kyno behind a reverse proxy that enforces rate limits.
   The public pages answer anonymous traffic, and rate limiting is the
   proxy's job, not Kyno's.

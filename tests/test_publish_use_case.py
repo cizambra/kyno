@@ -9,6 +9,7 @@ from kyno.cli import app as cli
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 from kyno.transports import build_http_app
+from tests.workspaces import cli_workspace
 
 runner = CliRunner()
 
@@ -52,7 +53,7 @@ def test_given_two_constitutions_when_publishing_one_then_the_other_stays_privat
     from starlette.testclient import TestClient
 
     db = tmp_path / "kyno.sqlite3"
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{db}")
+    cli_workspace(monkeypatch, tmp_path, db)
     assert runner.invoke(cli, ["init-db"]).exit_code == 0
 
     apply_yaml(tmp_path, mission=MISSION, principles=[PRINCIPLE], note="initial")
@@ -93,7 +94,7 @@ def test_given_a_published_history_when_toggled_then_change_notes_show_and_hide(
     from starlette.testclient import TestClient
 
     db = tmp_path / "kyno.sqlite3"
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{db}")
+    cli_workspace(monkeypatch, tmp_path, db)
     runner.invoke(cli, ["init-db"])
     apply_yaml(tmp_path, mission=MISSION, note="initial")
     apply_yaml(tmp_path, mission=f"{MISSION}, everywhere", note=PRIVATE_NOTE)

@@ -31,14 +31,14 @@ def test_given_a_missing_directory_when_exporting_then_it_is_created(tmp_path):
     assert (target / "constitution.html").exists()
 
 
-def test_given_an_export_when_reading_its_output_then_it_names_the_env_vars_to_set(tmp_path):
-    # The copy is useless until Kyno is pointed at it, so the command says
-    # how rather than leaving it to the README.
+def test_given_an_export_when_reading_its_output_then_it_names_the_page_keys_to_set(tmp_path):
+    # The copy is useless until the workspace points at it, so the
+    # command says how rather than leaving it to the README.
     target = tmp_path / "pages"
     result = runner.invoke(app, ["page", "export", str(target)])
 
-    assert "KYNO_CONSTITUTION_TEMPLATE" in result.output
-    assert "KYNO_INDEX_TEMPLATE" in result.output
+    assert "constitution_template =" in result.output
+    assert "index_template =" in result.output
     assert str((target / "constitution.html").resolve()) in result.output
     assert str((target / "index.html").resolve()) in result.output
 

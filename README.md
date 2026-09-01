@@ -55,6 +55,7 @@ This is _bottom-up agency_.
 
 ```bash
 pip install kyno          # CLI: kyno
+kyno new acme && cd acme  # the workspace: this instance's config and store
 kyno init-db
 printf 'constitution: default\nmission: Ship a lending product people trust\n' > constitution.yaml
 kyno set constitution.yaml --note "initial constitution"
@@ -131,7 +132,8 @@ auditable: the direction each step served is a fact you can look up.
 ## Self-hosting
 
 Kyno self-hosts with no external services: SQLite out of the box,
-PostgreSQL in production via `KYNO_DATABASE_URL`, served over stdio for a
+PostgreSQL in production through the workspace's `[database]` section,
+served over stdio for a
 local process or over HTTP with a bearer token for a fleet. A pip install
 ships with its own migration scripts. The details live in [Operating Kyno](docs/operating.md).
 

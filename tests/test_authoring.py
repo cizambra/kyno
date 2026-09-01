@@ -13,6 +13,7 @@ from kyno.errors import AuthoringError
 from kyno.models import Principle
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
+from tests.workspaces import cli_workspace
 
 runner = CliRunner()
 
@@ -48,7 +49,7 @@ principles:
 @pytest.fixture
 def db(tmp_path, monkeypatch):
     path = tmp_path / "kyno.sqlite3"
-    monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{path}")
+    cli_workspace(monkeypatch, tmp_path, path)
     assert runner.invoke(app, ["init-db"]).exit_code == 0
     return path
 

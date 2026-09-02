@@ -142,9 +142,10 @@
         <a href="https://github.com/cizambra/kyno/blob/main/docs/integrating.md">Build an adapter →</a>
       </div>
       <div class="terminal">
-        <header><span>~/kyno</span><button data-copy-target="#quick-code">copy</button></header>
+        <header><span>~/acme</span><button data-copy-target="#quick-code">copy</button></header>
         <pre id="quick-code"><code><b>$</b> pip install kyno
-<b>$</b> kyno init-db
+<b>$</b> kyno new acme &amp;&amp; cd acme
+<b>$</b> kyno db init
 <b>$</b> printf 'constitution: default\nmission: Ship a lending product people trust\n' &gt; constitution.yaml
 <b>$</b> kyno set constitution.yaml --note "initial constitution"
 <b>$</b> kyno serve --transport stdio</code></pre>

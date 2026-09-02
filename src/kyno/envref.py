@@ -30,5 +30,5 @@ def resolve(value: str, *, owner: str, error: type[Exception] = ConfigError) -> 
     if got is None:
         raise error(f"{owner} reads ${{{var}}}, which is not set")
     if not got.strip():
-        raise error(f"{owner} reads ${{{var}}}, which is blank")
+        raise error(f"{owner} reads ${{{var}}}, which is set but blank")
     return got

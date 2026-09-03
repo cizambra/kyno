@@ -330,8 +330,9 @@ class SqlConstitutionStore:
         return [self._row_to_token(r) for r in rows]
 
     def token_by_hash(self, token_hash: str) -> Token | None:
-        """The row a bearer value's hash names, if any. This is the lookup
-        the server runs on every request."""
+        """Find the token whose stored hash equals `token_hash`, or None.
+        This is the lookup the server runs on every request: hash the
+        bearer value that arrived, then ask for the matching row."""
         with self.engine.connect() as conn:
             row = conn.execute(
                 select(self._tokens).where(self._tokens.c.token_hash == token_hash)
@@ -339,9 +340,11 @@ class SqlConstitutionStore:
         return self._row_to_token(row) if row else None
 
     def touch_token(self, token_id: int, *, older_than: datetime) -> bool:
-        """Set last_used_at to now, but only when the stored value is missing
-        or older than `older_than`. One statement, so concurrent requests
-        cannot double-write; the caller owns the window."""
+        """Mark the token as used now -- unless it was already marked
+        recently. `older_than` draws the line: a row whose last_used_at is
+        missing or older than it gets today's time, anything newer is left
+        alone. The check and the write are one UPDATE statement, so two
+        requests arriving at the same moment cannot both write."""
         with self.engine.begin() as conn:
             result = conn.execute(
                 update(self._tokens)

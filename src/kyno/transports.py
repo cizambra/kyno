@@ -15,13 +15,15 @@ from kyno.tokens import hash_value
 # constitution, which the field caps hold far under this.
 MAX_MCP_BODY_BYTES = 5_000_000
 
-# How often a token's last use is written back. Inside the window the row is
-# left alone, so a busy fleet costs one write per token per window instead of
-# one per request. `kyno token list` is at most this stale.
+# How often last_used_at is allowed to move. A token already marked as used
+# in the last five minutes is not updated again, so a busy fleet costs one
+# write per token every five minutes instead of one per request. In exchange,
+# "last used" in `kyno token list` can run up to five minutes behind.
 TOUCH_EVERY = timedelta(minutes=5)
 
 # One line per tool call: token id and name, the tool, the constitution.
-# This log is the request history; last_used_at is only the liveness cell.
+# Read this log to know what a token did and when; last_used_at only says
+# whether a token is still in use at all.
 _request_log = logging.getLogger("kyno.requests")
 
 
@@ -36,9 +38,11 @@ PUBLIC_HEADERS = {
 
 
 def token_for_request(headers: dict, store, now: datetime):
-    """The live Token the bearer header names, or None. Missing header,
-    unknown value, revoked and expired all answer None: from outside,
-    every dead end is the same 401."""
+    """Find the live token a request's bearer header carries, or None.
+    No header, an unknown value, a revoked token and an expired one all
+    return None, and the caller turns None into a 401. The four cases
+    look identical from outside on purpose: a different answer would
+    tell a caller which tokens exist."""
     value = None
     for k, v in headers.items():
         if k.lower() == "authorization":
@@ -53,9 +57,10 @@ def token_for_request(headers: dict, store, now: datetime):
 
 
 def _tool_calls(body: bytes) -> list[tuple[str, str]]:
-    """The (tool, constitution) pairs a JSON-RPC body asks for. Anything
-    that does not parse as a tools/call answers an empty list; malformed
-    requests are the MCP layer's to reject."""
+    """The (tool, constitution) pairs a JSON-RPC body asks for. A body
+    that is not valid JSON, or carries no tool call, returns an empty
+    list -- rejecting malformed requests is the MCP layer's job, not
+    this function's."""
     try:
         payload = json.loads(body)
     except ValueError:

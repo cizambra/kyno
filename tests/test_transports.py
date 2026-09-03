@@ -74,6 +74,9 @@ def test_given_bodies_of_every_shape_when_listing_tool_calls_then_only_real_call
     assert _tool_calls(
         b'{"method": "tools/call", "params": {"name": "set_direction", "arguments": {}}}'
     ) == [("set_direction", "default")]
+    # A batch (JSON array) is read by this check, one pair per item -- but
+    # the MCP SDK rejects arrays, so a batch never executes. See the
+    # end-to-end test below.
     assert _tool_calls(
         b'[{"method": "tools/call", "params": {"name": "get_constitution", '
         b'"arguments": {"constitution": "main"}}}]'
@@ -289,6 +292,40 @@ def test_given_a_write_token_when_driving_a_full_http_session_then_the_set_missi
     payload = json.loads(_sse_json(get_resp.text)["result"]["content"][0]["text"])
     assert payload["mission"] == "M1"
     assert payload["version"] == 1
+
+
+def test_given_a_batched_body_when_posting_then_the_scope_check_reads_it_and_the_sdk_rejects_it():
+    # Pins the division of labor for batches. The scope check reads every
+    # item, so a read token's hidden write is 403 before the MCP layer runs.
+    # The MCP SDK rejects arrays, so even a write token's batch is 400 and
+    # nothing executes. If an SDK update starts accepting batches, the 400
+    # assertion fails and we decide on purpose instead of by surprise.
+    from starlette.testclient import TestClient
+
+    store, write_value, app = _gated()
+    read_value = _mint(store, scope="read", name="crew")
+    batch = [
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": "get_constitution", "arguments": {}},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": {"name": "set_direction", "arguments": {"mission": "M1", "change_note": "x"}},
+        },
+    ]
+
+    with TestClient(app) as client:
+        refused = client.post("/mcp", json=batch, headers=_bearer(read_value))
+        rejected = client.post("/mcp", json=batch, headers=_bearer(write_value))
+
+    assert refused.status_code == 403
+    assert rejected.status_code == 400
+    assert store.head("default") is None
 
 
 def test_given_a_read_token_when_calling_set_direction_then_it_is_403_and_nothing_is_written():

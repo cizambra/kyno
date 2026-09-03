@@ -783,8 +783,8 @@ def test_given_an_old_touch_when_touching_after_the_window_then_the_row_moves(st
     assert store.touch_token(t.id, older_than=datetime.now(UTC) - timedelta(minutes=5))
     first = store.token(t.id).last_used_at
 
-    # A window in the future makes every stored value "old", which is the
-    # cheap way to cross the five minutes without waiting them.
+    # Passing a future cutoff makes any stored value count as old, which
+    # tests the window without waiting five real minutes.
     changed = store.touch_token(t.id, older_than=datetime.now(UTC) + timedelta(minutes=5))
 
     assert changed is True

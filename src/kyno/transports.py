@@ -94,9 +94,9 @@ def build_http_app(
     allow_insecure: bool = False,
 ):
     """The Starlette app: the public constitution pages, and /mcp checking
-    bearer values against the store's token table. No store means no gate --
-    anyone who can reach the port can rewrite the constitution -- so an
-    embedder opts into that in code, as loudly as the CLI's allow_insecure."""
+    bearer values against the store's token table. Passing no store turns the
+    gate off, which lets anyone who can reach the port rewrite the
+    constitution, so it requires allow_insecure=True."""
     if store is None and not allow_insecure:
         raise ConfigError(
             "refusing to build an HTTP app without a token store: "
@@ -138,8 +138,9 @@ def build_http_app(
             await Response("request body too large", status_code=413)(scope, receive, send)
             return
         if scope.get("method") != "POST":
-            # GET opens the SSE stream and DELETE closes a session; neither
-            # carries a tool call, so the gate above is all they need.
+            # GET opens the SSE stream and DELETE closes a session.
+            # Neither carries a tool call, so there is no scope to check
+            # and nothing to log.
             await manager.handle_request(scope, receive, send)
             return
         # Buffer the body: the cap needs counting either way, and the scope

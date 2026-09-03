@@ -26,7 +26,7 @@ def plane(store):
 @pytest.fixture
 def client(plane, store):
     """A client with no Authorization header at all: the public pages must
-    work for a visitor who has never heard of any token."""
+    work for anonymous visitors, with no token involved."""
     with TestClient(build_http_app(plane, store=store)) as c:
         yield c
 

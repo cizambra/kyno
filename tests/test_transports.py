@@ -300,8 +300,8 @@ def test_given_authorized_requests_when_they_arrive_then_last_used_moves_once_pe
         second = store.tokens()[0].last_used_at
 
     assert first is not None
-    # The second request lands inside the five-minute window, so the
-    # stored value stays put.
+    # The second request arrives inside the five-minute window, so the
+    # stored value is not updated.
     assert second == first
 
 
@@ -386,7 +386,7 @@ def test_given_a_chunked_body_under_the_cap_when_streaming_then_it_reaches_the_m
 
 
 def test_given_no_store_when_building_the_http_app_then_the_insecure_opt_in_is_required():
-    # A library embedder opens the write endpoint as loudly as the CLI does.
+    # An embedder has to opt in explicitly, the same as the CLI does.
     from kyno.errors import ConfigError
     from kyno.transports import build_http_app
 

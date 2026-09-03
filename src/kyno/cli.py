@@ -196,8 +196,9 @@ def token_revoke(
             typer.echo(f"error: token id {token_id} is already revoked", err=True)
             raise typer.Exit(code=1)
         if not token.live_at(datetime.now(UTC)):
-            # Revoke means "stop working now"; an expired token already
-            # stopped. Stamping it would hide how it really died.
+            # Revoking sets a timestamp meaning "stopped working now".
+            # An expired token already stopped, so stamping it would record
+            # the wrong cause.
             typer.echo(f"error: token id {token_id} already expired", err=True)
             raise typer.Exit(code=1)
         store.revoke_token(token_id)

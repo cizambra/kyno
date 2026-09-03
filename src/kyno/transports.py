@@ -115,6 +115,9 @@ def build_http_app(
             return
         # Buffer the body: the cap needs counting either way, and the scope
         # check has to see the tool name before the MCP layer runs.
+        # Each receive() returns one ASGI message. For a request body it is
+        # {"type": "http.request", "body": bytes, "more_body": bool}; any
+        # other type here means the client disconnected.
         body = bytearray()
         while True:
             message = await receive()

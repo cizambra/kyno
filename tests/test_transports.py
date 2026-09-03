@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from kyno.mcp_endpoint import _tool_calls, token_for_request
+from kyno.mcp_endpoint import McpEndpoint, _tool_calls
 from kyno.mcp_server import RESOURCE_URI, build_server
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
@@ -24,15 +24,21 @@ def _mint(store, scope="write", name="t", expires_at=None):
     return value
 
 
+def _endpoint(store):
+    """An McpEndpoint around just the store; these tests never reach the
+    MCP session manager, so none is needed."""
+    return McpEndpoint(manager=None, token_store=store)
+
+
 def test_given_a_request_with_no_authorization_header_when_resolving_then_no_token_is_found():
-    assert token_for_request({}, _token_store(), datetime.now(UTC)) is None
+    assert _endpoint(_token_store())._authenticate({}) is None
 
 
 def test_given_a_live_token_when_resolving_then_the_row_comes_back_with_its_scope():
     store = _token_store()
     value = _mint(store, scope="read", name="crew")
 
-    token = token_for_request({"authorization": f"Bearer {value}"}, store, datetime.now(UTC))
+    token = _endpoint(store)._authenticate({"authorization": f"Bearer {value}"})
 
     assert token is not None
     assert (token.name, token.scope) == ("crew", "read")
@@ -41,8 +47,7 @@ def test_given_a_live_token_when_resolving_then_the_row_comes_back_with_its_scop
 def test_given_a_capitalized_authorization_header_when_resolving_then_it_still_matches():
     store = _token_store()
     value = _mint(store)
-    now = datetime.now(UTC)
-    assert token_for_request({"Authorization": f"Bearer {value}"}, store, now) is not None
+    assert _endpoint(store)._authenticate({"Authorization": f"Bearer {value}"}) is not None
 
 
 def test_given_a_token_that_is_unknown_revoked_or_expired_when_resolving_then_it_is_none():
@@ -51,21 +56,18 @@ def test_given_a_token_that_is_unknown_revoked_or_expired_when_resolving_then_it
     store.revoke_token(store.tokens()[0].id)
     expired_value = _mint(store, name="expired", expires_at=datetime.now(UTC) - timedelta(hours=1))
 
-    now = datetime.now(UTC)
     for value in ("kyno_not-a-real-token", revoked_value, expired_value):
-        assert token_for_request({"authorization": f"Bearer {value}"}, store, now) is None
+        assert _endpoint(store)._authenticate({"authorization": f"Bearer {value}"}) is None
 
 
 def test_given_an_authorization_header_that_is_not_a_bearer_value_when_resolving_then_none():
     store = _token_store()
     _mint(store)
-    now = datetime.now(UTC)
-    assert token_for_request({"authorization": "Basic dXNlcjpwdw=="}, store, now) is None
+    assert _endpoint(store)._authenticate({"authorization": "Basic dXNlcjpwdw=="}) is None
 
 
 def test_given_a_non_ascii_bearer_value_when_resolving_then_it_fails_closed_not_crashes():
-    now = datetime.now(UTC)
-    assert token_for_request({"authorization": "Bearer café"}, _token_store(), now) is None
+    assert _endpoint(_token_store())._authenticate({"authorization": "Bearer café"}) is None
 
 
 def test_given_bodies_of_every_shape_when_listing_tool_calls_then_only_real_calls_count():

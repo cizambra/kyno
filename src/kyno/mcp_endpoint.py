@@ -10,34 +10,12 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
-from kyno.models import WRITE
+from kyno.models import WRITE, Token
 from kyno.tokens import hash_value
 
 # A JSON-RPC request is small. The largest legitimate one carries a full constitution, and the
 # field size limits keep that well under this cap.
 MAX_MCP_BODY_BYTES = 5_000_000
-
-
-def token_for_request(headers: dict, token_store, now: datetime):
-    """Find the live token a request's bearer header carries, or None.
-
-    Returns None in four cases: no Authorization header, a header that is
-    not a Bearer value, a value no row matches, and a token that is revoked
-    or expired. The caller turns None into a 401.
-
-    The four cases return the same response on purpose. Distinguishing them
-    would tell a caller which tokens exist."""
-    value = None
-    for k, v in headers.items():
-        if k.lower() == "authorization":
-            value = v
-            break
-    if value is None or not value.startswith("Bearer "):
-        return None
-    token = token_store.token_by_hash(hash_value(value[len("Bearer ") :]))
-    if token is None or not token.live_at(now):
-        return None
-    return token
 
 
 def _tool_calls(body: bytes) -> list[tuple[str, str]]:
@@ -81,6 +59,27 @@ class McpEndpoint:
         self._manager = manager
         self._token_store = token_store
 
+    def _authenticate(self, headers) -> Token | None:
+        """Find the live token the request's bearer header carries, or None.
+
+        Returns None in four cases: no Authorization header, a header that
+        is not a Bearer value, a value no row matches, and a token that is
+        revoked or expired. The caller turns None into a 401.
+
+        The four cases return the same response on purpose. Distinguishing
+        them would tell a caller which tokens exist."""
+        value = None
+        for k, v in headers.items():
+            if k.lower() == "authorization":
+                value = v
+                break
+        if value is None or not value.startswith("Bearer "):
+            return None
+        token = self._token_store.token_by_hash(hash_value(value[len("Bearer ") :]))
+        if token is None or not token.live_at(datetime.now(UTC)):
+            return None
+        return token
+
     async def __call__(self, scope, receive, send):
         from starlette.responses import Response
 
@@ -90,7 +89,7 @@ class McpEndpoint:
         }
         token = None
         if self._token_store is not None:
-            token = token_for_request(headers, self._token_store, datetime.now(UTC))
+            token = self._authenticate(headers)
             if token is None:
                 await Response("unauthorized", status_code=401)(scope, receive, send)
                 return

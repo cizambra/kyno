@@ -1,10 +1,10 @@
 """What moved between the version a consumer holds and the one in force.
 
-A change note says why the direction changed, in whoever's words wrote it.
-The delta says what actually moved, computed. They are separate because a
-subtle change -- one principle of four, mission untouched -- arrives as a
-block that reads almost identically to the last one, and a note saying "the
-direction has changed" points at nothing.
+A change note says why the direction changed, in the words of whoever wrote
+it. The delta says what changed, computed rather than written. They are
+separate because a small change (one principle of four, mission untouched)
+arrives as a block that reads almost identically to the previous one, and a
+note saying "the direction has changed" does not say which part.
 """
 
 import pytest
@@ -71,8 +71,8 @@ def test_given_a_dropped_principle_when_reading_the_delta_then_it_is_named_as_dr
 
 
 def test_given_a_consumer_holding_nothing_when_reading_changes_then_there_is_no_delta(plane):
-    """There is no baseline to diff against, and the whole constitution is
-    already in front of them."""
+    """There is no baseline to diff against, and the caller already has the
+    whole constitution."""
     assert plane.changes_since(0).delta == ()
 
 

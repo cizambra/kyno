@@ -180,7 +180,7 @@ def test_given_the_json_route_when_requesting_then_the_machine_readable_view_ret
 
 
 def test_given_a_json_request_when_routing_then_it_matches_before_the_html_route(plane, client):
-    # /constitutions/{name} would otherwise swallow "default.json" as a name.
+    # /constitutions/{name} would otherwise match "default.json" as a name.
     direction(plane)
     plane.publish()
     assert client.get("/constitutions/default.json").json()["constitution"] == "default"
@@ -232,7 +232,7 @@ def test_given_an_unpublished_constitution_when_rendering_the_index_then_it_neve
     assert [c["constitution"] for c in payload["constitutions"]] == ["product"]
 
 
-def test_given_nothing_published_when_rendering_the_index_then_the_empty_page_is_honest(
+def test_given_nothing_published_when_rendering_the_index_then_it_says_so_and_lists_nothing(
     plane, client
 ):
     direction(plane, "internal")
@@ -519,7 +519,7 @@ def test_given_a_javascript_link_in_a_declaration_when_rendering_then_it_is_refu
     plane.publish()
     body = client.get("/constitutions/default").text
     # It never becomes a link at all: markdown-it leaves the source as inert
-    # literal text, which is safe -- what must never appear is the href.
+    # literal text, which is safe. The href is what must never appear.
     assert 'href="javascript:' not in body
     assert '<a href="https://example.com/policy">ok</a>' in body
 
@@ -527,8 +527,8 @@ def test_given_a_javascript_link_in_a_declaration_when_rendering_then_it_is_refu
 def test_given_an_image_in_a_declaration_when_rendering_then_no_external_asset_appears(
     plane, client
 ):
-    # Deliberate: the page is self-contained -- one response that
-    # renders on a locked-down network and survives being saved to a file.
+    # Deliberate: the page is self-contained. One response that renders on
+    # a locked-down network and survives being saved to a file.
     plane.set_direction(
         mission="M", declaration="![tracker](https://evil.example/x.png)", change_note="init"
     )
@@ -570,8 +570,8 @@ def test_given_the_json_view_when_reading_then_the_declaration_is_exposed(plane,
 def test_given_markdown_in_mission_and_principles_when_rendering_then_they_stay_plain_text(
     plane, client
 ):
-    # Markdown is the declaration's privilege: it is the long-form document.
-    # The rest are one-liners, where the literal text is the honest rendering.
+    # Markdown applies to the declaration only, because it is the long-form
+    # document. The other fields are single lines, rendered as literal text.
     plane.set_direction(
         mission="# Not a heading",
         principles=({"title": "*not emphasis*", "description": "- not a list"},),

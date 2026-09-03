@@ -1,6 +1,6 @@
 """The whole path a rich constitution walks: an operator writes it in a
-file, publishes it, an anonymous visitor reads the document -- and the crew
-bound to it keeps being sent a small block, unless it asks for more.
+file, publishes it, and an anonymous visitor reads the document, while the
+crew bound to it keeps being sent a small block unless it asks for more.
 """
 
 from starlette.testclient import TestClient

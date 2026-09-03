@@ -69,8 +69,8 @@ def test_given_configured_tokens_when_rendering_then_they_reach_the_root_block(p
 
 
 def test_given_your_own_colors_when_rendering_then_the_automatic_dark_swap_is_off(plane):
-    # Deliberate: inverting a palette somebody chose would produce a page
-    # they never approved. Picking colors means owning them.
+    # Deliberate: inverting a palette the operator chose would produce a
+    # page they did not approve. Choosing colors means keeping them.
     page = render_constitution(published(plane), PageConfig(theme=PageTheme(background="#fffdf7")))
     assert "prefers-color-scheme" not in page
 

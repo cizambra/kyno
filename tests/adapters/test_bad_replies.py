@@ -4,7 +4,7 @@ When Kyno is unreachable or answers garbage, the binder falls back to the
 last known direction and emits telemetry saying so. Acting on stale direction
 is the accepted cost; crashing the host's step is not. That fallback catches
 exactly one failure shape, KynoUnavailableError, so these tests force every
-way a reply can be wrong and assert each one arrives as that error -- a raw
+way a reply can be wrong and assert each one arrives as that error. A raw
 JSONDecodeError or KeyError would skip the fallback and surface inside the
 host's agent step instead.
 """

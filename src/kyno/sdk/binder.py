@@ -34,8 +34,8 @@ class DirectionBinder:
         self.cell = cell if cell is not None else DirectionCell()
         self._policy = policy or PullPolicy()
         self._telemetry = telemetry or LogSink()
-        # Checked here rather than at the first step, so a typo fails while
-        # the integration is being wired instead of once it is already running.
+        # Checked here rather than at the first step, so a typo fails while the integration is
+        # being set up instead of once it is running.
         self.context = check_context(context)
 
     def bind(self, constitution: str = "default") -> Direction:

@@ -67,7 +67,7 @@ def test_given_an_uninitialized_db_when_running_current_then_the_error_is_clean(
     tmp_path, monkeypatch
 ):
     # No db init here: the store raises sqlalchemy.exc.OperationalError,
-    # not a kyno CoherenceError -- both must still surface as a clean CLI error.
+    # not a kyno CoherenceError. Both must surface as a clean CLI error.
     cli_workspace(monkeypatch, tmp_path, tmp_path / "never_init.sqlite3")
     r = runner.invoke(app, ["current"])
     assert r.exit_code == 1
@@ -504,7 +504,7 @@ def test_given_an_edit_when_applied_then_the_delta_is_printed(tmp_path, monkeypa
     r = apply_yaml(tmp_path, mission="M2", note="pivot")
     assert r.exit_code == 0
     assert 'The mission was "M1" and is now "M2".' in r.output
-    # stdout stays the version JSON, pipeable; the delta rides stderr.
+    # stdout stays the version JSON so it can be piped; the delta goes to stderr.
     assert json.loads(r.stdout)["version"] == 2
 
 

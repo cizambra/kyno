@@ -8,20 +8,20 @@ from kyno.errors import MalformedPrincipleError, UnknownPrincipleError
 
 _PRINCIPLE_KEYS = ("title", "description")
 
-# The header adapters stamp on the direction block they inject into model
-# calls. Defined beside the document model because the write path refuses
-# text carrying it: a constitution field must not be able to forge one.
+# The header the adapters put on the direction block they inject into model calls. Defined next
+# to the document model because the write path rejects constitution text containing it, so a
+# field cannot fake a direction block.
 DIRECTION_MARKER = "[kyno:direction"
 
-# How much of a constitution a caller wants: the handles, or the whole
-# document. The long text is what costs, so compact is what defaults.
+# How much of a constitution a caller wants: the titles only, or the whole document. The long
+# text is the expensive part, so compact is the default.
 COMPACT = "compact"
 FULL = "full"
 DETAIL_LEVELS = (COMPACT, FULL)
 
-# Who stood behind a write. Recorded at write time because it can't be
-# reconstructed later: an operator answered the questions, automation ran
-# under the checks, or the override flag answered yes to everything.
+# Who approved a write. Recorded at write time because it cannot be worked out later: an
+# operator answered the questions, automation ran under the checks, or the override flag skipped
+# them.
 OPERATOR = "operator"
 AUTOMATION = "automation"
 OVERRIDE = "override"
@@ -83,9 +83,9 @@ class Principle:
         )
 
     def to_dict(self, detail: str = FULL) -> dict:
-        # At full detail both keys are always there, and "" is the honest
-        # answer for a principle nobody has described. A compact read omits
-        # the key entirely, because "you did not ask" is a different answer.
+        # At full detail both keys are always present, and "" means the principle has no
+        # description. A compact read leaves the key out entirely, which means the caller did
+        # not ask for it.
         if check_detail(detail) == COMPACT:
             return {"title": self.title}
         return {"title": self.title, "description": self.description}
@@ -125,15 +125,15 @@ class ConstitutionVersion(HoldsPrinciples):
     changed_principles: bool
     created_at: datetime
     created_by: str | None
-    # Optional and last so every existing caller still constructs a version
-    # exactly as it did; the payload puts it beside the mission it expands.
+    # Optional and last so existing callers construct a version unchanged. In the payload it
+    # sits next to the mission it expands.
     declaration: str = ""
-    # None on local and direct writes: that doorway has no questions to record.
+    # None on local and direct writes: those paths ask no approval questions.
     authorized_by: str | None = None
 
     def principle(self, title: str) -> Principle:
         """The one principle with this exact title. Titles are not unique, so
-        the first wins -- an ordered list is what an operator wrote."""
+        the first one wins: the list order is what the operator wrote."""
         for principle in self.principles:
             if principle.title == title:
                 return principle
@@ -200,8 +200,8 @@ class PublicConstitution(HoldsPrinciples):
             "version": self.version,
             "last_changed_at": self.last_changed_at.isoformat(),
         }
-        # Absent, not empty: an empty list would say there is no history,
-        # when the truth is that this constitution does not publish it.
+        # Absent, not empty: an empty list would mean there is no history, when the reason is
+        # that this constitution does not publish it.
         if self.history is not None:
             payload["history"] = [v.to_dict() for v in self.history]
         return payload
@@ -226,13 +226,13 @@ class ChangesSince(HoldsPrinciples):
     changed_principles: bool
     change_notes: tuple[str, ...]
     declaration: str = ""
-    # What actually moved, computed rather than written. A note says why the
-    # direction changed; only the delta says which line did.
+    # What changed, computed rather than written. The note says why the direction changed; the
+    # delta says which fields changed.
     delta: tuple[str, ...] = ()
 
     def to_dict(self, detail: str = FULL) -> dict:
-        # The change metadata rides along at every level: it is small, and it
-        # is what tells a consumer whether to look any closer.
+        # The change metadata is included at every detail level: it is small, and it tells a
+        # consumer whether to read further.
         payload = {
             "current_version": self.current_version,
             "changed": self.changed,
@@ -251,8 +251,8 @@ class ChangesSince(HoldsPrinciples):
 @dataclass(frozen=True)
 class Token:
     """One kyno_tokens row: the identity that versions reference. There is
-    no value and no hash here -- the value is shown once at minting, and
-    the hash never leaves the store."""
+    no value and no hash here. The value is shown once at minting, and the
+    hash never leaves the store."""
 
     id: int
     name: str

@@ -28,8 +28,8 @@ from kyno.models import (
 )
 from kyno.store.base import ConstitutionStore
 
-# The size contract for a constitution, enforced before anything is written.
-# Generous for a document a human writes; a hard stop for a payload nobody did.
+# The size limits for a constitution, checked before anything is written. Large enough for a
+# hand-written document, and a hard stop for a machine-generated payload.
 MAX_MISSION_CHARS = 4_000
 MAX_DECLARATION_CHARS = 200_000
 MAX_CHANGE_NOTE_CHARS = 2_000
@@ -83,10 +83,10 @@ def _check_fields(
         )
 
 
-# A consumer that integrates before anyone has set a direction must not
-# crash -- an empty store reads as version 0, nothing set, nothing changed.
-# created_at is a fixed epoch, not "now", so repeated empty reads are
-# identical and unmistakably a placeholder, not a real write timestamp.
+# A consumer that integrates before anyone has set a direction must not crash: an empty store
+# reads as version 0, nothing set, nothing changed. created_at is a fixed epoch rather than
+# "now", so repeated empty reads are identical and clearly a placeholder instead of a real write
+# timestamp.
 _EMPTY_CONSTITUTION = ConstitutionVersion(
     version=0,
     mission="",
@@ -117,7 +117,7 @@ def _delta(before, after) -> tuple[str, ...]:
     """What moved between two versions, in the wording of both.
 
     Returns nothing when the consumer holds no version: there is no baseline
-    to compare against, and the whole direction is already in front of them.
+    to compare against, and the caller already has the whole direction.
     """
     if before is None or before.version >= after.version:
         return ()
@@ -137,9 +137,9 @@ def _delta(before, after) -> tuple[str, ...]:
 
 
 def _slugged(name: str) -> str:
-    """The name the caller probably meant. For the error message only -- publishing
-    never transforms a name, because the name in the URL has to be the one
-    agents pass over MCP."""
+    """The name the caller probably meant, used only in the error message.
+    Publishing never transforms a name, because the name in the URL has to
+    be the one agents pass over MCP."""
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
@@ -375,8 +375,8 @@ class ControlPlane:
                 f"unknown authorized_by '{authorized_by}': "
                 f"one of {', '.join(AUTHORIZATIONS)}, or nothing"
             )
-        # Before the retry loop: a malformed principle is the caller's
-        # mistake, and re-discovering it on every attempt tells nobody more.
+        # Checked before the retry loop: a malformed principle is the caller's mistake, and re-
+        # checking it on every attempt adds nothing.
         principles = normalize_principles(principles)
         name = self._name(constitution)
         _check_fields(
@@ -399,9 +399,8 @@ class ControlPlane:
         if head is not None and not (
             changed_mission or changed_principles or new_declaration != head.declaration
         ):
-            # The two recorded flags stay literally about the fields they
-            # name, so a declaration-only edit still appends a version --
-            # which is what a polling consumer reads as "changed".
+            # The two recorded flags refer only to the fields they name, so a declaration-only
+            # edit still appends a version, which is what a polling consumer reads as changed.
             raise NoFieldChangedError("no field changed")
         next_version = 1 if head is None else head.version + 1
         try:
@@ -418,8 +417,8 @@ class ControlPlane:
                 authorized_by=authorized_by,
             )
         except VersionConflictError:
-            # A concurrent writer took this version. Nothing lands: whoever
-            # asked decides against the new head, with eyes open.
+            # A concurrent writer took this version. Nothing is written; the caller decides what
+            # to do against the new head.
             raise VersionConflictError(
                 f"the head of '{name}' moved while applying; read it again and re-apply"
             ) from None

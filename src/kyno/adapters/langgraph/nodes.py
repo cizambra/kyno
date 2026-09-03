@@ -15,8 +15,9 @@ from kyno.sdk.trace import RunTrace
 
 class KynoState(TypedDict, total=False):
     """Inherit this in your graph's state schema. LangGraph only carries the
-    keys a schema declares, so without it the direction a node pulls never
-    reaches the gate node that must judge against it -- silently.
+    keys a schema declares. Without it, the direction a node pulls never
+    reaches the gate node that has to judge against it, and nothing reports
+    the gap.
     """
 
     kyno_constitution: str

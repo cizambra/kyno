@@ -4,8 +4,8 @@ the store's current version back into one.
 A declaration is paragraphs and a description is a paragraph; both are
 miserable to type as command-line flags and worse to re-type on the next
 edit. A file is where a rich constitution actually gets written, and it is
-YAML because a block scalar is the readable way to hold prose (JSON parses
-too -- it is valid YAML).
+YAML because a block scalar is the readable way to hold prose (JSON also
+parses, since it is valid YAML).
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ FIELDS = ("constitution", "mission", "declaration", "principles")
 @dataclass(frozen=True)
 class ConstitutionFile:
     """What the file said. None means the key was absent, which set_direction
-    reads as "carry this one forward" -- clearing a field is spelled ""."""
+    treats as "keep the current value". To clear a field, write ""."""
 
     constitution: str | None = None
     mission: str | None = None
@@ -87,8 +87,8 @@ def _dump(document: dict) -> str:
 
     class _Dumper(yaml.SafeDumper):
         def increase_indent(self, flow=False, indentless=False):
-            # Never indentless: list items sit indented under their key,
-            # the way the docs and people write the file by hand.
+            # Never indentless: list items are indented under their key, matching the docs and
+            # hand-written files.
             return super().increase_indent(flow, False)
 
     def _scalar(dumper, text):
@@ -111,8 +111,8 @@ def _load(path: str):
 
 
 def _text(document: Mapping, field: str, path: str) -> str | None:
-    # A key with nothing after it is far more often a half-written file than
-    # a deletion, so it reads as absent; clearing a field is spelled "".
+    # A key with nothing after it is usually a half-written file rather than a deletion, so it
+    # is treated as absent. To clear a field, write "".
     value = document.get(field)
     if value is None:
         return None

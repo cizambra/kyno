@@ -42,9 +42,9 @@ class CrewAiKyno:
         trace: RunTrace | None = None,
     ) -> None:
         self._binder = binder
-        # No gate unless one is handed in. Kyno carries direction; checking the
-        # work against it needs a judge Kyno does not ship, so a default gate
-        # would only ever answer "unchecked".
+        # No gate unless one is passed in. Kyno carries direction; checking work against it
+        # needs a judge that Kyno does not ship, so a default gate would always return
+        # "unchecked".
         self.gate = gate
         self.constitution = constitution
         self.trace = trace
@@ -106,9 +106,9 @@ class CrewAiKyno:
 
 
 def _system_content(message: Any) -> str:
-    # Only a system message can be the block this adapter injected; marker
-    # text on any other role is data (a tool result echoed into the
-    # transcript, a user paste) and is never the adapter's to delete.
+    # Only a system message can be the block this adapter injected. Marker text on any other
+    # role is data (a tool result echoed into the transcript, or a paste from the user) and the
+    # adapter must not delete it.
     if not isinstance(message, dict) or message.get("role") != "system":
         return ""
     content = message.get("content", "")

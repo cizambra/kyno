@@ -8,13 +8,13 @@ from kyno.public_page import PageConfig
 from kyno.service import ControlPlane
 from kyno.tokens import hash_value
 
-# A JSON-RPC request is small; the largest legitimate one carries a full
-# constitution, which the field caps hold far under this.
+# A JSON-RPC request is small. The largest legitimate one carries a full constitution, and the
+# field size limits keep that well under this cap.
 MAX_MCP_BODY_BYTES = 5_000_000
 
 
-# On every public response, including 404s: the pages carry one inline
-# <style> block and nothing else that runs, loads, or frames.
+# Sent on every public response, including 404s. The pages carry one inline <style> block and
+# nothing that runs, loads, or frames.
 PUBLIC_HEADERS = {
     "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
     "X-Content-Type-Options": "nosniff",
@@ -85,8 +85,8 @@ def build_http_app(
 
     server = build_server(control_plane)
     try:
-        # The MCP layer grew its own body cap (4 MiB by default) that would
-        # answer 413 below ours; one constant governs both layers.
+        # The MCP layer has its own body cap (4 MiB by default) that would answer 413 below
+        # ours, so one constant sets both.
         manager = StreamableHTTPSessionManager(app=server, max_request_body_size=MAX_MCP_BODY_BYTES)
     except TypeError:  # an mcp release before the cap existed
         manager = StreamableHTTPSessionManager(app=server)
@@ -141,10 +141,10 @@ def build_http_app(
 
         await manager.handle_request(scope, replay, send)
 
-    # Unpublished and unknown answer identically, and never 401: a 401 would
-    # tell an anonymous caller that a name it guessed is real. These are sync
-    # on purpose -- Starlette runs a plain `def` endpoint in a threadpool, so
-    # their blocking store reads stay off the event loop.
+    # Unpublished and unknown return the same response, and never 401: a 401 would tell an
+    # anonymous caller that a name they guessed is real. These are sync on purpose -- Starlette
+    # runs a plain `def` endpoint in a threadpool, so their blocking store reads stay off the
+    # event loop.
     def constitution_page(request):
         view = control_plane.public_constitution(request.path_params["name"])
         if view is None:
@@ -172,9 +172,9 @@ def build_http_app(
         async with manager.run():
             yield
 
-    # Order matters: "{name}" would otherwise swallow "default.json" whole.
-    # The index sits at /constitutions.json, not /constitutions/index.json,
-    # so a constitution actually named "index" keeps its own page.
+    # Order matters: "{name}" would otherwise match "default.json" as a name. The index is at
+    # /constitutions.json, not /constitutions/index.json, so a constitution named "index" keeps
+    # its own page.
     routes = [
         Route("/constitutions.json", index_json),
         Route("/constitutions/", index_page),

@@ -63,8 +63,8 @@ def test_given_an_empty_store_when_asking_changes_since_then_zero_changes_return
 
 
 def test_given_an_empty_store_when_asking_changes_since_any_version_then_it_does_not_raise(cp):
-    # No HEAD to compare against on an empty store, so no known_version
-    # can be "in the future" -- never UnknownVersionError.
+    # No HEAD to compare against on an empty store, so no known_version can
+    # be "in the future" and UnknownVersionError is never raised.
     c = cp.changes_since(5)
     assert c.current_version == 0
     assert c.changed is False
@@ -220,8 +220,8 @@ def test_given_an_empty_principles_tuple_when_setting_direction_then_the_list_cl
 
 
 def test_given_a_raising_subscriber_when_writing_then_the_exception_propagates_after_commit(cp):
-    # Deliberate: in-process on_change hooks are NOT isolated -- a raising subscriber
-    # propagates straight to the caller, after the write already committed.
+    # Deliberate: in-process on_change hooks are NOT isolated. A raising
+    # subscriber propagates to the caller, after the write already committed.
     # (The MCP layer's own notify hook swallows exceptions instead.)
     def bad_subscriber(_version):
         raise RuntimeError("subscriber blew up")
@@ -458,7 +458,7 @@ def test_given_a_name_that_cannot_be_a_url_segment_when_publishing_then_it_is_re
 
 def test_given_a_name_ending_in_json_when_publishing_then_it_is_refused():
     # /constitutions/x.json is the machine-readable route for "x", so a
-    # constitution named "x.json" would be served as somebody else.
+    # constitution named "x.json" would be served under the wrong name.
     cp = _plane()
     _direction(cp, "policy.json")
     with pytest.raises(UnpublishableNameError):
@@ -655,8 +655,8 @@ def test_given_a_declaration_only_rewrite_when_setting_direction_then_it_is_a_re
 
 
 def test_given_a_declaration_only_change_when_a_consumer_polls_then_it_reaches_them(cp):
-    # The flags stay literally about mission and principles, so `changed` --
-    # which is "a version happened" -- is what tells an agent to re-read.
+    # The flags refer only to mission and principles, so `changed`, which
+    # means a new version exists, is what tells an agent to re-read.
     cp.set_direction(mission="M1", declaration="First draft.", change_note="init")
     cp.set_direction(declaration="Second draft.", change_note="rewrite")
     changes = cp.changes_since(1)

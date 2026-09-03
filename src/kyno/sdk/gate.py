@@ -79,8 +79,8 @@ class GateDecision:
 class RealignmentGate:
     """Deliberately model-free: it asks a VerdictSource and acts
     on the answer. When no answer is available the work proceeds MARKED
-    unchecked -- an outage of ours must not freeze the host system, and
-    unchecked-but-marked keeps the evidence a block would have destroyed."""
+    unchecked: an outage on our side must not freeze the host system, and
+    marking it keeps the record that a block would have thrown away."""
 
     def __init__(
         self,

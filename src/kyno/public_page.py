@@ -6,8 +6,8 @@ template an operator supplies. One mechanism: the defaults cannot express
 anything a copy of them could not, and `kyno page export` hands an operator
 the real thing to edit.
 
-Substitution is `string.Template` and nothing more -- placeholders, never a
-language. See `_fill_template`.
+Substitution is `string.Template` and nothing more: placeholders, not a
+template language. See `_fill_template`.
 """
 
 from __future__ import annotations
@@ -31,10 +31,10 @@ _log = logging.getLogger(__name__)
 _DEFAULT_FONT = 'ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
 _MONO_FONT = 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace'
 
-# Raw HTML off: this page serves anonymous visitors, and an organization's own
-# text must never reach them as markup that runs. Images off too -- an
-# external <img> would stop the page being one self-contained response.
-# markdown-it refuses javascript: and friends in links itself.
+# Raw HTML off: this page serves anonymous visitors, so the organization's text must never reach
+# them as markup that runs. Images off too, because an external <img> would stop the page being
+# one self-contained response. markdown-it already rejects javascript: and similar schemes in
+# links.
 _MARKDOWN = MarkdownIt("js-default", {"html": False}).disable("image")
 
 
@@ -76,8 +76,8 @@ def _stylesheet(theme: PageTheme) -> str:
         f"  --mono: {_MONO_FONT};\n"
         "}\n"
     )
-    # Inverting a palette somebody chose would produce a page they never
-    # approved, so the automatic dark swap only applies to our own colors.
+    # Inverting a palette the operator chose would produce a page they did
+    # not approve, so the automatic dark swap applies to our colors only.
     dark = (
         ""
         if theme.uses_custom_colors
@@ -121,8 +121,8 @@ def _path(name: str) -> str:
 
 
 def _substitute(text: str, values: dict[str, str]) -> str:
-    """Every value is already escaped or already rendered, so no template --
-    ours or an operator's -- can un-escape the text it displays."""
+    """Every value is already escaped or already rendered, so no template,
+    built-in or operator-supplied, can un-escape the text it displays."""
     return Template(text).safe_substitute(values)
 
 
@@ -147,8 +147,8 @@ def _render(packaged: str, operator: str | None, values: dict[str, str]) -> str:
 
 
 def _headline(view: PublicConstitution) -> str:
-    # A constitution may carry principles and no mission; a blank headline
-    # would read as a broken page rather than a sparse one.
+    # A constitution may have principles and no mission. A blank headline would look like a
+    # broken page rather than an empty one.
     return escape(view.mission) if view.mission.strip() else escape(view.name)
 
 
@@ -156,7 +156,7 @@ def _headline(view: PublicConstitution) -> str:
 def _declaration_html(text: str) -> str:
     """The declaration is the one field that is a document rather than a line,
     so it is rendered as markdown. Everything else on this page stays escaped
-    plain text -- markdown is the long-form document's privilege. Cached by
+    plain text; markdown applies to the declaration only. Cached by
     text: versions are immutable and CommonMark on an adversarial document is
     slow, so each declaration is rendered once, not once per anonymous GET."""
     return _MARKDOWN.render(text).strip() if text.strip() else ""
@@ -199,8 +199,8 @@ def _history_block(view: PublicConstitution) -> str:
 
 def _index_block(views: Sequence[PublicConstitution]) -> str:
     if not views:
-        # True and unremarkable, so it is a page rather than an error -- and it
-        # travels inside the value, because substitution cannot branch.
+        # Not an error: a private constitution is a normal state. The text sits inside the value
+        # because substitution cannot branch.
         return "<p>Nothing is published here yet.</p>"
     return f'<ul class="directory">\n{_index_items(views)}\n</ul>'
 
@@ -208,8 +208,7 @@ def _index_block(views: Sequence[PublicConstitution]) -> str:
 def _index_items(views: Sequence[PublicConstitution]) -> str:
     items = []
     for view in views:
-        # The index is a directory, so a long mission is trimmed to the line
-        # that carries the claim.
+        # The index is a directory listing, so a long mission is trimmed to its first line.
         headline = view.mission.strip().splitlines()[0] if view.mission.strip() else view.name
         items.append(
             f'<li><h2><a href="{escape(_path(view.name))}">{escape(view.name)}</a></h2>'
@@ -246,7 +245,7 @@ def render_index(views: Sequence[PublicConstitution], config: PageConfig | None 
 
 def render_not_found(config: PageConfig | None = None) -> str:
     """Built here rather than from a template: it has no placeholders and no
-    operator override, so a file would be a page nobody can change."""
+    operator override, so a template file would add nothing to edit."""
     config = config or _DEFAULT_CONFIG
     return (
         "<!doctype html>\n"

@@ -727,3 +727,24 @@ def test_given_an_expiring_token_when_time_passes_then_liveness_flips_without_a_
 
     assert read_back.live_at(expires - timedelta(minutes=1)) is True
     assert read_back.live_at(expires + timedelta(minutes=1)) is False
+
+
+def test_given_a_stored_hash_when_adding_a_token_with_the_same_hash_then_it_refuses(store):
+    # The unique constraint, exercised as behavior on every backend -- the
+    # schema inspectors only look at sqlite files.
+    from sqlalchemy.exc import IntegrityError
+
+    store.add_token("ci", "write", token_hash="a" * 64)
+
+    with pytest.raises(IntegrityError):
+        store.add_token("other", "read", token_hash="a" * 64)
+
+
+def test_given_a_revoked_token_when_asking_liveness_then_it_is_not_live(store):
+    t = store.add_token("ci", "write", token_hash="b" * 64)
+    now = datetime.now(UTC)
+    assert store.token(t.id).live_at(now) is True
+
+    store.revoke_token(t.id)
+
+    assert store.token(t.id).live_at(now) is False

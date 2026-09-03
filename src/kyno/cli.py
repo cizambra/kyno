@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 
 import typer
@@ -16,7 +17,7 @@ from kyno.authoring import (
 )
 from kyno.config import Settings, store_from_settings
 from kyno.errors import AuthoringError, CoherenceError, NoFieldChangedError
-from kyno.models import AUTOMATION, OPERATOR, OVERRIDE, normalize_principles
+from kyno.models import AUTOMATION, OPERATOR, OVERRIDE, SCOPES, normalize_principles
 from kyno.profiles import (
     add_credentials,
     add_remote,
@@ -28,6 +29,7 @@ from kyno.profiles import (
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
 from kyno.remote import RemoteError, dial, version_from_payload
 from kyno.service import ControlPlane, edit_delta, effective_content
+from kyno.tokens import age, generate_value, hash_value, parse_ttl
 from kyno.workspace import create_workspace
 
 app = typer.Typer(help="Coherence engine control plane.")
@@ -85,6 +87,122 @@ def db_upgrade() -> None:
         command.upgrade(_alembic_config(Settings.load().database_url), "head")
         typer.echo("ok")
     except (CoherenceError, SQLAlchemyError, CommandError) as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+
+token_app = typer.Typer(help="The tokens this server accepts: mint, list, revoke.")
+app.add_typer(token_app, name="token")
+
+
+@token_app.command("add")
+def token_add(
+    name: str = typer.Argument(..., help="A label for humans. The id is the identity."),
+    scope: str = typer.Option(
+        ..., "--scope", help="read: every tool except set_direction. write: everything."
+    ),
+    ttl: str | None = typer.Option(
+        None, "--ttl", help="Expire on its own after this long (30m, 2h, 7d)."
+    ),
+) -> None:
+    """Mint a token: prints the value, once. Only its hash is stored."""
+    if scope not in SCOPES:
+        typer.echo(f"error: unknown scope '{scope}': choose read or write", err=True)
+        raise typer.Exit(code=1)
+    expires_at = None
+    if ttl is not None:
+        try:
+            expires_at = datetime.now(UTC) + parse_ttl(ttl)
+        except ValueError as exc:
+            typer.echo(f"error: {exc}", err=True)
+            raise typer.Exit(code=1) from None
+    value = generate_value()
+    try:
+        _store().add_token(name, scope, token_hash=hash_value(value), expires_at=expires_at)
+    except (CoherenceError, SQLAlchemyError) as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+    typer.echo(value)
+
+
+@token_app.command("list")
+def token_list(
+    all_tokens: bool = typer.Option(False, "--all", help="Include revoked and expired tokens."),
+) -> None:
+    """Live tokens, one line each: id, name, scope, created, last used."""
+    try:
+        rows = _store().tokens()
+    except (CoherenceError, SQLAlchemyError) as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+    now = datetime.now(UTC)
+    if not all_tokens:
+        rows = [t for t in rows if t.live_at(now)]
+    if not rows:
+        if all_tokens:
+            typer.echo("no tokens")
+        else:
+            typer.echo("no live tokens; mint one with: kyno token add NAME --scope write")
+        return
+    id_w = max(len(str(t.id)) for t in rows)
+    name_w = max(len(t.name) for t in rows)
+    scope_w = max(len(t.scope) for t in rows)
+    for t in rows:
+        line = (
+            f"{t.id:<{id_w}}  {t.name:<{name_w}}  {t.scope:<{scope_w}}  "
+            f"created {t.created_at.date().isoformat()}  last used {age(t.last_used_at, now)}"
+        )
+        # Only --all can reach a dead row; the default list is all live.
+        if t.revoked_at is not None:
+            line += "  revoked"
+        elif not t.live_at(now):
+            line += "  expired"
+        typer.echo(line)
+
+
+@token_app.command("revoke")
+def token_revoke(
+    name: str | None = typer.Argument(
+        None, help="The token's name; use --id when two live tokens share it."
+    ),
+    token_id: int | None = typer.Option(None, "--id", help="The token's id, from kyno token list."),
+) -> None:
+    """Revoke a token: it stops working now, and its row stays for history."""
+    if (name is None) == (token_id is None):
+        typer.echo("error: name the token one way: its name, or --id", err=True)
+        raise typer.Exit(code=1)
+    try:
+        store = _store()
+        if token_id is None:
+            now = datetime.now(UTC)
+            live = [t for t in store.tokens() if t.name == name and t.live_at(now)]
+            if not live:
+                typer.echo(f"error: no live token named '{name}'", err=True)
+                raise typer.Exit(code=1)
+            if len(live) > 1:
+                ids = ", ".join(str(t.id) for t in live)
+                typer.echo(
+                    f"error: {len(live)} live tokens are named '{name}' (ids {ids}); "
+                    "pick one with --id",
+                    err=True,
+                )
+                raise typer.Exit(code=1)
+            token_id = live[0].id
+        token = store.token(token_id)
+        if token is None:
+            typer.echo(f"error: no token with id {token_id}", err=True)
+            raise typer.Exit(code=1)
+        if token.revoked_at is not None:
+            typer.echo(f"error: token id {token_id} is already revoked", err=True)
+            raise typer.Exit(code=1)
+        if not token.live_at(datetime.now(UTC)):
+            # Revoke means "stop working now"; an expired token already
+            # stopped. Stamping it would hide how it really died.
+            typer.echo(f"error: token id {token_id} already expired", err=True)
+            raise typer.Exit(code=1)
+        store.revoke_token(token_id)
+        typer.echo(f"revoked id {token_id}")
+    except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
 

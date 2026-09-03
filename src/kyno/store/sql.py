@@ -340,10 +340,13 @@ class SqlConstitutionStore:
         return self._row_to_token(row) if row else None
 
     def touch_token(self, token_id: int, *, older_than: datetime) -> bool:
-        """Mark the token as used now -- unless it was already marked
-        recently. `older_than` draws the line: a row whose last_used_at is
-        missing or older than it gets today's time, anything newer is left
-        alone. The check and the write are one UPDATE statement, so two
+        """Record that the token was just used, but only when its stored
+        last_used_at is missing or older than `older_than`. Callers pass a
+        cutoff of "now minus five minutes", so a token in constant use is
+        updated once every five minutes instead of on every request.
+
+        Returns True when the row was updated, False when it was left as it
+        was. The condition and the write are one UPDATE statement, so two
         requests arriving at the same moment cannot both write."""
         with self.engine.begin() as conn:
             result = conn.execute(

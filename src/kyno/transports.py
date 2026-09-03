@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 
 from kyno.errors import ConfigError
 from kyno.mcp_server import build_server
+from kyno.models import WRITE
 from kyno.public_page import PageConfig
 from kyno.service import ControlPlane
 from kyno.tokens import hash_value
@@ -43,6 +45,30 @@ def token_for_request(headers: dict, token_store, now: datetime):
     if token is None or not token.live_at(now):
         return None
     return token
+
+
+def _tool_calls(body: bytes) -> list[tuple[str, str]]:
+    """List the (tool, constitution) pairs a JSON-RPC body asks for.
+
+    Returns an empty list for a body that is not valid JSON, or that
+    carries no tool call: rejecting malformed requests is the MCP layer's
+    job, and this only reports what it can read. A batch request (a JSON
+    array) returns one pair per call in it."""
+    try:
+        payload = json.loads(body)
+    except ValueError:
+        return []
+    items = payload if isinstance(payload, list) else [payload]
+    calls = []
+    for item in items:
+        if not isinstance(item, dict) or item.get("method") != "tools/call":
+            continue
+        params = item.get("params") or {}
+        arguments = params.get("arguments") or {}
+        name = params.get("name")
+        if isinstance(name, str):
+            calls.append((name, arguments.get("constitution") or "default"))
+    return calls
 
 
 async def run_stdio(control_plane: ControlPlane) -> None:
@@ -130,6 +156,13 @@ def build_http_app(
                 return
             if not message.get("more_body"):
                 break
+        calls = _tool_calls(bytes(body))
+        writes = any(name == "set_direction" for name, _ in calls)
+        if token is not None and token.scope != WRITE and writes:
+            await Response("forbidden: this token is read-only", status_code=403)(
+                scope, receive, send
+            )
+            return
         replayed = False
 
         async def replay():

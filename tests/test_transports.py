@@ -9,7 +9,7 @@ from kyno.mcp_server import RESOURCE_URI, build_server
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 from kyno.tokens import generate_value, hash_value
-from kyno.transports import token_for_request
+from kyno.transports import _tool_calls, token_for_request
 
 
 def _token_store():
@@ -66,6 +66,18 @@ def test_given_an_authorization_header_that_is_not_a_bearer_value_when_resolving
 def test_given_a_non_ascii_bearer_value_when_resolving_then_it_fails_closed_not_crashes():
     now = datetime.now(UTC)
     assert token_for_request({"authorization": "Bearer café"}, _token_store(), now) is None
+
+
+def test_given_bodies_of_every_shape_when_listing_tool_calls_then_only_real_calls_count():
+    assert _tool_calls(b"not json") == []
+    assert _tool_calls(b'{"method": "initialize"}') == []
+    assert _tool_calls(
+        b'{"method": "tools/call", "params": {"name": "set_direction", "arguments": {}}}'
+    ) == [("set_direction", "default")]
+    assert _tool_calls(
+        b'[{"method": "tools/call", "params": {"name": "get_constitution", '
+        b'"arguments": {"constitution": "main"}}}]'
+    ) == [("get_constitution", "main")]
 
 
 @pytest.mark.asyncio
@@ -277,6 +289,23 @@ def test_given_a_write_token_when_driving_a_full_http_session_then_the_set_missi
     payload = json.loads(_sse_json(get_resp.text)["result"]["content"][0]["text"])
     assert payload["mission"] == "M1"
     assert payload["version"] == 1
+
+
+def test_given_a_read_token_when_calling_set_direction_then_it_is_403_and_nothing_is_written():
+    from starlette.testclient import TestClient
+
+    store, _write_value, app = _gated()
+    read_value = _mint(store, scope="read", name="crew")
+
+    with TestClient(app) as client:
+        h = _drive_session(client, _bearer(read_value))
+        refused = _call(client, h, 2, "set_direction", {"mission": "M1", "change_note": "init"})
+        allowed = _call(client, h, 3, "get_constitution", {})
+
+    assert refused.status_code == 403
+    assert "read-only" in refused.text
+    assert allowed.status_code == 200
+    assert store.head("default") is None
 
 
 def test_given_a_declared_body_over_the_cap_when_posting_then_it_is_413_before_the_body_is_read():

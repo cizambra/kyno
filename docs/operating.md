@@ -124,7 +124,9 @@ working against the same database for edits and inspection.
   endpoint (`/mcp`) must carry a live minted token as its bearer; the
   server hashes what arrived and looks it up. Unknown, revoked and expired
   all get the same 401, so a caller cannot use the response to find out
-  which tokens exist. The server refuses to serve HTTP with no live tokens
+  which tokens exist. A `read` token can call every tool except
+  `set_direction`; `set_direction` needs `write` and answers 403
+  otherwise. The server refuses to serve HTTP with no live tokens
   unless you explicitly opt in (`allow_insecure = true` in `config/server`,
   for local experimentation only; it warns). Embedders building the app in
   code pass their store — `build_http_app(cp, token_store=store)` — or opt in

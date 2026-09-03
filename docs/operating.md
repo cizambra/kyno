@@ -120,8 +120,8 @@ working against the same database for edits and inspection.
 - **stdio** is open. A process that can spawn the server already owns the
   database file under it, so a token there would add a step without adding
   protection.
-- **HTTP** is gated by a shared bearer token (`KYNO_TOKEN`) gates every request to the
-  MCP endpoint (`/mcp`). The server refuses to start tokenless over HTTP
+- **HTTP** is gated by a shared bearer token (`KYNO_TOKEN`) on every request
+  to the MCP endpoint (`/mcp`). The server refuses to start tokenless over HTTP
   unless you explicitly opt in (`allow_insecure = true` in
   `config/server`, for local experimentation only; it warns), and a
   `KYNO_TOKEN` that's set but blank
@@ -140,6 +140,43 @@ transcripts, not a security check. Text arriving from tools or users can
 imitate it, so nothing should trust a block just for looking like one. Kyno
 refuses constitution text containing the marker, and the adapters only ever
 replace the block they injected themselves.
+
+### Minting and revoking tokens
+
+The store keeps a token inventory in its own table, managed from the
+workspace:
+
+```bash
+kyno token add ci --scope write               # prints the value, once
+kyno token add hotfix --scope write --ttl 2h  # expires on its own
+kyno token list                               # live tokens
+kyno token list --all                         # revoked and expired included
+kyno token revoke ci
+kyno token revoke --id 3                      # when two live tokens share a name
+```
+
+The rules, one at a time:
+
+- `--scope` is required; there is no default. `read` allows every tool
+  except `set_direction`; `write` allows everything.
+- The value is printed once, at minting, and starts with `kyno_` so a
+  leaked one is recognizable, by people and by secret scanners. Only its
+  sha256 is stored: steal the database and you hold hashes, and a hash
+  does not work as a token.
+- Names are labels, not identities. Two live tokens share a name during
+  rotation on purpose, and commands ask for `--id` when a name is
+  ambiguous.
+- Rows are never deleted. Revoking sets a timestamp on the row, and
+  `revoke` acts on live tokens only: a token that already expired is
+  refused, so the row keeps showing how it died.
+- The `token` commands are local, like `kyno db init`: they talk straight
+  to the workspace's database. There is no way to mint over the network --
+  if a stolen write token could mint, it could mint itself a spare before
+  you revoke it.
+
+Today the HTTP gate still checks `KYNO_TOKEN`, as described above. The
+server starts checking minted tokens -- including their read/write scope --
+with the serving switch, which retires that variable.
 
 ## Remote mode
 

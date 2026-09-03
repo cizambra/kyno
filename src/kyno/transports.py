@@ -84,6 +84,98 @@ async def run_stdio(control_plane: ControlPlane) -> None:
         await server.run(read, write, server.create_initialization_options())
 
 
+class _McpEndpoint:
+    """The ASGI app served at /mcp. On every request it checks the token,
+    enforces the body size cap, applies the read/write rule, and only then
+    hands the request to the MCP session manager.
+
+    One instance serves every request; nothing request-specific is stored
+    on self."""
+
+    def __init__(self, manager, token_store):
+        self._manager = manager
+        self._token_store = token_store
+
+    async def __call__(self, scope, receive, send):
+        from starlette.responses import Response
+
+        headers = {
+            k.decode(errors="replace"): v.decode(errors="replace")
+            for k, v in scope.get("headers", [])
+        }
+        token = None
+        if self._token_store is not None:
+            token = token_for_request(headers, self._token_store, datetime.now(UTC))
+            if token is None:
+                await Response("unauthorized", status_code=401)(scope, receive, send)
+                return
+        declared = headers.get("content-length", "")
+        if declared.isdigit() and int(declared) > MAX_MCP_BODY_BYTES:
+            await Response("request body too large", status_code=413)(scope, receive, send)
+            return
+        if scope.get("method") != "POST":
+            # GET opens the server-sent-events stream, where the server
+            # pushes notifications; DELETE closes a session. Neither
+            # carries a tool call, so there is no scope to check and
+            # nothing to log.
+            await self._manager.handle_request(scope, receive, send)
+            return
+        body = await self._read_body(scope, receive, send)
+        if body is None:
+            return
+        calls = _tool_calls(body)
+        writes = any(name == "set_direction" for name, _ in calls)
+        if token is not None and token.scope != WRITE and writes:
+            await Response("forbidden: this token is read-only", status_code=403)(
+                scope, receive, send
+            )
+            return
+        await self._manager.handle_request(scope, _replayed(body, receive), send)
+
+    async def _read_body(self, scope, receive, send) -> bytes | None:
+        """Buffer the whole request body and return it, or return None
+        after answering when the request cannot proceed.
+
+        The body is buffered because the size cap needs the byte count and
+        the read/write rule needs to see the tool name before the MCP
+        layer runs. None means either the client disconnected mid-body
+        (nothing was sent back) or the body crossed the size cap (a 413
+        was sent).
+
+        Each receive() returns one ASGI message. For a request body it is
+        {"type": "http.request", "body": bytes, "more_body": bool}; any
+        other type here means the client disconnected."""
+        from starlette.responses import Response
+
+        body = bytearray()
+        while True:
+            message = await receive()
+            if message["type"] != "http.request":
+                return None
+            body.extend(message.get("body") or b"")
+            if len(body) > MAX_MCP_BODY_BYTES:
+                await Response("request body too large", status_code=413)(scope, receive, send)
+                return None
+            if not message.get("more_body"):
+                break
+        return bytes(body)
+
+
+def _replayed(body: bytes, receive):
+    """A receive callable that hands the MCP layer the buffered body first,
+    then continues with the real channel (disconnect messages and so on)."""
+    delivered = False
+
+    async def replay():
+        nonlocal delivered
+        if not delivered:
+            delivered = True
+            return {"type": "http.request", "body": body, "more_body": False}
+        return await receive()
+
+    return replay
+
+
 def build_http_app(
     control_plane: ControlPlane,
     token_store=None,
@@ -107,7 +199,7 @@ def build_http_app(
 
     from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
     from starlette.applications import Starlette
-    from starlette.responses import HTMLResponse, JSONResponse, Response
+    from starlette.responses import HTMLResponse, JSONResponse
     from starlette.routing import Mount, Route
 
     from kyno.public_page import render_constitution, render_index, render_not_found
@@ -122,62 +214,7 @@ def build_http_app(
     except TypeError:  # an mcp release before the cap existed
         manager = StreamableHTTPSessionManager(app=server)
 
-    async def handle(scope, receive, send):
-        headers = {
-            k.decode(errors="replace"): v.decode(errors="replace")
-            for k, v in scope.get("headers", [])
-        }
-        token = None
-        if token_store is not None:
-            token = token_for_request(headers, token_store, datetime.now(UTC))
-            if token is None:
-                await Response("unauthorized", status_code=401)(scope, receive, send)
-                return
-        declared = headers.get("content-length", "")
-        if declared.isdigit() and int(declared) > MAX_MCP_BODY_BYTES:
-            await Response("request body too large", status_code=413)(scope, receive, send)
-            return
-        if scope.get("method") != "POST":
-            # GET opens the server-sent-events stream, where the server
-            # pushes notifications; DELETE closes a session. Neither
-            # carries a tool call, so there is no scope to check and
-            # nothing to log.
-            await manager.handle_request(scope, receive, send)
-            return
-        # Buffer the body: the cap needs counting either way, and the scope
-        # check has to see the tool name before the MCP layer runs.
-        # Each receive() returns one ASGI message. For a request body it is
-        # {"type": "http.request", "body": bytes, "more_body": bool}; any
-        # other type here means the client disconnected.
-        body = bytearray()
-        while True:
-            message = await receive()
-            if message["type"] != "http.request":
-                # The client hung up before finishing the body.
-                return
-            body.extend(message.get("body") or b"")
-            if len(body) > MAX_MCP_BODY_BYTES:
-                await Response("request body too large", status_code=413)(scope, receive, send)
-                return
-            if not message.get("more_body"):
-                break
-        calls = _tool_calls(bytes(body))
-        writes = any(name == "set_direction" for name, _ in calls)
-        if token is not None and token.scope != WRITE and writes:
-            await Response("forbidden: this token is read-only", status_code=403)(
-                scope, receive, send
-            )
-            return
-        replayed = False
-
-        async def replay():
-            nonlocal replayed
-            if not replayed:
-                replayed = True
-                return {"type": "http.request", "body": bytes(body), "more_body": False}
-            return await receive()
-
-        await manager.handle_request(scope, replay, send)
+    handle = _McpEndpoint(manager, token_store)
 
     # Unpublished and unknown return the same response, and never 401: a 401 would tell an
     # anonymous caller that a name they guessed is real. These are sync on purpose -- Starlette

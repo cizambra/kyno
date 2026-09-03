@@ -1,8 +1,9 @@
-"""Start the server: the startup checks and the transports, kept out of the CLI.
+"""How Kyno serves: the startup checks and the two transports.
 
-The CLI command parses arguments and prints errors; this module decides how
-Kyno serves. serve_stdio runs the MCP server on stdin/stdout. serve_http
-checks the token table, then hands the app to uvicorn.
+serve_stdio runs the MCP server on stdin/stdout. serve_http checks the
+token table and hands the app to uvicorn. The CLI's `kyno serve` command
+parses arguments, calls one of these two functions, and prints any
+ConfigError they raise.
 """
 
 from __future__ import annotations

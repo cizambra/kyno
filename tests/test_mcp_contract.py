@@ -277,7 +277,7 @@ async def test_given_stdio_and_http_sessions_when_getting_the_constitution_then_
         "Accept": "application/json, text/event-stream",
         "Content-Type": "application/json",
     }
-    http_app = build_http_app(cp, token=None, allow_insecure=True)
+    http_app = build_http_app(cp, allow_insecure=True)
     with TestClient(http_app) as client:
         init_resp = client.post(
             "/mcp",

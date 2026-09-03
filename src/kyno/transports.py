@@ -1,19 +1,28 @@
 from __future__ import annotations
 
-import hmac
+import json
+import logging
+from datetime import UTC, datetime, timedelta
 
 from kyno.errors import ConfigError
 from kyno.mcp_server import build_server
+from kyno.models import WRITE
 from kyno.public_page import PageConfig
 from kyno.service import ControlPlane
+from kyno.tokens import hash_value
 
 # A JSON-RPC request is small; the largest legitimate one carries a full
 # constitution, which the field caps hold far under this.
 MAX_MCP_BODY_BYTES = 5_000_000
 
+# How often a token's last use is written back. Inside the window the row is
+# left alone, so a busy fleet costs one write per token per window instead of
+# one per request. `kyno token list` is at most this stale.
+TOUCH_EVERY = timedelta(minutes=5)
 
-class _BodyOverCap(Exception):
-    """Raised from the wrapped ASGI receive when the streamed body passes the cap."""
+# One line per tool call: token id and name, the tool, the constitution.
+# This log is the request history; last_used_at is only the liveness cell.
+_request_log = logging.getLogger("kyno.requests")
 
 
 # On every public response, including 404s: the pages carry one inline
@@ -26,23 +35,42 @@ PUBLIC_HEADERS = {
 }
 
 
-def require_token(headers: dict, token: str | None) -> bool:
-    if token is None:
-        return True
+def token_for_request(headers: dict, store, now: datetime):
+    """The live Token the bearer header names, or None. Missing header,
+    unknown value, revoked and expired all answer None: from outside,
+    every dead end is the same 401."""
     value = None
     for k, v in headers.items():
         if k.lower() == "authorization":
             value = v
             break
-    if value is None:
-        return False
+    if value is None or not value.startswith("Bearer "):
+        return None
+    token = store.token_by_hash(hash_value(value[len("Bearer ") :]))
+    if token is None or not token.live_at(now):
+        return None
+    return token
+
+
+def _tool_calls(body: bytes) -> list[tuple[str, str]]:
+    """The (tool, constitution) pairs a JSON-RPC body asks for. Anything
+    that does not parse as a tools/call answers an empty list; malformed
+    requests are the MCP layer's to reject."""
     try:
-        return hmac.compare_digest(value, f"Bearer {token}")
-    except TypeError:
-        # Python's constant-time comparison only accepts plain-ASCII strings.
-        # A header it can't even compare cannot be our token — so answer
-        # "wrong token" (401), never "server error" (500).
-        return False
+        payload = json.loads(body)
+    except ValueError:
+        return []
+    items = payload if isinstance(payload, list) else [payload]
+    calls = []
+    for item in items:
+        if not isinstance(item, dict) or item.get("method") != "tools/call":
+            continue
+        params = item.get("params") or {}
+        arguments = params.get("arguments") or {}
+        name = params.get("name")
+        if isinstance(name, str):
+            calls.append((name, arguments.get("constitution") or "default"))
+    return calls
 
 
 async def run_stdio(control_plane: ControlPlane) -> None:
@@ -55,19 +83,19 @@ async def run_stdio(control_plane: ControlPlane) -> None:
 
 def build_http_app(
     control_plane: ControlPlane,
-    token: str | None,
+    store=None,
     page: PageConfig | None = None,
     *,
     allow_insecure: bool = False,
 ):
-    """The Starlette app: the public constitution pages, and /mcp behind the
-    bearer token. No token means anyone who can reach the port can rewrite
-    the constitution, so an embedder opts into that in code, as loudly as
-    the CLI's KYNO_ALLOW_INSECURE_HTTP."""
-    if token is None and not allow_insecure:
+    """The Starlette app: the public constitution pages, and /mcp checking
+    bearer values against the store's token table. No store means no gate --
+    anyone who can reach the port can rewrite the constitution -- so an
+    embedder opts into that in code, as loudly as the CLI's allow_insecure."""
+    if store is None and not allow_insecure:
         raise ConfigError(
-            "refusing to build an HTTP app without a token: "
-            "pass one, or pass allow_insecure=True to open the write endpoint"
+            "refusing to build an HTTP app without a token store: "
+            "pass the store, or pass allow_insecure=True to open the write endpoint"
         )
     from contextlib import asynccontextmanager
 
@@ -93,45 +121,61 @@ def build_http_app(
             k.decode(errors="replace"): v.decode(errors="replace")
             for k, v in scope.get("headers", [])
         }
-        if not require_token(headers, token):
-            await Response("unauthorized", status_code=401)(scope, receive, send)
-            return
+        token = None
+        if store is not None:
+            token = token_for_request(headers, store, datetime.now(UTC))
+            if token is None:
+                await Response("unauthorized", status_code=401)(scope, receive, send)
+                return
+            store.touch_token(token.id, older_than=datetime.now(UTC) - TOUCH_EVERY)
         declared = headers.get("content-length", "")
         if declared.isdigit() and int(declared) > MAX_MCP_BODY_BYTES:
             await Response("request body too large", status_code=413)(scope, receive, send)
             return
-        seen = 0
-        responded = False  # the MCP layer has started answering
-        refused = False  # this exchange ended at our 413
-
-        async def counted_receive():
-            # Chunked transfer declares no length up front, so the cap is
-            # also enforced while the body streams in. The 413 goes out here,
-            # before the MCP layer can answer the aborted read itself.
-            nonlocal seen, refused
+        if scope.get("method") != "POST":
+            # GET opens the SSE stream and DELETE closes a session; neither
+            # carries a tool call, so the gate above is all they need.
+            await manager.handle_request(scope, receive, send)
+            return
+        # Buffer the body: the cap needs counting either way, and the scope
+        # check has to see the tool name before the MCP layer runs.
+        body = bytearray()
+        while True:
             message = await receive()
-            if message["type"] == "http.request":
-                seen += len(message.get("body") or b"")
-                if seen > MAX_MCP_BODY_BYTES:
-                    if not responded:
-                        refused = True
-                        await Response("request body too large", status_code=413)(
-                            scope, receive, send
-                        )
-                    raise _BodyOverCap()
-            return message
-
-        async def guarded_send(message):
-            nonlocal responded
-            if refused:
+            if message["type"] != "http.request":
+                # The client hung up before finishing the body.
                 return
-            responded = True
-            await send(message)
+            body.extend(message.get("body") or b"")
+            if len(body) > MAX_MCP_BODY_BYTES:
+                await Response("request body too large", status_code=413)(scope, receive, send)
+                return
+            if not message.get("more_body"):
+                break
+        calls = _tool_calls(bytes(body))
+        if token is not None:
+            if token.scope != WRITE and any(name == "set_direction" for name, _ in calls):
+                await Response("forbidden: this token is read-only", status_code=403)(
+                    scope, receive, send
+                )
+                return
+            for name, constitution in calls:
+                _request_log.info(
+                    "token=%s name=%s tool=%s constitution=%s",
+                    token.id,
+                    token.name,
+                    name,
+                    constitution,
+                )
+        replayed = False
 
-        try:
-            await manager.handle_request(scope, counted_receive, guarded_send)
-        except* _BodyOverCap:
-            pass
+        async def replay():
+            nonlocal replayed
+            if not replayed:
+                replayed = True
+                return {"type": "http.request", "body": bytes(body), "more_body": False}
+            return await receive()
+
+        await manager.handle_request(scope, replay, send)
 
     # Unpublished and unknown answer identically, and never 401: a 401 would
     # tell an anonymous caller that a name it guessed is real. These are sync

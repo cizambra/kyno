@@ -914,7 +914,8 @@ def serve(transport: str = typer.Option("stdio", "--transport")) -> None:
     except CoherenceError as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
-    cp = ControlPlane(store_from_settings(settings))
+    store = store_from_settings(settings)
+    cp = ControlPlane(store)
     if transport == "stdio":
         import anyio
 
@@ -923,24 +924,54 @@ def serve(transport: str = typer.Option("stdio", "--transport")) -> None:
         anyio.run(run_stdio, cp)
     elif transport == "http":
         allow_insecure = settings.allow_insecure
-        if settings.token is None and not allow_insecure:
-            raise typer.BadParameter(
-                "refusing to serve HTTP without a token: set KYNO_TOKEN, or set "
-                "allow_insecure = true in config/server to override for local use"
-            )
-        if settings.token is None:
+        if allow_insecure:
             typer.echo(
-                "WARNING: serving HTTP with no KYNO_TOKEN set "
-                "(allow_insecure is on) — the constitution can be "
-                "rewritten by anyone who can reach this endpoint",
+                "WARNING: serving HTTP without token checks (allow_insecure "
+                "is on) — the constitution can be rewritten by anyone who "
+                "can reach this endpoint",
                 err=True,
             )
+        else:
+            try:
+                live = [t for t in store.tokens() if t.live_at(datetime.now(UTC))]
+            except SQLAlchemyError:
+                typer.echo(
+                    "error: the database has no token table yet; run: kyno db upgrade",
+                    err=True,
+                )
+                raise typer.Exit(code=1) from None
+            if not live:
+                typer.echo(
+                    "error: refusing to serve HTTP with no live tokens: mint one with: "
+                    "kyno token add NAME --scope write, or set allow_insecure = true "
+                    "in config/server to override for local use",
+                    err=True,
+                )
+                raise typer.Exit(code=1)
+        import logging
+        import time
+
         import uvicorn
 
         from kyno.transports import build_http_app
 
+        # The request log: one line per tool call, timestamped in UTC.
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter("%(asctime)s %(message)s", datefmt="%Y-%m-%dT%H:%M:%SZ")
+        formatter.converter = time.gmtime
+        handler.setFormatter(formatter)
+        request_log = logging.getLogger("kyno.requests")
+        request_log.addHandler(handler)
+        request_log.setLevel(logging.INFO)
+        request_log.propagate = False
+
         uvicorn.run(
-            build_http_app(cp, settings.token, settings.page, allow_insecure=allow_insecure),
+            build_http_app(
+                cp,
+                store=None if allow_insecure else store,
+                page=settings.page,
+                allow_insecure=allow_insecure,
+            ),
             host=settings.host,
             port=settings.port,
         )

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 from kyno.errors import ConfigError
@@ -44,22 +43,9 @@ def _page_from_workspace(page: dict[str, str], root: Path) -> PageConfig:
     )
 
 
-def _token_from_env() -> str | None:
-    token = os.environ.get("KYNO_TOKEN")
-    if token is None:
-        return None
-    if not token.strip():
-        # A set-but-blank token reads as "auth is on" to whoever set it; the
-        # only honest answers are a working token or a loud refusal.
-        raise ConfigError("KYNO_TOKEN is set but blank: give it a value, or unset it")
-    return token
-
-
 @dataclass(frozen=True)
 class Settings:
     database_url: str
-    # repr=False: settings travel into logs and tracebacks; the credential must not.
-    token: str | None = field(repr=False)
     host: str
     port: int
     page: PageConfig
@@ -69,16 +55,15 @@ class Settings:
     def load(cls) -> Settings:
         """The settings of the workspace at or above the current directory.
 
-        The workspace is the only config surface; the one environment
-        variable left is KYNO_TOKEN, and it retires with the tokens
-        design."""
+        The workspace is the only config surface; the server reads no
+        environment variables. Serving credentials live in the store's
+        token table, not here."""
         root = find_workspace()
         if root is None:
             raise ConfigError("no workspace here or above; create one with: kyno new NAME")
         ws = read_config(root)
         return cls(
             database_url=ws.database_url,
-            token=_token_from_env(),
             host=ws.host,
             port=ws.port,
             page=_page_from_workspace(ws.page, ws.root),

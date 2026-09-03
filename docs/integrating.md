@@ -65,7 +65,8 @@ Start a local Kyno with the sample constitution:
 pip install kyno
 kyno db init
 kyno set --file conformance/v1.yaml
-KYNO_TOKEN=test-token kyno serve --transport http
+kyno token add dev --scope write   # copy the printed value
+kyno serve --transport http
 ```
 
 Kyno speaks [MCP](https://modelcontextprotocol.io), a standard protocol

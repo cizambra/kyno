@@ -55,7 +55,7 @@ def test_given_a_rich_constitution_when_published_and_bound_then_a_crew_serves_i
     plane = ControlPlane(SqlConstitutionStore(url=f"sqlite:///{db}"))
 
     # The published page is the document, not a summary of it.
-    with TestClient(build_http_app(plane, token="secret")) as visitor:
+    with TestClient(build_http_app(plane, allow_insecure=True)) as visitor:
         page = visitor.get("/constitutions/acme")
         assert page.status_code == 200
         assert HEADLINE in page.text

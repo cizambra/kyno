@@ -241,7 +241,8 @@ def test_given_a_template_that_disappears_when_serving_then_the_public_page_stay
     path = tmp_path / "constitution.html"
     path.write_text(TEMPLATE)
     published(plane, mission="Ship trust")
-    app = build_http_app(plane, token="secret", page=PageConfig(constitution_template=str(path)))
+    page = PageConfig(constitution_template=str(path))
+    app = build_http_app(plane, allow_insecure=True, page=page)
 
     with TestClient(app) as client:
         assert '<ul class="ours">' in client.get("/constitutions/default").text
@@ -256,7 +257,8 @@ def test_given_a_custom_template_when_serving_then_no_route_semantics_change(pla
     path = tmp_path / "constitution.html"
     path.write_text(TEMPLATE)
     direction(plane, "internal")
-    app = build_http_app(plane, token="secret", page=PageConfig(constitution_template=str(path)))
+    page = PageConfig(constitution_template=str(path))
+    app = build_http_app(plane, allow_insecure=True, page=page)
 
     with TestClient(app) as client:
         assert client.get("/constitutions/internal").status_code == 404
@@ -271,7 +273,8 @@ def test_given_a_custom_template_when_reading_the_json_view_then_it_is_untouched
     path = tmp_path / "constitution.html"
     path.write_text(TEMPLATE)
     published(plane, mission="Ship trust")
-    app = build_http_app(plane, token="secret", page=PageConfig(constitution_template=str(path)))
+    page = PageConfig(constitution_template=str(path))
+    app = build_http_app(plane, allow_insecure=True, page=page)
 
     with TestClient(app) as client:
         payload = client.get("/constitutions/default.json").json()

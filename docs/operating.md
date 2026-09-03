@@ -120,18 +120,21 @@ working against the same database for edits and inspection.
 - **stdio** is open. A process that can spawn the server already owns the
   database file under it, so a token there would add a step without adding
   protection.
-- **HTTP** is gated by a shared bearer token (`KYNO_TOKEN`) on every request
-  to the MCP endpoint (`/mcp`). The server refuses to start tokenless over HTTP
-  unless you explicitly opt in (`allow_insecure = true` in
-  `config/server`, for local experimentation only; it warns), and a
-  `KYNO_TOKEN` that's set but blank
-  is a configuration error rather than silently no auth. Embedders building
-  the app in code opt in the same way:
-  `build_http_app(..., allow_insecure=True)`. The published constitution
+- **HTTP** is gated by the token inventory. Every request to the MCP
+  endpoint (`/mcp`) must carry a live minted token as its bearer; the
+  server hashes what arrived and looks it up. Unknown, revoked and expired
+  all get the same 401, so a caller cannot probe which tokens exist. A
+  `read` token can call every tool except `set_direction`; `set_direction`
+  needs `write` and answers 403 otherwise. The server refuses to serve
+  HTTP with no live tokens unless you explicitly opt in
+  (`allow_insecure = true` in `config/server`, for local experimentation
+  only; it warns). Embedders building the app in code pass their store --
+  `build_http_app(cp, store=store)` -- or opt in the same way:
+  `build_http_app(cp, allow_insecure=True)`. The published constitution
   pages above sit outside that gate on purpose; they are the surface you
   chose to open.
 
-The write token is direction control: whoever holds it steers the
+A write token is direction control: whoever holds it steers the
 instructions of every agent bound to this Kyno. Treat it like a system-prompt
 credential: serve `/mcp` over TLS and keep the token out of logs and
 checkpoints (Kyno's own reprs never print it). One related caution: the
@@ -174,9 +177,14 @@ The rules, one at a time:
   if a stolen write token could mint, it could mint itself a spare before
   you revoke it.
 
-Today the HTTP gate still checks `KYNO_TOKEN`, as described above. The
-server starts checking minted tokens -- including their read/write scope --
-with the serving switch, which retires that variable.
+Two more things happen on every authenticated request. The server writes
+one log line per tool call -- the token id and name, the tool, and the
+constitution -- and that log is the request history: read it to know which
+tokens were active in a time window. And the token's `last_used_at` is
+updated, at most once every five minutes, so `kyno token list` can answer
+whether a token is still in use without a database write per request. The
+stored time can run up to five minutes behind the real last use, never
+ahead; for exact times, read the log.
 
 ## Remote mode
 

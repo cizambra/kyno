@@ -61,7 +61,7 @@ def test_given_two_constitutions_when_publishing_one_then_the_other_stays_privat
     apply_yaml(tmp_path, mission="How we really decide", constitution="acme-internal", note="init")
 
     plane = ControlPlane(SqlConstitutionStore(url=f"sqlite:///{db}"))
-    with TestClient(build_http_app(plane, token="secret")) as visitor:
+    with TestClient(build_http_app(plane, allow_insecure=True)) as visitor:
         assert visitor.get("/constitutions/default").status_code == 404
 
         assert runner.invoke(cli, ["publish"]).exit_code == 0
@@ -100,7 +100,7 @@ def test_given_a_published_history_when_toggled_then_change_notes_show_and_hide(
     apply_yaml(tmp_path, mission=f"{MISSION}, everywhere", note=PRIVATE_NOTE)
 
     plane = ControlPlane(SqlConstitutionStore(url=f"sqlite:///{db}"))
-    with TestClient(build_http_app(plane, token="secret")) as visitor:
+    with TestClient(build_http_app(plane, allow_insecure=True)) as visitor:
         runner.invoke(cli, ["publish"])
         assert PRIVATE_NOTE not in visitor.get("/constitutions/default").text
 

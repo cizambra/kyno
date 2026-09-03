@@ -748,3 +748,44 @@ def test_given_a_revoked_token_when_asking_liveness_then_it_is_not_live(store):
     store.revoke_token(t.id)
 
     assert store.token(t.id).live_at(now) is False
+
+
+def test_given_a_stored_hash_when_looking_it_up_then_the_row_answers_and_a_miss_is_none(store):
+    t = store.add_token("ci", "write", token_hash="a" * 64)
+
+    assert store.token_by_hash("a" * 64).id == t.id
+    assert store.token_by_hash("b" * 64) is None
+
+
+def test_given_a_fresh_token_when_touching_then_last_used_is_set(store):
+    t = store.add_token("ci", "write", token_hash="c" * 64)
+
+    changed = store.touch_token(t.id, older_than=datetime.now(UTC) - timedelta(minutes=5))
+
+    assert changed is True
+    assert store.token(t.id).last_used_at is not None
+
+
+def test_given_a_recent_touch_when_touching_again_then_the_row_does_not_move(store):
+    t = store.add_token("ci", "write", token_hash="d" * 64)
+    window = timedelta(minutes=5)
+    assert store.touch_token(t.id, older_than=datetime.now(UTC) - window)
+    first = store.token(t.id).last_used_at
+
+    changed = store.touch_token(t.id, older_than=datetime.now(UTC) - window)
+
+    assert changed is False
+    assert store.token(t.id).last_used_at == first
+
+
+def test_given_an_old_touch_when_touching_after_the_window_then_the_row_moves(store):
+    t = store.add_token("ci", "write", token_hash="e" * 64)
+    assert store.touch_token(t.id, older_than=datetime.now(UTC) - timedelta(minutes=5))
+    first = store.token(t.id).last_used_at
+
+    # A window in the future makes every stored value "old", which is the
+    # cheap way to cross the five minutes without waiting them.
+    changed = store.touch_token(t.id, older_than=datetime.now(UTC) + timedelta(minutes=5))
+
+    assert changed is True
+    assert store.token(t.id).last_used_at >= first

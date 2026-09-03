@@ -329,6 +329,31 @@ class SqlConstitutionStore:
             rows = conn.execute(select(self._tokens).order_by(self._tokens.c.id.asc())).all()
         return [self._row_to_token(r) for r in rows]
 
+    def token_by_hash(self, token_hash: str) -> Token | None:
+        """The row a bearer value's hash names, if any. This is the lookup
+        the server runs on every request."""
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                select(self._tokens).where(self._tokens.c.token_hash == token_hash)
+            ).first()
+        return self._row_to_token(row) if row else None
+
+    def touch_token(self, token_id: int, *, older_than: datetime) -> bool:
+        """Set last_used_at to now, but only when the stored value is missing
+        or older than `older_than`. One statement, so concurrent requests
+        cannot double-write; the caller owns the window."""
+        with self.engine.begin() as conn:
+            result = conn.execute(
+                update(self._tokens)
+                .where(self._tokens.c.id == token_id)
+                .where(
+                    (self._tokens.c.last_used_at.is_(None))
+                    | (self._tokens.c.last_used_at < older_than)
+                )
+                .values(last_used_at=datetime.now(UTC))
+            )
+        return result.rowcount > 0
+
     def revoke_token(self, token_id: int) -> bool:
         """Set revoked_at. False means nothing changed: no such id, or
         already revoked -- an existing revocation stamp is history, and

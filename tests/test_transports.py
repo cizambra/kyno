@@ -5,11 +5,11 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from kyno.mcp_endpoint import _tool_calls, token_for_request
 from kyno.mcp_server import RESOURCE_URI, build_server
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 from kyno.tokens import generate_value, hash_value
-from kyno.transports import _tool_calls, token_for_request
 
 
 def _token_store():

@@ -301,9 +301,9 @@ def test_given_a_live_server_when_applying_remotely_then_the_version_is_applied(
 def test_given_a_writer_racing_in_mid_apply_when_applying_remotely_then_nothing_is_applied(
     fake_dial, remote_cp, tmp_path
 ):
-    """The delta was computed against the head we fetched; if the head moves
-    before the write, the server refuses instead of applying an edit nobody
-    reviewed in that shape."""
+    """The delta was computed against the head we fetched. If the head moves
+    before the write, the server refuses instead of applying an edit that was
+    never reviewed against the new head."""
     remote_cp.set_direction(mission="M1", change_note="init")
     fake_dial.after_fetch = lambda: remote_cp.set_direction(
         mission="Raced in", change_note="someone else"

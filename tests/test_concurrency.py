@@ -74,9 +74,9 @@ def test_given_contending_writers_when_applying_then_conflicts_surface_and_nothi
 
 
 def test_given_concurrent_first_writes_to_a_new_name_when_racing_then_both_map_to_conflict(store):
-    # Deliberate: colliding on a brand-new name hits the name's unique constraint,
-    # not the version one -- append() maps that IntegrityError to
-    # VersionConflictError too, exactly like a version collision.
+    # Deliberate: colliding on a brand-new name hits the name's unique
+    # constraint, not the version one. append() maps that IntegrityError to
+    # VersionConflictError as well, the same as a version collision.
     successes: list[int] = []
     conflicts: list[int] = []
 

@@ -264,7 +264,7 @@ def test_given_a_node_that_returns_nothing_when_it_runs_then_its_direction_is_st
 
 
 def test_given_the_wrapper_wrote_state_when_the_node_writes_too_then_the_node_wins(binder):
-    """The node runs last, so its own keys win -- it saw the direction too."""
+    """The node runs last, so its own keys win. It saw the direction too."""
     bind, _cp = binder
 
     @pull_before(bind)

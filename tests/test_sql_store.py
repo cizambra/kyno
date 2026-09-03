@@ -10,7 +10,7 @@ from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 
 # The `store` fixture (sqlite + postgres, see tests/conftest.py) is injected
-# by pytest -- no local definition needed here.
+# by pytest, so there is no local definition here.
 
 
 def test_given_an_append_when_reading_head_then_it_is_the_appended_version(store):
@@ -187,7 +187,7 @@ def test_given_an_injected_engine_when_using_the_store_then_it_works_end_to_end(
 
 
 def test_given_a_losing_append_when_the_conflict_raises_then_the_head_is_intact(store):
-    # A stale-version append must roll back the whole transaction -- both the
+    # A stale-version append must roll back the whole transaction: both the
     # failed insert AND the current_version update that ran earlier in it.
     store.append(
         "default",
@@ -398,8 +398,8 @@ def test_given_a_written_constitution_when_reading_publication_then_it_starts_un
 
 
 def test_given_a_name_never_written_when_reading_publication_then_it_reads_as_private(store):
-    # Reads never fail on an absent name elsewhere in this store; publication
-    # follows the same rule -- "not published" is the honest answer.
+    # Reads never fail on an absent name elsewhere in this store, and
+    # publication follows the same rule: an unknown name reads as private.
     pub = store.publication("never-written")
     assert pub.published is False and pub.history_public is False
 
@@ -502,9 +502,9 @@ def test_given_a_described_principle_when_writing_and_reading_then_it_survives(s
 
 
 def test_given_a_title_only_principle_when_writing_then_it_is_stored_as_a_plain_json_string(store):
-    # Deliberate: the column holds either shape, and a constitution nobody has
-    # described writes exactly the JSON it always did -- so adopting
-    # descriptions is what changes the stored bytes, not upgrading.
+    # Deliberate: the column holds either shape, and a constitution with no
+    # descriptions writes exactly the JSON it wrote before. Adding a
+    # description is what changes the stored bytes, not upgrading.
     store.append(
         "default",
         1,
@@ -730,7 +730,7 @@ def test_given_an_expiring_token_when_time_passes_then_liveness_flips_without_a_
 
 
 def test_given_a_stored_hash_when_adding_a_token_with_the_same_hash_then_it_refuses(store):
-    # The unique constraint, exercised as behavior on every backend -- the
+    # The unique constraint, exercised as behavior on every backend. The
     # schema inspectors only look at sqlite files.
     from sqlalchemy.exc import IntegrityError
 

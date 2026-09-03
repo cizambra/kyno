@@ -204,9 +204,10 @@ def test_given_a_shared_cell_when_the_gate_judges_then_it_uses_the_cell_not_its_
 def test_given_a_non_system_message_with_the_marker_when_refreshing_then_it_is_not_deleted(
     crew_kyno,
 ):
-    """Only the block this adapter injected -- a system message -- is its to
-    replace. Marker text arriving any other way (a tool result echoed into
-    the transcript, a user paste) is data, not a deletion instruction."""
+    """The adapter replaces only the block it injected, which is a system
+    message. Marker text arriving any other way (a tool result echoed into
+    the transcript, or a paste from the user) is data, not something to
+    delete."""
     adapter, _cp = crew_kyno
     echoed = {"role": "tool", "content": f"{DIRECTION_MARKER} constitution=x version=9]"}
     pasted = {"role": "user", "content": f"{DIRECTION_MARKER} quoted by a person"}

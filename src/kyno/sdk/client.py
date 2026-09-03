@@ -13,10 +13,9 @@ from typing import Any, Protocol, runtime_checkable
 from kyno.errors import KynoUnavailableError
 from kyno.models import COMPACT, ChangesSince
 
-# The resource Kyno announces version changes on. The server sends a
-# `resources/updated` notification here every time a version is appended;
-# any client can subscribe. Named in the SDK so the server imports it
-# instead of defining its own copy.
+# The resource Kyno announces version changes on. The server sends a `resources/updated`
+# notification here every time a version is appended, and any client can subscribe. Defined in
+# the SDK so the server imports it instead of keeping its own copy.
 RESOURCE_URI = "kyno://constitution/current"
 
 
@@ -55,8 +54,8 @@ class ControlPlaneProjection(Protocol):
 
 
 class LocalDirectionSource:
-    """The control plane in this process -- what an embedding host and the
-    tests use."""
+    """The control plane running in this process, used by an embedding host
+    and by the tests."""
 
     def __init__(self, control_plane: ControlPlaneProjection) -> None:
         self._control_plane = control_plane
@@ -64,8 +63,8 @@ class LocalDirectionSource:
     def changes_since(
         self, known_version: int, constitution: str, detail: str = COMPACT
     ) -> ChangesSince:
-        # `detail` is a wire economy, and there is no wire here: the control
-        # plane hands back the whole version either way.
+        # `detail` exists to save bytes on the wire, and there is no wire here: the control
+        # plane returns the whole version either way.
         return self._control_plane.changes_since(known_version, constitution)
 
 
@@ -115,8 +114,8 @@ class SessionRunner:
                 self._ready.set()
                 await self._stop.wait()
         except Exception as exc:
-            # Reported through start()/call() as KynoUnavailableError: a
-            # thread that dies quietly would look like a hung control plane.
+            # Reported through start()/call() as KynoUnavailableError. A thread that died
+            # silently would look like a control plane that never answers.
             self._error = exc
             self._ready.set()
         finally:
@@ -129,8 +128,8 @@ class SessionRunner:
         try:
             future = asyncio.run_coroutine_threadsafe(fn(session), loop)
         except RuntimeError as exc:
-            # The loop closed between the check above and this call: the
-            # session is gone, which is the same answer as never having one.
+            # The loop closed between the check above and this call, so the session is gone.
+            # Treated the same as never having had one.
             raise KynoUnavailableError(f"the kyno MCP session is not open: {exc}") from exc
         try:
             return future.result(self._timeout)
@@ -173,9 +172,8 @@ def http_session(binding: KynoBinding):
     return connect
 
 
-# A reply is one constitution, and a large one is a few hundred kilobytes.
-# Measured in characters, which is the cheap proxy for bytes and needs no
-# second copy of the text to check.
+# A reply is one constitution, and a large one is a few hundred kilobytes. Measured in
+# characters, which approximates bytes and needs no second copy of the text.
 MAX_REPLY_CHARS = 8 * 1024 * 1024
 
 
@@ -199,9 +197,9 @@ def _version(value) -> int:
 
 
 def _text(value) -> str:
-    # A number in a text field is coerced rather than refused -- it is
-    # readable, and losing the direction over it would cost more. Null is not:
-    # "None" in an agent's instructions is worse than a refused pull.
+    # A number in a text field is converted rather than refused, because it is readable and
+    # refusing would lose the direction. Null is refused: the string "None" in an agent's
+    # instructions is worse than a failed pull.
     if isinstance(value, str):
         return value
     if isinstance(value, int | float) and not isinstance(value, bool):
@@ -221,16 +219,16 @@ def _changes(payload: dict) -> ChangesSince:
         changed=bool(payload["changed"]),
         mission=_text(payload["mission"]),
         principles=_sequence(payload["principles"], "principles"),
-        # Absent at compact detail, and absent from a Kyno older than
-        # declarations -- neither is a reason to fail a pull.
+        # Missing at compact detail, and missing from a Kyno older than declarations. Neither is
+        # a reason to fail the pull.
         declaration=_text(payload.get("declaration", "")),
         changed_mission=bool(payload["changed_mission"]),
         changed_principles=bool(payload["changed_principles"]),
         change_notes=tuple(
             _text(note) for note in _sequence(payload["change_notes"], "change_notes")
         ),
-        # Absent from a Kyno older than the delta: a pull that still answers
-        # with the direction is not a failure, it just says less.
+        # Missing from a Kyno older than the delta. The pull still returns the direction, with
+        # less detail.
         delta=tuple(_text(line) for line in _sequence(payload.get("delta", []), "delta")),
     )
 

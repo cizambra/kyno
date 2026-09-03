@@ -90,7 +90,7 @@ def test_given_a_file_appearing_mid_write_when_exporting_then_it_stops_and_remov
 ):
     # The dangling symlink is exactly the shape of the check-then-write race:
     # nothing there at the check, refused at the write. Files exported before
-    # the refusal stay put -- deleting them could delete an operator's work.
+    # the refusal are left alone: deleting them could delete real work.
     target = tmp_path / "pages"
     target.mkdir()
     (target / "index.html").symlink_to(tmp_path / "nowhere")

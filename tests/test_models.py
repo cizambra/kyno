@@ -49,7 +49,7 @@ def test_given_a_plain_string_when_normalizing_then_it_is_a_title_with_no_descri
     assert Principle.of("Be honest") == Principle(title="Be honest", description="")
 
 
-def test_given_a_mapping_when_normalizing_then_the_description_rides_with_the_title():
+def test_given_a_mapping_when_normalizing_then_the_title_and_description_are_both_kept():
     p = Principle.of({"title": "Be honest", "description": "Say the hard number first."})
     assert (p.title, p.description) == ("Be honest", "Say the hard number first.")
 
@@ -62,7 +62,7 @@ def test_given_a_principle_when_normalizing_then_it_passes_through_unchanged():
 def test_given_a_principle_with_an_empty_half_when_serializing_then_both_halves_appear():
     assert Principle("t", "d").to_dict() == {"title": "t", "description": "d"}
     # Deliberate: the key is always present. An absent key would make callers
-    # guess, and "" is the honest answer for a principle nobody described.
+    # guess, and "" states that the principle has no description.
     assert Principle("t").to_dict() == {"title": "t", "description": ""}
 
 
@@ -80,7 +80,7 @@ def test_given_a_principle_with_no_title_when_normalizing_then_it_is_refused():
 
 def test_given_a_misspelled_principle_key_when_normalizing_then_it_is_refused_not_dropped():
     # A silently ignored "descriptoin" would publish a principle whose
-    # paragraph nobody can find.
+    # description is missing, with nothing to show it was dropped.
     with pytest.raises(MalformedPrincipleError, match="descriptoin"):
         Principle.of({"title": "t", "descriptoin": "typo"})
 

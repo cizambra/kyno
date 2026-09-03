@@ -329,8 +329,8 @@ def test_given_a_pre_declaration_database_when_a_pip_user_upgrades_then_it_upgra
 def test_given_a_head_database_when_downgrading_one_migration_then_only_its_own_column_is_dropped(
     tmp_path,
 ):
-    # A downgrade that took a neighbouring column with it would lose data
-    # nobody asked to lose.
+    # A downgrade that dropped a neighbouring column with it would lose data
+    # the operator did not ask to drop.
     db = tmp_path / "step_down.sqlite3"
     cfg = Config("alembic.ini")
     cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db}")

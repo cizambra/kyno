@@ -52,8 +52,8 @@ class SqlConstitutionStore:
             try:
                 self.engine = create_engine(url, **kwargs)
             except ModuleNotFoundError as exc:
-                # The exception already names the missing driver; the map
-                # turns it into the extra that installs it.
+                # The exception already names the missing driver. The map converts that name
+                # into the extra that installs it.
                 extra = _DRIVER_EXTRAS.get(exc.name)
                 hint = (
                     f"install it with: pip install kyno[{extra}]"
@@ -72,9 +72,8 @@ class SqlConstitutionStore:
 
     def _row_to_version(self, row) -> ConstitutionVersion:
         created_at = row.created_at
-        # SQLite stores our timestamps but hands them back without the
-        # timezone attached. Everything this store writes is UTC (see
-        # append()), so put the UTC label back on when reading.
+        # SQLite stores timestamps but returns them without the timezone. Everything this store
+        # writes is UTC (see append()), so the UTC marker is added back on read.
         if created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=UTC)
         return ConstitutionVersion(
@@ -189,7 +188,7 @@ class SqlConstitutionStore:
         if row is None:
             return Publication(published_at=None, history_public=False)
         published_at = row.published_at
-        # SQLite hands timestamps back without the timezone we wrote them with.
+        # SQLite returns timestamps without the timezone they were written with.
         if published_at is not None and published_at.tzinfo is None:
             published_at = published_at.replace(tzinfo=UTC)
         return Publication(published_at=published_at, history_public=bool(row.history_public))
@@ -207,7 +206,7 @@ class SqlConstitutionStore:
         self, constitution: str, *, published_at: datetime | None, history_public: bool
     ) -> bool:
         """Record (or clear) publication. False means the name does not exist,
-        which callers turn into an error rather than a silent success -- a typo
+        which callers turn into an error rather than a silent success: a typo
         must not report that something was published."""
         with self.engine.begin() as conn:
             result = conn.execute(
@@ -283,8 +282,7 @@ class SqlConstitutionStore:
 
     def _row_to_token(self, row) -> Token:
         def utc(dt):
-            # The same SQLite restamp as _row_to_version: this store only
-            # ever writes UTC.
+            # The same UTC restamp as _row_to_version: this store only writes UTC.
             if dt is not None and dt.tzinfo is None:
                 return dt.replace(tzinfo=UTC)
             return dt
@@ -343,9 +341,9 @@ class SqlConstitutionStore:
         return self._row_to_token(row) if row else None
 
     def revoke_token(self, token_id: int) -> bool:
-        """Set revoked_at. False means nothing changed: no such id, or
-        already revoked -- an existing revocation stamp is history, and
-        history does not move."""
+        """Set revoked_at. False means nothing changed: either there is no
+        such id, or it was already revoked. An existing revocation timestamp
+        is never overwritten."""
         with self.engine.begin() as conn:
             result = conn.execute(
                 update(self._tokens)

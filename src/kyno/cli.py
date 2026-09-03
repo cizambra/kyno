@@ -152,7 +152,7 @@ def token_list(
             f"{t.id:<{id_w}}  {t.name:<{name_w}}  {t.scope:<{scope_w}}  "
             f"created {t.created_at.date().isoformat()}  last used {age(t.last_used_at, now)}"
         )
-        # Only --all can reach a dead row; the default list is all live.
+        # Only --all reaches a dead row; the default list holds live tokens only.
         if t.revoked_at is not None:
             line += "  revoked"
         elif not t.live_at(now):
@@ -582,8 +582,8 @@ def page_export(
     target = Path(directory)
     existing = [name for name in PACKAGED_TEMPLATES if (target / name).exists()]
     if existing:
-        # All or nothing: a half-written export would leave an operator
-        # guessing which of the files in front of them are still theirs.
+        # All or nothing: a half-written export would leave the operator unsure which of the
+        # files are new and which were already there.
         typer.echo(
             f"error: {target} already has {', '.join(existing)}; "
             "nothing written. Export somewhere else, or move them aside.",
@@ -593,9 +593,9 @@ def page_export(
     try:
         target.mkdir(parents=True, exist_ok=True)
         for name in PACKAGED_TEMPLATES:
-            # "x": refuse anything that appeared since the check, including a
-            # dangling symlink the exists() check cannot see -- O_EXCL refuses
-            # to follow one rather than planting a file where it points.
+            # "x": refuse anything that appeared since the check, including a dangling symlink
+            # that exists() does not see. O_EXCL refuses to follow the symlink instead of
+            # writing a file where it points.
             with (target / name).open("x", encoding="utf-8") as handle:
                 handle.write(packaged_template(name))
     except FileExistsError:
@@ -722,8 +722,8 @@ def _compare_with_store(fields: ConstitutionFile, path: str) -> None:
     try:
         head, delta = _control_plane().head_and_delta(**_content_of(fields), constitution=target)
     except (CoherenceError, SQLAlchemyError) as exc:
-        # The cause is the first line; a database error goes on to quote
-        # its SQL, which tells an operator nothing about the file.
+        # The cause is the first line. A database error then quotes its SQL, which tells the
+        # operator nothing about the file.
         typer.echo(f"store: not compared ({str(exc).splitlines()[0]})")
         return
     _render_comparison(target, head, delta)
@@ -897,9 +897,8 @@ def new(
     name: str = typer.Argument(..., help="Directory to create the workspace in."),
 ) -> None:
     """Create a workspace: the directory that defines one Kyno instance.
-    Configuration and, on SQLite, the store live here; the constitution
-    file does not -- it stays in your team's repo and arrives over the
-    wire."""
+    Configuration and, on SQLite, the store live here. The constitution file
+    does not: it stays in your team's repo and arrives over the wire."""
     with _clean_errors():
         root = create_workspace(Path(name))
     typer.echo(f"created workspace '{root.name}'")

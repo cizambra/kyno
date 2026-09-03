@@ -92,7 +92,7 @@ def _read(path: Path) -> configparser.ConfigParser:
 def _write(path: Path, parser: configparser.ConfigParser, *, private: bool) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if private:
-        # Owner-readable from the first byte, not chmod'ed after the fact.
+        # Owner-readable from the first byte, rather than chmod'ed after writing.
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             parser.write(handle)

@@ -16,8 +16,8 @@ PREFIX = "kyno_"
 
 
 def upgrade() -> None:
-    # Nullable: every version written before the questions existed, and
-    # every local or direct write, records nothing.
+    # Nullable: versions written before the approval questions existed, and all local and direct
+    # writes, record nothing here.
     with op.batch_alter_table(f"{PREFIX}constitution_versions") as batch:
         batch.add_column(sa.Column("authorized_by", sa.String(32), nullable=True))
 

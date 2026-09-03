@@ -9,9 +9,8 @@ from kyno.models import HoldsPrinciples, Principle
 from kyno.sdk.cell import Direction
 from kyno.sdk.gate import GateDecision, Verdict
 
-# The per-step record shape offered to drift analysis. Named as a tuple so
-# renaming a field breaks a test in this repo rather than a consumer
-# somewhere else.
+# The per-step record shape offered to drift analysis. Declared as a named tuple so renaming a
+# field breaks a test in this repo instead of a consumer elsewhere.
 SERVES_DIRECTION_FIELDS = (
     "step_id",
     "agent",
@@ -30,9 +29,9 @@ TASK = "task"
 DELEGATION = "delegation"
 SUBGRAPH = "subgraph"
 
-# The trace-level shape offered to decomposition analysis: the original
-# goal, every step, and the edges that say what was split into what. Without
-# the edges a split is invisible and no analysis can judge it.
+# The trace-level shape offered to decomposition analysis: the original goal, every step, and
+# the edges recording what was split into what. Without the edges a split is not visible to any
+# analysis.
 DECOMPOSITION_COHERES_FIELDS = ("run_id", "goal", "steps", "edges")
 
 
@@ -79,9 +78,9 @@ class StepRecord(HoldsPrinciples):
 @dataclass
 class RunTrace:
     """What the adapters make observable about a run: every step, the
-    direction it was bound to, and how the gate ruled. It records; it never
-    judges -- judging belongs to the drift benchmark, and keeping it out is
-    what keeps this importable with no model installed."""
+    direction it was bound to, and how the gate ruled. It records and never
+    judges: judging belongs to the drift benchmark, and leaving it out keeps
+    this importable with no model installed."""
 
     run_id: str
     goal: str = ""

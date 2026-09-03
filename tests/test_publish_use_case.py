@@ -1,5 +1,5 @@
 """The whole path an operator actually walks: set a direction, publish it,
-have an anonymous visitor read the page, take it down again -- driven through
+have an anonymous visitor read the page, take it down again. Driven through
 the real CLI and the real HTTP app against one database.
 """
 

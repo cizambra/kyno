@@ -9,8 +9,8 @@ from kyno.public_page import PageConfig, PageTheme
 from kyno.store.sql import SqlConstitutionStore
 from kyno.workspace import find_workspace, read_config
 
-# Theme values are written straight into a <style> block, so anything that
-# could close it or start a rule of its own is refused rather than escaped.
+# Theme values are written directly into a <style> block, so anything that could close it or
+# start a new rule is refused rather than escaped.
 _UNSAFE_STYLE_VALUE = re.compile(r"[<>{};@\\]")
 
 _THEME_KEYS = ("accent", "background", "text", "muted", "rule", "font_family")

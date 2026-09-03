@@ -39,9 +39,8 @@ def _require(arguments: dict, key: str) -> None:
         raise ValueError(f"missing required argument: {key}")
 
 
-# Reads default to compact. The declaration and the descriptions are the
-# long text, and an agent that pulls before every step pays for them each
-# time; asking for them is one argument away.
+# Reads default to compact. The declaration and the descriptions are the long text, and an agent
+# that pulls before every step would pay for them every time. One argument asks for them.
 def handle_get_constitution(
     cp: ControlPlane, constitution: str | None = None, detail: str = COMPACT
 ) -> dict:
@@ -59,10 +58,9 @@ def handle_get_changes_since(
     return _guard(lambda: cp.changes_since(known_version, constitution).to_dict(detail))
 
 
-# The targeted reads: having pulled the handles, buy the piece that turned
-# out to matter rather than the whole document again. Every one of them
-# answers with the version it came from, which is what makes mixing them
-# safe -- two answers on one version describe one document.
+# The targeted reads: after pulling the titles, fetch the one piece that matters instead of the
+# whole document again. Each answers with the version it came from, so answers can be combined:
+# two answers on the same version describe the same document.
 def handle_export_versions(
     cp: ControlPlane,
     constitution: str | None = None,
@@ -179,7 +177,7 @@ _PRINCIPLE_ITEM = {
     ]
 }
 
-# Said once, in the same words, on every read that can be mixed with another.
+# The same wording on every read whose result can be combined with another.
 _DRIFT = "If the version disagrees with one you already hold, the direction moved: re-read it."
 
 _TOOLS = [
@@ -374,10 +372,9 @@ def build_server(control_plane: ControlPlane) -> Server:
             )
         ]
 
-    # One URI cannot stand for several constitutions, so the resource is the
-    # control plane's default one, served compact (a resource takes no
-    # parameters). Any constitution's version bump notifies here; agents read
-    # by name with the tools, and a redundant self-describing pull is cheap.
+    # One URI cannot stand for several constitutions, so the resource is the control plane's
+    # default one, served compact (a resource takes no parameters). A new version of any
+    # constitution notifies here; agents then read by name with the tools.
     @server.read_resource()
     async def read_resource(uri: AnyUrl) -> str:
         if str(uri) != RESOURCE_URI:

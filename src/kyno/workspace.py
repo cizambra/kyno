@@ -1,8 +1,8 @@
 """The workspace: the directory that defines one Kyno instance.
 
 `kyno new` creates it, and every command that needs the store finds it by
-walking up from where you stand, like git does. The files under ~/.kyno
-stay user-bound -- credentials and remotes travel with a person. The
+walking up from the current directory, the way git does. The files under
+~/.kyno stay user-bound: credentials and remotes belong to a person. The
 workspace is the organization's instance definition, so it lives in a
 directory that can be committed and mounted; secrets only ever enter it
 as ${VAR} references to variables the operator named.
@@ -38,11 +38,12 @@ _PAGE_KEYS = (
     "index_template",
 )
 
-# 2256 is CALM on a phone keypad, the way 6379 is MERZ to Redis: a port
-# with a story, instead of another squatter on 8080.
+# 2256 spells CALM on a phone keypad. A port of its own, rather than sharing 8080 with
+# everything else running locally.
 _CONFIG_TEMPLATE = """\
-# This Kyno's definition. Values are written in, or are ${VAR} references
-# to variables you name. Secrets only ever enter as references.
+# This Kyno instance's configuration. Values are written here directly, or
+# as ${VAR} references to variables you name. Secrets are only ever written
+# as references, never as values.
 
 [server]
 host = 127.0.0.1
@@ -54,7 +55,7 @@ database = db/kyno.sqlite3
 """
 
 _GITIGNORE_TEMPLATE = """\
-# The store is data, not definition.
+# The store holds data, not configuration.
 db/*.sqlite3
 """
 

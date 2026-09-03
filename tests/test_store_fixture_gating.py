@@ -1,5 +1,5 @@
 """Asserts the deliberate choices behind the parametrized `store` fixture
-in conftest.py -- the env var name, the skip reason, and the postgres
+in conftest.py: the env var name, the skip reason, and the postgres
 table-prefix generator.
 """
 
@@ -11,8 +11,8 @@ from tests.conftest import POSTGRES_URL_ENV, _postgres_url, _random_prefix, need
 
 def test_given_the_postgres_gate_when_reading_its_env_var_then_the_name_is_exact(monkeypatch):
     # This name is the documented way to opt into the Postgres tests; a typo
-    # here would silently gate them on a variable nobody sets, so they would
-    # skip forever without anyone noticing.
+    # here would gate them on a variable that is never set, so they would
+    # skip every run with no error to show it.
     assert POSTGRES_URL_ENV == "KYNO_TEST_POSTGRES_URL"
     monkeypatch.delenv(POSTGRES_URL_ENV, raising=False)
     assert _postgres_url() is None
@@ -36,7 +36,7 @@ def test_given_generated_prefixes_when_checked_then_they_are_unique_safe_and_sho
 
 def test_given_the_dev_extra_when_installed_then_psycopg_is_available_for_postgres():
     # The Postgres tests need psycopg, and the dev extra is where it comes
-    # from -- dropping it would turn them into a permanent skip.
+    # from. Dropping it would turn them into a permanent skip.
     pyproject = Path(__file__).parent.parent / "pyproject.toml"
     text = pyproject.read_text()
     dev_extra = text.split("[project.optional-dependencies]")[1].split("[project.scripts]")[0]

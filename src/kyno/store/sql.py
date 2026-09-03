@@ -330,9 +330,12 @@ class SqlConstitutionStore:
         return [self._row_to_token(r) for r in rows]
 
     def token_by_hash(self, token_hash: str) -> Token | None:
-        """Find the token whose stored hash equals `token_hash`, or None.
-        This is the lookup the server runs on every request: hash the
-        bearer value that arrived, then ask for the matching row."""
+        """Find the token whose stored hash equals `token_hash`, or None
+        when no row matches.
+
+        The server runs this on every request: it hashes the bearer value
+        that arrived and looks for a row holding that hash. Whether the
+        token is still usable is a separate question; see Token.live_at."""
         with self.engine.connect() as conn:
             row = conn.execute(
                 select(self._tokens).where(self._tokens.c.token_hash == token_hash)

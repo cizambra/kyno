@@ -117,7 +117,8 @@ _MCP_HEADERS = {
 
 
 def _gated():
-    """A store with one live write token, its control plane, and the app."""
+    """Build a store holding one live write token, and return it with that
+    token's value and an app that checks bearer values against it."""
     from kyno.transports import build_http_app
 
     store = _token_store()

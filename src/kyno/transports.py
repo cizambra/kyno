@@ -39,10 +39,13 @@ PUBLIC_HEADERS = {
 
 def token_for_request(headers: dict, store, now: datetime):
     """Find the live token a request's bearer header carries, or None.
-    No header, an unknown value, a revoked token and an expired one all
-    return None, and the caller turns None into a 401. The four cases
-    look identical from outside on purpose: a different answer would
-    tell a caller which tokens exist."""
+
+    Returns None in four cases: no Authorization header, a header that is
+    not a Bearer value, a value no row matches, and a token that is revoked
+    or expired. The caller turns None into a 401.
+
+    The four cases return the same response on purpose. Distinguishing them
+    would tell a caller which tokens exist."""
     value = None
     for k, v in headers.items():
         if k.lower() == "authorization":
@@ -57,10 +60,12 @@ def token_for_request(headers: dict, store, now: datetime):
 
 
 def _tool_calls(body: bytes) -> list[tuple[str, str]]:
-    """The (tool, constitution) pairs a JSON-RPC body asks for. A body
-    that is not valid JSON, or carries no tool call, returns an empty
-    list -- rejecting malformed requests is the MCP layer's job, not
-    this function's."""
+    """List the (tool, constitution) pairs a JSON-RPC body asks for.
+
+    Returns an empty list for a body that is not valid JSON, or that
+    carries no tool call: rejecting malformed requests is the MCP layer's
+    job, and this only reports what it can read. A batch request (a JSON
+    array) returns one pair per call in it."""
     try:
         payload = json.loads(body)
     except ValueError:
@@ -93,9 +98,11 @@ def build_http_app(
     *,
     allow_insecure: bool = False,
 ):
-    """The Starlette app: the public constitution pages, and /mcp checking
-    bearer values against the store's token table. Passing no store turns the
-    gate off, which lets anyone who can reach the port rewrite the
+    """Build the Starlette app: the public constitution pages, and /mcp
+    behind the token check.
+
+    `store` is where bearer values are looked up. Passing None turns the
+    check off, which lets anyone who can reach the port rewrite the
     constitution, so it requires allow_insecure=True."""
     if store is None and not allow_insecure:
         raise ConfigError(

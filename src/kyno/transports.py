@@ -52,8 +52,12 @@ def _tool_calls(body: bytes) -> list[tuple[str, str]]:
 
     Returns an empty list for a body that is not valid JSON, or that
     carries no tool call: rejecting malformed requests is the MCP layer's
-    job, and this only reports what it can read. A batch request (a JSON
-    array) returns one pair per call in it."""
+    job, and this only reports what it can read.
+
+    A JSON array (a batch) is read too, one pair per item. Batches are
+    NOT supported -- the MCP layer rejects them -- but the scope check
+    must see every call that layer could ever execute, so it reads the
+    shape anyway in case a future SDK version accepts it."""
     try:
         payload = json.loads(body)
     except ValueError:

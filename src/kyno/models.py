@@ -27,6 +27,12 @@ AUTOMATION = "automation"
 OVERRIDE = "override"
 AUTHORIZATIONS = (OPERATOR, AUTOMATION, OVERRIDE)
 
+# What a token may do. read covers every tool except set_direction; write
+# covers everything.
+READ = "read"
+WRITE = "write"
+SCOPES = (READ, WRITE)
+
 
 def check_detail(detail: str, what: str = "detail") -> str:
     if detail not in DETAIL_LEVELS:
@@ -240,3 +246,25 @@ class ChangesSince(HoldsPrinciples):
         payload["change_notes"] = list(self.change_notes)
         payload["delta"] = list(self.delta)
         return payload
+
+
+@dataclass(frozen=True)
+class Token:
+    """One kyno_tokens row: the identity that versions reference. There is
+    no value and no hash here -- the value is shown once at minting, and
+    the hash never leaves the store."""
+
+    id: int
+    name: str
+    scope: str
+    created_at: datetime
+    last_used_at: datetime | None = None
+    expires_at: datetime | None = None
+    revoked_at: datetime | None = None
+
+    def live_at(self, now: datetime) -> bool:
+        """Live means the server would accept it: not revoked, not expired.
+        Defined once, here, so the CLI and the request check cannot drift."""
+        if self.revoked_at is not None:
+            return False
+        return self.expires_at is None or self.expires_at > now

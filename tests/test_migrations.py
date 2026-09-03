@@ -5,7 +5,7 @@ from typer.testing import CliRunner
 
 from tests.workspaces import cli_workspace
 
-TABLES = {"kyno_constitutions", "kyno_constitution_versions"}
+TABLES = {"kyno_constitutions", "kyno_constitution_versions", "kyno_tokens"}
 
 
 def _colmap(insp, table):
@@ -31,7 +31,7 @@ def test_given_a_fresh_database_when_alembic_upgrades_then_the_expected_tables_e
     command.upgrade(cfg, "head")
     insp = inspect(create_engine(f"sqlite:///{db}"))
     tables = set(insp.get_table_names())
-    assert {"kyno_constitutions", "kyno_constitution_versions"} <= tables
+    assert tables >= TABLES
 
 
 def test_given_an_upgraded_database_when_downgrading_and_upgrading_then_the_schema_round_trips(
@@ -42,7 +42,7 @@ def test_given_an_upgraded_database_when_downgrading_and_upgrading_then_the_sche
     cfg = Config("alembic.ini")
     cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db}")
     engine = create_engine(f"sqlite:///{db}")
-    tables = {"kyno_constitutions", "kyno_constitution_versions"}
+    tables = TABLES
 
     command.upgrade(cfg, "head")
     assert tables <= set(inspect(engine).get_table_names())
@@ -87,7 +87,7 @@ def test_given_the_migration_and_the_embedded_schema_when_comparing_then_they_ar
     store.create_all()
     einsp = inspect(store.engine)
 
-    tables = {"kyno_constitutions", "kyno_constitution_versions"}
+    tables = TABLES
     assert tables <= set(minsp.get_table_names())
     assert tables <= set(einsp.get_table_names())
 
@@ -406,3 +406,87 @@ def test_given_an_existing_database_when_upgrading_then_its_versions_stay_unauth
     head = ControlPlane(SqlConstitutionStore(url=url)).current("legacy")
     assert head.mission == "Old mission"
     assert head.authorized_by is None
+
+
+def _has_token_hash_uniqueness(insp, tokens_table="kyno_tokens"):
+    for uc in insp.get_unique_constraints(tokens_table):
+        if uc["column_names"] == ["token_hash"]:
+            return True
+    for ix in insp.get_indexes(tokens_table):
+        if ix.get("unique") and ix["column_names"] == ["token_hash"]:
+            return True
+    return False
+
+
+def test_given_the_two_schema_paths_when_comparing_then_token_hash_is_unique_in_both(tmp_path):
+    # The hash is how a request finds its row; without uniqueness a double
+    # insert could make one bearer value match two tokens.
+    from kyno.store.sql import SqlConstitutionStore
+
+    mdb = tmp_path / "tok_migrated.sqlite3"
+    cfg = Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", f"sqlite:///{mdb}")
+    command.upgrade(cfg, "head")
+    minsp = inspect(create_engine(f"sqlite:///{mdb}"))
+
+    edb = tmp_path / "tok_embedded.sqlite3"
+    store = SqlConstitutionStore(url=f"sqlite:///{edb}")
+    store.create_all()
+    einsp = inspect(store.engine)
+
+    assert _has_token_hash_uniqueness(minsp), "migrated schema: token_hash is not unique"
+    assert _has_token_hash_uniqueness(einsp), "embedded schema: token_hash is not unique"
+
+
+def test_given_an_existing_database_when_upgrading_then_it_gains_the_tokens_table_and_keeps_rows(
+    tmp_path,
+):
+    # The realistic upgrade one migration later: a pre-token store gains
+    # kyno_tokens, and everything it already held keeps serving.
+    from kyno.service import ControlPlane
+    from kyno.store.sql import SqlConstitutionStore
+
+    db = tmp_path / "pre_tokens.sqlite3"
+    url = f"sqlite:///{db}"
+    cfg = Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", url)
+
+    command.upgrade(cfg, "0004")
+    engine = create_engine(url)
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            "INSERT INTO kyno_constitutions (name, current_version, created_at) "
+            "VALUES ('legacy', 1, '2026-01-01 00:00:00')"
+        )
+        conn.exec_driver_sql(
+            "INSERT INTO kyno_constitution_versions (constitution_id, version, mission, "
+            "principles, change_note, changed_mission, changed_principles, created_at) "
+            "VALUES (1, 1, 'Old mission', '[\"p1\"]', 'init', 1, 1, '2026-01-01 00:00:00')"
+        )
+
+    command.upgrade(cfg, "head")
+
+    assert "kyno_tokens" in set(inspect(engine).get_table_names())
+    store = SqlConstitutionStore(url=url)
+    assert ControlPlane(store).current("legacy").mission == "Old mission"
+    assert store.tokens() == []
+
+
+def test_given_a_head_database_when_downgrading_the_tokens_migration_then_only_that_table_drops(
+    tmp_path,
+):
+    db = tmp_path / "tok_step_down.sqlite3"
+    cfg = Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db}")
+    engine = create_engine(f"sqlite:///{db}")
+
+    command.upgrade(cfg, "head")
+    versions_before = _colmap(inspect(engine), "kyno_constitution_versions")
+
+    command.downgrade(cfg, "0004")
+    insp = inspect(engine)
+    assert "kyno_tokens" not in set(insp.get_table_names())
+    assert _colmap(insp, "kyno_constitution_versions") == versions_before
+
+    command.upgrade(cfg, "head")
+    assert "kyno_tokens" in set(inspect(engine).get_table_names())

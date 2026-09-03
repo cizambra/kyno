@@ -178,6 +178,11 @@ The rules, one at a time:
   if a stolen write token could mint, it could mint itself a spare before
   you revoke it.
 
+On every authenticated request, the server writes one log line per tool
+call — the token id and name, the tool, and the constitution. That log is
+the request history: read it to know which tokens were active in a time
+window.
+
 ## Remote mode
 
 Locally, `kyno` talks straight to a store file on your disk. Remote mode points the same commands at a Kyno server instead: you operate production from your laptop or a pipeline, and nobody holds database credentials. Setting it up consists in three steps: save a token, name a destination, and go remote with the commands you already know.

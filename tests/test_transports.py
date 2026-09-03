@@ -295,11 +295,20 @@ def test_given_a_write_token_when_driving_a_full_http_session_then_the_set_missi
 
 
 def test_given_a_batched_body_when_posting_then_the_scope_check_reads_it_and_the_sdk_rejects_it():
-    # Pins the division of labor for batches. The scope check reads every
-    # item, so a read token's hidden write is 403 before the MCP layer runs.
-    # The MCP SDK rejects arrays, so even a write token's batch is 400 and
-    # nothing executes. If an SDK update starts accepting batches, the 400
-    # assertion fails and we decide on purpose instead of by surprise.
+    # Batches (JSON arrays) never execute. This test proves both layers:
+    #
+    # With a read token: our scope check reads every item in the array,
+    # finds the set_direction, and answers 403 itself. The MCP SDK is
+    # never reached.
+    #
+    # With a write token: our scope check allows the request, so it
+    # reaches the MCP SDK -- and the SDK does not accept arrays, so it
+    # answers 400 without executing anything.
+    #
+    # The 400 comes from the SDK, not from our code. If a future SDK
+    # version starts accepting batches, that assertion fails, and we get
+    # to decide whether to support batches instead of finding out after
+    # they already run.
     from starlette.testclient import TestClient
 
     store, write_value, app = _gated()

@@ -28,7 +28,7 @@ def _now():
     return datetime.now(UTC)
 
 
-def test_given_no_authorization_header_when_resolving_the_token_then_there_is_none():
+def test_given_a_request_with_no_authorization_header_when_resolving_then_no_token_is_found():
     assert token_for_request({}, _token_store(), _now()) is None
 
 
@@ -48,7 +48,7 @@ def test_given_a_capitalized_authorization_header_when_resolving_then_it_still_m
     assert token_for_request({"Authorization": f"Bearer {value}"}, store, _now()) is not None
 
 
-def test_given_wrong_revoked_and_expired_tokens_when_resolving_then_all_answer_none():
+def test_given_a_token_that_is_unknown_revoked_or_expired_when_resolving_then_it_is_none():
     store = _token_store()
     revoked_value = _mint(store, name="revoked")
     store.revoke_token(store.tokens()[0].id)

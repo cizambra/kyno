@@ -16,9 +16,14 @@ HOSTILE = "<script>alert('xss')</script>"
 
 
 @pytest.fixture
-def plane():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+def store():
+    s = SqlConstitutionStore(url="sqlite://")
+    s.create_all()
+    return s
+
+
+@pytest.fixture
+def plane(store):
     return ControlPlane(store)
 
 
@@ -150,7 +155,9 @@ def test_given_unpublished_history_when_rendering_a_template_then_the_history_is
     assert "a note nobody may read" not in page
 
 
-def test_given_a_template_ignoring_placeholders_when_rendering_then_that_is_fine(plane, tmp_path):
+def test_given_a_template_ignoring_placeholders_when_rendering_then_that_is_fine(
+    plane, tmp_path, store
+):
     path = tmp_path / "constitution.html"
     path.write_text("<html><body><h1>$mission</h1></body></html>")
     page = render_constitution(
@@ -242,7 +249,7 @@ def test_given_a_template_that_disappears_when_serving_then_the_public_page_stay
     path.write_text(TEMPLATE)
     published(plane, mission="Ship trust")
     page = PageConfig(constitution_template=str(path))
-    app = build_http_app(plane, allow_insecure=True, page=page)
+    app = build_http_app(plane, token_store=store, page=page)
 
     with TestClient(app) as client:
         assert '<ul class="ours">' in client.get("/constitutions/default").text
@@ -253,12 +260,14 @@ def test_given_a_template_that_disappears_when_serving_then_the_public_page_stay
         assert "<style>" in recovered.text
 
 
-def test_given_a_custom_template_when_serving_then_no_route_semantics_change(plane, tmp_path):
+def test_given_a_custom_template_when_serving_then_no_route_semantics_change(
+    plane, tmp_path, store
+):
     path = tmp_path / "constitution.html"
     path.write_text(TEMPLATE)
     direction(plane, "internal")
     page = PageConfig(constitution_template=str(path))
-    app = build_http_app(plane, allow_insecure=True, page=page)
+    app = build_http_app(plane, token_store=store, page=page)
 
     with TestClient(app) as client:
         assert client.get("/constitutions/internal").status_code == 404
@@ -267,14 +276,16 @@ def test_given_a_custom_template_when_serving_then_no_route_semantics_change(pla
         assert payload == {"error": "not found"}
 
 
-def test_given_a_custom_template_when_reading_the_json_view_then_it_is_untouched(plane, tmp_path):
+def test_given_a_custom_template_when_reading_the_json_view_then_it_is_untouched(
+    plane, tmp_path, store
+):
     # Templates are a presentation choice; the machine-readable view is a
     # contract and must not move with them.
     path = tmp_path / "constitution.html"
     path.write_text(TEMPLATE)
     published(plane, mission="Ship trust")
     page = PageConfig(constitution_template=str(path))
-    app = build_http_app(plane, allow_insecure=True, page=page)
+    app = build_http_app(plane, token_store=store, page=page)
 
     with TestClient(app) as client:
         payload = client.get("/constitutions/default.json").json()

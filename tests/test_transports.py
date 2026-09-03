@@ -136,8 +136,9 @@ def test_given_no_bearer_when_posting_to_the_http_app_then_it_is_401():
 
 
 def test_given_a_get_request_without_a_token_when_opening_the_stream_then_it_is_401():
-    # The check runs before the method split, so GET (the SSE stream) and
-    # DELETE (closing a session) are gated the same as POST.
+    # The check runs before the method split, so GET and DELETE are gated
+    # the same as POST. A GET opens the server-sent-events stream, where
+    # the server pushes notifications; DELETE closes a session.
     from starlette.testclient import TestClient
 
     _store, _value, app = _gated()
@@ -258,7 +259,7 @@ def _sse_json(text):
     for line in text.splitlines():
         if line.startswith("data: "):
             return json.loads(line[len("data: ") :])
-    raise AssertionError(f"no data: line in SSE body: {text!r}")
+    raise AssertionError(f"no data: line in the server-sent-events body: {text!r}")
 
 
 @pytest.mark.e2e

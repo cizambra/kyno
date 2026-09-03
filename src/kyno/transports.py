@@ -107,9 +107,10 @@ def build_http_app(
             await Response("request body too large", status_code=413)(scope, receive, send)
             return
         if scope.get("method") != "POST":
-            # GET opens the SSE stream and DELETE closes a session.
-            # Neither carries a tool call, so there is no scope to check
-            # and nothing to log.
+            # GET opens the server-sent-events stream, where the server
+            # pushes notifications; DELETE closes a session. Neither
+            # carries a tool call, so there is no scope to check and
+            # nothing to log.
             await manager.handle_request(scope, receive, send)
             return
         # Buffer the body: the cap needs counting either way, and the scope

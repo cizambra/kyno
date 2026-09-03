@@ -32,7 +32,7 @@ def test_given_no_workspace_when_loading_then_the_error_names_kyno_new(tmp_path,
 def test_given_a_fresh_workspace_when_loading_then_defaults_apply(tmp_path, monkeypatch):
     s = load_from(tmp_path, monkeypatch)
     assert s.database_url.endswith("db/kyno.sqlite3")
-    assert s.token is None and s.table_prefix == "kyno_"
+    assert s.token is None
     assert s.host == "127.0.0.1" and s.port == 2256
     assert s.allow_insecure is False
     store = store_from_settings(s)

@@ -60,7 +60,6 @@ class Settings:
     database_url: str
     # repr=False: settings travel into logs and tracebacks; the credential must not.
     token: str | None = field(repr=False)
-    table_prefix: str
     host: str
     port: int
     page: PageConfig
@@ -80,7 +79,6 @@ class Settings:
         return cls(
             database_url=ws.database_url,
             token=_token_from_env(),
-            table_prefix="kyno_",
             host=ws.host,
             port=ws.port,
             page=_page_from_workspace(ws.page, ws.root),
@@ -89,4 +87,4 @@ class Settings:
 
 
 def store_from_settings(settings: Settings) -> SqlConstitutionStore:
-    return SqlConstitutionStore(url=settings.database_url, prefix=settings.table_prefix)
+    return SqlConstitutionStore(url=settings.database_url)

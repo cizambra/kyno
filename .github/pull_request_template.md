@@ -1,23 +1,15 @@
-## Summary
+# Overview
 
-<!-- One or two sentences: what this PR does and why it matters to a user of the library. -->
+<!-- In a nutshell: what is this change about? -->
 
-## Why
+# What changed?
 
-<!-- The problem or motivation. Link public issues/discussions where they exist. -->
+<!-- At a product level; the code can tell the story. Diagrams or wireframes welcome. -->
 
-## Out of scope
+# Relevant Links
 
-<!-- What this deliberately does not do, if anything. -->
+<!-- Public links that support the change (papers, articles). Not mandatory: delete the section if there are none. -->
 
-## Breaking changes
+# How does it look like
 
-<!-- Any change an existing user would feel (API, CLI, config, baseline format). "None" is a fine answer. -->
-
-## How to verify
-
-<!-- Commands a reviewer can run; expected results. -->
-
-## Notes for reviewers
-
-<!-- Where to look first; the riskiest or most judgment-heavy part. -->
+<!-- Real life: a real captured terminal session, and a good example to manually test ourselves. -->

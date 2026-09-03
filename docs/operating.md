@@ -183,6 +183,12 @@ call — the token id and name, the tool, and the constitution. That log is
 the request history: read it to know which tokens were active in a time
 window.
 
+The token's `last_used_at` is also updated, at most once every five
+minutes, so `kyno token list` can answer whether a token is still in use
+without a database write per request. The stored time can run up to five
+minutes behind the real last use, never ahead; for exact times, read the
+log.
+
 ## Remote mode
 
 Locally, `kyno` talks straight to a store file on your disk. Remote mode points the same commands at a Kyno server instead: you operate production from your laptop or a pipeline, and nobody holds database credentials. Setting it up consists in three steps: save a token, name a destination, and go remote with the commands you already know.

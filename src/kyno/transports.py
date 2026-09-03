@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import json
-import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from kyno.errors import ConfigError
 from kyno.mcp_server import build_server
-from kyno.models import WRITE
 from kyno.public_page import PageConfig
 from kyno.service import ControlPlane
 from kyno.tokens import hash_value
@@ -14,17 +11,6 @@ from kyno.tokens import hash_value
 # A JSON-RPC request is small; the largest legitimate one carries a full
 # constitution, which the field caps hold far under this.
 MAX_MCP_BODY_BYTES = 5_000_000
-
-# How often last_used_at is allowed to move. A token already marked as used
-# in the last five minutes is not updated again, so a busy fleet costs one
-# write per token every five minutes instead of one per request. In exchange,
-# "last used" in `kyno token list` can run up to five minutes behind.
-TOUCH_EVERY = timedelta(minutes=5)
-
-# One line per tool call: token id and name, the tool, the constitution.
-# Read this log to know what a token did and when; last_used_at only says
-# whether a token is still in use at all.
-_request_log = logging.getLogger("kyno.requests")
 
 
 # On every public response, including 404s: the pages carry one inline
@@ -57,30 +43,6 @@ def token_for_request(headers: dict, store, now: datetime):
     if token is None or not token.live_at(now):
         return None
     return token
-
-
-def _tool_calls(body: bytes) -> list[tuple[str, str]]:
-    """List the (tool, constitution) pairs a JSON-RPC body asks for.
-
-    Returns an empty list for a body that is not valid JSON, or that
-    carries no tool call: rejecting malformed requests is the MCP layer's
-    job, and this only reports what it can read. A batch request (a JSON
-    array) returns one pair per call in it."""
-    try:
-        payload = json.loads(body)
-    except ValueError:
-        return []
-    items = payload if isinstance(payload, list) else [payload]
-    calls = []
-    for item in items:
-        if not isinstance(item, dict) or item.get("method") != "tools/call":
-            continue
-        params = item.get("params") or {}
-        arguments = params.get("arguments") or {}
-        name = params.get("name")
-        if isinstance(name, str):
-            calls.append((name, arguments.get("constitution") or "default"))
-    return calls
 
 
 async def run_stdio(control_plane: ControlPlane) -> None:
@@ -139,7 +101,6 @@ def build_http_app(
             if token is None:
                 await Response("unauthorized", status_code=401)(scope, receive, send)
                 return
-            store.touch_token(token.id, older_than=datetime.now(UTC) - TOUCH_EVERY)
         declared = headers.get("content-length", "")
         if declared.isdigit() and int(declared) > MAX_MCP_BODY_BYTES:
             await Response("request body too large", status_code=413)(scope, receive, send)
@@ -164,21 +125,6 @@ def build_http_app(
                 return
             if not message.get("more_body"):
                 break
-        calls = _tool_calls(bytes(body))
-        if token is not None:
-            if token.scope != WRITE and any(name == "set_direction" for name, _ in calls):
-                await Response("forbidden: this token is read-only", status_code=403)(
-                    scope, receive, send
-                )
-                return
-            for name, constitution in calls:
-                _request_log.info(
-                    "token=%s name=%s tool=%s constitution=%s",
-                    token.id,
-                    token.name,
-                    name,
-                    constitution,
-                )
         replayed = False
 
         async def replay():

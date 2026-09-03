@@ -342,27 +342,6 @@ class SqlConstitutionStore:
             ).first()
         return self._row_to_token(row) if row else None
 
-    def touch_token(self, token_id: int, *, older_than: datetime) -> bool:
-        """Record that the token was just used, but only when its stored
-        last_used_at is missing or older than `older_than`. Callers pass a
-        cutoff of "now minus five minutes", so a token in constant use is
-        updated once every five minutes instead of on every request.
-
-        Returns True when the row was updated, False when it was left as it
-        was. The condition and the write are one UPDATE statement, so two
-        requests arriving at the same moment cannot both write."""
-        with self.engine.begin() as conn:
-            result = conn.execute(
-                update(self._tokens)
-                .where(self._tokens.c.id == token_id)
-                .where(
-                    (self._tokens.c.last_used_at.is_(None))
-                    | (self._tokens.c.last_used_at < older_than)
-                )
-                .values(last_used_at=datetime.now(UTC))
-            )
-        return result.rowcount > 0
-
     def revoke_token(self, token_id: int) -> bool:
         """Set revoked_at. False means nothing changed: no such id, or
         already revoked -- an existing revocation stamp is history, and

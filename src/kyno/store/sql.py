@@ -8,7 +8,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 
 from kyno.errors import ConfigError, CorruptStateError, VersionConflictError
-from kyno.models import ConstitutionVersion, Principle, Publication, normalize_principles
+from kyno.models import (
+    ConstitutionVersion,
+    Principle,
+    Publication,
+    Token,
+    normalize_principles,
+)
 from kyno.store.schema import build_metadata
 
 
@@ -59,7 +65,7 @@ class SqlConstitutionStore:
                 ) from None
         else:
             self.engine = engine
-        self.metadata, self._constitutions, self._versions = build_metadata(prefix)
+        self.metadata, self._constitutions, self._versions, self._tokens = build_metadata(prefix)
 
     def create_all(self) -> None:
         self.metadata.create_all(self.engine)
@@ -274,3 +280,64 @@ class SqlConstitutionStore:
             created_by=created_by,
             authorized_by=authorized_by,
         )
+
+    def _row_to_token(self, row) -> Token:
+        def utc(dt):
+            # The same SQLite restamp as _row_to_version: this store only
+            # ever writes UTC.
+            if dt is not None and dt.tzinfo is None:
+                return dt.replace(tzinfo=UTC)
+            return dt
+
+        return Token(
+            id=row.id,
+            name=row.name,
+            scope=row.scope,
+            created_at=utc(row.created_at),
+            last_used_at=utc(row.last_used_at),
+            expires_at=utc(row.expires_at),
+            revoked_at=utc(row.revoked_at),
+        )
+
+    def add_token(
+        self, name: str, scope: str, *, token_hash: str, expires_at: datetime | None = None
+    ) -> Token:
+        """Insert one token row. The caller holds the value; only its hash
+        arrives here."""
+        now = datetime.now(UTC)
+        with self.engine.begin() as conn:
+            tid = conn.execute(
+                insert(self._tokens).values(
+                    name=name,
+                    scope=scope,
+                    token_hash=token_hash,
+                    created_at=now,
+                    expires_at=expires_at,
+                )
+            ).inserted_primary_key[0]
+        return Token(id=tid, name=name, scope=scope, created_at=now, expires_at=expires_at)
+
+    def token(self, token_id: int) -> Token | None:
+        with self.engine.connect() as conn:
+            row = conn.execute(select(self._tokens).where(self._tokens.c.id == token_id)).first()
+        return self._row_to_token(row) if row else None
+
+    def tokens(self) -> list[Token]:
+        """Every token row, ascending id. Liveness is the caller's filter:
+        rows are never deleted, so all really is all."""
+        with self.engine.connect() as conn:
+            rows = conn.execute(select(self._tokens).order_by(self._tokens.c.id.asc())).all()
+        return [self._row_to_token(r) for r in rows]
+
+    def revoke_token(self, token_id: int) -> bool:
+        """Set revoked_at. False means nothing changed: no such id, or
+        already revoked -- an existing revocation stamp is history, and
+        history does not move."""
+        with self.engine.begin() as conn:
+            result = conn.execute(
+                update(self._tokens)
+                .where(self._tokens.c.id == token_id)
+                .where(self._tokens.c.revoked_at.is_(None))
+                .values(revoked_at=datetime.now(UTC))
+            )
+        return result.rowcount > 0

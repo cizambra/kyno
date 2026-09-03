@@ -1,5 +1,5 @@
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import create_engine, delete
@@ -679,3 +679,72 @@ def test_given_a_driver_outside_the_extras_map_when_missing_then_the_module_is_n
     monkeypatch.setattr(sql_module, "create_engine", refuse)
     with pytest.raises(ConfigError, match="install the 'oracledb' package"):
         SqlConstitutionStore(url="oracle+oracledb://u:p@h/db")
+
+
+def test_given_a_minted_token_when_reading_it_back_then_states_are_null_and_the_hash_is_absent(
+    store,
+):
+    t = store.add_token("ci", "write", token_hash="a" * 64)
+
+    rows = store.tokens()
+
+    assert [r.id for r in rows] == [t.id]
+    r = rows[0]
+    assert (r.name, r.scope) == ("ci", "write")
+    assert r.created_at.tzinfo is not None
+    assert r.last_used_at is None and r.expires_at is None and r.revoked_at is None
+    # The hash never leaves the store: the Token object has no field for it.
+    assert not hasattr(r, "token_hash")
+
+
+def test_given_two_tokens_sharing_a_name_when_minting_then_both_rows_exist(store):
+    a = store.add_token("ci", "write", token_hash="a" * 64)
+    b = store.add_token("ci", "write", token_hash="b" * 64)
+
+    assert a.id != b.id
+    assert [t.name for t in store.tokens()] == ["ci", "ci"]
+
+
+def test_given_a_revoked_token_when_revoking_again_then_the_first_stamp_stays(store):
+    t = store.add_token("ci", "write", token_hash="c" * 64)
+
+    assert store.revoke_token(t.id) is True
+    first = store.token(t.id).revoked_at
+    assert store.revoke_token(t.id) is False
+    assert store.token(t.id).revoked_at == first
+
+
+def test_given_an_unknown_id_when_revoking_then_it_reports_nothing_changed(store):
+    assert store.revoke_token(99) is False
+    assert store.token(99) is None
+
+
+def test_given_an_expiring_token_when_time_passes_then_liveness_flips_without_a_write(store):
+    expires = datetime.now(UTC) + timedelta(hours=2)
+    t = store.add_token("hotfix", "write", token_hash="d" * 64, expires_at=expires)
+
+    read_back = store.token(t.id)
+
+    assert read_back.live_at(expires - timedelta(minutes=1)) is True
+    assert read_back.live_at(expires + timedelta(minutes=1)) is False
+
+
+def test_given_a_stored_hash_when_adding_a_token_with_the_same_hash_then_it_refuses(store):
+    # The unique constraint, exercised as behavior on every backend -- the
+    # schema inspectors only look at sqlite files.
+    from sqlalchemy.exc import IntegrityError
+
+    store.add_token("ci", "write", token_hash="a" * 64)
+
+    with pytest.raises(IntegrityError):
+        store.add_token("other", "read", token_hash="a" * 64)
+
+
+def test_given_a_revoked_token_when_asking_liveness_then_it_is_not_live(store):
+    t = store.add_token("ci", "write", token_hash="b" * 64)
+    now = datetime.now(UTC)
+    assert store.token(t.id).live_at(now) is True
+
+    store.revoke_token(t.id)
+
+    assert store.token(t.id).live_at(now) is False

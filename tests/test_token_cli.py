@@ -264,11 +264,11 @@ def test_given_a_used_token_when_listing_then_last_used_shows_the_age(monkeypatc
     assert "last used 2m ago" in result.output
 
 
-def test_given_an_expired_token_when_revoking_then_it_refuses_naming_the_state(
+def test_given_an_expired_token_when_revoking_then_name_and_id_paths_both_refuse(
     monkeypatch, tmp_path
 ):
-    # Revoke means "stop working now"; an expired token already stopped.
-    # Refusing keeps the row honest about how it died.
+    # An expired token already stopped working, so revoking it would
+    # record the wrong cause. Refusing keeps the row accurate.
     _workspace(monkeypatch, tmp_path)
     store = _store()
     t = store.add_token(

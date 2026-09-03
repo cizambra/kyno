@@ -119,12 +119,52 @@ def test_given_an_invalid_port_when_running_serve_then_the_error_is_clean(monkey
     assert "Traceback" not in r.output
 
 
-def test_given_no_token_when_serving_http_then_it_is_refused(monkeypatch, tmp_path):
+def test_given_the_default_transport_when_serving_then_stdio_runs_the_mcp_server(
+    monkeypatch, tmp_path
+):
+    import anyio
+
+    from kyno.transports import run_stdio
+
     cli_workspace(monkeypatch, tmp_path)
-    monkeypatch.delenv("KYNO_TOKEN", raising=False)
+    heard = {}
+    monkeypatch.setattr(anyio, "run", lambda fn, *args: heard.update(fn=fn, args=args))
+
+    r = runner.invoke(app, ["serve"])
+
+    assert r.exit_code == 0, r.output
+    assert heard["fn"] is run_stdio
+
+
+def test_given_a_database_without_the_token_table_when_serving_http_then_it_names_db_upgrade(
+    monkeypatch, tmp_path
+):
+    cli_workspace(monkeypatch, tmp_path)
+    r = runner.invoke(app, ["serve", "--transport", "http"])
+    assert r.exit_code == 1
+    assert "kyno db upgrade" in r.output
+
+
+def test_given_no_live_tokens_when_serving_http_then_it_names_the_mint_command(
+    monkeypatch, tmp_path
+):
+    cli_workspace(monkeypatch, tmp_path)
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
     r = runner.invoke(app, ["serve", "--transport", "http"])
     assert r.exit_code != 0
-    assert "token" in r.output.lower()
+    assert "kyno token add NAME --scope write" in r.output
+
+
+def test_given_kyno_token_in_the_environment_when_serving_http_then_it_changes_nothing(
+    monkeypatch, tmp_path
+):
+    # The variable is retired: serving is decided by the token table alone.
+    cli_workspace(monkeypatch, tmp_path)
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    monkeypatch.setenv("KYNO_TOKEN", "secret")
+    r = runner.invoke(app, ["serve", "--transport", "http"])
+    assert r.exit_code != 0
+    assert "kyno token add NAME --scope write" in r.output
 
 
 @pytest.mark.parametrize("value", ["true", "TRUE", "1", "yes"])
@@ -133,22 +173,20 @@ def test_given_the_insecure_opt_in_when_serving_http_then_the_server_starts_with
 ):
     root = cli_workspace(monkeypatch, tmp_path)
     _config_lines(root, "[server]", f"allow_insecure = {value}")
-    monkeypatch.delenv("KYNO_TOKEN", raising=False)
     import uvicorn
 
     ran = {}
     monkeypatch.setattr(uvicorn, "run", lambda *a, **k: ran.setdefault("ran", True))
     r = runner.invoke(app, ["serve", "--transport", "http"])
     assert ran.get("ran") is True
-    assert "WARNING" in r.output and "KYNO_TOKEN" in r.output
+    assert "WARNING" in r.output and "without token checks" in r.output
 
 
 def test_given_workspace_host_and_port_when_serving_then_uvicorn_receives_them(
     monkeypatch, tmp_path
 ):
     root = cli_workspace(monkeypatch, tmp_path)
-    _config_lines(root, "[server]", "host = 0.0.0.0", "port = 4242")
-    monkeypatch.setenv("KYNO_TOKEN", "secret")
+    _config_lines(root, "[server]", "host = 0.0.0.0", "port = 4242", "allow_insecure = true")
     import uvicorn
 
     heard = {}

@@ -258,11 +258,14 @@ def test_given_a_live_server_when_applying_remotely_then_the_version_is_applied(
 
     import uvicorn
 
+    from kyno.tokens import generate_value, hash_value
     from kyno.transports import build_http_app
 
     store = SqlConstitutionStore(url=f"sqlite:///{tmp_path / 'server.sqlite3'}")
     store.create_all()
-    http_app = build_http_app(ControlPlane(store), token="s3cret")
+    value = generate_value()
+    store.add_token("e2e", "write", token_hash=hash_value(value))
+    http_app = build_http_app(ControlPlane(store), token_store=store)
     sock = socket.socket()
     sock.bind(("127.0.0.1", 0))
     port = sock.getsockname()[1]
@@ -278,7 +281,7 @@ def test_given_a_live_server_when_applying_remotely_then_the_version_is_applied(
                 break
             time.sleep(0.05)
         assert server.started, "uvicorn did not come up"
-        monkeypatch.setenv("MY_TOKEN", "s3cret")
+        monkeypatch.setenv("MY_TOKEN", value)
         assert runner.invoke(app, ["credentials", "add", "--token-env", "MY_TOKEN"]).exit_code == 0
         assert (
             runner.invoke(app, ["remote", "add", "--url", f"http://127.0.0.1:{port}"]).exit_code

@@ -748,3 +748,10 @@ def test_given_a_revoked_token_when_asking_liveness_then_it_is_not_live(store):
     store.revoke_token(t.id)
 
     assert store.token(t.id).live_at(now) is False
+
+
+def test_given_a_stored_hash_when_looking_it_up_then_the_row_answers_and_a_miss_is_none(store):
+    t = store.add_token("ci", "write", token_hash="a" * 64)
+
+    assert store.token_by_hash("a" * 64).id == t.id
+    assert store.token_by_hash("b" * 64) is None

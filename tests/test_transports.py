@@ -1,36 +1,76 @@
-from kyno.transports import require_token
+"""The /mcp gate: bearer values checked against the store's token table."""
 
-
-def test_given_no_token_configured_when_a_request_arrives_then_it_is_allowed():
-    assert require_token({}, None) is True
-
-
-def test_given_a_configured_token_when_a_request_arrives_then_only_the_matching_bearer_passes():
-    assert require_token({"authorization": "Bearer secret"}, "secret") is True
-    assert require_token({"authorization": "Bearer wrong"}, "secret") is False
-    assert require_token({}, "secret") is False
-
-
-def test_given_a_capitalized_authorization_header_when_checking_the_token_then_it_still_matches():
-    assert require_token({"Authorization": "Bearer secret"}, "secret") is True
-
-
-def test_given_a_non_ascii_bearer_value_when_checking_the_token_then_it_fails_closed_not_crashes():
-    # hmac.compare_digest raises TypeError comparing a non-ASCII str against
-    # an ASCII str; that must fail closed (401), not surface as a 500.
-    assert require_token({"authorization": "Bearer café"}, "tok") is False
-
+import json
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from kyno.mcp_server import RESOURCE_URI, build_server
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
+from kyno.tokens import generate_value, hash_value
+from kyno.transports import token_for_request
+
+
+def _token_store():
+    store = SqlConstitutionStore(url="sqlite://")
+    store.create_all()
+    return store
+
+
+def _mint(store, scope="write", name="t", expires_at=None):
+    value = generate_value()
+    store.add_token(name, scope, token_hash=hash_value(value), expires_at=expires_at)
+    return value
+
+
+def test_given_a_request_with_no_authorization_header_when_resolving_then_no_token_is_found():
+    assert token_for_request({}, _token_store(), datetime.now(UTC)) is None
+
+
+def test_given_a_live_token_when_resolving_then_the_row_comes_back_with_its_scope():
+    store = _token_store()
+    value = _mint(store, scope="read", name="crew")
+
+    token = token_for_request({"authorization": f"Bearer {value}"}, store, datetime.now(UTC))
+
+    assert token is not None
+    assert (token.name, token.scope) == ("crew", "read")
+
+
+def test_given_a_capitalized_authorization_header_when_resolving_then_it_still_matches():
+    store = _token_store()
+    value = _mint(store)
+    now = datetime.now(UTC)
+    assert token_for_request({"Authorization": f"Bearer {value}"}, store, now) is not None
+
+
+def test_given_a_token_that_is_unknown_revoked_or_expired_when_resolving_then_it_is_none():
+    store = _token_store()
+    revoked_value = _mint(store, name="revoked")
+    store.revoke_token(store.tokens()[0].id)
+    expired_value = _mint(store, name="expired", expires_at=datetime.now(UTC) - timedelta(hours=1))
+
+    now = datetime.now(UTC)
+    for value in ("kyno_not-a-real-token", revoked_value, expired_value):
+        assert token_for_request({"authorization": f"Bearer {value}"}, store, now) is None
+
+
+def test_given_an_authorization_header_that_is_not_a_bearer_value_when_resolving_then_none():
+    store = _token_store()
+    _mint(store)
+    now = datetime.now(UTC)
+    assert token_for_request({"authorization": "Basic dXNlcjpwdw=="}, store, now) is None
+
+
+def test_given_a_non_ascii_bearer_value_when_resolving_then_it_fails_closed_not_crashes():
+    now = datetime.now(UTC)
+    assert token_for_request({"authorization": "Bearer café"}, _token_store(), now) is None
 
 
 @pytest.mark.asyncio
 @pytest.mark.e2e
-async def test_given_a_memory_session_when_calling_tools_end_to_end_then_the_mission_round_trips():
+async def test_given_a_memory_session_when_calling_tools_then_the_set_mission_is_read_back():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = SqlConstitutionStore(url="sqlite://")
@@ -39,8 +79,6 @@ async def test_given_a_memory_session_when_calling_tools_end_to_end_then_the_mis
     server = build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
-        import json
-
         await client.call_tool(
             "set_direction", {"mission": "M1", "principles": ["p1"], "change_note": "init"}
         )
@@ -50,12 +88,6 @@ async def test_given_a_memory_session_when_calling_tools_end_to_end_then_the_mis
 
         read = await client.read_resource(RESOURCE_URI)
         assert "M1" in read.contents[0].text
-
-
-def _make_control_plane():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
-    return ControlPlane(store)
 
 
 def _initialize_payload():
@@ -77,17 +109,68 @@ _MCP_HEADERS = {
 }
 
 
+def _gated():
+    """Build a store holding one live write token, and return it with that
+    token's value and an app that checks bearer values against it."""
+    from kyno.transports import build_http_app
+
+    store = _token_store()
+    value = _mint(store)
+    cp = ControlPlane(store)
+    return store, value, build_http_app(cp, token_store=store)
+
+
+def _bearer(value):
+    return {**_MCP_HEADERS, "Authorization": f"Bearer {value}"}
+
+
 def test_given_no_bearer_when_posting_to_the_http_app_then_it_is_401():
     from starlette.testclient import TestClient
 
-    from kyno.transports import build_http_app
-
-    app = build_http_app(_make_control_plane(), token="secret")
+    _store, _value, app = _gated()
 
     with TestClient(app) as client:
         response = client.post("/mcp", json=_initialize_payload(), headers=_MCP_HEADERS)
 
     assert response.status_code == 401
+
+
+def test_given_a_get_request_without_a_token_when_opening_the_stream_then_it_is_401():
+    # The check runs before the method split, so GET and DELETE are gated
+    # the same as POST. A GET opens the server-sent-events stream, where
+    # the server pushes notifications; DELETE closes a session.
+    from starlette.testclient import TestClient
+
+    _store, _value, app = _gated()
+
+    with TestClient(app) as client:
+        response = client.get("/mcp", headers={"Accept": "text/event-stream"})
+
+    assert response.status_code == 401
+
+
+def test_given_every_dead_end_when_posting_then_the_answers_are_identical():
+    # Unknown, revoked and expired must look the same from outside; a
+    # distinct answer would confirm which tokens exist.
+    from starlette.testclient import TestClient
+
+    store, _value, app = _gated()
+    revoked = _mint(store, name="revoked")
+    store.revoke_token(next(t.id for t in store.tokens() if t.name == "revoked"))
+    expired = _mint(store, name="expired", expires_at=datetime.now(UTC) - timedelta(hours=1))
+
+    answers = set()
+    with TestClient(app) as client:
+        for headers in (
+            _MCP_HEADERS,
+            _bearer("kyno_never-minted"),
+            _bearer(revoked),
+            _bearer(expired),
+        ):
+            response = client.post("/mcp", json=_initialize_payload(), headers=headers)
+            answers.add((response.status_code, response.text))
+
+    assert answers == {(401, "unauthorized")}
 
 
 def test_given_an_authorized_request_when_the_lifespan_runs_then_it_reaches_the_mcp_handler():
@@ -96,16 +179,10 @@ def test_given_an_authorized_request_when_the_lifespan_runs_then_it_reaches_the_
     # initialized"), surfaced as a 500 by Starlette.
     from starlette.testclient import TestClient
 
-    from kyno.transports import build_http_app
-
-    app = build_http_app(_make_control_plane(), token="secret")
+    _store, value, app = _gated()
 
     with TestClient(app) as client:
-        response = client.post(
-            "/mcp",
-            json=_initialize_payload(),
-            headers={**_MCP_HEADERS, "Authorization": "Bearer secret"},
-        )
+        response = client.post("/mcp", json=_initialize_payload(), headers=_bearer(value))
 
     assert response.status_code != 500
     assert "Task group is not initialized" not in response.text
@@ -116,9 +193,7 @@ def test_given_an_authorized_request_when_the_lifespan_runs_then_it_reaches_the_
 def test_given_a_non_ascii_authorization_header_when_posting_then_it_is_401_not_500():
     from starlette.testclient import TestClient
 
-    from kyno.transports import build_http_app
-
-    app = build_http_app(_make_control_plane(), token="secret")
+    _store, _value, app = _gated()
 
     with TestClient(app) as client:
         response = client.post(
@@ -134,9 +209,7 @@ def test_given_a_non_ascii_authorization_header_when_posting_then_it_is_401_not_
 async def test_given_non_utf8_header_bytes_when_handling_the_request_then_it_is_401_not_500():
     # A header value that isn't valid UTF-8 at all (not just non-ASCII) must
     # not crash v.decode() in handle(); it should fail closed as 401.
-    from kyno.transports import build_http_app
-
-    app = build_http_app(_make_control_plane(), token="secret")
+    _store, _value, app = _gated()
     # Found by path, not by position: the app also carries the public
     # constitution routes, and their order is not this test's business.
     handle = next(r for r in app.routes if getattr(r, "path", None) == "/mcp").app
@@ -161,60 +234,47 @@ async def test_given_non_utf8_header_bytes_when_handling_the_request_then_it_is_
     assert status == 401
 
 
-@pytest.mark.e2e
-def test_given_the_bearer_gate_when_driving_a_full_http_session_then_the_mission_round_trips():
-    # Existing HTTP tests stop at initialize; this drives a full session
-    # (set_direction then get_constitution) through the real bearer-token gate.
-    import json
+def _drive_session(client, headers):
+    init_resp = client.post("/mcp", json=_initialize_payload(), headers=headers)
+    session_id = init_resp.headers["mcp-session-id"]
+    h = {**headers, "mcp-session-id": session_id}
+    client.post("/mcp", json={"jsonrpc": "2.0", "method": "notifications/initialized"}, headers=h)
+    return h
 
+
+def _call(client, headers, request_id, name, arguments):
+    return client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "method": "tools/call",
+            "params": {"name": name, "arguments": arguments},
+        },
+        headers=headers,
+    )
+
+
+def _sse_json(text):
+    for line in text.splitlines():
+        if line.startswith("data: "):
+            return json.loads(line[len("data: ") :])
+    raise AssertionError(f"no data: line in the server-sent-events body: {text!r}")
+
+
+@pytest.mark.e2e
+def test_given_a_write_token_when_driving_a_full_http_session_then_the_set_mission_is_read_back():
     from starlette.testclient import TestClient
 
-    from kyno.transports import build_http_app
-
-    app = build_http_app(_make_control_plane(), token="secret")
-    headers = {**_MCP_HEADERS, "Authorization": "Bearer secret"}
+    _store, value, app = _gated()
 
     with TestClient(app) as client:
-        init_resp = client.post("/mcp", json=_initialize_payload(), headers=headers)
-        session_id = init_resp.headers["mcp-session-id"]
-        h = {**headers, "mcp-session-id": session_id}
-        client.post(
-            "/mcp", json={"jsonrpc": "2.0", "method": "notifications/initialized"}, headers=h
-        )
-
-        set_resp = client.post(
-            "/mcp",
-            json={
-                "jsonrpc": "2.0",
-                "id": 2,
-                "method": "tools/call",
-                "params": {
-                    "name": "set_direction",
-                    "arguments": {"mission": "M1", "change_note": "init"},
-                },
-            },
-            headers=h,
-        )
+        h = _drive_session(client, _bearer(value))
+        set_resp = _call(client, h, 2, "set_direction", {"mission": "M1", "change_note": "init"})
         assert set_resp.status_code == 200
+        get_resp = _call(client, h, 3, "get_constitution", {})
 
-        get_resp = client.post(
-            "/mcp",
-            json={
-                "jsonrpc": "2.0",
-                "id": 3,
-                "method": "tools/call",
-                "params": {"name": "get_constitution", "arguments": {}},
-            },
-            headers=h,
-        )
-
-    def sse_json(text):
-        for line in text.splitlines():
-            if line.startswith("data: "):
-                return json.loads(line[len("data: ") :])
-        raise AssertionError(f"no data: line in SSE body: {text!r}")
-
-    payload = json.loads(sse_json(get_resp.text)["result"]["content"][0]["text"])
+    payload = json.loads(_sse_json(get_resp.text)["result"]["content"][0]["text"])
     assert payload["mission"] == "M1"
     assert payload["version"] == 1
 
@@ -222,15 +282,13 @@ def test_given_the_bearer_gate_when_driving_a_full_http_session_then_the_mission
 def test_given_a_declared_body_over_the_cap_when_posting_then_it_is_413_before_the_body_is_read():
     from starlette.testclient import TestClient
 
-    from kyno.transports import MAX_MCP_BODY_BYTES, build_http_app
+    from kyno.transports import MAX_MCP_BODY_BYTES
 
-    app = build_http_app(_make_control_plane(), token="secret")
+    _store, value, app = _gated()
 
     with TestClient(app) as client:
         response = client.post(
-            "/mcp",
-            content=b"x" * (MAX_MCP_BODY_BYTES + 1),
-            headers={**_MCP_HEADERS, "Authorization": "Bearer secret"},
+            "/mcp", content=b"x" * (MAX_MCP_BODY_BYTES + 1), headers=_bearer(value)
         )
 
     assert response.status_code == 413
@@ -239,16 +297,12 @@ def test_given_a_declared_body_over_the_cap_when_posting_then_it_is_413_before_t
 def test_given_a_declared_body_at_the_cap_when_posting_then_it_is_not_413():
     from starlette.testclient import TestClient
 
-    from kyno.transports import MAX_MCP_BODY_BYTES, build_http_app
+    from kyno.transports import MAX_MCP_BODY_BYTES
 
-    app = build_http_app(_make_control_plane(), token="secret")
+    _store, value, app = _gated()
 
     with TestClient(app) as client:
-        response = client.post(
-            "/mcp",
-            content=b"x" * MAX_MCP_BODY_BYTES,
-            headers={**_MCP_HEADERS, "Authorization": "Bearer secret"},
-        )
+        response = client.post("/mcp", content=b"x" * MAX_MCP_BODY_BYTES, headers=_bearer(value))
 
     # Not valid JSON-RPC, so the MCP layer refuses it -- but as a bad
     # request, never as too large and never as a server error.
@@ -260,59 +314,51 @@ def test_given_a_chunked_body_crossing_the_cap_when_streaming_then_it_is_413():
     # streamed bytes can enforce the cap.
     from starlette.testclient import TestClient
 
-    from kyno.transports import MAX_MCP_BODY_BYTES, build_http_app
+    from kyno.transports import MAX_MCP_BODY_BYTES
 
-    app = build_http_app(_make_control_plane(), token="secret")
+    _store, value, app = _gated()
     chunk = b"x" * (MAX_MCP_BODY_BYTES // 4 + 1)
 
     with TestClient(app) as client:
-        response = client.post(
-            "/mcp",
-            content=iter([chunk] * 5),
-            headers={**_MCP_HEADERS, "Authorization": "Bearer secret"},
-        )
+        response = client.post("/mcp", content=iter([chunk] * 5), headers=_bearer(value))
 
     assert "content-length" not in response.request.headers
     assert response.status_code == 413
 
 
 def test_given_a_chunked_body_under_the_cap_when_streaming_then_it_reaches_the_mcp_handler():
-    import json
-
     from starlette.testclient import TestClient
 
-    from kyno.transports import build_http_app
-
-    app = build_http_app(_make_control_plane(), token="secret")
+    _store, value, app = _gated()
     body = json.dumps(_initialize_payload()).encode()
     middle = len(body) // 2
 
     with TestClient(app) as client:
         response = client.post(
-            "/mcp",
-            content=iter([body[:middle], body[middle:]]),
-            headers={**_MCP_HEADERS, "Authorization": "Bearer secret"},
+            "/mcp", content=iter([body[:middle], body[middle:]]), headers=_bearer(value)
         )
 
     assert response.status_code == 200
     assert '"serverInfo"' in response.text
 
 
-def test_given_no_token_when_building_the_http_app_then_the_insecure_opt_in_is_required():
-    # A library embedder opens the write endpoint as loudly as the CLI does.
+def test_given_no_token_store_when_building_the_http_app_then_allow_insecure_is_required():
+    # An embedder has to opt in explicitly, the same as the CLI does.
     from kyno.errors import ConfigError
     from kyno.transports import build_http_app
 
-    with pytest.raises(ConfigError, match="token"):
-        build_http_app(_make_control_plane(), token=None)
+    store = _token_store()
+    with pytest.raises(ConfigError, match="token store"):
+        build_http_app(ControlPlane(store))
 
 
-def test_given_a_tokenless_opt_in_app_when_posting_then_the_lifespan_still_reaches_the_handler():
+def test_given_no_token_store_and_allow_insecure_when_posting_then_no_token_is_checked():
     from starlette.testclient import TestClient
 
     from kyno.transports import build_http_app
 
-    app = build_http_app(_make_control_plane(), token=None, allow_insecure=True)
+    store = _token_store()
+    app = build_http_app(ControlPlane(store), allow_insecure=True)
 
     with TestClient(app) as client:
         response = client.post("/mcp", json=_initialize_payload(), headers=_MCP_HEADERS)
@@ -343,10 +389,8 @@ def test_given_an_mcp_release_without_the_body_cap_when_building_the_app_then_it
     monkeypatch.setattr(manager_module, "StreamableHTTPSessionManager", OldRelease)
     from starlette.testclient import TestClient
 
-    with TestClient(build_http_app(_make_control_plane(), token="secret")) as client:
-        response = client.post(
-            "/mcp",
-            json=_initialize_payload(),
-            headers={**_MCP_HEADERS, "Authorization": "Bearer secret"},
-        )
+    store = _token_store()
+    value = _mint(store)
+    with TestClient(build_http_app(ControlPlane(store), token_store=store)) as client:
+        response = client.post("/mcp", json=_initialize_payload(), headers=_bearer(value))
     assert response.status_code == 200

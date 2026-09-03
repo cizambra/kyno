@@ -10,21 +10,24 @@ from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 from kyno.transports import build_http_app
 
-TOKEN = "secret"
+
+@pytest.fixture
+def store():
+    s = SqlConstitutionStore(url="sqlite://")
+    s.create_all()
+    return s
 
 
 @pytest.fixture
-def plane():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+def plane(store):
     return ControlPlane(store)
 
 
 @pytest.fixture
-def client(plane):
+def client(plane, store):
     """A client with no Authorization header at all: the public pages must
-    work for a visitor who has never heard of the token."""
-    with TestClient(build_http_app(plane, token=TOKEN)) as c:
+    work for anonymous visitors, with no token involved."""
+    with TestClient(build_http_app(plane, token_store=store)) as c:
         yield c
 
 
@@ -328,14 +331,16 @@ def test_given_hostile_content_when_rendering_any_page_then_the_markup_stays_wel
     assert _unbalanced_tags(client.get(path).text) == []
 
 
-def test_given_the_public_endpoints_when_inspecting_then_they_are_sync_off_the_event_loop(plane):
+def test_given_the_public_page_routes_when_inspecting_then_no_handler_is_an_async_function(
+    plane, store
+):
     # Deliberate: these handlers read the store, which is blocking. Starlette
     # runs a plain `def` endpoint in a threadpool and an `async def` one
     # directly on the event loop, where a slow query would stall every other
     # request in flight.
     import inspect
 
-    app = build_http_app(plane, token=TOKEN)
+    app = build_http_app(plane, token_store=store)
     public = [r for r in app.routes if getattr(r, "path", "").startswith("/constitutions")]
     assert len(public) == 4
     for route in public:

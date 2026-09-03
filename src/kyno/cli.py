@@ -196,8 +196,9 @@ def token_revoke(
             typer.echo(f"error: token id {token_id} is already revoked", err=True)
             raise typer.Exit(code=1)
         if not token.live_at(datetime.now(UTC)):
-            # Revoke means "stop working now"; an expired token already
-            # stopped. Stamping it would hide how it really died.
+            # Revoking sets a timestamp meaning "stopped working now".
+            # An expired token already stopped, so stamping it would record
+            # the wrong cause.
             typer.echo(f"error: token id {token_id} already expired", err=True)
             raise typer.Exit(code=1)
         store.revoke_token(token_id)
@@ -911,38 +912,19 @@ def new(
 def serve(transport: str = typer.Option("stdio", "--transport")) -> None:
     try:
         settings = Settings.load()
+        store = store_from_settings(settings)
+        cp = ControlPlane(store)
+        if transport == "stdio":
+            from kyno.serving import serve_stdio
+
+            serve_stdio(cp)
+            return
+        if transport == "http":
+            from kyno.serving import serve_http
+
+            serve_http(settings, store, cp)
+            return
     except CoherenceError as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
-    cp = ControlPlane(store_from_settings(settings))
-    if transport == "stdio":
-        import anyio
-
-        from kyno.transports import run_stdio
-
-        anyio.run(run_stdio, cp)
-    elif transport == "http":
-        allow_insecure = settings.allow_insecure
-        if settings.token is None and not allow_insecure:
-            raise typer.BadParameter(
-                "refusing to serve HTTP without a token: set KYNO_TOKEN, or set "
-                "allow_insecure = true in config/server to override for local use"
-            )
-        if settings.token is None:
-            typer.echo(
-                "WARNING: serving HTTP with no KYNO_TOKEN set "
-                "(allow_insecure is on) — the constitution can be "
-                "rewritten by anyone who can reach this endpoint",
-                err=True,
-            )
-        import uvicorn
-
-        from kyno.transports import build_http_app
-
-        uvicorn.run(
-            build_http_app(cp, settings.token, settings.page, allow_insecure=allow_insecure),
-            host=settings.host,
-            port=settings.port,
-        )
-    else:
-        raise typer.BadParameter("transport must be 'stdio' or 'http'")
+    raise typer.BadParameter("transport must be 'stdio' or 'http'")

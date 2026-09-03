@@ -329,6 +329,19 @@ class SqlConstitutionStore:
             rows = conn.execute(select(self._tokens).order_by(self._tokens.c.id.asc())).all()
         return [self._row_to_token(r) for r in rows]
 
+    def token_by_hash(self, token_hash: str) -> Token | None:
+        """Find the token whose stored hash equals `token_hash`, or None
+        when no row matches.
+
+        The server runs this on every request: it hashes the bearer value
+        that arrived and looks for a row holding that hash. Whether the
+        token is still usable is a separate question; see Token.live_at."""
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                select(self._tokens).where(self._tokens.c.token_hash == token_hash)
+            ).first()
+        return self._row_to_token(row) if row else None
+
     def revoke_token(self, token_id: int) -> bool:
         """Set revoked_at. False means nothing changed: no such id, or
         already revoked -- an existing revocation stamp is history, and

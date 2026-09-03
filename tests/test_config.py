@@ -1,18 +1,11 @@
-"""Settings.load(): the workspace is the config surface; KYNO_TOKEN is
-the one variable left, and it retires with the tokens design."""
+"""Settings.load(): the workspace is the only config surface; the server
+reads no environment variables."""
 
 import pytest
 
 from kyno.config import Settings, store_from_settings
 from kyno.errors import ConfigError
 from kyno.workspace import create_workspace
-
-pytestmark = pytest.mark.usefixtures("_no_token")
-
-
-@pytest.fixture
-def _no_token(monkeypatch):
-    monkeypatch.delenv("KYNO_TOKEN", raising=False)
 
 
 def load_from(tmp_path, monkeypatch, body=None):
@@ -32,7 +25,6 @@ def test_given_no_workspace_when_loading_then_the_error_names_kyno_new(tmp_path,
 def test_given_a_fresh_workspace_when_loading_then_defaults_apply(tmp_path, monkeypatch):
     s = load_from(tmp_path, monkeypatch)
     assert s.database_url.endswith("db/kyno.sqlite3")
-    assert s.token is None
     assert s.host == "127.0.0.1" and s.port == 2256
     assert s.allow_insecure is False
     store = store_from_settings(s)
@@ -48,20 +40,14 @@ def test_given_a_subdirectory_when_loading_then_the_same_workspace_answers(tmp_p
     assert Settings.load().database_url.endswith("db/kyno.sqlite3")
 
 
-@pytest.mark.parametrize("value", ["", "   ", "\t\n"])
-def test_given_a_blank_token_when_loading_then_it_is_refused_not_quietly_tokenless(
-    tmp_path, monkeypatch, value
+def test_given_kyno_token_in_the_environment_when_loading_then_settings_ignore_it(
+    tmp_path, monkeypatch
 ):
-    # `KYNO_TOKEN=""` reads as "auth is on" to the person who set it; the
-    # only honest answers are a working token or a loud refusal.
-    monkeypatch.setenv("KYNO_TOKEN", value)
-    with pytest.raises(ConfigError, match="KYNO_TOKEN"):
-        load_from(tmp_path, monkeypatch)
-
-
-def test_given_a_token_when_printing_settings_then_the_token_never_appears(tmp_path, monkeypatch):
+    # The variable is retired; serving credentials live in the token table.
     monkeypatch.setenv("KYNO_TOKEN", "hunter2")
-    assert "hunter2" not in repr(load_from(tmp_path, monkeypatch))
+    s = load_from(tmp_path, monkeypatch)
+    assert "hunter2" not in repr(s)
+    assert not hasattr(s, "token")
 
 
 def test_given_no_page_keys_when_loading_then_the_built_in_look_applies(tmp_path, monkeypatch):

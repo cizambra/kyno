@@ -331,7 +331,7 @@ def test_given_hostile_content_when_rendering_any_page_then_the_markup_stays_wel
     assert _unbalanced_tags(client.get(path).text) == []
 
 
-def test_given_the_public_endpoints_when_inspecting_then_they_are_sync_off_the_event_loop(
+def test_given_the_public_page_routes_when_inspecting_then_no_handler_is_an_async_function(
     plane, store
 ):
     # Deliberate: these handlers read the store, which is blocking. Starlette

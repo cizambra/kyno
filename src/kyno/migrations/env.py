@@ -1,12 +1,10 @@
-import os
-
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from kyno.store.schema import build_metadata
 
 config = context.config
-metadata, _c, _v = build_metadata(prefix=os.environ.get("KYNO_TABLE_PREFIX", "kyno_"))
+metadata, *_ = build_metadata()
 target_metadata = metadata
 
 

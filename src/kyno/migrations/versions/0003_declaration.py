@@ -4,8 +4,6 @@ Revision ID: 0003
 Revises: 0002
 """
 
-import os
-
 import sqlalchemy as sa
 from alembic import op
 
@@ -14,7 +12,7 @@ down_revision = "0002"
 branch_labels = None
 depends_on = None
 
-PREFIX = os.environ.get("KYNO_TABLE_PREFIX", "kyno_")
+PREFIX = "kyno_"
 
 
 def upgrade() -> None:

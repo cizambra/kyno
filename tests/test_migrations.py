@@ -34,20 +34,6 @@ def test_given_a_fresh_database_when_alembic_upgrades_then_the_expected_tables_e
     assert {"kyno_constitutions", "kyno_constitution_versions"} <= tables
 
 
-def test_given_a_custom_table_prefix_when_alembic_upgrades_then_the_prefix_is_honored(
-    tmp_path, monkeypatch
-):
-    monkeypatch.setenv("KYNO_TABLE_PREFIX", "cptest_")
-    db = tmp_path / "prefixed.sqlite3"
-    cfg = Config("alembic.ini")
-    cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db}")
-    command.upgrade(cfg, "head")
-    insp = inspect(create_engine(f"sqlite:///{db}"))
-    tables = set(insp.get_table_names())
-    assert {"cptest_constitutions", "cptest_constitution_versions"} <= tables
-    assert "kyno_constitutions" not in tables
-
-
 def test_given_an_upgraded_database_when_downgrading_and_upgrading_then_the_schema_round_trips(
     tmp_path,
 ):

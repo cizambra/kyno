@@ -342,7 +342,7 @@ def test_given_a_chunked_body_under_the_cap_when_streaming_then_it_reaches_the_m
     assert '"serverInfo"' in response.text
 
 
-def test_given_no_store_when_building_the_http_app_then_the_insecure_opt_in_is_required():
+def test_given_no_token_store_when_building_the_http_app_then_allow_insecure_is_required():
     # An embedder has to opt in explicitly, the same as the CLI does.
     from kyno.errors import ConfigError
     from kyno.transports import build_http_app
@@ -352,7 +352,7 @@ def test_given_no_store_when_building_the_http_app_then_the_insecure_opt_in_is_r
         build_http_app(ControlPlane(store))
 
 
-def test_given_a_storeless_opt_in_app_when_posting_then_the_gate_is_off():
+def test_given_no_token_store_and_allow_insecure_when_posting_then_no_token_is_checked():
     from starlette.testclient import TestClient
 
     from kyno.transports import build_http_app

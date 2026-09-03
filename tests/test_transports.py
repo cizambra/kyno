@@ -70,7 +70,7 @@ def test_given_a_non_ascii_bearer_value_when_resolving_then_it_fails_closed_not_
 
 @pytest.mark.asyncio
 @pytest.mark.e2e
-async def test_given_a_memory_session_when_calling_tools_end_to_end_then_the_mission_round_trips():
+async def test_given_a_memory_session_when_calling_tools_then_the_set_mission_is_read_back():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = SqlConstitutionStore(url="sqlite://")
@@ -263,7 +263,7 @@ def _sse_json(text):
 
 
 @pytest.mark.e2e
-def test_given_a_write_token_when_driving_a_full_http_session_then_the_mission_round_trips():
+def test_given_a_write_token_when_driving_a_full_http_session_then_the_set_mission_is_read_back():
     from starlette.testclient import TestClient
 
     _store, value, app = _gated()

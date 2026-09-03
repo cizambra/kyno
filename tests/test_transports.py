@@ -58,6 +58,12 @@ def test_given_wrong_revoked_and_expired_tokens_when_resolving_then_all_answer_n
         assert token_for_request({"authorization": f"Bearer {value}"}, store, _now()) is None
 
 
+def test_given_an_authorization_header_that_is_not_a_bearer_value_when_resolving_then_none():
+    store = _token_store()
+    _mint(store)
+    assert token_for_request({"authorization": "Basic dXNlcjpwdw=="}, store, _now()) is None
+
+
 def test_given_a_non_ascii_bearer_value_when_resolving_then_it_fails_closed_not_crashes():
     assert token_for_request({"authorization": "Bearer café"}, _token_store(), _now()) is None
 
@@ -111,7 +117,7 @@ def _gated():
     store = _token_store()
     value = _mint(store)
     cp = ControlPlane(store)
-    return store, value, build_http_app(cp, store=store)
+    return store, value, build_http_app(cp, token_store=store)
 
 
 def _bearer(value):
@@ -125,6 +131,19 @@ def test_given_no_bearer_when_posting_to_the_http_app_then_it_is_401():
 
     with TestClient(app) as client:
         response = client.post("/mcp", json=_initialize_payload(), headers=_MCP_HEADERS)
+
+    assert response.status_code == 401
+
+
+def test_given_a_get_request_without_a_token_when_opening_the_stream_then_it_is_401():
+    # The check runs before the method split, so GET (the SSE stream) and
+    # DELETE (closing a session) are gated the same as POST.
+    from starlette.testclient import TestClient
+
+    _store, _value, app = _gated()
+
+    with TestClient(app) as client:
+        response = client.get("/mcp", headers={"Accept": "text/event-stream"})
 
     assert response.status_code == 401
 
@@ -371,6 +390,6 @@ def test_given_an_mcp_release_without_the_body_cap_when_building_the_app_then_it
 
     store = _token_store()
     value = _mint(store)
-    with TestClient(build_http_app(ControlPlane(store), store=store)) as client:
+    with TestClient(build_http_app(ControlPlane(store), token_store=store)) as client:
         response = client.post("/mcp", json=_initialize_payload(), headers=_bearer(value))
     assert response.status_code == 200

@@ -265,7 +265,7 @@ def test_given_a_live_server_when_applying_remotely_then_the_version_is_applied(
     store.create_all()
     value = generate_value()
     store.add_token("e2e", "write", token_hash=hash_value(value))
-    http_app = build_http_app(ControlPlane(store), store=store)
+    http_app = build_http_app(ControlPlane(store), token_store=store)
     sock = socket.socket()
     sock.bind(("127.0.0.1", 0))
     port = sock.getsockname()[1]

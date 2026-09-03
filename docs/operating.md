@@ -127,7 +127,7 @@ working against the same database for edits and inspection.
   which tokens exist. The server refuses to serve HTTP with no live tokens
   unless you explicitly opt in (`allow_insecure = true` in `config/server`,
   for local experimentation only; it warns). Embedders building the app in
-  code pass their store — `build_http_app(cp, store=store)` — or opt in
+  code pass their store — `build_http_app(cp, token_store=store)` — or opt in
   the same way:
   `build_http_app(cp, allow_insecure=True)`. The published constitution
   pages above sit outside that gate on purpose; they are the surface you

@@ -54,7 +54,7 @@ def serve_http(settings: Settings, store, control_plane: ControlPlane) -> None:
     uvicorn.run(
         build_http_app(
             control_plane,
-            store=None if settings.allow_insecure else store,
+            token_store=None if settings.allow_insecure else store,
             page=settings.page,
             allow_insecure=settings.allow_insecure,
         ),

@@ -27,7 +27,7 @@ def plane(store):
 def client(plane, store):
     """A client with no Authorization header at all: the public pages must
     work for anonymous visitors, with no token involved."""
-    with TestClient(build_http_app(plane, store=store)) as c:
+    with TestClient(build_http_app(plane, token_store=store)) as c:
         yield c
 
 
@@ -340,7 +340,7 @@ def test_given_the_public_endpoints_when_inspecting_then_they_are_sync_off_the_e
     # request in flight.
     import inspect
 
-    app = build_http_app(plane, store=store)
+    app = build_http_app(plane, token_store=store)
     public = [r for r in app.routes if getattr(r, "path", "").startswith("/constitutions")]
     assert len(public) == 4
     for route in public:

@@ -23,7 +23,7 @@ PUBLIC_HEADERS = {
 }
 
 
-def token_for_request(headers: dict, store, now: datetime):
+def token_for_request(headers: dict, token_store, now: datetime):
     """Find the live token a request's bearer header carries, or None.
 
     Returns None in four cases: no Authorization header, a header that is
@@ -39,7 +39,7 @@ def token_for_request(headers: dict, store, now: datetime):
             break
     if value is None or not value.startswith("Bearer "):
         return None
-    token = store.token_by_hash(hash_value(value[len("Bearer ") :]))
+    token = token_store.token_by_hash(hash_value(value[len("Bearer ") :]))
     if token is None or not token.live_at(now):
         return None
     return token
@@ -55,7 +55,7 @@ async def run_stdio(control_plane: ControlPlane) -> None:
 
 def build_http_app(
     control_plane: ControlPlane,
-    store=None,
+    token_store=None,
     page: PageConfig | None = None,
     *,
     allow_insecure: bool = False,
@@ -63,10 +63,11 @@ def build_http_app(
     """Build the Starlette app: the public constitution pages, and /mcp
     behind the token check.
 
-    `store` is where bearer values are looked up. Passing None turns the
-    check off, which lets anyone who can reach the port rewrite the
-    constitution, so it requires allow_insecure=True."""
-    if store is None and not allow_insecure:
+    `token_store` is where bearer values are looked up; it only has to
+    answer token_by_hash. Passing None turns the check off, which lets
+    anyone who can reach the port rewrite the constitution, so it
+    requires allow_insecure=True."""
+    if token_store is None and not allow_insecure:
         raise ConfigError(
             "refusing to build an HTTP app without a token store: "
             "pass the store, or pass allow_insecure=True to open the write endpoint"
@@ -96,8 +97,8 @@ def build_http_app(
             for k, v in scope.get("headers", [])
         }
         token = None
-        if store is not None:
-            token = token_for_request(headers, store, datetime.now(UTC))
+        if token_store is not None:
+            token = token_for_request(headers, token_store, datetime.now(UTC))
             if token is None:
                 await Response("unauthorized", status_code=401)(scope, receive, send)
                 return

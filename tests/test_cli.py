@@ -119,6 +119,23 @@ def test_given_an_invalid_port_when_running_serve_then_the_error_is_clean(monkey
     assert "Traceback" not in r.output
 
 
+def test_given_the_default_transport_when_serving_then_stdio_runs_the_mcp_server(
+    monkeypatch, tmp_path
+):
+    import anyio
+
+    from kyno.transports import run_stdio
+
+    cli_workspace(monkeypatch, tmp_path)
+    heard = {}
+    monkeypatch.setattr(anyio, "run", lambda fn, *args: heard.update(fn=fn, args=args))
+
+    r = runner.invoke(app, ["serve"])
+
+    assert r.exit_code == 0, r.output
+    assert heard["fn"] is run_stdio
+
+
 def test_given_a_database_without_the_token_table_when_serving_http_then_it_names_db_upgrade(
     monkeypatch, tmp_path
 ):

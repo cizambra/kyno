@@ -26,9 +26,9 @@ $ kyno token add agents --scope read
 $ kyno serve --transport http
 ```
 
-The `kyno token add` line is what makes HTTP serving possible: the
-endpoint checks a bearer token on every request, and a server with no
-live tokens refuses to start. Details in [Auth](#auth).
+The `kyno token add` line is what makes the server useful: the
+endpoint checks a bearer token on every request, and until a token
+exists every request is refused. Details in [Auth](#auth).
 
 `kyno new` writes four files:
 

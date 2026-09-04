@@ -655,3 +655,38 @@ def test_given_recorded_authorizations_when_reading_log_remotely_then_authorized
     r = runner.invoke(app, ["log", "--remote"])
     assert r.exit_code == 0
     assert "override" in r.stdout
+
+
+def test_given_no_credentials_when_listing_then_it_says_how_to_add_one(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    r = runner.invoke(app, ["credentials", "list"])
+    assert r.exit_code == 0
+    assert "kyno credentials add" in r.output
+
+
+def test_given_stored_and_referenced_tokens_when_listing_then_values_never_print(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_CI_TOKEN", "kyno_secret-value")
+    monkeypatch.delenv("MY_LAPTOP_TOKEN", raising=False)
+    assert runner.invoke(app, ["credentials", "add", "--token-env", "MY_CI_TOKEN"]).exit_code == 0
+    assert (
+        runner.invoke(
+            app, ["credentials", "add", "--profile", "ci2", "--token-env", "MY_LAPTOP_TOKEN"]
+        ).exit_code
+        == 0
+    )
+    r = runner.invoke(app, ["credentials", "add", "--profile", "typed"], input="typed-secret\n")
+    assert r.exit_code == 0
+
+    listing = runner.invoke(app, ["credentials", "list"])
+
+    assert listing.exit_code == 0
+    lines = listing.output.strip().splitlines()
+    assert any("default" in ln and "${MY_CI_TOKEN} (set)" in ln for ln in lines)
+    assert any("ci2" in ln and "${MY_LAPTOP_TOKEN} (not set)" in ln for ln in lines)
+    assert any("typed" in ln and "stored token" in ln for ln in lines)
+    # The values themselves never appear.
+    assert "kyno_secret-value" not in listing.output
+    assert "typed-secret" not in listing.output

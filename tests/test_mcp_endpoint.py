@@ -334,23 +334,17 @@ def test_given_a_read_token_when_calling_a_read_tool_then_it_answers():
     assert payload == {"version": 0, "mission": ""}
 
 
-def test_given_the_scope_map_when_reading_the_policy_then_every_tool_carries_its_intended_scope():
-    # The authorization policy itself, pinned entry by entry. The parity
-    # test below catches a tool with no scope; this one catches a tool
-    # with the wrong scope, which would widen or narrow access quietly.
+def test_given_the_scope_map_when_reading_the_policy_then_set_direction_is_the_only_write():
+    # The policy pinned at its dangerous edge: which tools can change
+    # things. Scopes are binary, so naming the write set decides every
+    # tool's scope without restating the read list each time it grows.
+    # A new tool only touches this test when it asks for write, which is
+    # exactly when a person should have to state the decision twice.
     from kyno.mcp_tools import TOOL_SCOPES
-    from kyno.models import READ, WRITE
+    from kyno.models import WRITE
 
-    assert TOOL_SCOPES == {
-        "get_constitution": READ,
-        "get_changes_since": READ,
-        "get_mission": READ,
-        "get_declaration": READ,
-        "get_principles": READ,
-        "get_principle": READ,
-        "export_versions": READ,
-        "set_direction": WRITE,
-    }
+    writers = {name for name, scope in TOOL_SCOPES.items() if scope == WRITE}
+    assert writers == {"set_direction"}
 
 
 def test_given_the_declarations_when_projecting_them_then_no_two_tools_share_a_name():

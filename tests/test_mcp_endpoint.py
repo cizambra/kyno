@@ -299,6 +299,82 @@ def test_given_a_read_token_when_calling_set_direction_then_it_is_403_and_nothin
     assert store.head("default") is None
 
 
+def test_given_an_expired_token_asking_to_write_when_posting_then_it_is_401_not_403():
+    # Authentication is checked before scope: a dead token is refused as
+    # unknown (401) even when the body asks for set_direction. Answering
+    # 403 would confirm the token once existed.
+    from starlette.testclient import TestClient
+
+    store, _value, app = _gated()
+    expired = mint(store, name="old", expires_at=datetime.now(UTC) - timedelta(hours=1))
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {"name": "set_direction", "arguments": {"mission": "M1"}},
+            },
+            headers=bearer(expired),
+        )
+
+    assert response.status_code == 401
+
+
+def test_given_allow_insecure_when_calling_set_direction_then_the_write_executes(monkeypatch):
+    # The documented opt-in: with no token store, nothing is checked and a
+    # write goes through. This is what allow_insecure = true buys, and why
+    # it warns.
+    from starlette.testclient import TestClient
+
+    from kyno.transports import build_http_app
+
+    store = token_store()
+    app = build_http_app(ControlPlane(store), allow_insecure=True)
+
+    with TestClient(app) as client:
+        h = drive_session(client, MCP_HEADERS)
+        response = call_tool(
+            client, h, 2, "set_direction", {"mission": "M1", "change_note": "init"}
+        )
+
+    assert response.status_code == 200
+    assert store.head("default").mission == "M1"
+
+
+@pytest.mark.asyncio
+async def test_given_a_disconnect_mid_body_when_reading_then_nothing_is_sent_back():
+    # The client hung up while sending: the endpoint stops and sends no
+    # response at all, instead of answering a half-received request.
+    store = token_store()
+    value = mint(store)
+    endpoint = McpEndpoint(manager=None, token_store=store)
+
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/",
+        "headers": [(b"authorization", f"Bearer {value}".encode())],
+    }
+    messages = [
+        {"type": "http.request", "body": b'{"partial', "more_body": True},
+        {"type": "http.disconnect"},
+    ]
+
+    async def receive():
+        return messages.pop(0)
+
+    sent = []
+
+    async def send(message):
+        sent.append(message)
+
+    await endpoint(scope, receive, send)
+    assert sent == []
+
+
 def test_given_a_content_length_over_the_size_cap_when_posting_then_it_is_413_unread():
     from starlette.testclient import TestClient
 

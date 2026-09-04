@@ -72,13 +72,16 @@ def test_given_bodies_of_every_shape_when_listing_tool_calls_then_only_real_call
     assert _tool_calls(
         b'{"method": "tools/call", "params": {"name": "set_direction", "arguments": {}}}'
     ) == [("set_direction", "default")]
-    # A batch (JSON array) is read by this check, one pair per item -- but
-    # the MCP SDK rejects arrays, so a batch never executes. See the
-    # end-to-end test below.
+    # A batch (JSON array) is read by this check, one pair per item, in
+    # order -- but the MCP SDK rejects arrays, so a batch never executes.
+    # See the end-to-end test below.
     assert _tool_calls(
         b'[{"method": "tools/call", "params": {"name": "get_constitution", '
-        b'"arguments": {"constitution": "main"}}}]'
-    ) == [("get_constitution", "main")]
+        b'"arguments": {"constitution": "main"}}},'
+        b'{"method": "notifications/initialized"},'
+        b'{"method": "tools/call", "params": {"name": "set_direction", '
+        b'"arguments": {"mission": "M1"}}}]'
+    ) == [("get_constitution", "main"), ("set_direction", "default")]
 
 
 def _gated():

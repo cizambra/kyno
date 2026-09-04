@@ -334,12 +334,12 @@ def test_given_a_read_token_when_calling_a_read_tool_then_it_answers():
     assert payload == {"version": 0, "mission": ""}
 
 
-def test_given_the_scope_map_when_reading_the_policy_then_every_tool_carries_its_intended_scope():
-    # Scopes are binary, so stating which tools write decides every
-    # tool's scope, read tools included, without restating the read list
-    # each time it grows. A new tool only touches this test when it asks
-    # for write, which is exactly when a person should have to state the
-    # decision twice.
+def test_given_the_declarations_when_the_write_set_moves_then_it_is_acknowledged_here():
+    # The declarations are the authority on scopes; this test is the
+    # acknowledgment. Changing who can write fails the suite until a
+    # person restates the write set here, so access never widens or
+    # narrows as a side effect. Scopes are binary, so the write set
+    # decides every tool's scope and read tools come and go freely.
     from kyno.mcp_tools import TOOL_SCOPES
     from kyno.models import WRITE
 

@@ -183,7 +183,7 @@ _PRINCIPLE_ITEM = {
 # The same wording on every read whose result can be combined with another.
 _DRIFT = "If the version disagrees with one you already hold, the direction moved: re-read it."
 
-_TOOLS = [
+TOOLS = [
     types.Tool(
         name="get_constitution",
         description=(
@@ -352,7 +352,7 @@ def build_server(control_plane: ControlPlane, token_store=None) -> Server:
 
     @server.list_tools()
     async def list_tools() -> list[types.Tool]:
-        return _TOOLS
+        return TOOLS
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:

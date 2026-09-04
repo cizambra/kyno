@@ -334,7 +334,7 @@ def test_given_a_read_token_when_calling_a_read_tool_then_it_answers():
     assert payload == {"version": 0, "mission": ""}
 
 
-def test_given_the_scope_map_when_reading_the_policy_then_only_set_direction_requires_write():
+def test_given_the_scope_map_when_reading_the_policy_then_every_tool_carries_its_intended_scope():
     # The authorization policy itself, pinned entry by entry. The parity
     # test below catches a tool with no scope; this one catches a tool
     # with the wrong scope, which would widen or narrow access quietly.
@@ -356,10 +356,10 @@ def test_given_the_scope_map_when_reading_the_policy_then_only_set_direction_req
 def test_given_the_declared_tools_when_reading_the_scope_map_then_every_tool_has_a_scope():
     # The map and the tool declarations must not drift: a tool without a
     # scope entry would be dead on arrival (fail-closed denies it).
-    from kyno.mcp_server import _TOOLS, TOOL_SCOPES
+    from kyno.mcp_server import TOOL_SCOPES, TOOLS
     from kyno.models import SCOPES
 
-    declared = {tool.name for tool in _TOOLS}
+    declared = {tool.name for tool in TOOLS}
     assert declared == set(TOOL_SCOPES)
     assert all(scope in SCOPES for scope in TOOL_SCOPES.values())
 

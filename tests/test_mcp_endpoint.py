@@ -161,6 +161,21 @@ def test_given_an_authorized_request_when_the_lifespan_runs_then_it_reaches_the_
     assert '"serverInfo"' in response.text
 
 
+def test_given_an_app_whose_lifespan_never_ran_when_posting_then_it_is_a_500():
+    # The opposite of the test above, and the proof that it asserts
+    # something real: without the `with` block the lifespan never runs, so
+    # the MCP session manager is never started. The gate still passes the
+    # request, and the unstarted manager fails it.
+    from starlette.testclient import TestClient
+
+    _store, value, app = _gated()
+    client = TestClient(app, raise_server_exceptions=False)
+
+    response = client.post("/mcp", json=initialize_payload(), headers=bearer(value))
+
+    assert response.status_code == 500
+
+
 def test_given_a_non_ascii_authorization_header_when_posting_then_it_is_401_not_500():
     from starlette.testclient import TestClient
 

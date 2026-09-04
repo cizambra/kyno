@@ -2,6 +2,7 @@
 the hand-off to the MCP session manager -- unit tests and HTTP tests."""
 
 import json
+import logging
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -373,6 +374,23 @@ async def test_given_a_disconnect_mid_body_when_reading_then_nothing_is_sent_bac
 
     await endpoint(scope, receive, send)
     assert sent == []
+
+
+@pytest.mark.e2e
+def test_given_a_tool_call_when_handled_then_the_request_log_carries_the_fields(caplog):
+    from starlette.testclient import TestClient
+
+    store, value, app = _gated()
+    token_id = store.tokens()[0].id
+
+    with caplog.at_level(logging.INFO, logger="kyno.requests"), TestClient(app) as client:
+        h = drive_session(client, bearer(value))
+        call_tool(client, h, 2, "get_constitution", {"constitution": "main"})
+
+    line = next(r.getMessage() for r in caplog.records if "tool=get_constitution" in r.getMessage())
+    assert f"token={token_id}" in line
+    assert "name=t" in line
+    assert "constitution=main" in line
 
 
 def test_given_a_content_length_over_the_size_cap_when_posting_then_it_is_413_unread():

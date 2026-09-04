@@ -8,6 +8,7 @@ the public constitution pages.
 from __future__ import annotations
 
 import json
+import logging
 from datetime import UTC, datetime
 
 from kyno.models import WRITE, Token
@@ -16,6 +17,10 @@ from kyno.tokens import hash_value
 # A JSON-RPC request is small. The largest legitimate one carries a full constitution, and the
 # field size limits keep that well under this cap.
 MAX_MCP_BODY_BYTES = 5_000_000
+
+# One line per tool call: token id and name, the tool, and the constitution.
+# Read this log to know what a token did and when.
+_request_log = logging.getLogger("kyno.requests")
 
 
 def _tool_calls(body: bytes) -> list[tuple[str, str]]:
@@ -134,6 +139,15 @@ class McpEndpoint:
                 scope, receive, send
             )
             return
+        if token is not None:
+            for name, constitution in calls:
+                _request_log.info(
+                    "token=%s name=%s tool=%s constitution=%s",
+                    token.id,
+                    token.name,
+                    name,
+                    constitution,
+                )
         await self._manager.handle_request(scope, _replayed(body, receive), send)
 
     async def _read_body(self, scope, receive, send) -> bytes | None:

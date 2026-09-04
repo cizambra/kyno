@@ -8,7 +8,9 @@ ConfigError they raise.
 
 from __future__ import annotations
 
+import logging
 import sys
+import time
 from datetime import UTC, datetime
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -47,6 +49,7 @@ def serve_http(settings: Settings, store, control_plane: ControlPlane) -> None:
         )
     else:
         _require_live_tokens(store)
+    _configure_request_log()
     import uvicorn
 
     from kyno.transports import build_http_app
@@ -61,6 +64,22 @@ def serve_http(settings: Settings, store, control_plane: ControlPlane) -> None:
         host=settings.host,
         port=settings.port,
     )
+
+
+def _configure_request_log() -> None:
+    """Give the kyno.requests logger a stderr handler with UTC timestamps.
+
+    The transports module writes one line per tool call to this logger;
+    without a handler those lines would be dropped, because uvicorn only
+    configures its own loggers."""
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter("%(asctime)s %(message)s", datefmt="%Y-%m-%dT%H:%M:%SZ")
+    formatter.converter = time.gmtime
+    handler.setFormatter(formatter)
+    request_log = logging.getLogger("kyno.requests")
+    request_log.addHandler(handler)
+    request_log.setLevel(logging.INFO)
+    request_log.propagate = False
 
 
 def _require_live_tokens(store) -> None:

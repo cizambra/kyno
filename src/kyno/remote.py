@@ -45,7 +45,10 @@ class RemoteClient:
     def call_tool(self, name: str, arguments: dict) -> Any:
         """One tool call, decoded. A server-side refusal comes back as a
         RemoteError carrying the server's own words."""
-        reply = self._runner.call(lambda session: session.call_tool(name, arguments))
+        try:
+            reply = self._runner.call(lambda session: session.call_tool(name, arguments))
+        except KynoRefusedError as exc:
+            raise RemoteError(f"the server refused {name}: {exc}") from exc
         text = reply.content[0].text if reply.content else ""
         if getattr(reply, "isError", False):
             raise RemoteError(text or f"the server refused {name}")

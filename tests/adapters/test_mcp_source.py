@@ -182,6 +182,40 @@ def test_given_a_leaf_error_with_a_second_line_when_starting_then_only_its_first
         SessionRunner(connect).start()
 
 
+def test_given_a_refusal_with_a_readable_body_when_describing_then_the_servers_words_win():
+    from kyno.sdk.client import _refusal_text
+
+    class _Response:
+        status_code = 403
+        text = "forbidden: this token's scope does not cover 'set_direction'"
+
+        def read(self):
+            return b""
+
+    class _StatusError(Exception):
+        response = _Response()
+
+    line = _refusal_text(ExceptionGroup("unhandled", [_StatusError("boom")]))
+    assert line == "forbidden: this token's scope does not cover 'set_direction'"
+
+
+def test_given_a_refusal_whose_body_is_gone_when_describing_then_the_status_line_stands_in():
+    # The transport often closes the stream before anyone reads the body;
+    # the status line is the fallback.
+    from kyno.sdk.client import _refusal_text
+
+    class _Response:
+        status_code = 403
+
+        def read(self):
+            raise RuntimeError("stream closed")
+
+    class _StatusError(Exception):
+        response = _Response()
+
+    assert _refusal_text(ExceptionGroup("unhandled", [_StatusError("boom")])) == "403 forbidden"
+
+
 def test_given_a_closed_runner_when_closing_again_then_it_is_harmless(in_memory_runner):
     runner, _cp = in_memory_runner
     runner.close()

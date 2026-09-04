@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import json
 import os
 import threading
+import time
 from collections.abc import Callable, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -81,14 +83,23 @@ def _leaves(exc: BaseException) -> list[BaseException]:
     return found
 
 
-def _auth_status(exc: BaseException) -> int | None:
-    """The HTTP status inside `exc` when the server refused at the door
-    (401 or 403), else None. Read from the leaf exceptions' attached
-    responses, so it works for whichever HTTP library raised."""
+def _refusal_text(exc: BaseException) -> str | None:
+    """The one line to show when the server turned a request away with an
+    HTTP auth status, or None when `exc` holds no such refusal. The body
+    the server wrote (e.g. which tool the scope does not cover) is used
+    when it can still be read; the bare status line otherwise."""
     for leaf in _leaves(exc):
-        status = getattr(getattr(leaf, "response", None), "status_code", None)
+        response = getattr(leaf, "response", None)
+        status = getattr(response, "status_code", None)
         if status in (401, 403):
-            return status
+            from http import HTTPStatus
+
+            try:
+                response.read()
+                body = response.text.strip()
+            except Exception:
+                body = ""
+            return body or f"{status} {HTTPStatus(status).phrase.lower()}"
     return None
 
 
@@ -134,11 +145,9 @@ class SessionRunner:
         if not self._ready.wait(self._timeout):
             raise KynoUnavailableError("timed out opening the kyno MCP session")
         if self._error is not None:
-            status = _auth_status(self._error)
-            if status is not None:
-                from http import HTTPStatus
-
-                raise KynoRefusedError(f"{status} {HTTPStatus(status).phrase.lower()}")
+            refusal = _refusal_text(self._error)
+            if refusal is not None:
+                raise KynoRefusedError(refusal)
             raise KynoUnavailableError(f"cannot open the kyno MCP session: {_summary(self._error)}")
 
     def _run(self) -> None:
@@ -175,6 +184,21 @@ class SessionRunner:
         except TimeoutError as exc:
             future.cancel()
             raise KynoUnavailableError("timed out talking to kyno") from exc
+        except concurrent.futures.CancelledError as exc:
+            # A server refusal (e.g. 403) ends the whole session, and the
+            # in-flight call is cancelled with it. The cause lands in
+            # self._error a moment later, on the session thread.
+            deadline = time.monotonic() + self._timeout
+            while self._error is None and time.monotonic() < deadline:
+                time.sleep(0.02)
+            if self._error is not None:
+                refusal = _refusal_text(self._error)
+                if refusal is not None:
+                    raise KynoRefusedError(refusal) from None
+                raise KynoUnavailableError(
+                    f"the kyno MCP session ended mid-call: {_summary(self._error)}"
+                ) from None
+            raise KynoUnavailableError("the kyno MCP session ended mid-call") from exc
 
     def close(self) -> None:
         if self._loop is not None and self._stop is not None and not self._loop.is_closed():

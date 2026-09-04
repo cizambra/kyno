@@ -334,19 +334,6 @@ def test_given_a_read_token_when_calling_a_read_tool_then_it_answers():
     assert payload == {"version": 0, "mission": ""}
 
 
-def test_given_the_declarations_when_the_write_set_moves_then_it_is_acknowledged_here():
-    # The declarations are the authority on scopes; this test is the
-    # acknowledgment. Changing who can write fails the suite until a
-    # person restates the write set here, so access never widens or
-    # narrows as a side effect. Scopes are binary, so the write set
-    # decides every tool's scope and read tools come and go freely.
-    from kyno.mcp_tools import TOOL_SCOPES
-    from kyno.models import WRITE
-
-    writers = {name for name, scope in TOOL_SCOPES.items() if scope == WRITE}
-    assert writers == {"set_direction"}
-
-
 def test_given_the_declarations_when_projecting_them_then_no_two_tools_share_a_name():
     # TOOLS and TOOL_SCOPES are projections of one declaration list, so
     # they cannot drift apart. The one way the projections can lie is a

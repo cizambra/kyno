@@ -501,6 +501,36 @@ credentials_app = typer.Typer(help="The tokens remote runs use: one profile per 
 app.add_typer(credentials_app, name="credentials")
 
 
+@app.command()
+def whoami(
+    remote: bool = typer.Option(False, "--remote", help=_REMOTE_HELP),
+    profile: str = typer.Option("default", "--profile", help="Which remote profile to use."),
+    credentials: str | None = typer.Option(
+        None, "--credentials", help="Take the token from this credentials profile, this run."
+    ),
+    token_env: str | None = typer.Option(
+        None, "--token-env", help="Take the token from this variable, this run."
+    ),
+) -> None:
+    """Ask the server which token it sees behind your requests, and print
+    its name and scope. Only the server that checks the token can answer,
+    so this command is remote only."""
+    _remote_options_guard(remote, profile, credentials, token_env)
+    if not remote:
+        typer.echo("error: whoami asks a server which token it is seeing; add --remote", err=True)
+        raise typer.Exit(code=1)
+    with _clean_errors():
+        client = dial(profile, credentials_profile=credentials, token_env=token_env)
+        try:
+            answer = client.call_tool("whoami", {})
+        finally:
+            client.close()
+    if answer.get("name") is None:
+        typer.echo("no token: the server accepted the request without checking for one")
+    else:
+        typer.echo(f"{answer['name']}  {answer['scope']}")
+
+
 @credentials_app.command("add")
 def credentials_add(
     profile: str = typer.Option("default", "--profile", help="The credentials profile to write."),

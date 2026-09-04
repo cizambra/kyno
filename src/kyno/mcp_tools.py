@@ -203,6 +203,18 @@ DECLARATIONS = [
         ),
         WRITE,
     ),
+    (
+        types.Tool(
+            name="whoami",
+            description=(
+                "Return the id, name and scope of the token this request "
+                "authenticated with. Every field is null when the server did not "
+                "check a token (stdio, or a server running with allow_insecure)."
+            ),
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        READ,
+    ),
 ]
 
 TOOLS = [tool for tool, _ in DECLARATIONS]

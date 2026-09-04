@@ -361,6 +361,10 @@ async def test_given_a_fresh_store_when_reading_the_resource_then_the_empty_stat
 
 def test_given_the_tool_schemas_when_inspecting_then_constitution_is_an_optional_argument():
     for tool in mcp_tools.TOOLS:
+        if tool.name == "whoami":
+            # whoami answers about the request's token, not a constitution.
+            assert tool.inputSchema["properties"] == {}
+            continue
         props = tool.inputSchema["properties"]
         assert props["constitution"]["type"] == "string"
         assert "constitution" not in tool.inputSchema.get("required", [])
@@ -814,6 +818,7 @@ def test_given_the_server_when_listing_tools_then_all_of_them_read_as_one_family
         "get_principle",
         "export_versions",
         "set_direction",
+        "whoami",
     ]
     for tool in mcp_tools.TOOLS:
         description = tool.description

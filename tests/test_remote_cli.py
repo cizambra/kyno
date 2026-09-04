@@ -3,6 +3,7 @@
 import json
 import pathlib
 import re
+from datetime import UTC, datetime
 
 import pytest
 from typer.testing import CliRunner
@@ -10,6 +11,7 @@ from typer.testing import CliRunner
 import kyno.cli as cli
 from kyno import mcp_server
 from kyno.cli import app
+from kyno.models import Token
 from kyno.remote import RemoteError
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
@@ -45,6 +47,8 @@ class FakeRemote:
         self.cp = cp
         self.closed = False
         self.url = "https://fake.kyno.test"
+        # What the real endpoint would have resolved from the bearer header.
+        self.token = None
 
     def call_tool(self, name, arguments):
         try:
@@ -71,6 +75,8 @@ class FakeRemote:
                     expected_version=arguments.get("expected_version"),
                     authorized_by=arguments.get("authorized_by"),
                 )
+            elif name == "whoami":
+                result = mcp_server.handle_whoami(self.token)
             else:
                 raise ValueError(f"unknown tool: {name}")
         except ValueError as exc:
@@ -705,3 +711,32 @@ def test_given_a_referenced_variable_set_to_an_empty_string_when_listing_then_it
 
     assert listing.exit_code == 0
     assert "${MY_EMPTY_TOKEN} (not set)" in listing.output
+
+
+def test_given_no_remote_flag_when_asking_whoami_then_it_refuses_naming_the_flag(tmp_path):
+    result = runner.invoke(app, ["whoami"])
+
+    assert result.exit_code == 1
+    assert "--remote" in result.output
+
+
+def test_given_a_checked_token_when_asking_whoami_remotely_then_its_name_and_scope_print(
+    fake_dial,
+):
+    fake_dial.token = Token(id=7, name="ci", scope="write", created_at=datetime.now(UTC))
+
+    result = runner.invoke(app, ["whoami", "--remote"])
+
+    assert result.exit_code == 0
+    assert result.output.strip() == "ci  write"
+    assert fake_dial.closed
+
+
+def test_given_a_server_that_checked_no_token_when_asking_whoami_remotely_then_it_says_so(
+    fake_dial,
+):
+    result = runner.invoke(app, ["whoami", "--remote"])
+
+    assert result.exit_code == 0, result.output
+    assert "without checking for one" in result.output
+    assert fake_dial.closed

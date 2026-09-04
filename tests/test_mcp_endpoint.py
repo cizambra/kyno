@@ -287,6 +287,63 @@ def test_given_a_client_claiming_a_token_id_when_writing_then_the_server_ignores
     assert head.token_id == real_id
 
 
+def test_given_a_write_token_when_calling_an_undeclared_tool_then_it_is_403_as_unknown():
+    # Fail closed: a tool nobody declared a scope for is denied even for
+    # the strongest scope there is. The refusal names the tool as unknown
+    # rather than blaming the token.
+    from starlette.testclient import TestClient
+
+    store, write_value, app = _gated()
+
+    with TestClient(app) as client:
+        h = drive_session(client, bearer(write_value))
+        response = call_tool(client, h, 2, "not_a_declared_tool", {})
+
+    assert response.status_code == 403
+    assert "unknown tool: 'not_a_declared_tool' does not exist" in response.text
+    assert store.head("default") is None
+
+
+def test_given_a_read_token_when_calling_an_undeclared_tool_then_it_is_403_as_unknown():
+    from starlette.testclient import TestClient
+
+    store, _, app = _gated()
+    read_value = mint(store, scope="read", name="crew")
+
+    with TestClient(app) as client:
+        h = drive_session(client, bearer(read_value))
+        response = call_tool(client, h, 2, "not_a_declared_tool", {})
+
+    assert response.status_code == 403
+    assert "unknown tool: 'not_a_declared_tool' does not exist" in response.text
+
+
+def test_given_a_read_token_when_calling_a_read_tool_then_it_answers():
+    # The scope check must not get in the way of what a read token is for.
+    from starlette.testclient import TestClient
+
+    store, _, app = _gated()
+    read_value = mint(store, scope="read", name="crew")
+
+    with TestClient(app) as client:
+        h = drive_session(client, bearer(read_value))
+        response = call_tool(client, h, 2, "get_mission", {})
+
+    assert response.status_code == 200
+    payload = json.loads(sse_json(response.text)["result"]["content"][0]["text"])
+    assert payload == {"version": 0, "mission": ""}
+
+
+def test_given_the_declarations_when_projecting_them_then_no_two_tools_share_a_name():
+    # TOOLS and TOOL_SCOPES are projections of one declaration list, so
+    # they cannot drift apart. The one way the projections can lie is a
+    # duplicate tool name, which would silently overwrite its twin in the
+    # scope map.
+    from kyno.mcp_tools import TOOL_SCOPES, TOOLS
+
+    assert len(TOOLS) == len(TOOL_SCOPES)
+
+
 def test_given_a_batched_body_when_posting_then_the_scope_check_reads_it_and_the_sdk_rejects_it():
     # Batches (JSON arrays) never execute. This test proves both layers:
     #
@@ -342,7 +399,7 @@ def test_given_a_read_token_when_calling_set_direction_then_it_is_403_and_nothin
         allowed = call_tool(client, h, 3, "get_constitution", {})
 
     assert refused.status_code == 403
-    assert "read-only" in refused.text
+    assert "scope does not cover" in refused.text
     assert allowed.status_code == 200
     assert store.head("default") is None
 
@@ -390,6 +447,27 @@ def test_given_allow_insecure_when_calling_set_direction_then_the_write_executes
 
     assert response.status_code == 200
     assert store.head("default").mission == "M1"
+
+
+def test_given_allow_insecure_when_calling_an_undeclared_tool_then_the_server_itself_refuses():
+    # With the check off there is no scope to fail closed on: the request
+    # passes the endpoint, and the server answers with its own unknown-tool
+    # error inside the protocol instead of a 403 at the door.
+    from starlette.testclient import TestClient
+
+    from kyno.transports import build_http_app
+
+    store = token_store()
+    app = build_http_app(ControlPlane(store), allow_insecure=True)
+
+    with TestClient(app) as client:
+        h = drive_session(client, MCP_HEADERS)
+        response = call_tool(client, h, 2, "not_a_declared_tool", {})
+
+    assert response.status_code == 200
+    result = sse_json(response.text)["result"]
+    assert result["isError"] is True
+    assert "unknown tool" in result["content"][0]["text"]
 
 
 @pytest.mark.asyncio

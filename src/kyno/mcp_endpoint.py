@@ -11,6 +11,7 @@ import json
 import logging
 from datetime import UTC, datetime, timedelta
 
+from kyno.mcp_tools import TOOL_SCOPES
 from kyno.models import WRITE, Token
 from kyno.tokens import hash_value
 
@@ -75,12 +76,25 @@ def _body_declared_over_cap(headers: dict) -> bool:
     return declared.isdigit() and int(declared) > MAX_MCP_BODY_BYTES
 
 
-def _forbidden_write(token, calls) -> bool:
-    """True when the request asks for set_direction and the token may not
-    write. With the check off (token is None), nothing is forbidden."""
-    if token is None or token.scope == WRITE:
-        return False
-    return any(name == "set_direction" for name, _ in calls)
+def _refusal(token, calls) -> str | None:
+    """The 403 message for a request the token may not make, or None when
+    every requested call is allowed. With the check off (token is None),
+    nothing is refused.
+
+    Every tool must appear in TOOL_SCOPES with the scope it requires. A
+    tool that is not in the map is denied even for a write token: an
+    undeclared tool fails closed instead of defaulting to allowed. The two
+    denials read differently on purpose: a scope problem blames the token,
+    an undeclared tool is named as unknown."""
+    if token is None:
+        return None
+    for name, _ in calls:
+        required = TOOL_SCOPES.get(name)
+        if required is None:
+            return f"unknown tool: '{name}' does not exist"
+        if required == WRITE and token.scope != WRITE:
+            return f"forbidden: this token's scope does not cover '{name}'"
+    return None
 
 
 class McpEndpoint:
@@ -141,10 +155,9 @@ class McpEndpoint:
         if body is None:
             return
         calls = _tool_calls(body)
-        if _forbidden_write(token, calls):
-            await Response("forbidden: this token is read-only", status_code=403)(
-                scope, receive, send
-            )
+        refusal = _refusal(token, calls)
+        if refusal is not None:
+            await Response(refusal, status_code=403)(scope, receive, send)
             return
         if token is not None:
             for name, constitution in calls:

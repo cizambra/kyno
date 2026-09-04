@@ -4,7 +4,7 @@ import json
 import mcp.types as types
 import pytest
 
-from kyno import mcp_server
+from kyno import mcp_server, mcp_tools
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 
@@ -360,7 +360,7 @@ async def test_given_a_fresh_store_when_reading_the_resource_then_the_empty_stat
 
 
 def test_given_the_tool_schemas_when_inspecting_then_constitution_is_an_optional_argument():
-    for tool in mcp_server._TOOLS:
+    for tool in mcp_tools.TOOLS:
         props = tool.inputSchema["properties"]
         assert props["constitution"]["type"] == "string"
         assert "constitution" not in tool.inputSchema.get("required", [])
@@ -511,7 +511,7 @@ def test_given_an_unknown_detail_when_reading_then_the_error_is_clean(cp, tool):
 def test_given_the_two_read_tools_when_inspecting_schemas_then_both_advertise_detail():
     # An agent reads the schema to learn the knob exists; a tool that hides it
     # would leave the whole document unreachable in practice.
-    by_name = {t.name: t for t in mcp_server._TOOLS}
+    by_name = {t.name: t for t in mcp_tools.TOOLS}
     read_tools = {n: by_name[n] for n in ("get_constitution", "get_changes_since")}
     for name, tool in read_tools.items():
         assert "detail" in tool.inputSchema["properties"], name
@@ -656,7 +656,7 @@ def test_given_two_principles_with_one_title_when_calling_get_principle_then_the
 
 
 def test_given_the_targeted_reads_when_inspecting_schemas_then_argument_sources_are_stated():
-    tools = {t.name: t for t in mcp_server._TOOLS}
+    tools = {t.name: t for t in mcp_tools.TOOLS}
     assert "get_constitution" in tools["get_principle"].description
     assert "version" in tools["get_principle"].description
     assert "version" in tools["get_declaration"].description
@@ -804,7 +804,7 @@ def test_given_the_read_family_when_answering_then_each_carries_its_source_versi
 
 
 def test_given_the_server_when_listing_tools_then_all_of_them_read_as_one_family():
-    names = [t.name for t in mcp_server._TOOLS]
+    names = [t.name for t in mcp_tools.TOOLS]
     assert names == [
         "get_constitution",
         "get_changes_since",
@@ -815,7 +815,7 @@ def test_given_the_server_when_listing_tools_then_all_of_them_read_as_one_family
         "export_versions",
         "set_direction",
     ]
-    for tool in mcp_server._TOOLS:
+    for tool in mcp_tools.TOOLS:
         description = tool.description
         assert description.startswith("Return ") or description.startswith("Append "), tool.name
         assert description.endswith("."), tool.name

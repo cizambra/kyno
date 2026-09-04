@@ -11,6 +11,7 @@ from kyno.errors import CoherenceError
 from kyno.models import COMPACT, DETAIL_LEVELS, FULL, check_detail
 from kyno.sdk.client import RESOURCE_URI as RESOURCE_URI  # the SDK owns the wire name
 from kyno.service import ControlPlane
+from kyno.tokens import hash_value
 
 # get_principles has its own detail vocabulary: "titles" names exactly what
 # the small answer contains, where "compact" only means something when the
@@ -123,6 +124,7 @@ def handle_set_direction(
     constitution: str | None = None,
     expected_version: int | None = None,
     authorized_by: str | None = None,
+    token_id: int | None = None,
 ) -> dict:
     return _guard(
         lambda: cp.set_direction(
@@ -134,6 +136,7 @@ def handle_set_direction(
             constitution=constitution,
             expected_version=expected_version,
             authorized_by=authorized_by,
+            token_id=token_id,
         ).to_dict()
     )
 
@@ -299,7 +302,34 @@ _TOOLS = [
 ]
 
 
-def build_server(control_plane: ControlPlane) -> Server:
+def _request_token_id(server: Server, token_store) -> int | None:
+    """The id of the token that authenticated the current request, or None.
+
+    Called by the set_direction handler so the version records which
+    credential wrote it. Resolved from the request's own Authorization
+    header -- never from tool arguments, so a client cannot claim another
+    token's identity. Returns None over stdio and in-process transports,
+    where there is no bearer header, and None when no store was given.
+
+    Returns the row id even for a token revoked mid-session: the endpoint
+    already authenticated the request, and attribution should name the
+    credential that was used."""
+    if token_store is None:
+        return None
+    try:
+        request = server.request_context.request
+    except LookupError:
+        return None
+    if request is None:
+        return None
+    value = request.headers.get("authorization", "")
+    if not value.startswith("Bearer "):
+        return None
+    token = token_store.token_by_hash(hash_value(value[len("Bearer ") :]))
+    return token.id if token else None
+
+
+def build_server(control_plane: ControlPlane, token_store=None) -> Server:
     server: Server = Server("kyno")
     subscribers: set = set()  # sessions subscribed to RESOURCE_URI
     pending: set = set()  # in-flight notification tasks, kept alive until done
@@ -359,6 +389,7 @@ def build_server(control_plane: ControlPlane) -> Server:
                     constitution=arguments.get("constitution"),
                     expected_version=arguments.get("expected_version"),
                     authorized_by=arguments.get("authorized_by"),
+                    token_id=_request_token_id(server, token_store),
                 )
             case _:
                 raise ValueError(f"unknown tool: {name}")

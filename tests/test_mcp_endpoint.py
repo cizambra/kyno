@@ -225,7 +225,7 @@ async def test_given_non_utf8_header_bytes_when_handling_the_request_then_it_is_
 def test_given_a_write_token_when_driving_an_http_session_then_the_written_mission_is_read_back():
     from starlette.testclient import TestClient
 
-    _store, value, app = _gated()
+    store, value, app = _gated()
 
     with TestClient(app) as client:
         h = drive_session(client, bearer(value))
@@ -238,6 +238,53 @@ def test_given_a_write_token_when_driving_an_http_session_then_the_written_missi
     payload = json.loads(sse_json(get_resp.text)["result"]["content"][0]["text"])
     assert payload["mission"] == "M1"
     assert payload["version"] == 1
+    # The version records which token authenticated the write, resolved by
+    # the server from the request itself.
+    assert store.head("default").token_id == store.tokens()[0].id
+
+
+@pytest.mark.e2e
+def test_given_two_live_tokens_when_writing_with_the_second_then_that_one_is_recorded():
+    # With one token in the store, attribution could pass by picking "any
+    # token". Two live tokens force the resolution to match the bearer
+    # value that actually authenticated the write.
+    from starlette.testclient import TestClient
+
+    store, _, app = _gated()
+    writer = mint(store, scope="write", name="second")
+
+    with TestClient(app) as client:
+        h = drive_session(client, bearer(writer))
+        resp = call_tool(client, h, 2, "set_direction", {"mission": "M1", "change_note": "init"})
+
+    assert resp.status_code == 200
+    second = next(t for t in store.tokens() if t.name == "second")
+    first = next(t for t in store.tokens() if t.name != "second")
+    assert store.head("default").token_id == second.id
+    assert store.head("default").token_id != first.id
+
+
+def test_given_a_client_claiming_a_token_id_when_writing_then_the_server_ignores_the_claim():
+    # token_id is resolved from the request's own bearer header, never from
+    # tool arguments: a client cannot attribute its write to another token.
+    from starlette.testclient import TestClient
+
+    store, value, app = _gated()
+    real_id = store.tokens()[0].id
+
+    with TestClient(app) as client:
+        h = drive_session(client, bearer(value))
+        call_tool(
+            client,
+            h,
+            2,
+            "set_direction",
+            {"mission": "M1", "change_note": "init", "token_id": 999},
+        )
+
+    head = store.head("default")
+    assert head is not None
+    assert head.token_id == real_id
 
 
 def test_given_a_batched_body_when_posting_then_the_scope_check_reads_it_and_the_sdk_rejects_it():

@@ -130,6 +130,10 @@ class ConstitutionVersion(HoldsPrinciples):
     declaration: str = ""
     # None on local and direct writes: those paths ask no approval questions.
     authorized_by: str | None = None
+    # The id of the token that authenticated a remote write. Resolved by the
+    # server from the request itself, never taken from the client. None on
+    # local and stdio writes.
+    token_id: int | None = None
 
     def principle(self, title: str) -> Principle:
         """The one principle with this exact title. Titles are not unique, so

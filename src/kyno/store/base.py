@@ -36,4 +36,5 @@ class ConstitutionStore(Protocol):
         changed_mission: bool,
         changed_principles: bool,
         created_by: str | None,
+        token_id: int | None = None,
     ) -> ConstitutionVersion: ...

@@ -87,6 +87,7 @@ class SqlConstitutionStore:
             created_at=created_at,
             created_by=row.created_by,
             authorized_by=row.authorized_by,
+            token_id=row.token_id,
         )
 
     def _constitution_id(self, conn, constitution: str) -> int | None:
@@ -173,6 +174,7 @@ class SqlConstitutionStore:
                 "change_note": v.change_note,
                 "created_by": v.created_by,
                 "authorized_by": v.authorized_by,
+                "token_id": v.token_id,
                 "created_at": v.created_at.isoformat(),
             }
             for v in versions
@@ -229,6 +231,7 @@ class SqlConstitutionStore:
         changed_principles: bool,
         created_by: str | None,
         authorized_by: str | None = None,
+        token_id: int | None = None,
     ) -> ConstitutionVersion:
         now = datetime.now(UTC)
         try:
@@ -261,6 +264,7 @@ class SqlConstitutionStore:
                         created_at=now,
                         created_by=created_by,
                         authorized_by=authorized_by,
+                        token_id=token_id,
                     )
                 )
         except IntegrityError as exc:
@@ -278,6 +282,7 @@ class SqlConstitutionStore:
             created_at=now,
             created_by=created_by,
             authorized_by=authorized_by,
+            token_id=token_id,
         )
 
     def _row_to_token(self, row) -> Token:

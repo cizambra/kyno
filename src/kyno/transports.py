@@ -1,17 +1,10 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 from kyno.errors import ConfigError
+from kyno.mcp_endpoint import MAX_MCP_BODY_BYTES, McpEndpoint
 from kyno.mcp_server import build_server
 from kyno.public_page import PageConfig
 from kyno.service import ControlPlane
-from kyno.tokens import hash_value
-
-# A JSON-RPC request is small. The largest legitimate one carries a full constitution, and the
-# field size limits keep that well under this cap.
-MAX_MCP_BODY_BYTES = 5_000_000
-
 
 # Sent on every public response, including 404s. The pages carry one inline <style> block and
 # nothing that runs, loads, or frames.
@@ -21,28 +14,6 @@ PUBLIC_HEADERS = {
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "no-referrer",
 }
-
-
-def token_for_request(headers: dict, token_store, now: datetime):
-    """Find the live token a request's bearer header carries, or None.
-
-    Returns None in four cases: no Authorization header, a header that is
-    not a Bearer value, a value no row matches, and a token that is revoked
-    or expired. The caller turns None into a 401.
-
-    The four cases return the same response on purpose. Distinguishing them
-    would tell a caller which tokens exist."""
-    value = None
-    for k, v in headers.items():
-        if k.lower() == "authorization":
-            value = v
-            break
-    if value is None or not value.startswith("Bearer "):
-        return None
-    token = token_store.token_by_hash(hash_value(value[len("Bearer ") :]))
-    if token is None or not token.live_at(now):
-        return None
-    return token
 
 
 async def run_stdio(control_plane: ControlPlane) -> None:
@@ -76,7 +47,7 @@ def build_http_app(
 
     from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
     from starlette.applications import Starlette
-    from starlette.responses import HTMLResponse, JSONResponse, Response
+    from starlette.responses import HTMLResponse, JSONResponse
     from starlette.routing import Mount, Route
 
     from kyno.public_page import render_constitution, render_index, render_not_found
@@ -91,55 +62,7 @@ def build_http_app(
     except TypeError:  # an mcp release before the cap existed
         manager = StreamableHTTPSessionManager(app=server)
 
-    async def handle(scope, receive, send):
-        headers = {
-            k.decode(errors="replace"): v.decode(errors="replace")
-            for k, v in scope.get("headers", [])
-        }
-        token = None
-        if token_store is not None:
-            token = token_for_request(headers, token_store, datetime.now(UTC))
-            if token is None:
-                await Response("unauthorized", status_code=401)(scope, receive, send)
-                return
-        declared = headers.get("content-length", "")
-        if declared.isdigit() and int(declared) > MAX_MCP_BODY_BYTES:
-            await Response("request body too large", status_code=413)(scope, receive, send)
-            return
-        if scope.get("method") != "POST":
-            # GET opens the server-sent-events stream, where the server
-            # pushes notifications; DELETE closes a session. Neither
-            # carries a tool call, so there is no scope to check and
-            # nothing to log.
-            await manager.handle_request(scope, receive, send)
-            return
-        # Buffer the body: the cap needs counting either way, and the scope
-        # check has to see the tool name before the MCP layer runs.
-        # Each receive() returns one ASGI message. For a request body it is
-        # {"type": "http.request", "body": bytes, "more_body": bool}; any
-        # other type here means the client disconnected.
-        body = bytearray()
-        while True:
-            message = await receive()
-            if message["type"] != "http.request":
-                # The client hung up before finishing the body.
-                return
-            body.extend(message.get("body") or b"")
-            if len(body) > MAX_MCP_BODY_BYTES:
-                await Response("request body too large", status_code=413)(scope, receive, send)
-                return
-            if not message.get("more_body"):
-                break
-        replayed = False
-
-        async def replay():
-            nonlocal replayed
-            if not replayed:
-                replayed = True
-                return {"type": "http.request", "body": bytes(body), "more_body": False}
-            return await receive()
-
-        await manager.handle_request(scope, replay, send)
+    handle = McpEndpoint(manager, token_store)
 
     # Unpublished and unknown return the same response, and never 401: a 401 would tell an
     # anonymous caller that a name they guessed is real. These are sync on purpose -- Starlette

@@ -690,3 +690,18 @@ def test_given_stored_and_referenced_tokens_when_listing_then_values_never_print
     # The values themselves never appear.
     assert "kyno_secret-value" not in listing.output
     assert "typed-secret" not in listing.output
+
+
+def test_given_a_referenced_variable_set_to_an_empty_string_when_listing_then_it_reads_not_set(
+    monkeypatch,
+):
+    # An empty variable cannot authenticate anything, so the listing treats
+    # it the same as an absent one.
+    monkeypatch.setenv("MY_EMPTY_TOKEN", "")
+    added = runner.invoke(app, ["credentials", "add", "--token-env", "MY_EMPTY_TOKEN"])
+    assert added.exit_code == 0
+
+    listing = runner.invoke(app, ["credentials", "list"])
+
+    assert listing.exit_code == 0
+    assert "${MY_EMPTY_TOKEN} (not set)" in listing.output

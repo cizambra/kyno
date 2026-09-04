@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import create_engine, delete
 
-from kyno.errors import CorruptStateError, VersionConflictError
+from kyno.errors import CoherenceError, CorruptStateError, VersionConflictError
 from kyno.models import Principle
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
@@ -825,3 +825,104 @@ def test_given_an_append_without_a_token_id_when_reading_back_then_it_is_none(st
     )
 
     assert store.head("default").token_id is None
+
+
+def _ledger(store):
+    """Two versions with distinct authors and shapes, as an exporter would
+    have written them."""
+    store.append(
+        "default",
+        1,
+        mission="M1",
+        principles=("p1",),
+        change_note="init",
+        changed_mission=True,
+        changed_principles=True,
+        created_by="camilo",
+        authorized_by="operator",
+    )
+    store.append(
+        "default",
+        2,
+        mission="M1",
+        principles=("p1", "p2"),
+        change_note="add p2",
+        changed_mission=False,
+        changed_principles=True,
+        created_by="ci",
+        authorized_by="automation",
+    )
+    return store.export_versions()
+
+
+def test_given_an_exported_ledger_when_importing_then_versions_dates_and_authors_survive():
+    source, target = SqlConstitutionStore(url="sqlite://"), SqlConstitutionStore(url="sqlite://")
+    source.create_all()
+    target.create_all()
+    rows = _ledger(source)
+
+    written = target.import_versions("default", rows)
+
+    assert written == 2
+    assert target.export_versions() == rows
+    head = target.head("default")
+    assert head.version == 2
+    assert head.changed_mission is False and head.changed_principles is True
+
+
+def test_given_an_export_carrying_token_ids_when_importing_then_they_are_not_carried_over():
+    # A token id names a row in the exporting database's own token table;
+    # the target database has different tokens, or none.
+    source, target = SqlConstitutionStore(url="sqlite://"), SqlConstitutionStore(url="sqlite://")
+    source.create_all()
+    target.create_all()
+    t = source.add_token("ops", "write", token_hash="8" * 64)
+    source.append(
+        "default",
+        1,
+        mission="M1",
+        principles=("p1",),
+        change_note="init",
+        changed_mission=True,
+        changed_principles=True,
+        created_by="ci",
+        token_id=t.id,
+    )
+    rows = source.export_versions()
+    assert rows[0]["token_id"] == t.id
+
+    target.import_versions("default", rows)
+
+    assert target.head("default").token_id is None
+
+
+def test_given_an_import_under_another_name_when_reading_then_the_history_lives_there(store):
+    rows = _ledger(store)
+
+    store.import_versions("acme-team1", rows)
+
+    assert store.head("acme-team1").version == 2
+    assert [r["version"] for r in store.export_versions("acme-team1")] == [1, 2]
+
+
+def test_given_a_target_that_already_has_versions_when_importing_then_it_refuses(store):
+    rows = _ledger(store)
+
+    with pytest.raises(VersionConflictError, match="already has versions"):
+        store.import_versions("default", rows)
+
+    assert store.head("default").version == 2
+
+
+def test_given_a_partial_export_when_importing_then_it_refuses_naming_the_row(store):
+    rows = _ledger(store)
+
+    with pytest.raises(CoherenceError, match="row 1 is v2"):
+        store.import_versions("fresh", rows[1:])
+
+    assert store.head("fresh") is None
+
+
+def test_given_an_empty_list_when_importing_then_it_refuses(store):
+    with pytest.raises(CoherenceError, match="no versions"):
+        store.import_versions("fresh", [])

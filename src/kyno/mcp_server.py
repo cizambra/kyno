@@ -8,7 +8,7 @@ from mcp.server import Server
 from pydantic import AnyUrl
 
 from kyno.errors import CoherenceError
-from kyno.models import COMPACT, DETAIL_LEVELS, FULL, check_detail
+from kyno.models import COMPACT, DETAIL_LEVELS, FULL, READ, WRITE, check_detail
 from kyno.sdk.client import RESOURCE_URI as RESOURCE_URI  # the SDK owns the wire name
 from kyno.service import ControlPlane
 from kyno.tokens import hash_value
@@ -300,6 +300,22 @@ _TOOLS = [
         },
     ),
 ]
+
+
+# The scope each tool requires, kept beside the tool declarations so a new
+# tool cannot ship without stating what it needs. The endpoint denies any
+# tool that is missing from this map: an undeclared tool must fail closed,
+# not default to readable.
+TOOL_SCOPES = {
+    "get_constitution": READ,
+    "get_changes_since": READ,
+    "get_mission": READ,
+    "get_declaration": READ,
+    "get_principles": READ,
+    "get_principle": READ,
+    "export_versions": READ,
+    "set_direction": WRITE,
+}
 
 
 def _request_token_id(server: Server, token_store) -> int | None:

@@ -287,6 +287,32 @@ def test_given_a_client_claiming_a_token_id_when_writing_then_the_server_ignores
     assert head.token_id == real_id
 
 
+def test_given_a_tool_missing_from_the_scope_map_when_posting_then_it_is_403_even_for_write():
+    # Fail closed: a tool nobody declared a scope for is denied for every
+    # token. A new tool must state what it requires before it is callable.
+    from starlette.testclient import TestClient
+
+    store, value, app = _gated()
+
+    with TestClient(app) as client:
+        h = drive_session(client, bearer(value))
+        response = call_tool(client, h, 2, "not_a_declared_tool", {})
+
+    assert response.status_code == 403
+    assert store.head("default") is None
+
+
+def test_given_the_declared_tools_when_reading_the_scope_map_then_every_tool_has_a_scope():
+    # The map and the tool declarations must not drift: a tool without a
+    # scope entry would be dead on arrival (fail-closed denies it).
+    from kyno.mcp_server import _TOOLS, TOOL_SCOPES
+    from kyno.models import SCOPES
+
+    declared = {tool.name for tool in _TOOLS}
+    assert declared == set(TOOL_SCOPES)
+    assert all(scope in SCOPES for scope in TOOL_SCOPES.values())
+
+
 def test_given_a_batched_body_when_posting_then_the_scope_check_reads_it_and_the_sdk_rejects_it():
     # Batches (JSON arrays) never execute. This test proves both layers:
     #
@@ -342,7 +368,7 @@ def test_given_a_read_token_when_calling_set_direction_then_it_is_403_and_nothin
         allowed = call_tool(client, h, 3, "get_constitution", {})
 
     assert refused.status_code == 403
-    assert "read-only" in refused.text
+    assert "scope does not cover" in refused.text
     assert allowed.status_code == 200
     assert store.head("default") is None
 

@@ -264,6 +264,24 @@ def test_given_two_live_tokens_when_writing_with_the_second_then_that_one_is_rec
     assert store.head("default").token_id != first.id
 
 
+@pytest.mark.e2e
+def test_given_a_read_token_when_asking_whoami_over_http_then_its_own_name_and_scope_answer():
+    from starlette.testclient import TestClient
+
+    store, _, app = _gated()
+    reader = mint(store, scope="read", name="agents")
+
+    with TestClient(app) as client:
+        h = drive_session(client, bearer(reader))
+        resp = call_tool(client, h, 2, "whoami", {})
+
+    assert resp.status_code == 200
+    payload = json.loads(sse_json(resp.text)["result"]["content"][0]["text"])
+    row = next(t for t in store.tokens() if t.name == "agents")
+    assert payload == {"id": row.id, "name": "agents", "scope": "read"}
+
+
+@pytest.mark.e2e
 def test_given_a_client_claiming_a_token_id_when_writing_then_the_server_ignores_the_claim():
     # token_id is resolved from the request's own bearer header, never from
     # tool arguments: a client cannot attribute its write to another token.

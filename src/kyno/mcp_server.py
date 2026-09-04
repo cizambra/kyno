@@ -9,7 +9,7 @@ from pydantic import AnyUrl
 
 from kyno.errors import CoherenceError
 from kyno.mcp_tools import PRINCIPLES_DETAIL_LEVELS, TITLES, TOOLS
-from kyno.models import COMPACT, FULL, check_detail
+from kyno.models import COMPACT, FULL, Token, check_detail
 from kyno.sdk.client import RESOURCE_URI as RESOURCE_URI  # the SDK owns the wire name
 from kyno.service import ControlPlane
 from kyno.tokens import hash_value
@@ -108,6 +108,19 @@ def handle_get_principle(cp: ControlPlane, title: str, constitution: str | None 
     return _guard(read)
 
 
+def handle_whoami(token: Token | None) -> dict:
+    """What the server knows about the credential behind the current
+    request: its id, name and scope, as `kyno whoami --remote` shows them.
+
+    `token` is the row the endpoint authenticated, resolved from the
+    request's bearer header. It is None where no bearer token exists:
+    stdio, in-process sessions, and a server running with allow_insecure.
+    Those answer with nulls in every field."""
+    if token is None:
+        return {"id": None, "name": None, "scope": None}
+    return {"id": token.id, "name": token.name, "scope": token.scope}
+
+
 def handle_set_direction(
     cp: ControlPlane,
     *,
@@ -136,16 +149,17 @@ def handle_set_direction(
     )
 
 
-def _request_token_id(server: Server, token_store) -> int | None:
-    """The id of the token that authenticated the current request, or None.
+def _request_token(server: Server, token_store) -> Token | None:
+    """The token that authenticated the current request, or None.
 
-    Called by the set_direction handler so the version records which
-    credential wrote it. Resolved from the request's own Authorization
+    Called by the set_direction case so the version records which
+    credential wrote it, and by the whoami case to answer with the
+    token's name and scope. Resolved from the request's own Authorization
     header -- never from tool arguments, so a client cannot claim another
     token's identity. Returns None over stdio and in-process transports,
     where there is no bearer header, and None when no store was given.
 
-    Returns the row id even for a token revoked mid-session: the endpoint
+    Returns the row even for a token revoked mid-session: the endpoint
     already authenticated the request, and attribution should name the
     credential that was used."""
     if token_store is None:
@@ -159,8 +173,7 @@ def _request_token_id(server: Server, token_store) -> int | None:
     value = request.headers.get("authorization", "")
     if not value.startswith("Bearer "):
         return None
-    token = token_store.token_by_hash(hash_value(value[len("Bearer ") :]))
-    return token.id if token else None
+    return token_store.token_by_hash(hash_value(value[len("Bearer ") :]))
 
 
 def build_server(control_plane: ControlPlane, token_store=None) -> Server:
@@ -213,6 +226,7 @@ def build_server(control_plane: ControlPlane, token_store=None) -> Server:
                 )
             case "set_direction":
                 _require(arguments, "change_note")
+                requester = _request_token(server, token_store)
                 result = handle_set_direction(
                     control_plane,
                     mission=arguments.get("mission"),
@@ -223,8 +237,10 @@ def build_server(control_plane: ControlPlane, token_store=None) -> Server:
                     constitution=arguments.get("constitution"),
                     expected_version=arguments.get("expected_version"),
                     authorized_by=arguments.get("authorized_by"),
-                    token_id=_request_token_id(server, token_store),
+                    token_id=requester.id if requester else None,
                 )
+            case "whoami":
+                result = handle_whoami(_request_token(server, token_store))
             case _:
                 raise ValueError(f"unknown tool: {name}")
         return [types.TextContent(type="text", text=json.dumps(result))]

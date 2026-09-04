@@ -363,6 +363,7 @@ class ControlPlane:
         constitution: str | None = None,
         expected_version: int | None = None,
         authorized_by: str | None = None,
+        token_id: int | None = None,
     ) -> ConstitutionVersion:
         """Append a version. With expected_version, the write is pinned to
         the head the caller reviewed: if the head has moved since, nothing
@@ -415,6 +416,7 @@ class ControlPlane:
                 changed_principles=changed_principles,
                 created_by=created_by,
                 authorized_by=authorized_by,
+                token_id=token_id,
             )
         except VersionConflictError:
             # A concurrent writer took this version. Nothing is written; the caller decides what

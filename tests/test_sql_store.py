@@ -295,6 +295,7 @@ def test_given_a_full_range_when_exporting_versions_then_plain_dicts_come_back_a
         "change_note": "init",
         "created_by": "alice",
         "authorized_by": None,
+        "token_id": None,
         "created_at": rows[0]["created_at"],
     }
     assert rows[1]["mission"] == "M2" and rows[1]["created_by"] == "bob"
@@ -789,3 +790,38 @@ def test_given_an_old_touch_when_touching_after_the_window_then_the_row_moves(st
 
     assert changed is True
     assert store.token(t.id).last_used_at >= first
+
+
+def test_given_an_append_with_a_token_id_when_reading_back_then_the_version_carries_it(store):
+    t = store.add_token("ops", "write", token_hash="9" * 64)
+    store.append(
+        "default",
+        1,
+        mission="M1",
+        principles=("p1",),
+        change_note="init",
+        changed_mission=True,
+        changed_principles=True,
+        created_by="ci",
+        token_id=t.id,
+    )
+
+    head = store.head("default")
+
+    assert head.token_id == t.id
+    assert store.export_versions()[0]["token_id"] == t.id
+
+
+def test_given_an_append_without_a_token_id_when_reading_back_then_it_is_none(store):
+    store.append(
+        "default",
+        1,
+        mission="M1",
+        principles=("p1",),
+        change_note="init",
+        changed_mission=True,
+        changed_principles=True,
+        created_by="op",
+    )
+
+    assert store.head("default").token_id is None

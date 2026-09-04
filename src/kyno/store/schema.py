@@ -46,6 +46,9 @@ def build_metadata(prefix: str = "kyno_") -> tuple[MetaData, Table, Table, Table
         Column("created_by", String(255), nullable=True),
         # Nullable: local and direct writes have no questions to record.
         Column("authorized_by", String(32), nullable=True),
+        # The server-verified token that authenticated a remote write.
+        # Nullable: local and stdio writes carry no bearer token.
+        Column("token_id", Integer, ForeignKey(f"{prefix}tokens.id"), nullable=True),
         UniqueConstraint("constitution_id", "version", name=f"{prefix}uq_constitution_version"),
     )
     tokens = Table(

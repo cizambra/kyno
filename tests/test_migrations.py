@@ -340,13 +340,17 @@ def test_given_a_head_database_when_downgrading_one_migration_then_only_its_own_
     command.upgrade(cfg, "head")
     before = _colmap(inspect(engine), table)
 
+    command.downgrade(cfg, "0005")
+    after = _colmap(inspect(engine), table)
+    assert set(before) - set(after) == {"token_id"}
+
     command.downgrade(cfg, "0003")
     after = _colmap(inspect(engine), table)
-    assert set(before) - set(after) == {"authorized_by"}
+    assert set(before) - set(after) == {"token_id", "authorized_by"}
 
     command.downgrade(cfg, "0002")
     after = _colmap(inspect(engine), table)
-    assert set(before) - set(after) == {"authorized_by", "declaration"}
+    assert set(before) - set(after) == {"token_id", "authorized_by", "declaration"}
 
     command.upgrade(cfg, "head")
     assert _colmap(inspect(engine), table) == before
@@ -486,7 +490,62 @@ def test_given_a_head_database_when_downgrading_the_tokens_migration_then_only_t
     command.downgrade(cfg, "0004")
     insp = inspect(engine)
     assert "kyno_tokens" not in set(insp.get_table_names())
-    assert _colmap(insp, "kyno_constitution_versions") == versions_before
+    # 0006's token_id column goes too: it references the tokens table.
+    expected = dict(versions_before)
+    expected.pop("token_id")
+    assert _colmap(insp, "kyno_constitution_versions") == expected
 
     command.upgrade(cfg, "head")
     assert "kyno_tokens" in set(inspect(engine).get_table_names())
+
+
+def test_given_the_two_schema_paths_when_comparing_then_both_carry_the_token_id_column(tmp_path):
+    from kyno.store.sql import SqlConstitutionStore
+
+    mdb = tmp_path / "tid_migrated.sqlite3"
+    cfg = Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", f"sqlite:///{mdb}")
+    command.upgrade(cfg, "head")
+    minsp = inspect(create_engine(f"sqlite:///{mdb}"))
+
+    edb = tmp_path / "tid_embedded.sqlite3"
+    store = SqlConstitutionStore(url=f"sqlite:///{edb}")
+    store.create_all()
+    einsp = inspect(store.engine)
+
+    table = "kyno_constitution_versions"
+    for insp, label in ((minsp, "migrated"), (einsp, "embedded")):
+        cols = _colmap(insp, table)
+        assert "token_id" in cols, f"{label} schema is missing token_id"
+        assert cols["token_id"] is True, f"{label}: token_id must be nullable (null = local write)"
+
+
+def test_given_an_existing_database_when_upgrading_then_its_versions_have_no_token_id(tmp_path):
+    # The realistic upgrade one migration later: rows written before the
+    # column existed keep serving, recording no token.
+    from kyno.service import ControlPlane
+    from kyno.store.sql import SqlConstitutionStore
+
+    db = tmp_path / "pre_token_id.sqlite3"
+    url = f"sqlite:///{db}"
+    cfg = Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", url)
+
+    command.upgrade(cfg, "0005")
+    engine = create_engine(url)
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            "INSERT INTO kyno_constitutions (name, current_version, created_at) "
+            "VALUES ('legacy', 1, '2026-01-01 00:00:00')"
+        )
+        conn.exec_driver_sql(
+            "INSERT INTO kyno_constitution_versions (constitution_id, version, mission, "
+            "principles, change_note, changed_mission, changed_principles, created_at) "
+            "VALUES (1, 1, 'Old mission', '[\"p1\"]', 'init', 1, 1, '2026-01-01 00:00:00')"
+        )
+
+    command.upgrade(cfg, "head")
+
+    head = ControlPlane(SqlConstitutionStore(url=url)).current("legacy")
+    assert head.mission == "Old mission"
+    assert head.token_id is None

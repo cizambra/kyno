@@ -31,6 +31,10 @@ async def test_given_a_memory_session_when_calling_tools_then_the_written_missio
         read = await client.read_resource(RESOURCE_URI)
         assert "M1" in read.contents[0].text
 
+    # In-process serving carries no bearer header, so the write records no
+    # token identity.
+    assert store.head("default").token_id is None
+
 
 def test_given_no_token_store_when_building_the_http_app_then_allow_insecure_is_required():
     # An embedder has to opt in explicitly, the same as the CLI does.

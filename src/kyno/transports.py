@@ -54,7 +54,7 @@ def build_http_app(
 
     page = page or PageConfig()
 
-    server = build_server(control_plane)
+    server = build_server(control_plane, token_store=token_store)
     try:
         # The MCP layer has its own body cap (4 MiB by default) that would answer 413 below
         # ours, so one constant sets both.

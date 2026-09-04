@@ -206,7 +206,7 @@ async def test_given_non_utf8_header_bytes_when_handling_the_request_then_it_is_
 
 
 @pytest.mark.e2e
-def test_given_a_write_token_when_driving_a_full_http_session_then_the_set_mission_is_read_back():
+def test_given_a_write_token_when_driving_an_http_session_then_the_written_mission_is_read_back():
     from starlette.testclient import TestClient
 
     _store, value, app = _gated()

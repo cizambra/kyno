@@ -47,6 +47,31 @@ def _tool_calls(body: bytes) -> list[tuple[str, str]]:
     return calls
 
 
+def _decoded_headers(scope) -> dict:
+    """The request headers as text. ASGI hands them over as bytes; values
+    that are not valid UTF-8 are decoded with replacement characters, so a
+    broken header can never crash the request."""
+    return {
+        k.decode(errors="replace"): v.decode(errors="replace") for k, v in scope.get("headers", [])
+    }
+
+
+def _body_declared_over_cap(headers: dict) -> bool:
+    """True when the Content-Length header announces a body over the cap.
+    Answering here avoids reading a body we would refuse anyway; a chunked
+    request declares no length and is counted while it streams instead."""
+    declared = headers.get("content-length", "")
+    return declared.isdigit() and int(declared) > MAX_MCP_BODY_BYTES
+
+
+def _forbidden_write(token, calls) -> bool:
+    """True when the request asks for set_direction and the token may not
+    write. With the check off (token is None), nothing is forbidden."""
+    if token is None or token.scope == WRITE:
+        return False
+    return any(name == "set_direction" for name, _ in calls)
+
+
 class McpEndpoint:
     """The ASGI app served at /mcp. On every request it checks the token,
     enforces the body size cap, applies the read/write rule, and only then
@@ -83,18 +108,14 @@ class McpEndpoint:
     async def __call__(self, scope, receive, send):
         from starlette.responses import Response
 
-        headers = {
-            k.decode(errors="replace"): v.decode(errors="replace")
-            for k, v in scope.get("headers", [])
-        }
+        headers = _decoded_headers(scope)
         token = None
         if self._token_store is not None:
             token = self._authenticate(headers)
             if token is None:
                 await Response("unauthorized", status_code=401)(scope, receive, send)
                 return
-        declared = headers.get("content-length", "")
-        if declared.isdigit() and int(declared) > MAX_MCP_BODY_BYTES:
+        if _body_declared_over_cap(headers):
             await Response("request body too large", status_code=413)(scope, receive, send)
             return
         if scope.get("method") != "POST":
@@ -108,8 +129,7 @@ class McpEndpoint:
         if body is None:
             return
         calls = _tool_calls(body)
-        writes = any(name == "set_direction" for name, _ in calls)
-        if token is not None and token.scope != WRITE and writes:
+        if _forbidden_write(token, calls):
             await Response("forbidden: this token is read-only", status_code=403)(
                 scope, receive, send
             )

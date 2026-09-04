@@ -338,7 +338,7 @@ def test_given_the_scope_map_when_reading_the_policy_then_every_tool_carries_its
     # The authorization policy itself, pinned entry by entry. The parity
     # test below catches a tool with no scope; this one catches a tool
     # with the wrong scope, which would widen or narrow access quietly.
-    from kyno.mcp_server import TOOL_SCOPES
+    from kyno.mcp_tools import TOOL_SCOPES
     from kyno.models import READ, WRITE
 
     assert TOOL_SCOPES == {
@@ -358,7 +358,7 @@ def test_given_the_declarations_when_projecting_them_then_no_two_tools_share_a_n
     # they cannot drift apart. The one way the projections can lie is a
     # duplicate tool name, which would silently overwrite its twin in the
     # scope map.
-    from kyno.mcp_server import TOOL_SCOPES, TOOLS
+    from kyno.mcp_tools import TOOL_SCOPES, TOOLS
 
     assert len(TOOLS) == len(TOOL_SCOPES)
 

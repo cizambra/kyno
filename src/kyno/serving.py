@@ -35,11 +35,12 @@ def serve_http(settings: Settings, store, control_plane: ControlPlane) -> None:
     The CLI calls this with the loaded workspace settings and the store
     those settings point at.
 
-    Raises ConfigError in two cases: the database has no token table (the
-    fix is `kyno db upgrade`), and no live token exists (the fix is minting
-    one, or allow_insecure in config/server). With allow_insecure on, both
-    checks are skipped, the app is built without a store, and a warning
-    goes to stderr."""
+    Raises ConfigError when the database has no token table (the fix is
+    `kyno db upgrade`). An empty token table is not an error: the server
+    starts, every /mcp request is refused until a token is minted, and a
+    note on stderr says so. With allow_insecure on, the checks are
+    skipped, the app is built without a store, and a warning goes to
+    stderr."""
     if settings.allow_insecure:
         print(
             "WARNING: serving HTTP without token checks (allow_insecure is on) "
@@ -48,7 +49,7 @@ def serve_http(settings: Settings, store, control_plane: ControlPlane) -> None:
             file=sys.stderr,
         )
     else:
-        _require_live_tokens(store)
+        _note_when_tokenless(store)
     _configure_request_log()
     import uvicorn
 
@@ -82,17 +83,21 @@ def _configure_request_log() -> None:
     request_log.propagate = False
 
 
-def _require_live_tokens(store) -> None:
-    """Refuse to open the write endpoint by accident: raise ConfigError when
-    the token table is missing (an old database) or holds no live token."""
+def _note_when_tokenless(store) -> None:
+    """Raise ConfigError when the token table is missing (an old database);
+    say so on stderr when it is empty. A server with no live tokens is
+    safe to run: every /mcp request is refused with 401 until a token is
+    minted, and a token minted later works on the next request, because
+    the check reads the database each time. Refusing to start here would
+    make deploy-first-mint-later impossible."""
     try:
         tokens = store.tokens()
     except SQLAlchemyError:
         raise ConfigError("the database has no token table yet; run: kyno db upgrade") from None
     now = datetime.now(UTC)
     if not any(t.live_at(now) for t in tokens):
-        raise ConfigError(
-            "refusing to serve HTTP with no live tokens: mint one with: "
-            "kyno token add NAME --scope write, or set allow_insecure = true "
-            "in config/server to override for local use"
+        print(
+            "note: no live tokens yet, so every /mcp request will be refused "
+            "(401) until one is minted: kyno token add NAME --scope read",
+            file=sys.stderr,
         )

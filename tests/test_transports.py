@@ -12,7 +12,7 @@ from tests.mcp_requests import MCP_HEADERS, bearer, initialize_payload, mint, to
 
 @pytest.mark.asyncio
 @pytest.mark.e2e
-async def test_given_a_memory_session_when_calling_tools_then_the_written_mission_is_read_back():
+async def test_given_an_in_process_session_when_calling_tools_then_the_written_mission_reads_back():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = SqlConstitutionStore(url="sqlite://")

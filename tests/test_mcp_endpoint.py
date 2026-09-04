@@ -334,12 +334,12 @@ def test_given_a_read_token_when_calling_a_read_tool_then_it_answers():
     assert payload == {"version": 0, "mission": ""}
 
 
-def test_given_the_scope_map_when_reading_the_policy_then_set_direction_is_the_only_write():
-    # The policy pinned at its dangerous edge: which tools can change
-    # things. Scopes are binary, so naming the write set decides every
-    # tool's scope without restating the read list each time it grows.
-    # A new tool only touches this test when it asks for write, which is
-    # exactly when a person should have to state the decision twice.
+def test_given_the_scope_map_when_reading_the_policy_then_every_tool_carries_its_intended_scope():
+    # Scopes are binary, so stating which tools write decides every
+    # tool's scope, read tools included, without restating the read list
+    # each time it grows. A new tool only touches this test when it asks
+    # for write, which is exactly when a person should have to state the
+    # decision twice.
     from kyno.mcp_tools import TOOL_SCOPES
     from kyno.models import WRITE
 

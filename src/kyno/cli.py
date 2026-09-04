@@ -928,6 +928,34 @@ def export(
         raise typer.Exit(code=1) from None
 
 
+@app.command("import")
+def import_ledger(
+    file: str = typer.Argument(..., help="A JSON file written by kyno export."),
+    as_name: str = typer.Option(
+        "default", "--as", help="The constitution to write the history under."
+    ),
+) -> None:
+    """Write a file made by `kyno export` back into the database,
+    keeping every version's number, dates and authors. --as sets the
+    constitution name to write under. Local only: it writes straight to
+    the workspace's database, and there is no --remote."""
+    try:
+        rows = json.loads(Path(file).read_text())
+    except OSError as exc:
+        typer.echo(f"error: cannot read {file}: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+    except json.JSONDecodeError:
+        typer.echo(f"error: {file} is not a kyno export: the file is not JSON", err=True)
+        raise typer.Exit(code=1) from None
+    if not isinstance(rows, list):
+        typer.echo(f"error: {file} is not a kyno export: expected a list of versions", err=True)
+        raise typer.Exit(code=1)
+    with _clean_errors():
+        count = _store().import_versions(as_name, rows)
+    word = "version" if count == 1 else "versions"
+    typer.echo(f"imported {count} {word} into '{as_name}'")
+
+
 def _fetch_remote_rows(
     profile: str,
     credentials: str | None,

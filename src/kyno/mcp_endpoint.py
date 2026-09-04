@@ -91,7 +91,7 @@ def _refusal(token, calls) -> str | None:
     for name, _ in calls:
         required = TOOL_SCOPES.get(name)
         if required is None:
-            return f"unknown tool: '{name}' is not one this server offers"
+            return f"unknown tool: '{name}' does not exist"
         if required == WRITE and token.scope != WRITE:
             return f"forbidden: this token's scope does not cover '{name}'"
     return None

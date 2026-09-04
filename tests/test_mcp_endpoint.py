@@ -300,7 +300,7 @@ def test_given_a_write_token_when_calling_an_undeclared_tool_then_it_is_403_as_u
         response = call_tool(client, h, 2, "not_a_declared_tool", {})
 
     assert response.status_code == 403
-    assert "unknown tool: 'not_a_declared_tool'" in response.text
+    assert "unknown tool: 'not_a_declared_tool' does not exist" in response.text
     assert store.head("default") is None
 
 
@@ -315,7 +315,7 @@ def test_given_a_read_token_when_calling_an_undeclared_tool_then_it_is_403_as_un
         response = call_tool(client, h, 2, "not_a_declared_tool", {})
 
     assert response.status_code == 403
-    assert "unknown tool: 'not_a_declared_tool'" in response.text
+    assert "unknown tool: 'not_a_declared_tool' does not exist" in response.text
 
 
 def test_given_a_read_token_when_calling_a_read_tool_then_it_answers():
@@ -448,6 +448,27 @@ def test_given_allow_insecure_when_calling_set_direction_then_the_write_executes
 
     assert response.status_code == 200
     assert store.head("default").mission == "M1"
+
+
+def test_given_allow_insecure_when_calling_an_undeclared_tool_then_the_server_itself_refuses():
+    # With the check off there is no scope to fail closed on: the request
+    # passes the endpoint, and the server answers with its own unknown-tool
+    # error inside the protocol instead of a 403 at the door.
+    from starlette.testclient import TestClient
+
+    from kyno.transports import build_http_app
+
+    store = token_store()
+    app = build_http_app(ControlPlane(store), allow_insecure=True)
+
+    with TestClient(app) as client:
+        h = drive_session(client, MCP_HEADERS)
+        response = call_tool(client, h, 2, "not_a_declared_tool", {})
+
+    assert response.status_code == 200
+    result = sse_json(response.text)["result"]
+    assert result["isError"] is True
+    assert "unknown tool" in result["content"][0]["text"]
 
 
 @pytest.mark.asyncio

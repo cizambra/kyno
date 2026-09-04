@@ -183,139 +183,156 @@ _PRINCIPLE_ITEM = {
 # The same wording on every read whose result can be combined with another.
 _DRIFT = "If the version disagrees with one you already hold, the direction moved: re-read it."
 
-TOOLS = [
-    types.Tool(
-        name="get_constitution",
-        description=(
-            "Return the constitution in force now. Compact by default: pass "
-            "detail='full' to include the declaration and the principle descriptions."
-        ),
-        inputSchema={
-            "type": "object",
-            "properties": {"constitution": _CONSTITUTION_ARG, "detail": _DETAIL_ARG},
-        },
-    ),
-    types.Tool(
-        name="get_changes_since",
-        description=(
-            "Return the current direction and what changed since a known version. "
-            "Compact by default: pass detail='full' to include the declaration "
-            "and the principle descriptions."
-        ),
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "known_version": {"type": "integer"},
-                "constitution": _CONSTITUTION_ARG,
-                "detail": _DETAIL_ARG,
+# Each entry declares one tool together with the scope a token needs to
+# call it, so a tool cannot exist without stating what it needs. TOOLS
+# and TOOL_SCOPES below are projections of this list and nothing else.
+DECLARATIONS = [
+    (
+        types.Tool(
+            name="get_constitution",
+            description=(
+                "Return the constitution in force now. Compact by default: pass "
+                "detail='full' to include the declaration and the principle descriptions."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {"constitution": _CONSTITUTION_ARG, "detail": _DETAIL_ARG},
             },
-            "required": ["known_version"],
-        },
-    ),
-    types.Tool(
-        name="get_mission",
-        description=(
-            "Return the mission alone, with the version it belongs to. One piece "
-            f"of the constitution, for when a compact read is all you need. {_DRIFT}"
         ),
-        inputSchema={"type": "object", "properties": {"constitution": _CONSTITUTION_ARG}},
+        READ,
     ),
-    types.Tool(
-        name="get_declaration",
-        description=(
-            "Return the long-form declaration alone, with the version it belongs "
-            f"to. One piece of the constitution, for when a compact read left it out. {_DRIFT}"
-        ),
-        inputSchema={"type": "object", "properties": {"constitution": _CONSTITUTION_ARG}},
-    ),
-    types.Tool(
-        name="get_principles",
-        description=(
-            "Return every principle, with the version they belong to. Titles alone "
-            "by default: pass detail='full' to include the description under each "
-            f"one, which is what adjudicating between them takes. {_DRIFT}"
-        ),
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "constitution": _CONSTITUTION_ARG,
-                "detail": _PRINCIPLES_DETAIL_ARG,
+    (
+        types.Tool(
+            name="get_changes_since",
+            description=(
+                "Return the current direction and what changed since a known version. "
+                "Compact by default: pass detail='full' to include the declaration "
+                "and the principle descriptions."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "known_version": {"type": "integer"},
+                    "constitution": _CONSTITUTION_ARG,
+                    "detail": _DETAIL_ARG,
+                },
+                "required": ["known_version"],
             },
-        },
-    ),
-    types.Tool(
-        name="get_principle",
-        description=(
-            "Return one principle's title and description, with the version it "
-            "belongs to. Titles come from get_constitution or get_principles and "
-            f"must match exactly. {_DRIFT}"
         ),
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "title": {"type": "string", "description": "Exact title, from get_constitution."},
-                "constitution": _CONSTITUTION_ARG,
-            },
-            "required": ["title"],
-        },
+        READ,
     ),
-    types.Tool(
-        name="export_versions",
-        description=(
-            "Return the full version history, ascending: every version's "
-            "content and its edit metadata. Bounds are inclusive; omitted means all."
+    (
+        types.Tool(
+            name="get_mission",
+            description=(
+                "Return the mission alone, with the version it belongs to. One piece "
+                f"of the constitution, for when a compact read is all you need. {_DRIFT}"
+            ),
+            inputSchema={"type": "object", "properties": {"constitution": _CONSTITUTION_ARG}},
         ),
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "constitution": _CONSTITUTION_ARG,
-                "from_version": {"type": ["integer", "null"]},
-                "to_version": {"type": ["integer", "null"]},
-            },
-        },
+        READ,
     ),
-    types.Tool(
-        name="set_direction",
-        description=(
-            "Append a new constitution version, with a mission, a declaration "
-            "and/or principles. Omitted fields carry forward from the current "
-            'version; "" clears one.'
+    (
+        types.Tool(
+            name="get_declaration",
+            description=(
+                "Return the long-form declaration alone, with the version it belongs "
+                f"to. One piece of the constitution, for when a compact read left it out. {_DRIFT}"
+            ),
+            inputSchema={"type": "object", "properties": {"constitution": _CONSTITUTION_ARG}},
         ),
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "mission": {"type": ["string", "null"]},
-                "declaration": {"type": ["string", "null"]},
-                "principles": {"type": ["array", "null"], "items": _PRINCIPLE_ITEM},
-                "change_note": {"type": "string"},
-                "created_by": {"type": ["string", "null"]},
-                "constitution": _CONSTITUTION_ARG,
-                "expected_version": {"type": ["integer", "null"]},
-                "authorized_by": {
-                    "type": ["string", "null"],
-                    "enum": ["operator", "automation", "override", None],
+        READ,
+    ),
+    (
+        types.Tool(
+            name="get_principles",
+            description=(
+                "Return every principle, with the version they belong to. Titles alone "
+                "by default: pass detail='full' to include the description under each "
+                f"one, which is what adjudicating between them takes. {_DRIFT}"
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "constitution": _CONSTITUTION_ARG,
+                    "detail": _PRINCIPLES_DETAIL_ARG,
                 },
             },
-            "required": ["change_note"],
-        },
+        ),
+        READ,
+    ),
+    (
+        types.Tool(
+            name="get_principle",
+            description=(
+                "Return one principle's title and description, with the version it "
+                "belongs to. Titles come from get_constitution or get_principles and "
+                f"must match exactly. {_DRIFT}"
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Exact title, from get_constitution.",
+                    },
+                    "constitution": _CONSTITUTION_ARG,
+                },
+                "required": ["title"],
+            },
+        ),
+        READ,
+    ),
+    (
+        types.Tool(
+            name="export_versions",
+            description=(
+                "Return the full version history, ascending: every version's "
+                "content and its edit metadata. Bounds are inclusive; omitted means all."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "constitution": _CONSTITUTION_ARG,
+                    "from_version": {"type": ["integer", "null"]},
+                    "to_version": {"type": ["integer", "null"]},
+                },
+            },
+        ),
+        READ,
+    ),
+    (
+        types.Tool(
+            name="set_direction",
+            description=(
+                "Append a new constitution version, with a mission, a declaration "
+                "and/or principles. Omitted fields carry forward from the current "
+                'version; "" clears one.'
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "mission": {"type": ["string", "null"]},
+                    "declaration": {"type": ["string", "null"]},
+                    "principles": {"type": ["array", "null"], "items": _PRINCIPLE_ITEM},
+                    "change_note": {"type": "string"},
+                    "created_by": {"type": ["string", "null"]},
+                    "constitution": _CONSTITUTION_ARG,
+                    "expected_version": {"type": ["integer", "null"]},
+                    "authorized_by": {
+                        "type": ["string", "null"],
+                        "enum": ["operator", "automation", "override", None],
+                    },
+                },
+                "required": ["change_note"],
+            },
+        ),
+        WRITE,
     ),
 ]
 
-
-# The scope each tool requires, kept beside the tool declarations so a new
-# tool cannot ship without stating what it needs. The endpoint denies any
-# tool that is missing from this map: an undeclared tool must fail closed,
-# not default to readable.
-TOOL_SCOPES = {
-    "get_constitution": READ,
-    "get_changes_since": READ,
-    "get_mission": READ,
-    "get_declaration": READ,
-    "get_principles": READ,
-    "get_principle": READ,
-    "export_versions": READ,
-    "set_direction": WRITE,
-}
+TOOLS = [tool for tool, _ in DECLARATIONS]
+TOOL_SCOPES = {tool.name: scope for tool, scope in DECLARATIONS}
 
 
 def _request_token_id(server: Server, token_store) -> int | None:

@@ -353,15 +353,14 @@ def test_given_the_scope_map_when_reading_the_policy_then_every_tool_carries_its
     }
 
 
-def test_given_the_declared_tools_when_reading_the_scope_map_then_every_tool_has_a_scope():
-    # The map and the tool declarations must not drift: a tool without a
-    # scope entry would be dead on arrival (fail-closed denies it).
+def test_given_the_declarations_when_projecting_them_then_no_two_tools_share_a_name():
+    # TOOLS and TOOL_SCOPES are projections of one declaration list, so
+    # they cannot drift apart. The one way the projections can lie is a
+    # duplicate tool name, which would silently overwrite its twin in the
+    # scope map.
     from kyno.mcp_server import TOOL_SCOPES, TOOLS
-    from kyno.models import SCOPES
 
-    declared = {tool.name for tool in TOOLS}
-    assert declared == set(TOOL_SCOPES)
-    assert all(scope in SCOPES for scope in TOOL_SCOPES.values())
+    assert len(TOOLS) == len(TOOL_SCOPES)
 
 
 def test_given_a_batched_body_when_posting_then_the_scope_check_reads_it_and_the_sdk_rejects_it():

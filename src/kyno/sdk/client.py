@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
-from kyno.errors import KynoUnavailableError
+from kyno.errors import KynoRefusedError, KynoUnavailableError
 from kyno.models import COMPACT, ChangesSince
 
 # The resource Kyno announces version changes on. The server sends a `resources/updated`
@@ -68,6 +68,40 @@ class LocalDirectionSource:
         return self._control_plane.changes_since(known_version, constitution)
 
 
+def _leaves(exc: BaseException) -> list[BaseException]:
+    """The plain exceptions inside `exc`. The async machinery wraps a
+    failure such as an HTTP 401 in exception groups whose own text only
+    says 'unhandled errors in a TaskGroup'; the leaves say what happened."""
+    grouped = getattr(exc, "exceptions", None)
+    if not grouped:
+        return [exc]
+    found: list[BaseException] = []
+    for sub in grouped:
+        found.extend(_leaves(sub))
+    return found
+
+
+def _auth_status(exc: BaseException) -> int | None:
+    """The HTTP status inside `exc` when the server refused at the door
+    (401 or 403), else None. Read from the leaf exceptions' attached
+    responses, so it works for whichever HTTP library raised."""
+    for leaf in _leaves(exc):
+        status = getattr(getattr(leaf, "response", None), "status_code", None)
+        if status in (401, 403):
+            return status
+    return None
+
+
+def _summary(exc: BaseException) -> str:
+    """One line per leaf. httpx puts a documentation link on a second
+    line; only the first line says what went wrong."""
+    lines = []
+    for leaf in _leaves(exc):
+        text = str(leaf).splitlines()
+        lines.append(text[0] if text else type(leaf).__name__)
+    return "; ".join(lines)
+
+
 class SessionRunner:
     """One long-lived MCP session on a private event loop in a daemon thread.
 
@@ -100,7 +134,12 @@ class SessionRunner:
         if not self._ready.wait(self._timeout):
             raise KynoUnavailableError("timed out opening the kyno MCP session")
         if self._error is not None:
-            raise KynoUnavailableError(f"cannot open the kyno MCP session: {self._error}")
+            status = _auth_status(self._error)
+            if status is not None:
+                from http import HTTPStatus
+
+                raise KynoRefusedError(f"{status} {HTTPStatus(status).phrase.lower()}")
+            raise KynoUnavailableError(f"cannot open the kyno MCP session: {_summary(self._error)}")
 
     def _run(self) -> None:
         asyncio.run(self._main())

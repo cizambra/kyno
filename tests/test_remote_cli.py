@@ -304,6 +304,61 @@ def test_given_a_live_server_when_applying_remotely_then_the_version_is_applied(
         thread.join(timeout=5)
 
 
+@pytest.mark.e2e
+def test_given_a_dead_token_and_a_live_server_when_going_remote_then_the_401_reads_plainly(
+    tmp_path, monkeypatch
+):
+    # The server answers 401 while the session opens. Before this read as
+    # "unhandled errors in a TaskGroup"; now the line says who refused what.
+    import socket
+    import threading
+    import time
+
+    import uvicorn
+
+    from kyno.tokens import generate_value, hash_value
+    from kyno.transports import build_http_app
+
+    store = SqlConstitutionStore(url=f"sqlite:///{tmp_path / 'server.sqlite3'}")
+    store.create_all()
+    value = generate_value()
+    token = store.add_token("e2e", "write", token_hash=hash_value(value))
+    http_app = build_http_app(ControlPlane(store), token_store=store)
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    server = uvicorn.Server(
+        uvicorn.Config(http_app, host="127.0.0.1", port=port, log_level="error")
+    )
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    try:
+        for _ in range(200):
+            if server.started:
+                break
+            time.sleep(0.05)
+        assert server.started, "uvicorn did not come up"
+        monkeypatch.setenv("MY_TOKEN", value)
+        assert runner.invoke(app, ["credentials", "add", "--token-env", "MY_TOKEN"]).exit_code == 0
+        assert (
+            runner.invoke(app, ["remote", "add", "--url", f"http://127.0.0.1:{port}"]).exit_code
+            == 0
+        )
+        store.revoke_token(token.id)
+
+        r = runner.invoke(app, ["log", "--remote"])
+
+        assert r.exit_code == 1
+        assert f"'default' at http://127.0.0.1:{port} refused the token: 401 unauthorized" in (
+            plain(r.output)
+        )
+        assert "TaskGroup" not in r.output
+    finally:
+        server.should_exit = True
+        thread.join(timeout=5)
+
+
 def test_given_a_writer_racing_in_mid_apply_when_applying_remotely_then_nothing_is_applied(
     fake_dial, remote_cp, tmp_path
 ):

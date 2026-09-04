@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -21,6 +22,7 @@ from kyno.models import AUTOMATION, OPERATOR, OVERRIDE, SCOPES, normalize_princi
 from kyno.profiles import (
     add_credentials,
     add_remote,
+    credentials,
     credentials_path,
     inspect,
     remotes,
@@ -516,6 +518,28 @@ def credentials_add(
     source = f"${{{token_env}}}" if token_env else "the token you entered"
     typer.echo(f"{outcome} credentials profile '{profile}': {source}")
     typer.echo(f"written to {credentials_path()} (owner-readable only)")
+
+
+@credentials_app.command("list")
+def credentials_list() -> None:
+    """The credentials profiles you hold, one line each. Token values never
+    print: a stored token shows as 'stored token', and a reference shows
+    its variable and whether that variable is set right now."""
+    with _clean_errors():
+        held = credentials()
+    if not held:
+        typer.echo("no credentials profiles; add one with: kyno credentials add --token-env VAR")
+        return
+    width = max(len(name) for name in held)
+    for name in sorted(held):
+        credential = held[name]
+        env_var = credential.env_var
+        if env_var is None:
+            source = "stored token"
+        else:
+            state = "set" if os.environ.get(env_var) else "not set"
+            source = f"token from ${{{env_var}}} ({state})"
+        typer.echo(f"{name:<{width}}  {source}")
 
 
 @remote_app.command("add")

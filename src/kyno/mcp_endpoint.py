@@ -76,22 +76,25 @@ def _body_declared_over_cap(headers: dict) -> bool:
     return declared.isdigit() and int(declared) > MAX_MCP_BODY_BYTES
 
 
-def _forbidden_call(token, calls) -> bool:
-    """True when the token's scope does not cover one of the requested
-    tools. With the check off (token is None), nothing is forbidden.
+def _refusal(token, calls) -> str | None:
+    """The 403 message for a request the token may not make, or None when
+    every requested call is allowed. With the check off (token is None),
+    nothing is refused.
 
     Every tool must appear in TOOL_SCOPES with the scope it requires. A
     tool that is not in the map is denied even for a write token: an
-    undeclared tool fails closed instead of defaulting to allowed."""
+    undeclared tool fails closed instead of defaulting to allowed. The two
+    denials read differently on purpose: a scope problem blames the token,
+    an undeclared tool is named as unknown."""
     if token is None:
-        return False
+        return None
     for name, _ in calls:
         required = TOOL_SCOPES.get(name)
         if required is None:
-            return True
+            return f"unknown tool: '{name}' is not one this server offers"
         if required == WRITE and token.scope != WRITE:
-            return True
-    return False
+            return f"forbidden: this token's scope does not cover '{name}'"
+    return None
 
 
 class McpEndpoint:
@@ -152,10 +155,9 @@ class McpEndpoint:
         if body is None:
             return
         calls = _tool_calls(body)
-        if _forbidden_call(token, calls):
-            await Response(
-                "forbidden: this token's scope does not cover that tool", status_code=403
-            )(scope, receive, send)
+        refusal = _refusal(token, calls)
+        if refusal is not None:
+            await Response(refusal, status_code=403)(scope, receive, send)
             return
         if token is not None:
             for name, constitution in calls:

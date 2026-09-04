@@ -287,19 +287,51 @@ def test_given_a_client_claiming_a_token_id_when_writing_then_the_server_ignores
     assert head.token_id == real_id
 
 
-def test_given_a_tool_missing_from_the_scope_map_when_posting_then_it_is_403_even_for_write():
-    # Fail closed: a tool nobody declared a scope for is denied for every
-    # token. A new tool must state what it requires before it is callable.
+def test_given_a_write_token_when_calling_an_undeclared_tool_then_it_is_403_as_unknown():
+    # Fail closed: a tool nobody declared a scope for is denied even for
+    # the strongest scope there is. The refusal names the tool as unknown
+    # rather than blaming the token.
     from starlette.testclient import TestClient
 
-    store, value, app = _gated()
+    store, write_value, app = _gated()
 
     with TestClient(app) as client:
-        h = drive_session(client, bearer(value))
+        h = drive_session(client, bearer(write_value))
         response = call_tool(client, h, 2, "not_a_declared_tool", {})
 
     assert response.status_code == 403
+    assert "unknown tool: 'not_a_declared_tool'" in response.text
     assert store.head("default") is None
+
+
+def test_given_a_read_token_when_calling_an_undeclared_tool_then_it_is_403_as_unknown():
+    from starlette.testclient import TestClient
+
+    store, _, app = _gated()
+    read_value = mint(store, scope="read", name="crew")
+
+    with TestClient(app) as client:
+        h = drive_session(client, bearer(read_value))
+        response = call_tool(client, h, 2, "not_a_declared_tool", {})
+
+    assert response.status_code == 403
+    assert "unknown tool: 'not_a_declared_tool'" in response.text
+
+
+def test_given_a_read_token_when_calling_a_read_tool_then_it_answers():
+    # The scope check must not get in the way of what a read token is for.
+    from starlette.testclient import TestClient
+
+    store, _, app = _gated()
+    read_value = mint(store, scope="read", name="crew")
+
+    with TestClient(app) as client:
+        h = drive_session(client, bearer(read_value))
+        response = call_tool(client, h, 2, "get_mission", {})
+
+    assert response.status_code == 200
+    payload = json.loads(sse_json(response.text)["result"]["content"][0]["text"])
+    assert payload == {"version": 0, "mission": ""}
 
 
 def test_given_the_declared_tools_when_reading_the_scope_map_then_every_tool_has_a_scope():

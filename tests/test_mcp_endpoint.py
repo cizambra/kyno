@@ -299,7 +299,7 @@ def test_given_a_read_token_when_calling_set_direction_then_it_is_403_and_nothin
     assert store.head("default") is None
 
 
-def test_given_a_declared_body_over_the_cap_when_posting_then_it_is_413_before_the_body_is_read():
+def test_given_a_content_length_over_the_size_cap_when_posting_then_it_is_413_unread():
     from starlette.testclient import TestClient
 
     from kyno.transports import MAX_MCP_BODY_BYTES
@@ -314,7 +314,7 @@ def test_given_a_declared_body_over_the_cap_when_posting_then_it_is_413_before_t
     assert response.status_code == 413
 
 
-def test_given_a_declared_body_at_the_cap_when_posting_then_it_is_not_413():
+def test_given_a_content_length_at_the_size_cap_when_posting_then_it_is_not_413():
     from starlette.testclient import TestClient
 
     from kyno.transports import MAX_MCP_BODY_BYTES
@@ -329,7 +329,7 @@ def test_given_a_declared_body_at_the_cap_when_posting_then_it_is_not_413():
     assert response.status_code not in (413, 500)
 
 
-def test_given_a_chunked_body_crossing_the_cap_when_streaming_then_it_is_413():
+def test_given_a_chunked_body_crossing_the_size_cap_when_streaming_then_it_is_413():
     # Chunked transfer declares no Content-Length, so only counting the
     # streamed bytes can enforce the cap.
     from starlette.testclient import TestClient
@@ -346,7 +346,7 @@ def test_given_a_chunked_body_crossing_the_cap_when_streaming_then_it_is_413():
     assert response.status_code == 413
 
 
-def test_given_a_chunked_body_under_the_cap_when_streaming_then_it_reaches_the_mcp_handler():
+def test_given_a_chunked_body_under_the_size_cap_when_streaming_then_it_reaches_the_mcp_handler():
     from starlette.testclient import TestClient
 
     _store, value, app = _gated()

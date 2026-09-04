@@ -376,6 +376,23 @@ async def test_given_a_disconnect_mid_body_when_reading_then_nothing_is_sent_bac
     assert sent == []
 
 
+def test_given_authorized_requests_when_they_arrive_then_last_used_moves_once_per_window():
+    from starlette.testclient import TestClient
+
+    store, value, app = _gated()
+
+    with TestClient(app) as client:
+        client.post("/mcp", json=initialize_payload(), headers=bearer(value))
+        first = store.tokens()[0].last_used_at
+        client.post("/mcp", json=initialize_payload(), headers=bearer(value))
+        second = store.tokens()[0].last_used_at
+
+    assert first is not None
+    # The second request arrives inside the five-minute window, so the
+    # stored value is not updated.
+    assert second == first
+
+
 @pytest.mark.e2e
 def test_given_a_tool_call_when_handled_then_the_request_log_carries_the_fields(caplog):
     from starlette.testclient import TestClient

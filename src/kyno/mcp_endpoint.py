@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from kyno.models import WRITE, Token
 from kyno.tokens import hash_value
@@ -21,6 +21,12 @@ MAX_MCP_BODY_BYTES = 5_000_000
 # One line per tool call: token id and name, the tool, and the constitution.
 # Read this log to know what a token did and when.
 _request_log = logging.getLogger("kyno.requests")
+
+# How often last_used_at is allowed to move. A token already marked as used
+# in the last five minutes is not updated again, so a busy fleet costs one
+# write per token every five minutes instead of one per request. In exchange,
+# "last used" in `kyno token list` can run up to five minutes behind.
+TOUCH_EVERY = timedelta(minutes=5)
 
 
 def _tool_calls(body: bytes) -> list[tuple[str, str]]:
@@ -120,6 +126,7 @@ class McpEndpoint:
             if token is None:
                 await Response("unauthorized", status_code=401)(scope, receive, send)
                 return
+            self._token_store.touch_token(token.id, older_than=datetime.now(UTC) - TOUCH_EVERY)
         if _body_declared_over_cap(headers):
             await Response("request body too large", status_code=413)(scope, receive, send)
             return

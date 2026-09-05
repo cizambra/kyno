@@ -3,16 +3,34 @@
 Thanks for helping! A few essentials keep the codebase consistent — anything
 not listed here is not a review nit.
 
+## Where writing goes
+
+We document the project in four places. Each one answers a different
+question. Before you write, decide which question you are answering, and
+write it in that place.
+
+- **Code comments** explain why we did something: a trade-off, a
+  constraint, a surprising behavior kept on purpose. Don't use them to
+  explain the mechanism, and don't describe what the next line does.
+- **PR descriptions and design docs** explain the product change and the
+  architecture decisions behind it. Keep them short. The code itself is
+  the long-term record.
+- **Tests** document how the system behaves right now. Each test covers
+  one behavior and is named `given_{x}_when_{y}_then_{z}`. Test names
+  describe the current state of the system; they never justify a change
+  or mention removed features.
+- **Docstrings** explain what a method does and what it returns in each
+  case. Add a why only when you can't see it in the code, for example a
+  rejected alternative, or something a library does that the code doesn't
+  show. Don't add opinions like "best" or "cleaner".
+
 ## Code style
 
 - Standard PEP 8, as `ruff`/`black` format it. No custom style rules.
-- **Code should explain itself.** Write a comment only for something the code
-  cannot say — a deliberate trade-off, a non-obvious constraint, a surprising
-  behavior kept on purpose — and keep it to four lines or less. Never comment
-  what the next line does.
-- In tests, the test name and its assertions are the documentation. A comment
-  like "Deliberate: …" marks behavior that is intentional and should not be
-  changed casually — if you need to change it, say why in the PR.
+- A comment is four lines or less.
+- In tests, a comment like "Deliberate: …" marks behavior that is
+  intentional and should not be changed casually. If you need to change
+  it, say why in the PR.
 
 ## Tests
 
@@ -28,8 +46,8 @@ not listed here is not a review nit.
 
 ## Pull requests
 
-- Keep PR descriptions short: what it does, how to verify, where to look.
-  The durable explanation belongs in the code and commit messages.
+- A PR description covers three things: what it does, how to verify it,
+  and where to look first.
 
 ## Licensing of new files
 

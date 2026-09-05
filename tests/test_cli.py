@@ -247,6 +247,39 @@ def test_given_written_versions_when_exporting_then_the_whole_ledger_prints(tmp_
     assert rows[1]["mission"] == "M2" and rows[1]["change_note"] == "v2"
 
 
+def test_given_two_constitutions_when_exporting_default_then_stderr_reads_default_exported(
+    tmp_path, monkeypatch
+):
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
+    runner.invoke(app, ["db", "init"])
+    apply_yaml(tmp_path, mission="M1", note="v1", constitution="default")
+    apply_yaml(tmp_path, mission="EU1", note="v1", constitution="eu")
+
+    r = runner.invoke(app, ["export"])
+
+    assert r.exit_code == 0
+    # stdout stays the JSON alone, pipeable; the constitution line goes
+    # to stderr.
+    assert [row["mission"] for row in json.loads(r.stdout)] == ["M1"]
+    assert "Constitution 'default' exported" in r.stderr
+
+
+def test_given_a_misspelled_name_when_exporting_then_stderr_carries_the_name_as_typed(
+    tmp_path, monkeypatch
+):
+    # An empty array alone reads like data loss; the stderr line carries
+    # the name exactly as typed, which is what makes a typo visible.
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
+    runner.invoke(app, ["db", "init"])
+    apply_yaml(tmp_path, mission="M1", note="v1", constitution="default")
+
+    r = runner.invoke(app, ["export", "--constitution", "defualt"])
+
+    assert r.exit_code == 0
+    assert json.loads(r.stdout) == []
+    assert "Constitution 'defualt' exported" in r.stderr
+
+
 def test_given_an_empty_store_when_exporting_then_an_empty_json_array_prints(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])

@@ -217,10 +217,15 @@ def test_given_remote_history_when_reading_log_remotely_then_the_lines_print(fak
     assert lines[1].startswith("v1") and "camilo" in lines[1]
 
 
-def test_given_remote_history_when_exporting_remotely_then_the_rows_print(fake_dial, remote_cp):
+def test_given_remote_history_when_exporting_remotely_then_rows_and_the_stderr_line_print(
+    fake_dial, remote_cp
+):
+    # The stderr line needs no server data -- the name is the one the
+    # caller asked for -- so it prints on remote exports too.
     remote_cp.set_direction(mission="M1", change_note="init")
     r = runner.invoke(app, ["export", "--remote"])
     assert r.exit_code == 0
+    assert "Constitution 'default' exported" in r.stderr
     rows = json.loads(r.stdout)
     assert [row["version"] for row in rows] == [1]
 

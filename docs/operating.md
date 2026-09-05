@@ -26,11 +26,9 @@ $ kyno serve --transport http
 $ kyno token add agents --scope read     # in another terminal
 ```
 
-Serving and tokens are two separate things. The server runs with or
-without tokens; a token is what lets a request in. The endpoint checks
-a bearer token on every request, so until one exists every request is
-refused, and a token minted while the server runs works on the next
-request. Details in [Auth](#auth).
+The endpoint checks a bearer token on every request: until one
+exists, every request is refused, and a token minted while the server
+runs works on the next request. Details in [Auth](#auth).
 
 `kyno new` writes four files:
 

@@ -132,20 +132,22 @@ variables above; one that drops it is fully yours.
 | `$items` | the list of published constitutions, or the "nothing published yet" line |
 | `$count` | how many are published |
 
-Each block placeholder brings its own wrapper and disappears entirely when it
-has nothing to say, so a template never has to ask "what if there's no
-declaration". That's deliberate. These are placeholders, not a template
-language, with no loops, no conditions and no expressions, and the defaults are
-held to the same limit, which is why they are the same files you just
-exported.
+Each block placeholder brings its own wrapper, and renders as empty text
+when the constitution has nothing for it, so your template needs no
+special handling for a missing declaration or an empty principle list.
+These are placeholders, not a template language: no loops, no conditions,
+no expressions. Kyno's own default pages are built from the same
+placeholders under the same rules, which is why exporting them gives you
+working files.
 
 This limit is also a safety feature. Kyno escapes your mission, principles
 and change notes before they reach your file, and renders your declaration's
 markdown with HTML disabled, so no template can turn text somebody typed into
 a constitution into markup that runs. A placeholder you misspell is left
 alone rather than breaking the page. And if your file is missing or
-unreadable when a request arrives, Kyno serves its own page and logs a
-warning, so a bad template never takes your public page down.
+unreadable when a request arrives, Kyno serves its own page instead and
+logs a warning naming the file it could not read, so a bad template never
+takes your public page down.
 
 ## 💬 Questions?
 

@@ -145,26 +145,51 @@ def test_given_a_database_without_the_token_table_when_serving_http_then_it_name
     assert "kyno db upgrade" in r.output
 
 
-def test_given_no_live_tokens_when_serving_http_then_it_names_the_mint_command(
+def test_given_no_live_tokens_when_serving_http_then_it_starts_and_notes_the_mint_command(
     monkeypatch, tmp_path
 ):
+    # An empty token table is not an error: the operator can start the
+    # server first and mint tokens later, because the endpoint checks the
+    # database on every request. Until a token exists, /mcp answers 401
+    # to everyone, and the note says so.
     cli_workspace(monkeypatch, tmp_path)
     assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    import uvicorn
+
+    ran = {}
+    monkeypatch.setattr(uvicorn, "run", lambda *a, **k: ran.setdefault("ran", True))
     r = runner.invoke(app, ["serve", "--transport", "http"])
-    assert r.exit_code != 0
-    assert "kyno token add NAME --scope write" in r.output
+    assert r.exit_code == 0, r.output
+    assert ran.get("ran") is True
+    assert "note: no live tokens yet" in r.stderr
+    assert "kyno token add NAME --scope read" in r.stderr
+
+
+def test_given_live_tokens_when_serving_http_then_no_note_prints(monkeypatch, tmp_path):
+    cli_workspace(monkeypatch, tmp_path)
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    assert runner.invoke(app, ["token", "add", "ci", "--scope", "read"]).exit_code == 0
+    import uvicorn
+
+    monkeypatch.setattr(uvicorn, "run", lambda *a, **k: None)
+    r = runner.invoke(app, ["serve", "--transport", "http"])
+    assert r.exit_code == 0, r.output
+    assert "note" not in r.stderr
 
 
 def test_given_kyno_token_in_the_environment_when_serving_http_then_it_changes_nothing(
     monkeypatch, tmp_path
 ):
-    # The variable is retired: serving is decided by the token table alone.
+    # The variable is retired: the token table alone decides what serves.
     cli_workspace(monkeypatch, tmp_path)
     assert runner.invoke(app, ["db", "init"]).exit_code == 0
     monkeypatch.setenv("KYNO_TOKEN", "secret")
+    import uvicorn
+
+    monkeypatch.setattr(uvicorn, "run", lambda *a, **k: None)
     r = runner.invoke(app, ["serve", "--transport", "http"])
-    assert r.exit_code != 0
-    assert "kyno token add NAME --scope write" in r.output
+    assert r.exit_code == 0, r.output
+    assert "note: no live tokens yet" in r.stderr
 
 
 @pytest.mark.parametrize("value", ["true", "TRUE", "1", "yes"])

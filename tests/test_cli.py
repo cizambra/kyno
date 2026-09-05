@@ -232,9 +232,7 @@ def test_given_a_word_that_is_not_a_boolean_when_serving_http_then_the_error_nam
     assert "Traceback" not in r.output
 
 
-def test_given_written_versions_when_exporting_then_the_history_prints_and_from_bounds_it(
-    tmp_path, monkeypatch
-):
+def test_given_written_versions_when_exporting_then_the_whole_ledger_prints(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="v1")
@@ -242,17 +240,11 @@ def test_given_written_versions_when_exporting_then_the_history_prints_and_from_
     apply_yaml(tmp_path, mission="M3", note="v3")
 
     full = runner.invoke(app, ["export"])
+
     assert full.exit_code == 0
     rows = json.loads(full.stdout)
-    assert len(rows) == 3
     assert [r["version"] for r in rows] == [1, 2, 3]
     assert rows[1]["mission"] == "M2" and rows[1]["change_note"] == "v2"
-
-    partial = runner.invoke(app, ["export", "--from", "2"])
-    assert partial.exit_code == 0
-    partial_rows = json.loads(partial.stdout)
-    assert len(partial_rows) == 2
-    assert [r["version"] for r in partial_rows] == [2, 3]
 
 
 def test_given_an_empty_store_when_exporting_then_an_empty_json_array_prints(tmp_path, monkeypatch):

@@ -892,12 +892,6 @@ def log(
 
 @app.command()
 def export(
-    from_version: int | None = typer.Option(
-        None, "--from", help="First version to include (inclusive)."
-    ),
-    to_version: int | None = typer.Option(
-        None, "--to", help="Last version to include (inclusive)."
-    ),
     constitution: str = _CONSTITUTION_OPTION,
     remote: bool = typer.Option(False, "--remote", help=_REMOTE_HELP),
     profile: str = typer.Option("default", "--profile", help="Which remote profile to use."),
@@ -908,16 +902,14 @@ def export(
         None, "--token-env", help="Take the token from this variable, this run."
     ),
 ) -> None:
+    """One constitution's whole ledger as JSON on stdout: full content,
+    every version, the file `kyno import` reads back."""
     _remote_options_guard(remote, profile, credentials, token_env)
     try:
         if remote:
-            rows = _fetch_remote_rows(
-                profile, credentials, token_env, constitution, from_version, to_version
-            )
+            rows = _fetch_remote_rows(profile, credentials, token_env, constitution)
         else:
-            rows = _store().export_versions(
-                constitution, from_version=from_version, to_version=to_version
-            )
+            rows = _store().export_versions(constitution)
         typer.echo(json.dumps(rows, indent=2))
     except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
@@ -929,19 +921,10 @@ def _fetch_remote_rows(
     credentials: str | None,
     token_env: str | None,
     constitution: str,
-    from_version: int | None = None,
-    to_version: int | None = None,
 ) -> list[dict]:
     client = dial(profile, credentials_profile=credentials, token_env=token_env)
     try:
-        return client.call_tool(
-            "export_versions",
-            {
-                "constitution": constitution,
-                "from_version": from_version,
-                "to_version": to_version,
-            },
-        )
+        return client.call_tool("export_versions", {"constitution": constitution})
     finally:
         client.close()
 

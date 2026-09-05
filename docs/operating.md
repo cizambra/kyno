@@ -128,7 +128,8 @@ working against the same database for edits and inspection.
   `set_direction`; `set_direction` needs `write` and answers 403
   otherwise. A server with no live tokens still
   starts: it refuses every /mcp request until one is minted, and a note
-  on stderr says so at startup. You can start the server first and mint
+  on stderr at startup says that is what will happen and names the
+  command that mints one. You can start the server first and mint
   tokens later. The endpoint checks the database on every request, so a
   token minted while the server runs works on the next request, with no
   restart. To turn the check off entirely, set `allow_insecure = true`

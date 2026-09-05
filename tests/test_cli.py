@@ -280,6 +280,101 @@ def test_given_a_misspelled_name_when_exporting_then_stderr_carries_the_name_as_
     assert "Constitution 'defualt' exported" in r.stderr
 
 
+def test_given_an_export_file_when_importing_into_a_fresh_database_then_the_history_survives(
+    tmp_path, monkeypatch
+):
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
+    runner.invoke(app, ["db", "init"])
+    apply_yaml(tmp_path, mission="M1", note="v1")
+    apply_yaml(tmp_path, mission="M2", note="v2")
+    backup = tmp_path / "backup.json"
+    backup.write_text(runner.invoke(app, ["export"]).stdout)
+    before = runner.invoke(app, ["log"]).stdout
+
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+    cli_workspace(monkeypatch, fresh, fresh / "c.sqlite3")
+    runner.invoke(app, ["db", "init"])
+    r = runner.invoke(app, ["import", str(backup)])
+
+    assert r.exit_code == 0, r.output
+    assert "imported 2 versions into 'default'" in r.output
+    assert runner.invoke(app, ["log"]).stdout == before
+
+
+def test_given_the_as_option_when_importing_then_the_history_arrives_under_that_name(
+    tmp_path, monkeypatch
+):
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
+    runner.invoke(app, ["db", "init"])
+    apply_yaml(tmp_path, mission="M1", note="v1")
+    backup = tmp_path / "backup.json"
+    backup.write_text(runner.invoke(app, ["export"]).stdout)
+
+    r = runner.invoke(app, ["import", str(backup), "--as", "acme-team1"])
+
+    assert r.exit_code == 0, r.output
+    assert "imported 1 version into 'acme-team1'" in r.output
+    named = runner.invoke(app, ["export", "--constitution", "acme-team1"])
+    assert [row["version"] for row in json.loads(named.stdout)] == [1]
+
+
+def test_given_a_target_with_history_when_importing_then_it_refuses_and_nothing_changes(
+    tmp_path, monkeypatch
+):
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
+    runner.invoke(app, ["db", "init"])
+    apply_yaml(tmp_path, mission="M1", note="v1")
+    backup = tmp_path / "backup.json"
+    backup.write_text(runner.invoke(app, ["export"]).stdout)
+
+    r = runner.invoke(app, ["import", str(backup)])
+
+    assert r.exit_code == 1
+    assert "already has versions" in r.output
+    assert len(json.loads(runner.invoke(app, ["export"]).stdout)) == 1
+
+
+def test_given_a_file_that_is_not_json_when_importing_then_the_error_names_the_file(
+    tmp_path, monkeypatch
+):
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
+    runner.invoke(app, ["db", "init"])
+    bad = tmp_path / "notes.txt"
+    bad.write_text("not an export")
+
+    r = runner.invoke(app, ["import", str(bad)])
+
+    assert r.exit_code == 1
+    assert "notes.txt is not a kyno export" in r.output
+
+
+def test_given_a_json_object_instead_of_a_list_when_importing_then_it_refuses(
+    tmp_path, monkeypatch
+):
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
+    runner.invoke(app, ["db", "init"])
+    bad = tmp_path / "object.json"
+    bad.write_text('{"version": 1}')
+
+    r = runner.invoke(app, ["import", str(bad)])
+
+    assert r.exit_code == 1
+    assert "expected a list of versions" in r.output
+
+
+def test_given_a_missing_file_when_importing_then_the_error_says_it_cannot_read(
+    tmp_path, monkeypatch
+):
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
+    runner.invoke(app, ["db", "init"])
+
+    r = runner.invoke(app, ["import", str(tmp_path / "ghost.json")])
+
+    assert r.exit_code == 1
+    assert "cannot read" in r.output
+
+
 def test_given_an_empty_store_when_exporting_then_an_empty_json_array_prints(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])

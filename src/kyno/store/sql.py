@@ -7,7 +7,7 @@ from sqlalchemy import Engine, create_engine, insert, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 
-from kyno.errors import ConfigError, CorruptStateError, VersionConflictError
+from kyno.errors import CoherenceError, ConfigError, CorruptStateError, VersionConflictError
 from kyno.models import (
     ConstitutionVersion,
     Principle,
@@ -179,6 +179,80 @@ class SqlConstitutionStore:
             }
             for v in versions
         ]
+
+    def import_versions(self, constitution: str, rows: list[dict]) -> int:
+        """Write rows in export_versions' shape back as a constitution's
+        whole ledger, keeping every version's number, date and authors.
+        Restoring a backup or moving an instance goes through here rather
+        than through append, which would stamp today's date on old history.
+
+        `rows` must be a whole ledger: versions 1 to len(rows), ascending.
+        The target constitution must have no versions yet; an import never
+        merges into existing history. token_id is not carried over: a token
+        id names a row in the exporting database's own token table, and
+        those tokens do not exist here. Returns the number of versions
+        written.
+
+        The changed_mission/changed_principles flags are not in the export;
+        they are recomputed the way authoring computed them: by comparing
+        each version with the one before it."""
+        if not rows:
+            raise CoherenceError("nothing to import: the file has no versions")
+        for position, row in enumerate(rows, start=1):
+            if int(row.get("version", 0)) != position:
+                raise CoherenceError(
+                    f"an import takes a whole ledger, versions 1 to {len(rows)} in "
+                    f"order; row {position} is v{row.get('version')}"
+                )
+        now = datetime.now(UTC)
+        with self.engine.begin() as conn:
+            cid = self._constitution_id(conn, constitution)
+            if cid is None:
+                cid = conn.execute(
+                    insert(self._constitutions).values(
+                        name=constitution, current_version=len(rows), created_at=now
+                    )
+                ).inserted_primary_key[0]
+            else:
+                head = conn.execute(
+                    select(self._versions.c.id)
+                    .where(self._versions.c.constitution_id == cid)
+                    .limit(1)
+                ).first()
+                if head is not None:
+                    raise VersionConflictError(
+                        f"'{constitution}' already has versions; an import writes "
+                        "into an empty constitution only"
+                    )
+                conn.execute(
+                    update(self._constitutions)
+                    .where(self._constitutions.c.id == cid)
+                    .values(current_version=len(rows))
+                )
+            previous_mission = ""
+            previous_principles: tuple[Principle, ...] = ()
+            for row in rows:
+                mission = row.get("mission") or ""
+                principles = normalize_principles(tuple(row.get("principles") or ())) or ()
+                created_at = row.get("created_at")
+                conn.execute(
+                    insert(self._versions).values(
+                        constitution_id=cid,
+                        version=int(row["version"]),
+                        mission=mission,
+                        declaration=row.get("declaration") or "",
+                        principles=_encode_principles(principles),
+                        change_note=row.get("change_note") or "",
+                        changed_mission=mission != previous_mission,
+                        changed_principles=principles != previous_principles,
+                        created_by=row.get("created_by"),
+                        authorized_by=row.get("authorized_by"),
+                        token_id=None,
+                        created_at=datetime.fromisoformat(created_at) if created_at else now,
+                    )
+                )
+                previous_mission, previous_principles = mission, principles
+        return len(rows)
 
     def publication(self, constitution: str) -> Publication:
         with self.engine.connect() as conn:

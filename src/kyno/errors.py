@@ -56,3 +56,9 @@ class ConfigError(CoherenceError):
 
 class KynoUnavailableError(CoherenceError):
     """The control plane could not be reached and the caller opted out of degrading."""
+
+
+class KynoRefusedError(KynoUnavailableError):
+    """The server was reached and turned the request away at the door with
+    an HTTP auth status. The message is the status line, e.g. '401
+    unauthorized'."""

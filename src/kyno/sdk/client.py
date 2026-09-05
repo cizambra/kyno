@@ -2,15 +2,17 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import json
 import os
 import threading
+import time
 from collections.abc import Callable, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
-from kyno.errors import KynoUnavailableError
+from kyno.errors import KynoRefusedError, KynoUnavailableError
 from kyno.models import COMPACT, ChangesSince
 
 # The resource Kyno announces version changes on. The server sends a `resources/updated`
@@ -68,6 +70,63 @@ class LocalDirectionSource:
         return self._control_plane.changes_since(known_version, constitution)
 
 
+def _leaves(exc: BaseException) -> list[BaseException]:
+    """Unwrap nested ExceptionGroups and return the real exceptions
+    inside, in order. An exception that is not a group comes back as a
+    one-item list, unchanged.
+
+    Anything that describes a failure to the person at the terminal
+    unwraps it first: the SDK's async transport raises ExceptionGroups,
+    and a group's own message describes the wrapper, not the failure.
+    The exceptions nested inside are the ones that say what actually
+    went wrong, such as an HTTP 401."""
+    grouped = getattr(exc, "exceptions", None)
+    if not grouped:
+        return [exc]
+    found: list[BaseException] = []
+    for sub in grouped:
+        found.extend(_leaves(sub))
+    return found
+
+
+def _refusal_text(exc: BaseException) -> str | None:
+    """Look inside `exc` for an HTTP 401 or 403 and return the message
+    to print for it: the reply body the server wrote, or the status
+    line ('401 unauthorized') when the body cannot be read. Returns
+    None when no such status is in there, so the caller describes the
+    failure some other way.
+
+    The body is often unreadable because the transport closes the reply
+    before this code runs."""
+    for leaf in _leaves(exc):
+        response = getattr(leaf, "response", None)
+        status = getattr(response, "status_code", None)
+        if status in (401, 403):
+            from http import HTTPStatus
+
+            try:
+                response.read()
+                body = response.text.strip()
+            except Exception:
+                body = ""
+            return body or f"{status} {HTTPStatus(status).phrase.lower()}"
+    return None
+
+
+def _summary(exc: BaseException) -> str:
+    """One line for each real exception inside `exc`, joined with
+    semicolons. This is the description for failures that are not
+    refusals: timeouts, connection errors, anything unexpected.
+
+    Only the first line of each exception's text is kept; some
+    libraries append extra lines, like links to their documentation."""
+    lines = []
+    for leaf in _leaves(exc):
+        text = str(leaf).splitlines()
+        lines.append(text[0] if text else type(leaf).__name__)
+    return "; ".join(lines)
+
+
 class SessionRunner:
     """One long-lived MCP session on a private event loop in a daemon thread.
 
@@ -100,7 +159,10 @@ class SessionRunner:
         if not self._ready.wait(self._timeout):
             raise KynoUnavailableError("timed out opening the kyno MCP session")
         if self._error is not None:
-            raise KynoUnavailableError(f"cannot open the kyno MCP session: {self._error}")
+            refusal = _refusal_text(self._error)
+            if refusal is not None:
+                raise KynoRefusedError(refusal)
+            raise KynoUnavailableError(f"cannot open the kyno MCP session: {_summary(self._error)}")
 
     def _run(self) -> None:
         asyncio.run(self._main())
@@ -136,6 +198,21 @@ class SessionRunner:
         except TimeoutError as exc:
             future.cancel()
             raise KynoUnavailableError("timed out talking to kyno") from exc
+        except concurrent.futures.CancelledError as exc:
+            # A server refusal (e.g. 403) ends the whole session, and the
+            # in-flight call is cancelled with it. The cause lands in
+            # self._error a moment later, on the session thread.
+            deadline = time.monotonic() + self._timeout
+            while self._error is None and time.monotonic() < deadline:
+                time.sleep(0.02)
+            if self._error is not None:
+                refusal = _refusal_text(self._error)
+                if refusal is not None:
+                    raise KynoRefusedError(refusal) from None
+                raise KynoUnavailableError(
+                    f"the kyno MCP session ended mid-call: {_summary(self._error)}"
+                ) from None
+            raise KynoUnavailableError("the kyno MCP session ended mid-call") from exc
 
     def close(self) -> None:
         if self._loop is not None and self._stop is not None and not self._loop.is_closed():

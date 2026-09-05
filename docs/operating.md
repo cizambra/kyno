@@ -132,8 +132,11 @@ working against the same database for edits and inspection.
   tokens later. The endpoint checks the database on every request, so a
   token minted while the server runs works on the next request, with no
   restart. To turn the check off entirely, set `allow_insecure = true`
-  in `config/server`; that opens the endpoint to anyone who can reach
-  it, so it is for local experimentation only, and the server warns. Embedders building the app in
+  in `config/server`. That opens the endpoint to anyone who can reach
+  it, so it is for local experimentation only, and the server prints a
+  warning at startup saying exactly that: it is serving without token
+  checks, and the constitution can be rewritten by anyone who can reach
+  the endpoint. Embedders building the app in
   code pass their store — `build_http_app(cp, token_store=store)` — or opt in
   the same way:
   `build_http_app(cp, allow_insecure=True)`. The published constitution

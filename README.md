@@ -60,11 +60,19 @@ kyno db init
 printf 'constitution: default\nmission: Ship a lending product people trust\n' > constitution.yaml
 kyno set constitution.yaml --note "initial constitution"
 kyno current
-kyno serve --transport stdio    # or --transport http
+kyno serve --transport stdio
 ```
 
 `kyno current` prints the direction in force, as JSON with its version.
-`kyno serve` makes it available to agents over MCP.
+`kyno serve` makes it available to agents over MCP. Over HTTP, the
+server checks a bearer token on every request. It runs without any
+tokens minted; it just refuses every request until one exists. To let
+your agents in, mint one:
+
+```bash
+kyno serve --transport http
+kyno token add agents --scope read   # in another terminal; prints the token value, once
+```
 
 ## Use it from an agent framework
 

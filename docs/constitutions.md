@@ -22,7 +22,7 @@ elements:
   principle itself (e.g. _Customer comes First_), and a description (e.g.
   "We always put the customer first and work backwards from their needs").
   The description is what helps settle an argument about what a principle
-  means. When there is no description, the title is just a string.
+  means. A principle with no description is just its title.
 - A **declaration**: Optional. This is a long-form document that adds more
   context about your mission and why the principles make sense. This is a
   good space to explain your _whys_.

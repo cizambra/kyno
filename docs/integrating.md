@@ -375,7 +375,7 @@ the block rule is `refresh()` (`cell.py`). The framework adapters in
 `src/kyno/adapters/` show where each framework's before-each-step hook
 lives: `CrewAiKyno.before_llm_call` (`crewai/hooks.py`) and
 `direction_node` (`langgraph/nodes.py`). If your orchestrator plans first,
-`binder.plan()` (`sdk/plan.py`) is the tracker described in stage 5.
+`binder.plan()` (`sdk/plan.py`) is the tracker for the planning bullet above.
 
 ## 💬 Questions?
 

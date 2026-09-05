@@ -71,9 +71,15 @@ class LocalDirectionSource:
 
 
 def _leaves(exc: BaseException) -> list[BaseException]:
-    """The plain exceptions inside `exc`. The async machinery wraps a
-    failure such as an HTTP 401 in exception groups whose own text only
-    says 'unhandled errors in a TaskGroup'; the leaves say what happened."""
+    """Unwrap nested ExceptionGroups and return the real exceptions
+    inside, in order. An exception that is not a group comes back as a
+    one-item list, unchanged.
+
+    Anything that describes a failure to the person at the terminal
+    unwraps it first: the SDK's async transport raises ExceptionGroups,
+    and a group's own message describes the wrapper, not the failure.
+    The exceptions nested inside are the ones that say what actually
+    went wrong, such as an HTTP 401."""
     grouped = getattr(exc, "exceptions", None)
     if not grouped:
         return [exc]
@@ -84,10 +90,14 @@ def _leaves(exc: BaseException) -> list[BaseException]:
 
 
 def _refusal_text(exc: BaseException) -> str | None:
-    """The one line to show when the server turned a request away with an
-    HTTP auth status, or None when `exc` holds no such refusal. The body
-    the server wrote (e.g. which tool the scope does not cover) is used
-    when it can still be read; the bare status line otherwise."""
+    """Look inside `exc` for an HTTP 401 or 403 and return the message
+    to print for it: the reply body the server wrote, or the status
+    line ('401 unauthorized') when the body cannot be read. Returns
+    None when no such status is in there, so the caller describes the
+    failure some other way.
+
+    The body is often unreadable because the transport closes the reply
+    before this code runs."""
     for leaf in _leaves(exc):
         response = getattr(leaf, "response", None)
         status = getattr(response, "status_code", None)
@@ -104,8 +114,12 @@ def _refusal_text(exc: BaseException) -> str | None:
 
 
 def _summary(exc: BaseException) -> str:
-    """One line per leaf. httpx puts a documentation link on a second
-    line; only the first line says what went wrong."""
+    """One line for each real exception inside `exc`, joined with
+    semicolons. This is the description for failures that are not
+    refusals: timeouts, connection errors, anything unexpected.
+
+    Only the first line of each exception's text is kept; some
+    libraries append extra lines, like links to their documentation."""
     lines = []
     for leaf in _leaves(exc):
         text = str(leaf).splitlines()

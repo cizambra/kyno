@@ -69,8 +69,8 @@ needs one more step, because the endpoint checks a bearer token on every
 request:
 
 ```bash
-kyno token add agents --scope read   # prints the token value, once
 kyno serve --transport http
+kyno token add agents --scope read   # in another terminal; prints the token value, once
 ```
 
 ## Use it from an agent framework

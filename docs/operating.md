@@ -22,13 +22,14 @@ workspace by walking up from the current directory, the way git does.
 ```console
 $ kyno new my-instance
 $ cd my-instance && kyno db init
-$ kyno token add agents --scope read
 $ kyno serve --transport http
+$ kyno token add agents --scope read     # in another terminal
 ```
 
 The `kyno token add` line is what makes the server useful: the
 endpoint checks a bearer token on every request, and until a token
-exists every request is refused. Details in [Auth](#auth).
+exists every request is refused. A token minted while the server runs
+works on the next request. Details in [Auth](#auth).
 
 `kyno new` writes four files:
 

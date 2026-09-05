@@ -64,9 +64,9 @@ kyno serve --transport stdio
 ```
 
 `kyno current` prints the direction in force, as JSON with its version.
-`kyno serve` makes it available to agents over MCP. Serving over HTTP
-needs one more step, because the endpoint checks a bearer token on every
-request:
+`kyno serve` makes it available to agents over MCP. Over HTTP these are
+two separate things: the server runs with or without tokens, and a token
+is what lets a request in. To let your agents in, mint one:
 
 ```bash
 kyno serve --transport http

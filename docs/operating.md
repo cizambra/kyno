@@ -26,10 +26,11 @@ $ kyno serve --transport http
 $ kyno token add agents --scope read     # in another terminal
 ```
 
-The `kyno token add` line is what makes the server useful: the
-endpoint checks a bearer token on every request, and until a token
-exists every request is refused. A token minted while the server runs
-works on the next request. Details in [Auth](#auth).
+Serving and tokens are two separate things. The server runs with or
+without tokens; a token is what lets a request in. The endpoint checks
+a bearer token on every request, so until one exists every request is
+refused, and a token minted while the server runs works on the next
+request. Details in [Auth](#auth).
 
 `kyno new` writes four files:
 

@@ -18,15 +18,17 @@ The loop is the cycle an adapter runs around every step: pull the
 direction in force, put it in front of the agent, and listen for
 changes. It's what keeps a running system on the current version
 instead of on a copy. Everything an adapter is expected to do falls out
-of these five behaviors.
+of these four behaviors.
 
 - **Pull before each step.** The binder injects the current mission and
   principle titles into the next model call, tagged with the constitution
   and version they came from. It stays small by default;
   `connection.binder(context="full")` injects the declaration and the
   principle descriptions too. If Kyno is unreachable, the step runs on
-  the last direction the binder holds and the staleness shows up in
-  telemetry; `PullPolicy(fail_closed=True)` makes the step raise instead.
+  the last direction the binder holds, and an event goes to the telemetry
+  sink -- by default, a warning line in your logs naming the constitution
+  and the version it fell back to. `PullPolicy(fail_closed=True)` makes
+  the step raise instead.
 - **What changed.** A pull includes the operator's change note and a
   computed delta: which principle moved, whether the mission moved, what
   was added or dropped. That's what makes a small change visible.
@@ -161,9 +163,9 @@ The gate reviews each finished task. It holds no judgment of
 its own: it asks a `VerdictSource` you supply and acts on the answer, raising
 on CrewAI and calling `interrupt()` on LangGraph when the verdict is
 `DRIFTED`. Kyno ships no judge, so an adapter built without one has no gate.
-Where a gate exists but its judge is unreachable, the work proceeds marked
-`unchecked` and the event is emitted as telemetry;
-`GatePolicy(fail_closed=True)` stops instead.
+Where a gate exists but its judge is unreachable, the work proceeds, and
+an `unchecked` event goes to the telemetry sink -- by default, a warning
+line in your logs. `GatePolicy(fail_closed=True)` stops instead.
 
 ```python
 from kyno.sdk import RealignmentGate

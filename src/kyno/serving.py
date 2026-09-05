@@ -35,12 +35,12 @@ def serve_http(settings: Settings, store, control_plane: ControlPlane) -> None:
     The CLI calls this with the loaded workspace settings and the store
     those settings point at.
 
-    Raises ConfigError when the database has no token table (the fix is
-    `kyno db upgrade`). An empty token table is not an error: the server
+    Raises ConfigError when the database has no token table; the fix is
+    `kyno db upgrade`. An empty token table is different: the server
     starts, every /mcp request is refused until a token is minted, and a
-    note on stderr says so. With allow_insecure on, the checks are
-    skipped, the app is built without a store, and a warning goes to
-    stderr."""
+    note on stderr explains that. With allow_insecure on, none of this
+    applies: the app is built without a token store, nothing is checked,
+    and a warning goes to stderr."""
     if settings.allow_insecure:
         print(
             "WARNING: serving HTTP without token checks (allow_insecure is on) "
@@ -84,12 +84,15 @@ def _configure_request_log() -> None:
 
 
 def _note_when_tokenless(store) -> None:
-    """Raise ConfigError when the token table is missing (an old database);
-    say so on stderr when it is empty. A server with no live tokens is
-    safe to run: every /mcp request is refused with 401 until a token is
-    minted, and a token minted later works on the next request, because
-    the check reads the database each time. Refusing to start here would
-    make deploy-first-mint-later impossible."""
+    """Check the token table before serving: raise ConfigError when the
+    table is missing (an old database, fixed by `kyno db upgrade`), and
+    print a note to stderr when it holds no live token.
+
+    serve_http calls this once at startup. An empty table is safe to
+    serve: every /mcp request is answered 401 until a token exists, so
+    an operator can start the server first and mint tokens later. The
+    endpoint checks the database on every request, so a token minted
+    while the server runs works without a restart."""
     try:
         tokens = store.tokens()
     except SQLAlchemyError:

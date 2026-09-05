@@ -148,10 +148,10 @@ def test_given_a_database_without_the_token_table_when_serving_http_then_it_name
 def test_given_no_live_tokens_when_serving_http_then_it_starts_and_notes_the_mint_command(
     monkeypatch, tmp_path
 ):
-    # Deploy first, mint later: an empty token table is not an error. The
-    # check reads the database on every request, so a token minted while
-    # the server runs works without a restart; until then /mcp answers
-    # 401 to everyone, which the note says.
+    # An empty token table is not an error: the operator can start the
+    # server first and mint tokens later, because the endpoint checks the
+    # database on every request. Until a token exists, /mcp answers 401
+    # to everyone, and the note says so.
     cli_workspace(monkeypatch, tmp_path)
     assert runner.invoke(app, ["db", "init"]).exit_code == 0
     import uvicorn

@@ -126,12 +126,14 @@ working against the same database for edits and inspection.
   all get the same 401, so a caller cannot use the response to find out
   which tokens exist. A `read` token can call every tool except
   `set_direction`; `set_direction` needs `write` and answers 403
-  otherwise. A server with no live tokens starts and
-  serves, refusing every /mcp request until one is minted; a note on
-  stderr says so at startup. Because the check reads the database on
-  every request, a token minted while the server runs works immediately.
-  To turn the check off entirely, opt in with `allow_insecure = true` in
-  `config/server` (for local experimentation only; it warns). Embedders building the app in
+  otherwise. A server with no live tokens still
+  starts: it refuses every /mcp request until one is minted, and a note
+  on stderr says so at startup. You can start the server first and mint
+  tokens later. The endpoint checks the database on every request, so a
+  token minted while the server runs works on the next request, with no
+  restart. To turn the check off entirely, set `allow_insecure = true`
+  in `config/server`; that opens the endpoint to anyone who can reach
+  it, so it is for local experimentation only, and the server warns. Embedders building the app in
   code pass their store — `build_http_app(cp, token_store=store)` — or opt in
   the same way:
   `build_http_app(cp, allow_insecure=True)`. The published constitution

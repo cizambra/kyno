@@ -81,7 +81,7 @@ command:
   above makes this structural, because merging is applying.
 - **Applied, forgot to merge.** The store runs ahead; live direction has
   no reviewed home, and the next merge would silently revert it. The next
-  `check --remote` against main fails and says so. To keep the change:
+  `check --remote` against main fails, printing which fields differ. To keep the change:
   `kyno current --yaml > constitution.yaml`, commit, review, merge. To
   discard it: apply main's file — the delta says it reverts, and this
   time that's the point.

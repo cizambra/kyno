@@ -132,7 +132,9 @@ working against the same database for edits and inspection.
   all get the same 401, so a caller cannot use the response to find out
   which tokens exist. A `read` token can call every tool except
   `set_direction`; `set_direction` needs `write` and answers 403
-  otherwise. A server with no live tokens still
+  otherwise. Every tool declares the scope it needs, and a tool the
+  server does not declare is refused for every token: a new tool is
+  unreachable until someone states what it requires. A server with no live tokens still
   starts: it refuses every /mcp request until one is minted, and a note
   on stderr at startup says that is what will happen and names the
   command that mints one. You can start the server first and mint
@@ -198,6 +200,14 @@ call — the token id and name, the tool, and the constitution. That log is
 the request history: read it to know which tokens were active in a time
 window.
 
+A remote write also records the token on the version it appends. Three
+fields say three different things about a version, and only the last one
+is checked by the server: `created_by` is the actor the client claimed,
+`authorized_by` is how the apply was approved (`operator`, `automation`
+or `override`), and the token id is the credential the server itself
+verified from the request. A local apply has no token, so that field
+stays empty.
+
 The token's `last_used_at` is also updated, at most once every five
 minutes, so `kyno token list` can answer whether a token is still in use
 without a database write per request. The stored time can run up to five
@@ -219,6 +229,8 @@ kyno credentials add --profile laptop                         # no flag: asks fo
 ```
 
 `--token-env` stores a reference (`${KYNO_TOKEN}`), read each time you use the profile — so rotating the token is just changing the variable's value. Without it, the token you type is written into the file, and the file is readable only by you.
+
+`kyno credentials list` prints the profiles this machine holds, one line each. Token values never print: a stored token shows as `stored token`, and a profile that reads a variable shows the variable's name and whether it is set right now.
 
 Everything lands in small files under `~/.kyno`, the same path on every machine, written only by these commands. They never live next to a repo, so a credentials file can't end up in a commit by mistake.
 
@@ -246,6 +258,7 @@ kyno set constitution.yaml --note "sharpen the mission" --remote
 kyno check constitution.yaml --remote
 kyno log --remote
 kyno export --remote
+kyno whoami --remote
 ```
 
 They work against the profile's endpoint instead of your local store and print exactly what their local versions print. `--profile oncall` picks a different remote profile; `--credentials` or `--token-env` beside it swaps the token source for that one run. Without `--remote` you are always on your local store — there is no fallback in either direction.
@@ -279,6 +292,15 @@ resolves: no (remote profile 'ci' reads its token from ${KYNO_TOKEN}, which is n
 ```
 
 The token itself is never shown. A profile that doesn't resolve exits 1 and the reason names the fix, so `remote show` can gate a setup script. `kyno remote list` prints one line per profile.
+
+`remote show` answers a local question: does this chain resolve on my machine. `kyno whoami --remote` answers the other half, which only the server can: which token it sees behind your requests, and what that token is allowed to do.
+
+```console
+$ kyno whoami --remote
+camilo  write
+```
+
+It is remote only, because a local store has no request to look at. Against a server running with `allow_insecure` it prints `no token: the server accepted the request without checking for one`, which is how you find out the endpoint you are talking to checks nothing.
 
 ## Deploying
 

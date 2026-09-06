@@ -143,8 +143,10 @@ Kyno self-hosts with no external services: SQLite out of the box,
 PostgreSQL in production through the workspace's `[database]` section,
 served over stdio for a
 local process or over HTTP with a bearer token for a fleet. Tokens are
-minted, listed and revoked at the database with `kyno token`. A pip
-install ships with its own migration scripts. The details live in [Operating Kyno](docs/operating.md).
+minted, listed and revoked at the database with `kyno token`, and
+`kyno whoami --remote` asks a server which token it sees behind your
+requests. A pip install ships with its own migration scripts. The
+details live in [Operating Kyno](docs/operating.md).
 
 ## Documentation
 

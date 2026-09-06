@@ -14,7 +14,15 @@ This is everything an agent or client can ask Kyno, over MCP or Python.
   one piece of the document each, for when a compact read left it out.
 - `set_direction(mission?, declaration?, principles?, change_note)`: append
   the next version. Omitted fields carry forward; `""` clears one. On HTTP
-  this requires the bearer token.
+  this requires a `write` token.
+- `whoami`: the id, name and scope of the token this request authenticated
+  with. Every field is null when the server checked no token, which is the
+  case over stdio and on a server running with `allow_insecure`.
+
+Every tool declares the scope it needs. The reads above need `read`;
+`set_direction` needs `write`; a tool the server does not declare is
+refused for every token, so a new tool is unreachable until someone
+states what it requires. A call outside your token's scope answers 403.
 
 Every read returns as little as it can by default: the titles, not the long
 text. An agent pulls before every step, and would otherwise pay for the

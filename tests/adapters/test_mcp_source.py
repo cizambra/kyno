@@ -152,7 +152,7 @@ def test_given_a_runner_that_cannot_connect_when_starting_then_it_fails_loudly()
         SessionRunner(connect).start()
 
 
-def test_given_a_401_wrapped_in_exception_groups_when_starting_then_the_status_line_is_the_error():
+def test_given_a_401_inside_nested_groups_when_starting_then_the_error_reads_401_unauthorized():
     # The async stack buries an HTTP refusal inside nested exception groups
     # whose own text only says "unhandled errors in a TaskGroup". The
     # person at the terminal gets the status line instead.
@@ -171,7 +171,7 @@ def test_given_a_401_wrapped_in_exception_groups_when_starting_then_the_status_l
         SessionRunner(connect).start()
 
 
-def test_given_a_leaf_error_with_a_second_line_when_starting_then_only_its_first_line_shows():
+def test_given_a_failure_with_extra_message_lines_when_starting_then_the_error_keeps_the_first():
     # httpx appends "For more information check: https://..." on a second
     # line; that link is noise in a one-line CLI error.
     @asynccontextmanager
@@ -183,7 +183,7 @@ def test_given_a_leaf_error_with_a_second_line_when_starting_then_only_its_first
         SessionRunner(connect).start()
 
 
-def test_given_a_refusal_with_a_readable_body_when_describing_then_the_servers_words_win():
+def test_given_a_403_whose_body_reads_when_building_the_message_then_it_is_the_servers_body():
     from kyno.sdk.client import _refusal_text
 
     failure = _Refused(403, "forbidden: this token's scope does not cover 'set_direction'")
@@ -193,7 +193,7 @@ def test_given_a_refusal_with_a_readable_body_when_describing_then_the_servers_w
     assert line == "forbidden: this token's scope does not cover 'set_direction'"
 
 
-def test_given_a_refusal_whose_body_is_gone_when_describing_then_the_status_line_stands_in():
+def test_given_a_401_whose_body_cannot_be_read_when_building_the_message_then_it_is_the_status():
     from kyno.sdk.client import _refusal_text
 
     failure = _Refused(401, body=None)
@@ -254,7 +254,7 @@ def _runner_that_dies_mid_call(failure):
     return runner
 
 
-def test_given_a_403_that_ends_the_session_mid_call_then_the_servers_words_reach_the_caller():
+def test_given_a_call_in_flight_when_a_403_ends_the_session_then_it_raises_the_servers_body():
     # The refusal arrives after the call is already running, so the call
     # is cancelled rather than answered. Without this path the command
     # exits with no message at all.
@@ -268,7 +268,7 @@ def test_given_a_403_that_ends_the_session_mid_call_then_the_servers_words_reach
         runner.close()
 
 
-def test_given_a_session_that_dies_mid_call_for_another_reason_then_it_reads_as_unavailable():
+def test_given_a_call_in_flight_when_the_connection_drops_then_it_raises_unavailable_not_refused():
     runner = _runner_that_dies_mid_call(OSError("connection reset by peer"))
     try:
         with pytest.raises(KynoUnavailableError, match="ended mid-call: connection reset") as seen:
@@ -278,7 +278,7 @@ def test_given_a_session_that_dies_mid_call_for_another_reason_then_it_reads_as_
         runner.close()
 
 
-def test_given_a_status_that_is_not_an_auth_refusal_when_describing_then_it_is_not_a_refusal():
+def test_given_a_500_when_building_the_message_then_there_is_no_refusal_message():
     # 401 and 403 are the statuses that mean "your credential was turned
     # away". A 500 is the server failing, and it must not be reported as
     # a token problem.
@@ -287,7 +287,7 @@ def test_given_a_status_that_is_not_an_auth_refusal_when_describing_then_it_is_n
     assert _refusal_text(ExceptionGroup("unhandled", [_Refused(500, "boom")])) is None
 
 
-def test_given_several_failures_in_one_group_when_summarizing_then_each_is_named():
+def test_given_two_failures_in_one_group_when_summarizing_then_they_join_with_a_semicolon():
     from kyno.sdk.client import _summary
 
     line = _summary(ExceptionGroup("unhandled", [OSError("no route"), ValueError("bad reply")]))

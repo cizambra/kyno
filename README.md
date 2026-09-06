@@ -29,9 +29,9 @@ a bad telephone game.
 
 A static system prompt can't fix either one, because it is a copy too:
 you paste it at launch, and it starts aging the moment the run begins.
-Kyno removes the copy. Direction lives in one versioned store, agents pull the current
-version before each step, and subscribers are notified the moment it
-changes.
+Kyno removes the copy. Direction lives in one versioned store, and agents
+pull the current version before each step, so a change reaches the next
+step wherever they are in a run.
 
 ## How it works
 
@@ -91,8 +91,8 @@ adapter.register()  # injects the current direction before each model call
 
 That is the whole integration. Every model call runs under the version in
 force, and a version published mid-run reaches the next step. Adapters
-are read-only: they pull and subscribe, and never write direction on a
-crew's or graph's behalf.
+are read-only: they pull, and never write direction on a crew's or
+graph's behalf.
 
 - [The adapters in depth](docs/adapters.md): CrewAI, LangGraph, the
   failure postures, and the realignment gate.

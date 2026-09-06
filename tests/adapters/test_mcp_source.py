@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 import pytest
@@ -185,35 +186,113 @@ def test_given_a_leaf_error_with_a_second_line_when_starting_then_only_its_first
 def test_given_a_refusal_with_a_readable_body_when_describing_then_the_servers_words_win():
     from kyno.sdk.client import _refusal_text
 
-    class _Response:
-        status_code = 403
-        text = "forbidden: this token's scope does not cover 'set_direction'"
+    failure = _Refused(403, "forbidden: this token's scope does not cover 'set_direction'")
 
-        def read(self):
-            return b""
+    line = _refusal_text(ExceptionGroup("unhandled", [failure]))
 
-    class _StatusError(Exception):
-        response = _Response()
-
-    line = _refusal_text(ExceptionGroup("unhandled", [_StatusError("boom")]))
     assert line == "forbidden: this token's scope does not cover 'set_direction'"
 
 
 def test_given_a_refusal_whose_body_is_gone_when_describing_then_the_status_line_stands_in():
-    # The transport often closes the stream before anyone reads the body;
-    # the status line is the fallback.
     from kyno.sdk.client import _refusal_text
 
-    class _Response:
-        status_code = 403
+    failure = _Refused(401, body=None)
 
-        def read(self):
-            raise RuntimeError("stream closed")
+    assert _refusal_text(ExceptionGroup("unhandled", [failure])) == "401 unauthorized"
 
-    class _StatusError(Exception):
-        response = _Response()
 
-    assert _refusal_text(ExceptionGroup("unhandled", [_StatusError("boom")])) == "403 forbidden"
+class _Refused(Exception):
+    """What an HTTP client raises for a status it will not follow: the
+    exception carries the response that produced it."""
+
+    def __init__(self, status, body=""):
+        super().__init__(f"Client error '{status}'")
+        self.response = _Response(status, body)
+
+
+class _Response:
+    def __init__(self, status, body=""):
+        self.status_code = status
+        self._body = body
+
+    @property
+    def text(self):
+        if self._body is None:
+            raise RuntimeError("the stream is closed")
+        return self._body
+
+    def read(self):
+        if self._body is None:
+            raise RuntimeError("the stream is closed")
+        return self._body.encode()
+
+
+def _runner_that_dies_mid_call(failure):
+    """A runner whose session ends while a call is in flight, the way a
+    server refusal ends it: the transport's task group raises, the loop
+    unwinds, and the pending call is cancelled with it."""
+
+    @asynccontextmanager
+    async def connect(message_handler=None):
+        calling = asyncio.Event()
+
+        async def fail_once_the_call_starts():
+            await calling.wait()
+            raise failure
+
+        class _Session:
+            async def slow_call(self):
+                calling.set()
+                await asyncio.sleep(30)
+
+        async with asyncio.TaskGroup() as group:
+            group.create_task(fail_once_the_call_starts())
+            yield _Session()
+
+    runner = SessionRunner(connect, timeout=5.0)
+    runner.start()
+    return runner
+
+
+def test_given_a_403_that_ends_the_session_mid_call_then_the_servers_words_reach_the_caller():
+    # The refusal arrives after the call is already running, so the call
+    # is cancelled rather than answered. Without this path the command
+    # exits with no message at all.
+    runner = _runner_that_dies_mid_call(
+        _Refused(403, "forbidden: this token's scope does not cover 'set_direction'")
+    )
+    try:
+        with pytest.raises(KynoRefusedError, match="scope does not cover"):
+            runner.call(lambda session: session.slow_call())
+    finally:
+        runner.close()
+
+
+def test_given_a_session_that_dies_mid_call_for_another_reason_then_it_reads_as_unavailable():
+    runner = _runner_that_dies_mid_call(OSError("connection reset by peer"))
+    try:
+        with pytest.raises(KynoUnavailableError, match="ended mid-call: connection reset") as seen:
+            runner.call(lambda session: session.slow_call())
+        assert not isinstance(seen.value, KynoRefusedError)
+    finally:
+        runner.close()
+
+
+def test_given_a_status_that_is_not_an_auth_refusal_when_describing_then_it_is_not_a_refusal():
+    # 401 and 403 are the statuses that mean "your credential was turned
+    # away". A 500 is the server failing, and it must not be reported as
+    # a token problem.
+    from kyno.sdk.client import _refusal_text
+
+    assert _refusal_text(ExceptionGroup("unhandled", [_Refused(500, "boom")])) is None
+
+
+def test_given_several_failures_in_one_group_when_summarizing_then_each_is_named():
+    from kyno.sdk.client import _summary
+
+    line = _summary(ExceptionGroup("unhandled", [OSError("no route"), ValueError("bad reply")]))
+
+    assert line == "no route; bad reply"
 
 
 def test_given_a_closed_runner_when_closing_again_then_it_is_harmless(in_memory_runner):

@@ -32,6 +32,27 @@ def plain(output):
     return " ".join(re.sub(r"\x1b\[[0-9;]*m", "", output).split())
 
 
+class _RunnerThatRefuses:
+    """A session runner whose server turns every request away, the way one
+    with a revoked or under-scoped token does."""
+
+    def __init__(self, message):
+        self._message = message
+
+    def start(self):
+        from kyno.errors import KynoRefusedError
+
+        raise KynoRefusedError(self._message)
+
+    def call(self, fn):
+        from kyno.errors import KynoRefusedError
+
+        raise KynoRefusedError(self._message)
+
+    def close(self):
+        pass
+
+
 def write_file(dirpath, mission="M1", name="c.yaml", constitution="default"):
     path = pathlib.Path(dirpath) / name
     path.write_text(f"constitution: {constitution}\nmission: {mission}\n", encoding="utf-8")
@@ -302,6 +323,42 @@ def test_given_a_live_server_when_applying_remotely_then_the_version_is_applied(
     finally:
         server.should_exit = True
         thread.join(timeout=5)
+
+
+def test_given_a_refusal_at_session_open_when_dialing_then_the_error_names_profile_and_url():
+    from kyno.errors import KynoRefusedError
+    from kyno.profiles import Resolved
+    from kyno.remote import RemoteClient
+
+    client = RemoteClient(
+        Resolved(profile="ops", url="https://kyno.example", token="t", chain="ops -> ...")
+    )
+    client._runner = _RunnerThatRefuses("401 unauthorized")
+
+    with pytest.raises(RemoteError) as seen:
+        client.open()
+
+    assert "'ops' at https://kyno.example refused the token: 401 unauthorized" in str(seen.value)
+    assert isinstance(seen.value.__cause__, KynoRefusedError)
+
+
+def test_given_a_refusal_during_a_tool_call_when_calling_then_the_error_names_the_tool():
+    # A scope refusal arrives once the call is under way, so the message
+    # has to say which tool was refused; the profile alone would not say.
+    from kyno.profiles import Resolved
+    from kyno.remote import RemoteClient
+
+    client = RemoteClient(
+        Resolved(profile="ops", url="https://kyno.example", token="t", chain="ops -> ...")
+    )
+    client._runner = _RunnerThatRefuses(
+        "forbidden: this token's scope does not cover 'set_direction'"
+    )
+
+    with pytest.raises(RemoteError) as seen:
+        client.call_tool("set_direction", {})
+
+    assert "the server refused set_direction: forbidden" in str(seen.value)
 
 
 @pytest.mark.e2e

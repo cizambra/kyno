@@ -891,6 +891,24 @@ def log(
 
 
 @app.command()
+def constitutions() -> None:
+    """Every constitution in this instance, one line each: the name, the
+    version in force, the day it was written, and whether it is
+    published. Local only: it reads the workspace's database, and there
+    is no MCP tool that lists a server's constitutions."""
+    with _clean_errors():
+        held = _store().constitutions()
+    if not held:
+        typer.echo("no constitutions yet; write one with: kyno set FILE --note NOTE")
+        return
+    width = max(len(c.name) for c in held)
+    for c in held:
+        day = c.last_changed_at.date().isoformat() if c.last_changed_at else "-"
+        published = "  published" if c.published else ""
+        typer.echo(f"{c.name:<{width}}  v{c.version}  {day}{published}")
+
+
+@app.command()
 def export(
     constitution: str = _CONSTITUTION_OPTION,
     remote: bool = typer.Option(False, "--remote", help=_REMOTE_HELP),

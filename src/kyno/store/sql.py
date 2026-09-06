@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from kyno.errors import ConfigError, CorruptStateError, VersionConflictError
 from kyno.models import (
+    ConstitutionSummary,
     ConstitutionVersion,
     Principle,
     Publication,
@@ -16,6 +17,17 @@ from kyno.models import (
     normalize_principles,
 )
 from kyno.store.schema import build_metadata
+
+
+def _as_utc(when: datetime | None) -> datetime | None:
+    """The timestamp with its UTC marker restored, or None unchanged.
+
+    SQLite returns timestamps without the timezone they were stored with.
+    Everything this store writes is UTC (see append()), so reads put the
+    marker back rather than handing out a naive datetime."""
+    if when is not None and when.tzinfo is None:
+        return when.replace(tzinfo=UTC)
+    return when
 
 
 def _encode_principles(principles) -> str:
@@ -71,11 +83,7 @@ class SqlConstitutionStore:
         self.metadata.create_all(self.engine)
 
     def _row_to_version(self, row) -> ConstitutionVersion:
-        created_at = row.created_at
-        # SQLite stores timestamps but returns them without the timezone. Everything this store
-        # writes is UTC (see append()), so the UTC marker is added back on read.
-        if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=UTC)
+        created_at = _as_utc(row.created_at)
         return ConstitutionVersion(
             version=row.version,
             mission=row.mission,
@@ -189,11 +197,43 @@ class SqlConstitutionStore:
             ).first()
         if row is None:
             return Publication(published_at=None, history_public=False)
-        published_at = row.published_at
-        # SQLite returns timestamps without the timezone they were written with.
-        if published_at is not None and published_at.tzinfo is None:
-            published_at = published_at.replace(tzinfo=UTC)
-        return Publication(published_at=published_at, history_public=bool(row.history_public))
+        return Publication(
+            published_at=_as_utc(row.published_at), history_public=bool(row.history_public)
+        )
+
+    def constitutions(self) -> list[ConstitutionSummary]:
+        """Every constitution this store holds, sorted by name, each with
+        the version in force, when that version was written, and whether
+        it is published. Returns an empty list on a store nothing has
+        been written to."""
+        head = self._versions.alias("head")
+        query = (
+            select(
+                self._constitutions.c.name,
+                self._constitutions.c.current_version,
+                self._constitutions.c.published_at,
+                head.c.created_at,
+            )
+            .select_from(
+                self._constitutions.outerjoin(
+                    head,
+                    (head.c.constitution_id == self._constitutions.c.id)
+                    & (head.c.version == self._constitutions.c.current_version),
+                )
+            )
+            .order_by(self._constitutions.c.name.asc())
+        )
+        with self.engine.connect() as conn:
+            rows = conn.execute(query).all()
+        return [
+            ConstitutionSummary(
+                name=row.name,
+                version=row.current_version,
+                last_changed_at=_as_utc(row.created_at),
+                published=row.published_at is not None,
+            )
+            for row in rows
+        ]
 
     def published_names(self) -> list[str]:
         with self.engine.connect() as conn:
@@ -286,20 +326,14 @@ class SqlConstitutionStore:
         )
 
     def _row_to_token(self, row) -> Token:
-        def utc(dt):
-            # The same UTC restamp as _row_to_version: this store only writes UTC.
-            if dt is not None and dt.tzinfo is None:
-                return dt.replace(tzinfo=UTC)
-            return dt
-
         return Token(
             id=row.id,
             name=row.name,
             scope=row.scope,
-            created_at=utc(row.created_at),
-            last_used_at=utc(row.last_used_at),
-            expires_at=utc(row.expires_at),
-            revoked_at=utc(row.revoked_at),
+            created_at=_as_utc(row.created_at),
+            last_used_at=_as_utc(row.last_used_at),
+            expires_at=_as_utc(row.expires_at),
+            revoked_at=_as_utc(row.revoked_at),
         )
 
     def add_token(

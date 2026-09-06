@@ -184,6 +184,18 @@ class PublicVersion:
 
 
 @dataclass(frozen=True)
+class ConstitutionSummary:
+    """One constitution in the instance's inventory: its name, the version
+    in force, when that version was written, and whether it is served
+    publicly."""
+
+    name: str
+    version: int
+    last_changed_at: datetime | None
+    published: bool
+
+
+@dataclass(frozen=True)
 class PublicConstitution(HoldsPrinciples):
     """What an anonymous visitor is allowed to see of one constitution."""
 

@@ -825,3 +825,31 @@ def test_given_an_append_without_a_token_id_when_reading_back_then_it_is_none(st
     )
 
     assert store.head("default").token_id is None
+
+
+def test_given_constitutions_when_listing_then_each_carries_its_head_and_publication(store):
+    for name, versions in (("zulu", 2), ("alpha", 1)):
+        for version in range(1, versions + 1):
+            store.append(
+                name,
+                version,
+                mission=f"M{version}",
+                principles=(),
+                change_note="init",
+                changed_mission=True,
+                changed_principles=False,
+                created_by=None,
+            )
+    store.set_publication("alpha", published_at=datetime.now(UTC), history_public=False)
+
+    listed = store.constitutions()
+
+    assert [c.name for c in listed] == ["alpha", "zulu"]
+    assert [c.version for c in listed] == [1, 2]
+    assert [c.published for c in listed] == [True, False]
+    # The date is the head version's, not the constitution's creation.
+    assert listed[1].last_changed_at == store.head("zulu").created_at
+
+
+def test_given_an_untouched_store_when_listing_constitutions_then_it_is_empty(store):
+    assert store.constitutions() == []

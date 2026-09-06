@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 
 import pytest
 from typer.testing import CliRunner
@@ -230,6 +231,51 @@ def test_given_a_word_that_is_not_a_boolean_when_serving_http_then_the_error_nam
     assert r.exit_code == 1
     assert "server.allow_insecure must be true or false" in r.output
     assert "Traceback" not in r.output
+
+
+def test_given_several_constitutions_when_listing_then_each_prints_with_its_version_and_day(
+    tmp_path, monkeypatch
+):
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
+    runner.invoke(app, ["db", "init"])
+    apply_yaml(tmp_path, mission="M1", note="v1", constitution="default")
+    apply_yaml(tmp_path, mission="M2", note="v2", constitution="default")
+    apply_yaml(tmp_path, mission="EU1", note="v1", constitution="eu")
+
+    r = runner.invoke(app, ["constitutions"])
+
+    assert r.exit_code == 0, r.output
+    lines = r.stdout.splitlines()
+    today = datetime.now(UTC).date().isoformat()
+    assert lines[0].startswith("default") and f"v2  {today}" in lines[0]
+    assert lines[1].startswith("eu") and f"v1  {today}" in lines[1]
+
+
+def test_given_a_published_constitution_when_listing_then_only_that_line_says_published(
+    tmp_path, monkeypatch
+):
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
+    runner.invoke(app, ["db", "init"])
+    apply_yaml(tmp_path, mission="M1", note="v1", constitution="default")
+    apply_yaml(tmp_path, mission="EU1", note="v1", constitution="eu")
+    assert runner.invoke(app, ["publish", "--constitution", "eu"]).exit_code == 0
+
+    r = runner.invoke(app, ["constitutions"])
+
+    assert r.exit_code == 0, r.output
+    lines = r.stdout.splitlines()
+    assert "published" not in lines[0]
+    assert lines[1].endswith("published")
+
+
+def test_given_no_constitutions_when_listing_then_it_says_how_to_write_one(tmp_path, monkeypatch):
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
+    runner.invoke(app, ["db", "init"])
+
+    r = runner.invoke(app, ["constitutions"])
+
+    assert r.exit_code == 0
+    assert "kyno set FILE --note NOTE" in r.output
 
 
 def test_given_written_versions_when_exporting_then_the_whole_ledger_prints(tmp_path, monkeypatch):

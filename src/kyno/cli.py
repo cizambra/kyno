@@ -904,13 +904,20 @@ def export(
 ) -> None:
     """One constitution's whole ledger as JSON on stdout: full content,
     every version, the file `kyno import` reads back. A line on stderr
-    names the constitution, so stdout stays pipeable."""
+    names the constitution, so stdout stays pipeable. A constitution
+    with no versions is refused, the same as `kyno current --yaml`."""
     _remote_options_guard(remote, profile, credentials, token_env)
     try:
         if remote:
             rows = _fetch_remote_rows(profile, credentials, token_env, constitution)
         else:
             rows = _store().export_versions(constitution)
+        if not rows:
+            # An empty file is not a backup, and a misspelled name is the
+            # common way to ask for one: exiting 0 would leave a cron job
+            # writing nothing and reporting success.
+            typer.echo(f"error: nothing to export: '{constitution}' has no versions", err=True)
+            raise typer.Exit(code=1)
         # On stderr so stdout stays the JSON alone. Naming the one
         # constitution keeps a scheduled `kyno export > backup.json` from
         # passing as a full instance backup.

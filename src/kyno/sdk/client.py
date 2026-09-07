@@ -79,7 +79,12 @@ def _leaves(exc: BaseException) -> list[BaseException]:
     unwraps it first: the SDK's async transport raises ExceptionGroups,
     and a group's own message describes the wrapper, not the failure.
     The exceptions nested inside are the ones that say what actually
-    went wrong, such as an HTTP 401."""
+    went wrong, such as an HTTP 401.
+
+    ExceptionGroup.subgroup() and .split() also search nested groups, but
+    they return a group with the nesting kept. Callers here need the
+    exception itself, to read a response body or a message, so they walk
+    the tree instead."""
     grouped = getattr(exc, "exceptions", None)
     if not grouped:
         return [exc]

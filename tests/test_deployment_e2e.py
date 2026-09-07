@@ -10,24 +10,16 @@ import os
 import socket
 import subprocess
 import sys
-import time
 
 import pytest
 from typer.testing import CliRunner
 
 from kyno.cli import app
+from tests.servers import free_port, wait_until
 
 runner = CliRunner()
 
 _CLI = [sys.executable, "-c", "from kyno.cli import app; app()"]
-
-
-def _free_port():
-    sock = socket.socket()
-    sock.bind(("127.0.0.1", 0))
-    port = sock.getsockname()[1]
-    sock.close()
-    return port
 
 
 def _set_port(root, port):
@@ -46,16 +38,16 @@ def _serve(root, home):
 
 
 def _wait_up(port, proc):
-    deadline = time.monotonic() + 30
-    while time.monotonic() < deadline:
+    def accepting():
         if proc.poll() is not None:
             raise AssertionError(f"server exited early: {proc.stderr.read().decode()}")
         try:
             socket.create_connection(("127.0.0.1", port), timeout=0.2).close()
-            return
+            return True
         except OSError:
-            time.sleep(0.1)
-    raise AssertionError("server did not come up in 30s")
+            return False
+
+    wait_until(accepting, "the server did not come up", timeout=30, interval=0.1)
 
 
 def _stop(proc):
@@ -79,7 +71,7 @@ def test_given_a_clean_environment_when_deploying_over_http_then_the_full_lifecy
     root = tmp_path / "acme"
     monkeypatch.chdir(root)
     assert runner.invoke(app, ["db", "init"]).exit_code == 0
-    port = _free_port()
+    port = free_port()
     _set_port(root, port)
 
     # The server comes up with an empty token table, so an operator
@@ -181,7 +173,7 @@ def test_given_allow_insecure_in_a_clean_environment_when_serving_then_no_token_
     root = tmp_path / "open"
     monkeypatch.chdir(root)
     assert runner.invoke(app, ["db", "init"]).exit_code == 0
-    port = _free_port()
+    port = free_port()
     _set_port(root, port)
     config = root / "config" / "server"
     config.write_text(config.read_text().replace("[server]", "[server]\nallow_insecure = true"))

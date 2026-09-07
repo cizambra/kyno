@@ -49,8 +49,26 @@ The notification doesn't include the version; it
 only tells you there is one. To get the content, call `get_changes_since`
 with the last version you processed. This works even if your process was
 down for a while, because the store keeps the full history. For example,
-a backend can subscribe and write every new version to an audit log. The
-adapters that ship with Kyno don't subscribe; the pull they make at
+a backend can subscribe and write every new version to an audit log:
+
+```mermaid
+---
+config:
+  look: handDrawn
+  theme: neutral
+---
+flowchart LR
+  OP["operator"] -- "set_direction" --> KY["Kyno server"]
+  KY -. "notifications/resources/updated" .-> BE["subscribed backend"]
+  BE -- "get_changes_since(last processed)" --> KY
+```
+
+Notifications are emitted by the server process handling the write.
+A separate local CLI write or `kyno import` updates the database directly
+and does not notify that process's subscribers. Treat a notification as
+a reason to pull, rather than as the only way to discover changes.
+
+The adapters that ship with Kyno don't subscribe; the pull they make at
 every step already returns the current version.
 
 ## 💬 Questions?

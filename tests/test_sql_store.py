@@ -971,7 +971,7 @@ def test_given_a_nonlist_principles_field_when_importing_then_it_refuses(store, 
 
 
 @pytest.mark.parametrize("created_at", [None, "", "not a date", 7, "2026-09-07T12:00:00"])
-def test_given_an_invalid_import_timestamp_then_it_refuses_instead_of_inventing_history(
+def test_given_an_invalid_timestamp_when_importing_then_it_refuses_instead_of_inventing_history(
     store, created_at
 ):
     rows = _ledger(store)
@@ -983,7 +983,7 @@ def test_given_an_invalid_import_timestamp_then_it_refuses_instead_of_inventing_
     assert store.head("fresh") is None
 
 
-def test_given_an_offset_import_timestamp_then_the_same_instant_survives(store):
+def test_given_an_offset_timestamp_when_importing_then_the_same_instant_survives(store):
     rows = _ledger(store)
     rows[0]["created_at"] = "2026-09-07T12:30:15.123456+05:30"
 
@@ -1040,7 +1040,9 @@ def test_given_an_imported_ledger_when_authoring_again_then_it_appends_after_the
     "field", ["mission", "declaration", "change_note", "created_by", "authorized_by"]
 )
 @pytest.mark.parametrize("value", [False, 123, []])
-def test_given_a_nontext_import_field_then_it_refuses_without_coercing_content(store, field, value):
+def test_given_a_nontext_field_when_importing_then_it_refuses_without_coercing_content(
+    store, field, value
+):
     rows = _ledger(store)
     rows[1][field] = value
 
@@ -1059,7 +1061,7 @@ def test_given_a_nontext_import_field_then_it_refuses_without_coercing_content(s
         ("", [], True, True),
     ],
 )
-def test_given_imported_content_changes_then_the_flags_describe_each_transition(
+def test_given_content_changes_when_importing_then_the_flags_describe_each_transition(
     store, mission, principles, changed_mission, changed_principles
 ):
     rows = _ledger(store)

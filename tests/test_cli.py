@@ -385,7 +385,7 @@ def test_given_a_missing_file_when_importing_then_the_error_says_it_cannot_read(
         ([], "no versions"),
     ],
 )
-def test_given_malformed_import_rows_then_the_cli_reports_a_clean_error(
+def test_given_malformed_rows_when_importing_then_the_cli_reports_a_clean_error(
     tmp_path, monkeypatch, rows, message
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
@@ -401,7 +401,9 @@ def test_given_malformed_import_rows_then_the_cli_reports_a_clean_error(
     assert result.stdout == ""
 
 
-def test_given_non_utf8_import_content_then_the_cli_reports_a_clean_error(tmp_path, monkeypatch):
+def test_given_non_utf8_content_when_importing_then_the_cli_reports_a_clean_error(
+    tmp_path, monkeypatch
+):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     assert runner.invoke(app, ["db", "init"]).exit_code == 0
     backup = tmp_path / "bad.json"

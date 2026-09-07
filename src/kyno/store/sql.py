@@ -18,6 +18,17 @@ from kyno.models import (
 from kyno.store.schema import build_metadata
 
 
+def _require_whole_ledger(rows: list[dict]) -> None:
+    if not rows:
+        raise CoherenceError("nothing to import: the file has no versions")
+    for position, row in enumerate(rows, start=1):
+        if int(row.get("version", 0)) != position:
+            raise CoherenceError(
+                f"an import takes a whole ledger, versions 1 to {len(rows)} in "
+                f"order; row {position} is v{row.get('version')}"
+            )
+
+
 def _encode_principles(principles) -> str:
     normalized = normalize_principles(principles) or ()
     return json.dumps([p.to_dict() if p.description else p.title for p in normalized])
@@ -190,63 +201,60 @@ class SqlConstitutionStore:
         the exporting database's own token table. The changed_mission and
         changed_principles flags are not in the export; recomputing them
         against the version before gives what authoring wrote."""
-        if not rows:
-            raise CoherenceError("nothing to import: the file has no versions")
-        for position, row in enumerate(rows, start=1):
-            if int(row.get("version", 0)) != position:
-                raise CoherenceError(
-                    f"an import takes a whole ledger, versions 1 to {len(rows)} in "
-                    f"order; row {position} is v{row.get('version')}"
-                )
+        _require_whole_ledger(rows)
         now = datetime.now(UTC)
         with self.engine.begin() as conn:
-            cid = self._constitution_id(conn, constitution)
-            if cid is None:
-                cid = conn.execute(
-                    insert(self._constitutions).values(
-                        name=constitution, current_version=len(rows), created_at=now
-                    )
-                ).inserted_primary_key[0]
-            else:
-                head = conn.execute(
-                    select(self._versions.c.id)
-                    .where(self._versions.c.constitution_id == cid)
-                    .limit(1)
-                ).first()
-                if head is not None:
-                    raise VersionConflictError(
-                        f"'{constitution}' already has versions; an import writes "
-                        "into an empty constitution only"
-                    )
-                conn.execute(
-                    update(self._constitutions)
-                    .where(self._constitutions.c.id == cid)
-                    .values(current_version=len(rows))
-                )
-            previous_mission = ""
-            previous_principles: tuple[Principle, ...] = ()
-            for row in rows:
-                mission = row.get("mission") or ""
-                principles = normalize_principles(tuple(row.get("principles") or ())) or ()
-                created_at = row.get("created_at")
-                conn.execute(
-                    insert(self._versions).values(
-                        constitution_id=cid,
-                        version=int(row["version"]),
-                        mission=mission,
-                        declaration=row.get("declaration") or "",
-                        principles=_encode_principles(principles),
-                        change_note=row.get("change_note") or "",
-                        changed_mission=mission != previous_mission,
-                        changed_principles=principles != previous_principles,
-                        created_by=row.get("created_by"),
-                        authorized_by=row.get("authorized_by"),
-                        token_id=None,
-                        created_at=datetime.fromisoformat(created_at) if created_at else now,
-                    )
-                )
-                previous_mission, previous_principles = mission, principles
+            cid = self._empty_target_constitution_id(conn, constitution, len(rows), now)
+            self._write_ledger(conn, cid, rows, now)
         return len(rows)
+
+    def _empty_target_constitution_id(self, conn, constitution: str, versions: int, now) -> int:
+        cid = self._constitution_id(conn, constitution)
+        if cid is None:
+            return conn.execute(
+                insert(self._constitutions).values(
+                    name=constitution, current_version=versions, created_at=now
+                )
+            ).inserted_primary_key[0]
+        head = conn.execute(
+            select(self._versions.c.id).where(self._versions.c.constitution_id == cid).limit(1)
+        ).first()
+        if head is not None:
+            raise VersionConflictError(
+                f"'{constitution}' already has versions; an import writes "
+                "into an empty constitution only"
+            )
+        conn.execute(
+            update(self._constitutions)
+            .where(self._constitutions.c.id == cid)
+            .values(current_version=versions)
+        )
+        return cid
+
+    def _write_ledger(self, conn, cid: int, rows: list[dict], now) -> None:
+        previous_mission = ""
+        previous_principles: tuple[Principle, ...] = ()
+        for row in rows:
+            mission = row.get("mission") or ""
+            principles = normalize_principles(tuple(row.get("principles") or ())) or ()
+            created_at = row.get("created_at")
+            conn.execute(
+                insert(self._versions).values(
+                    constitution_id=cid,
+                    version=int(row["version"]),
+                    mission=mission,
+                    declaration=row.get("declaration") or "",
+                    principles=_encode_principles(principles),
+                    change_note=row.get("change_note") or "",
+                    changed_mission=mission != previous_mission,
+                    changed_principles=principles != previous_principles,
+                    created_by=row.get("created_by"),
+                    authorized_by=row.get("authorized_by"),
+                    token_id=None,
+                    created_at=datetime.fromisoformat(created_at) if created_at else now,
+                )
+            )
+            previous_mission, previous_principles = mission, principles
 
     def publication(self, constitution: str) -> Publication:
         with self.engine.connect() as conn:

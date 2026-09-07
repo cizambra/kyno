@@ -183,15 +183,13 @@ class SqlConstitutionStore:
     def import_versions(self, constitution: str, rows: list[dict]) -> int:
         """Write rows in export_versions' shape back as a constitution's
         whole ledger, keeping every version's number, dates and authors.
-        Returns the number of versions written.
+        Returns the number written, and refuses a file that is not a
+        whole ledger or a target that already has versions.
 
-        Refuses rows that are not a whole ledger (versions 1 to
-        len(rows), ascending) and a target constitution that already has
-        versions. token_id is never carried over, because a token id
-        names a row in the exporting database's own token table. The
-        changed_mission/changed_principles flags are not in the export;
-        recomputing them by comparing each version with the one before
-        it gives the same values authoring wrote."""
+        token_id is never carried over, because a token id names a row in
+        the exporting database's own token table. The changed_mission and
+        changed_principles flags are not in the export; recomputing them
+        against the version before gives what authoring wrote."""
         if not rows:
             raise CoherenceError("nothing to import: the file has no versions")
         for position, row in enumerate(rows, start=1):

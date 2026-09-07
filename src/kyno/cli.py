@@ -935,10 +935,9 @@ def import_ledger(
         "default", "--as", help="The constitution to write the history under."
     ),
 ) -> None:
-    """Write a file made by `kyno export` back into the database,
-    keeping every version's number, dates and authors. --as sets the
-    constitution name to write under. Local only: it writes straight to
-    the workspace's database, and there is no --remote."""
+    """Write a file made by `kyno export` back into the database, keeping
+    every version's number, dates and authors. Local only: it writes
+    straight to the workspace's database, and there is no --remote."""
     try:
         rows = json.loads(Path(file).read_text())
     except OSError as exc:

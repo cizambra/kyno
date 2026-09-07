@@ -13,6 +13,32 @@ from kyno.store.sql import SqlConstitutionStore
 # by pytest, so there is no local definition here.
 
 
+def _ledger(store):
+    store.append(
+        "default",
+        1,
+        mission="M1",
+        principles=("p1",),
+        change_note="init",
+        changed_mission=True,
+        changed_principles=True,
+        created_by="camilo",
+        authorized_by="operator",
+    )
+    store.append(
+        "default",
+        2,
+        mission="M1",
+        principles=("p1", "p2"),
+        change_note="add p2",
+        changed_mission=False,
+        changed_principles=True,
+        created_by="ci",
+        authorized_by="automation",
+    )
+    return store.export_versions()
+
+
 def test_given_an_append_when_reading_head_then_it_is_the_appended_version(store):
     v1 = store.append(
         "default",
@@ -825,34 +851,6 @@ def test_given_an_append_without_a_token_id_when_reading_back_then_it_is_none(st
     )
 
     assert store.head("default").token_id is None
-
-
-def _ledger(store):
-    """Two versions with distinct authors and shapes, as an exporter would
-    have written them."""
-    store.append(
-        "default",
-        1,
-        mission="M1",
-        principles=("p1",),
-        change_note="init",
-        changed_mission=True,
-        changed_principles=True,
-        created_by="camilo",
-        authorized_by="operator",
-    )
-    store.append(
-        "default",
-        2,
-        mission="M1",
-        principles=("p1", "p2"),
-        change_note="add p2",
-        changed_mission=False,
-        changed_principles=True,
-        created_by="ci",
-        authorized_by="automation",
-    )
-    return store.export_versions()
 
 
 def test_given_an_exported_ledger_when_importing_then_versions_dates_and_authors_survive():

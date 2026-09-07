@@ -167,8 +167,7 @@ def test_given_a_401_inside_nested_groups_when_starting_then_the_error_reads_401
 
 
 def test_given_a_failure_with_extra_message_lines_when_starting_then_the_error_keeps_the_first():
-    # httpx appends "For more information check: https://..." on a second
-    # line; that link is noise in a one-line CLI error.
+    # httpx appends a documentation link on a second line.
     @asynccontextmanager
     async def connect(message_handler=None):
         raise OSError("connection refused\nFor more information check: https://example.com")
@@ -179,14 +178,11 @@ def test_given_a_failure_with_extra_message_lines_when_starting_then_the_error_k
 
 
 def test_given_a_readable_reply_when_building_the_message_then_it_is_what_the_server_wrote():
-    # The server explains a 403 in the reply body -- which tool the scope
-    # does not cover -- and that sentence is more useful than the status.
     from kyno.sdk.client import _refusal_text
 
     failure = refused_with_body(403, "forbidden: this token's scope does not cover 'set_direction'")
 
-    # Wrapped, because a refusal reaches this function inside the group
-    # the transport raised.
+    # A refusal reaches this function inside the group the transport raised.
     line = _refusal_text(ExceptionGroup("unhandled", [failure]))
 
     assert line == "forbidden: this token's scope does not cover 'set_direction'"
@@ -290,9 +286,8 @@ def test_given_a_call_in_flight_when_the_connection_drops_then_it_raises_unavail
 
 
 def test_given_a_500_when_building_the_message_then_there_is_no_refusal_message():
-    # 401 and 403 are the statuses that mean "your credential was turned
-    # away". A 500 is the server failing, and it must not be reported as
-    # a token problem.
+    # 401 and 403 mean the credential was turned away. A 500 is the
+    # server failing, and must not be reported as a token problem.
     from kyno.sdk.client import _refusal_text
 
     assert _refusal_text(ExceptionGroup("unhandled", [refused_with_body(500, "boom")])) is None

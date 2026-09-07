@@ -46,6 +46,70 @@ def in_memory_runner():
         runner.close()
 
 
+class _Refused(Exception):
+    """What an HTTP client raises for a status it will not follow: the
+    exception carries the response that produced it."""
+
+    def __init__(self, status, body=""):
+        super().__init__(f"Client error '{status}'")
+        self.response = _Response(status, body)
+
+
+def refused_with_body(status, body):
+    """A refusal whose response body can still be read."""
+    return _Refused(status, body)
+
+
+def refused_with_an_unreadable_body(status):
+    """A refusal whose response body cannot be read, because the
+    transport closed the stream before anything asked for it."""
+    return _Refused(status, body=None)
+
+
+class _Response:
+    def __init__(self, status, body=""):
+        self.status_code = status
+        self._body = body
+
+    @property
+    def text(self):
+        if self._body is None:
+            raise RuntimeError("the stream is closed")
+        return self._body
+
+    def read(self):
+        if self._body is None:
+            raise RuntimeError("the stream is closed")
+        return self._body.encode()
+
+
+def _runner_whose_session_ends_during_a_call(failure):
+    """A runner whose session ends while a call is in flight, the way a
+    server refusal ends it: the transport's task group raises, the loop
+    unwinds, and the pending call is cancelled with it."""
+
+    @asynccontextmanager
+    async def connect(message_handler=None):
+        calling = asyncio.Event()
+
+        async def fail_once_the_call_starts():
+            await calling.wait()
+            raise failure
+
+        class _Session:
+            async def slow_call(self):
+                calling.set()
+                await asyncio.sleep(30)
+
+        async with asyncio.TaskGroup() as group:
+            group.create_task(fail_once_the_call_starts())
+            yield _Session()
+
+    runner = SessionRunner(connect, timeout=5.0)
+    runner.start()
+    return runner
+
+
 def test_given_a_name_when_the_mcp_source_pulls_then_that_constitution_comes(in_memory_runner):
     runner, control_plane = in_memory_runner
     control_plane.set_direction(mission="EU mission", change_note="init", constitution="eu")
@@ -150,70 +214,6 @@ def test_given_a_runner_that_cannot_connect_when_starting_then_it_fails_loudly()
 
     with pytest.raises(KynoUnavailableError):
         SessionRunner(connect).start()
-
-
-class _Refused(Exception):
-    """What an HTTP client raises for a status it will not follow: the
-    exception carries the response that produced it."""
-
-    def __init__(self, status, body=""):
-        super().__init__(f"Client error '{status}'")
-        self.response = _Response(status, body)
-
-
-def refused_with_body(status, body):
-    """A refusal whose response body can still be read."""
-    return _Refused(status, body)
-
-
-def refused_with_an_unreadable_body(status):
-    """A refusal whose response body cannot be read, because the
-    transport closed the stream before anything asked for it."""
-    return _Refused(status, body=None)
-
-
-class _Response:
-    def __init__(self, status, body=""):
-        self.status_code = status
-        self._body = body
-
-    @property
-    def text(self):
-        if self._body is None:
-            raise RuntimeError("the stream is closed")
-        return self._body
-
-    def read(self):
-        if self._body is None:
-            raise RuntimeError("the stream is closed")
-        return self._body.encode()
-
-
-def _runner_whose_session_ends_during_a_call(failure):
-    """A runner whose session ends while a call is in flight, the way a
-    server refusal ends it: the transport's task group raises, the loop
-    unwinds, and the pending call is cancelled with it."""
-
-    @asynccontextmanager
-    async def connect(message_handler=None):
-        calling = asyncio.Event()
-
-        async def fail_once_the_call_starts():
-            await calling.wait()
-            raise failure
-
-        class _Session:
-            async def slow_call(self):
-                calling.set()
-                await asyncio.sleep(30)
-
-        async with asyncio.TaskGroup() as group:
-            group.create_task(fail_once_the_call_starts())
-            yield _Session()
-
-    runner = SessionRunner(connect, timeout=5.0)
-    runner.start()
-    return runner
 
 
 def test_given_a_401_inside_nested_groups_when_starting_then_the_error_reads_401_unauthorized():

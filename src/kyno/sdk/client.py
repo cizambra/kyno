@@ -6,7 +6,6 @@ import concurrent.futures
 import json
 import os
 import threading
-import time
 from collections.abc import Callable, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -147,6 +146,9 @@ class SessionRunner:
         self._thread: threading.Thread | None = None
         self._session: Any = None
         self._ready = threading.Event()
+        # Set when the session thread is done, so a call cancelled by that
+        # thread knows whether an error was recorded without polling.
+        self._finished = threading.Event()
         self._error: BaseException | None = None
         self._stop: asyncio.Event | None = None
         self._message_handler: Callable[[Any], Any] | None = None
@@ -187,6 +189,7 @@ class SessionRunner:
             self._ready.set()
         finally:
             self._session = None
+            self._finished.set()
 
     def call(self, fn: Callable[[Any], Any]) -> Any:
         loop, session = self._loop, self._session
@@ -205,11 +208,10 @@ class SessionRunner:
             raise KynoUnavailableError("timed out talking to kyno") from exc
         except concurrent.futures.CancelledError as exc:
             # A server refusal (e.g. 403) ends the whole session, and the
-            # in-flight call is cancelled with it. The cause lands in
-            # self._error a moment later, on the session thread.
-            deadline = time.monotonic() + self._timeout
-            while self._error is None and time.monotonic() < deadline:
-                time.sleep(0.02)
+            # in-flight call is cancelled with it. Waiting for the session
+            # thread to finish is what makes self._error readable here; a
+            # session that ended without one answers straight away.
+            self._finished.wait(self._timeout)
             if self._error is not None:
                 refusal = _refusal_text(self._error)
                 if refusal is not None:

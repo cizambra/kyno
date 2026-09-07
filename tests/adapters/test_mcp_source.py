@@ -1,5 +1,6 @@
 import asyncio
 import threading
+import time
 from contextlib import asynccontextmanager
 
 import pytest
@@ -318,7 +319,9 @@ def test_given_a_call_in_flight_when_the_connection_drops_then_it_raises_unavail
 
 def test_given_a_call_in_flight_when_the_runner_is_closed_then_it_reports_the_session_ended():
     # Closing ends the session without an error, so the cancelled call
-    # has nothing to describe and says only that the session ended.
+    # has nothing to describe and says only that the session ended. It
+    # answers once the session thread is done, rather than waiting out
+    # the timeout, which is why this runs with the default one.
     started = threading.Event()
 
     @asynccontextmanager
@@ -330,14 +333,16 @@ def test_given_a_call_in_flight_when_the_runner_is_closed_then_it_reports_the_se
 
         yield _Session()
 
-    runner = SessionRunner(connect, timeout=0.5)
+    runner = SessionRunner(connect)
     runner.start()
     closer = threading.Thread(target=lambda: (started.wait(5), runner.close()), daemon=True)
     closer.start()
+    began = time.monotonic()
     try:
         with pytest.raises(KynoUnavailableError, match="ended mid-call") as seen:
             runner.call(lambda session: session.slow_call())
         assert not isinstance(seen.value, KynoRefusedError)
+        assert time.monotonic() - began < runner._timeout / 2
     finally:
         closer.join(timeout=5)
 

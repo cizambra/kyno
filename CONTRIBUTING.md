@@ -66,10 +66,20 @@ write it in that place.
 ## Pull requests
 
 - A PR follows the Single Responsibility Principle: it changes one
-  behavior and no more. If a PR is doing more than one thing, it is
-  doing too much; split it.
+  behavior and no more. If it does more than one thing, split it.
 - A PR description covers three things: what it does, how to verify it,
   and where to look first.
+- Follow the boy scout rule: leave the code better than you found it,
+  tests included. If your change sits on top of something that needs
+  cleaning up, like a helper that already exists elsewhere or a name that
+  no longer matches what the code does, clean it up.
+- When the cleanup introduces no behavior of its own, it can ride along
+  in the same PR. Whether you keep it in its own commit is up to you.
+- When the cleanup does introduce behavior, it should get its own PR,
+  before or after yours, whichever you prefer. That way a reviewer
+  approving your feature is not also approving a behavior change they did
+  not come to review, and the cleanup gets the review a behavior change
+  deserves.
 
 ## Licensing of new files
 

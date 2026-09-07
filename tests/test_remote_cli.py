@@ -15,6 +15,7 @@ from kyno.models import Token
 from kyno.remote import RemoteError
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
+from tests.servers import free_port, wait_until
 from tests.workspaces import cli_workspace
 
 runner = CliRunner()
@@ -284,9 +285,7 @@ def test_given_a_live_server_when_applying_remotely_then_the_version_is_applied(
 ):
     """The one true end-to-end: a real HTTP server, the real bearer gate,
     the real client. Everything else in this file skips the wire."""
-    import socket
     import threading
-    import time
 
     import uvicorn
 
@@ -298,21 +297,14 @@ def test_given_a_live_server_when_applying_remotely_then_the_version_is_applied(
     value = generate_value()
     store.add_token("e2e", "write", token_hash=hash_value(value))
     http_app = build_http_app(ControlPlane(store), token_store=store)
-    sock = socket.socket()
-    sock.bind(("127.0.0.1", 0))
-    port = sock.getsockname()[1]
-    sock.close()
+    port = free_port()
     server = uvicorn.Server(
         uvicorn.Config(http_app, host="127.0.0.1", port=port, log_level="error")
     )
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
     try:
-        for _ in range(200):
-            if server.started:
-                break
-            time.sleep(0.05)
-        assert server.started, "uvicorn did not come up"
+        wait_until(lambda: server.started, "uvicorn did not come up")
         monkeypatch.setenv("MY_TOKEN", value)
         assert runner.invoke(app, ["credentials", "add", "--token-env", "MY_TOKEN"]).exit_code == 0
         assert (
@@ -370,9 +362,7 @@ def test_given_a_revoked_token_when_going_remote_then_the_error_names_the_profil
     tmp_path, monkeypatch
 ):
     # The 401 arrives while the session opens, before any tool call.
-    import socket
     import threading
-    import time
 
     import uvicorn
 
@@ -384,21 +374,14 @@ def test_given_a_revoked_token_when_going_remote_then_the_error_names_the_profil
     value = generate_value()
     token = store.add_token("e2e", "write", token_hash=hash_value(value))
     http_app = build_http_app(ControlPlane(store), token_store=store)
-    sock = socket.socket()
-    sock.bind(("127.0.0.1", 0))
-    port = sock.getsockname()[1]
-    sock.close()
+    port = free_port()
     server = uvicorn.Server(
         uvicorn.Config(http_app, host="127.0.0.1", port=port, log_level="error")
     )
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
     try:
-        for _ in range(200):
-            if server.started:
-                break
-            time.sleep(0.05)
-        assert server.started, "uvicorn did not come up"
+        wait_until(lambda: server.started, "uvicorn did not come up")
         monkeypatch.setenv("MY_TOKEN", value)
         assert runner.invoke(app, ["credentials", "add", "--token-env", "MY_TOKEN"]).exit_code == 0
         assert (

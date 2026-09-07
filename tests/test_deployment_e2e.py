@@ -22,6 +22,17 @@ runner = CliRunner()
 _CLI = [sys.executable, "-c", "from kyno.cli import app; app()"]
 
 
+def _a_workspace_with_a_database(tmp_path, monkeypatch, name):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    assert runner.invoke(app, ["new", name]).exit_code == 0
+    root = tmp_path / name
+    monkeypatch.chdir(root)
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    return root
+
+
 def _set_port(root, port):
     config = root / "config" / "server"
     config.write_text(config.read_text().replace("port = 2256", f"port = {port}"))
@@ -59,18 +70,88 @@ def _stop(proc):
         proc.wait(timeout=10)
 
 
+def _mint_a_reader_and_a_writer(monkeypatch):
+    reader = runner.invoke(app, ["token", "add", "agents", "--scope", "read"]).output.strip()
+    writer = runner.invoke(app, ["token", "add", "operators", "--scope", "write"]).output.strip()
+    assert reader.startswith("kyno_") and writer.startswith("kyno_")
+    monkeypatch.setenv("AGENTS_TOKEN", reader)
+    monkeypatch.setenv("OPERATORS_TOKEN", writer)
+
+
+def _point_the_client_at_the_server(port):
+    # The docs' wiring: values in variables, files holding only references.
+    for profile, var in (("agents", "AGENTS_TOKEN"), ("operators", "OPERATORS_TOKEN")):
+        added = runner.invoke(app, ["credentials", "add", "--profile", profile, "--token-env", var])
+        assert added.exit_code == 0, added.output
+    url = f"http://127.0.0.1:{port}"
+    default = runner.invoke(app, ["remote", "add", "--url", url, "--credentials", "agents"])
+    assert default.exit_code == 0, default.output
+    ops = runner.invoke(
+        app, ["remote", "add", "--profile", "ops", "--url", url, "--credentials", "operators"]
+    )
+    assert ops.exit_code == 0, ops.output
+
+
+def _each_credential_is_seen_as_itself():
+    r = runner.invoke(app, ["whoami", "--remote"])
+    assert r.exit_code == 0, r.output
+    assert r.output.strip() == "agents  read"
+    r = runner.invoke(app, ["whoami", "--remote", "--profile", "ops"])
+    assert r.output.strip() == "operators  write"
+
+
+def _the_reader_reads_the_empty_instance():
+    r = runner.invoke(app, ["current", "--remote"])
+    assert r.exit_code == 0
+    assert "no constitution set (version 0)" in r.output
+
+
+def _a_direction_file(root):
+    path = root / "c.yaml"
+    path.write_text("constitution: default\nmission: Ship it\n", encoding="utf-8")
+    return path
+
+
+def _the_reader_cannot_write(direction):
+    r = runner.invoke(
+        app, ["set", str(direction), "--note", "first", "--remote", "--no-interactive"]
+    )
+    assert r.exit_code == 1
+    assert "the server refused set_direction: 403 forbidden" in r.output
+
+
+def _the_writer_writes_and_the_reader_sees_the_version(direction):
+    r = runner.invoke(
+        app,
+        [
+            "set",
+            str(direction),
+            "--note",
+            "first",
+            "--remote",
+            "--no-interactive",
+            "--profile",
+            "ops",
+        ],
+    )
+    assert r.exit_code == 0, r.output
+    payload = json.loads(runner.invoke(app, ["current", "--remote"]).output)
+    assert payload["version"] == 1 and payload["mission"] == "Ship it"
+
+
+def _revoking_the_writer_shuts_it_out_and_leaves_the_reader_working():
+    assert runner.invoke(app, ["token", "revoke", "operators"]).exit_code == 0
+    r = runner.invoke(app, ["whoami", "--remote", "--profile", "ops"])
+    assert r.exit_code == 1
+    assert "refused the token: 401 unauthorized" in r.output
+    assert runner.invoke(app, ["whoami", "--remote"]).exit_code == 0
+
+
 @pytest.mark.e2e
 def test_given_a_clean_environment_when_deploying_over_http_then_the_full_lifecycle_works(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setenv("USERPROFILE", str(tmp_path))
-    monkeypatch.chdir(tmp_path)
-
-    assert runner.invoke(app, ["new", "acme"]).exit_code == 0
-    root = tmp_path / "acme"
-    monkeypatch.chdir(root)
-    assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    root = _a_workspace_with_a_database(tmp_path, monkeypatch, "acme")
     port = free_port()
     _set_port(root, port)
 
@@ -80,83 +161,19 @@ def test_given_a_clean_environment_when_deploying_over_http_then_the_full_lifecy
     try:
         _wait_up(port, proc)
 
-        # Mint one credential per audience, and wire the client side
-        # the way the docs say: values in variables, files holding only
-        # references. The running server reads the token table on every
-        # request, so none of this needs a restart.
-        read_value = runner.invoke(
-            app, ["token", "add", "agents", "--scope", "read"]
-        ).output.strip()
-        writer = runner.invoke(
-            app, ["token", "add", "operators", "--scope", "write"]
-        ).output.strip()
-        assert read_value.startswith("kyno_") and writer.startswith("kyno_")
-        monkeypatch.setenv("AGENTS_TOKEN", read_value)
-        monkeypatch.setenv("OPERATORS_TOKEN", writer)
-        for profile, var in (("agents", "AGENTS_TOKEN"), ("operators", "OPERATORS_TOKEN")):
-            added = runner.invoke(
-                app, ["credentials", "add", "--profile", profile, "--token-env", var]
-            )
-            assert added.exit_code == 0, added.output
-        url = f"http://127.0.0.1:{port}"
-        assert (
-            runner.invoke(app, ["remote", "add", "--url", url, "--credentials", "agents"]).exit_code
-            == 0
-        )
-        assert (
-            runner.invoke(
-                app,
-                ["remote", "add", "--profile", "ops", "--url", url, "--credentials", "operators"],
-            ).exit_code
-            == 0
-        )
+        # Both tokens are minted while the server runs, and it honors
+        # them without a restart.
+        _mint_a_reader_and_a_writer(monkeypatch)
+        _point_the_client_at_the_server(port)
 
-        # Each credential is seen as itself.
-        r = runner.invoke(app, ["whoami", "--remote"])
-        assert r.exit_code == 0, r.output
-        assert r.output.strip() == "agents  read"
-        r = runner.invoke(app, ["whoami", "--remote", "--profile", "ops"])
-        assert r.output.strip() == "operators  write"
+        _each_credential_is_seen_as_itself()
+        _the_reader_reads_the_empty_instance()
 
-        # The read credential reads the empty instance.
-        r = runner.invoke(app, ["current", "--remote"])
-        assert r.exit_code == 0
-        assert "no constitution set (version 0)" in r.output
+        direction = _a_direction_file(root)
+        _the_reader_cannot_write(direction)
+        _the_writer_writes_and_the_reader_sees_the_version(direction)
 
-        # The read credential cannot write.
-        direction = root / "c.yaml"
-        direction.write_text("constitution: default\nmission: Ship it\n", encoding="utf-8")
-        r = runner.invoke(
-            app, ["set", str(direction), "--note", "first", "--remote", "--no-interactive"]
-        )
-        assert r.exit_code == 1
-        assert "the server refused set_direction: 403 forbidden" in r.output
-
-        # The write credential writes, and the reader sees the version.
-        r = runner.invoke(
-            app,
-            [
-                "set",
-                str(direction),
-                "--note",
-                "first",
-                "--remote",
-                "--no-interactive",
-                "--profile",
-                "ops",
-            ],
-        )
-        assert r.exit_code == 0, r.output
-        payload = json.loads(runner.invoke(app, ["current", "--remote"]).output)
-        assert payload["version"] == 1 and payload["mission"] == "Ship it"
-
-        # Revoking the write token shuts its holder out on the next dial,
-        # with the refusal named; the read credential keeps working.
-        assert runner.invoke(app, ["token", "revoke", "operators"]).exit_code == 0
-        r = runner.invoke(app, ["whoami", "--remote", "--profile", "ops"])
-        assert r.exit_code == 1
-        assert "refused the token: 401 unauthorized" in r.output
-        assert runner.invoke(app, ["whoami", "--remote"]).exit_code == 0
+        _revoking_the_writer_shuts_it_out_and_leaves_the_reader_working()
     finally:
         _stop(proc)
 
@@ -165,14 +182,7 @@ def test_given_a_clean_environment_when_deploying_over_http_then_the_full_lifecy
 def test_given_allow_insecure_in_a_clean_environment_when_serving_then_no_token_is_checked(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setenv("USERPROFILE", str(tmp_path))
-    monkeypatch.chdir(tmp_path)
-
-    assert runner.invoke(app, ["new", "open"]).exit_code == 0
-    root = tmp_path / "open"
-    monkeypatch.chdir(root)
-    assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    root = _a_workspace_with_a_database(tmp_path, monkeypatch, "open")
     port = free_port()
     _set_port(root, port)
     config = root / "config" / "server"

@@ -4,9 +4,8 @@ table-prefix generator.
 """
 
 import re
-from pathlib import Path
-
 from tests.conftest import POSTGRES_URL_ENV, _postgres_url, _random_prefix, needs_postgres
+from tests.paths import REPO_ROOT
 
 
 def test_given_the_postgres_gate_when_reading_its_env_var_then_the_name_is_exact(monkeypatch):
@@ -37,7 +36,7 @@ def test_given_generated_prefixes_when_checked_then_they_are_unique_safe_and_sho
 def test_given_the_dev_extra_when_installed_then_psycopg_is_available_for_postgres():
     # The Postgres tests need psycopg, and the dev extra is where it comes
     # from. Dropping it would turn them into a permanent skip.
-    pyproject = Path(__file__).parent.parent / "pyproject.toml"
+    pyproject = REPO_ROOT / "pyproject.toml"
     text = pyproject.read_text()
     dev_extra = text.split("[project.optional-dependencies]")[1].split("[project.scripts]")[0]
     assert "psycopg" in dev_extra

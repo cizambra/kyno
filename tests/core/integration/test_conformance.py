@@ -2,9 +2,8 @@
 and the checker catches the mistakes the guide says it catches."""
 
 import json
-import pathlib
-
 import pytest
+from tests.paths import REPO_ROOT
 
 from kyno.authoring import read_constitution_file
 from kyno.conformance import SEPARATOR, check_log
@@ -13,7 +12,7 @@ from kyno.sdk.cell import Direction
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 
-ROOT = pathlib.Path(__file__).parent.parent
+ROOT = REPO_ROOT
 CONFORMANCE = ROOT / "conformance"
 
 

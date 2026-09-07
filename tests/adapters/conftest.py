@@ -1,15 +1,6 @@
 import pytest
 
 from kyno.models import COMPACT, ChangesSince
-from kyno.service import ControlPlane
-from kyno.store.sql import SqlConstitutionStore
-
-
-@pytest.fixture
-def control_plane():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
-    return ControlPlane(store)
 
 
 class ScriptedDirectionSource:

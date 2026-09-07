@@ -18,21 +18,23 @@ A test belongs to exactly one layer, and the layer decides where it
 lives, what it is called, and how much it explains.
 
 **Unit.** Covers one production module in isolation. Lives in
-`tests/test_<module>.py`, one file per module, so `src/kyno/profiles.py`
-is tested by `tests/test_profiles.py`. The filename already says what is
-covered, so the file needs no docstring.
+`tests/core/unit/test_<module>.py` or
+`tests/surface/unit/test_<module>.py`, one file per module. For example,
+`src/kyno/profiles.py` is tested by `tests/core/unit/test_profiles.py`,
+while SDK cells are tested by `tests/surface/unit/test_cell.py`. The
+filename already says what is covered, so the file needs no docstring.
 
 **Integration.** Covers behavior that spans modules. `test_concurrency.py`
-checks that exactly one writer wins a race, which no single module
-guarantees on its own: it falls out of the store, the service, and a
-database constraint together. Named for the behavior, because no module
-name would be honest.
+in `tests/core/integration/` checks that exactly one writer wins a race,
+which no single module guarantees on its own: it falls out of the store,
+the service, and a database constraint together. Named for the behavior,
+because no module name would be honest.
 
 **End to end.** Walks a whole story through a running system.
-`test_deployment_e2e.py` creates a workspace, starts a real `kyno serve`
-process, mints tokens, reads, gets refused, writes, and revokes, using
-the commands a person would type. These check the spec: what an operator
-can do, in order.
+`tests/core/e2e/test_deployment_e2e.py` creates a workspace, starts a real
+`kyno serve` process, mints tokens, reads, gets refused, writes, and
+revokes, using the commands a person would type. These check the spec:
+what an operator can do, in order.
 
 Aim for a pyramid. Most tests are unit tests, fewer are integration
 tests, fewest are end to end. Each layer above catches what the one below
@@ -162,12 +164,8 @@ otherwise. CI holds coverage at 90%, counting only shipped behavior.
 
 ## Where the suite stands
 
-The suite was written before these layers were named, so it does not
-match them yet. Most files sit in the middle: they are named for a
-behavior and cover more than one module, and some of those are unit
-tests wearing the wrong name. Several production modules have no
-`test_<module>.py` at all, though they are covered from elsewhere.
-
-New tests follow this page. Moving the existing ones is its own work,
-and it is a good first contribution: pick one module, give it a
-`test_<module>.py`, and move the cases that fail for that module alone.
+The move is in progress. The unambiguous files now live in their target
+`core`, `surface`, and `checks` lanes. The remaining mixed files are
+listed in `tests/layout_manifest.toml`; each will be split before it is
+moved. New tests follow the target layout now, so the tree does not grow
+the old ambiguity while the remaining files are migrated.

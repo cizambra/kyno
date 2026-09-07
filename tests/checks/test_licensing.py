@@ -4,9 +4,9 @@ forgets the header gets told here, with the exact line to paste. Files
 outside these subtrees need no header: the root LICENSE says everything
 unlabeled is under the Elastic License 2.0."""
 
-import pathlib
+from tests.paths import REPO_ROOT
 
-SRC = pathlib.Path(__file__).parent.parent / "src" / "kyno"
+SRC = REPO_ROOT / "src" / "kyno"
 MIT_DIRS = ("sdk", "adapters", "conformance")
 HEADER = "# SPDX-License-Identifier: MIT"
 

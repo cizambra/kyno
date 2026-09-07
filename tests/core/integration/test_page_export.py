@@ -1,8 +1,6 @@
 """`kyno page export` — the copy-and-edit workflow: take the real default
 pages, edit them, point Kyno at your copies."""
 
-from pathlib import Path
-
 from typer.testing import CliRunner
 
 from kyno.cli import app
@@ -10,6 +8,7 @@ from kyno.public_page import PACKAGED_TEMPLATES, PageConfig, packaged_template
 from kyno.public_page import render_constitution as render
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
+from tests.paths import REPO_ROOT
 
 runner = CliRunner()
 
@@ -148,7 +147,7 @@ def test_given_the_built_wheel_when_inspecting_then_it_ships_the_templates_and_t
     build = __import__("pytest").importorskip("build")
     __import__("pytest").importorskip("hatchling")
 
-    root = Path(__file__).parent.parent
+    root = REPO_ROOT
     builder = build.ProjectBuilder(str(root))
     wheel = builder.build("wheel", str(tmp_path), {})
 

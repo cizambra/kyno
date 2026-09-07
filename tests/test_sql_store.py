@@ -2,7 +2,7 @@ import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import create_engine, delete
+from sqlalchemy import create_engine, delete, insert, select
 
 from kyno.errors import CoherenceError, CorruptStateError, VersionConflictError
 from kyno.models import Principle
@@ -924,3 +924,175 @@ def test_given_a_partial_export_when_importing_then_it_refuses_naming_the_row(st
 def test_given_an_empty_list_when_importing_then_it_refuses(store):
     with pytest.raises(CoherenceError, match="no versions"):
         store.import_versions("fresh", [])
+
+
+@pytest.mark.parametrize("version", [True, 1.5, "1", None, [], {}])
+def test_given_a_noninteger_version_when_importing_then_it_refuses_without_writing(store, version):
+    rows = _ledger(store)
+    rows[0]["version"] = version
+
+    with pytest.raises(CoherenceError, match="row 1"):
+        store.import_versions("fresh", rows)
+
+    assert store.head("fresh") is None
+
+
+@pytest.mark.parametrize("row", [None, [], "version", 1])
+def test_given_a_nonobject_row_when_importing_then_it_refuses_without_writing(store, row):
+    with pytest.raises(CoherenceError, match="row 1"):
+        store.import_versions("fresh", [row])
+
+    assert store.head("fresh") is None
+
+
+@pytest.mark.parametrize("versions", [[1, 1], [1, 3], [2, 1], [0, 1]])
+def test_given_duplicate_gapped_or_unordered_versions_when_importing_then_it_refuses(
+    store, versions
+):
+    rows = _ledger(store)
+    for row, version in zip(rows, versions, strict=True):
+        row["version"] = version
+
+    with pytest.raises(CoherenceError, match="whole ledger"):
+        store.import_versions("fresh", rows)
+
+    assert store.head("fresh") is None
+
+
+@pytest.mark.parametrize("principles", ["abc", {"title": "care"}, 7, False])
+def test_given_a_nonlist_principles_field_when_importing_then_it_refuses(store, principles):
+    rows = _ledger(store)
+    rows[1]["principles"] = principles
+
+    with pytest.raises(CoherenceError, match="principles"):
+        store.import_versions("fresh", rows)
+
+    assert store.head("fresh") is None
+
+
+@pytest.mark.parametrize("created_at", [None, "", "not a date", 7, "2026-09-07T12:00:00"])
+def test_given_an_invalid_import_timestamp_then_it_refuses_instead_of_inventing_history(
+    store, created_at
+):
+    rows = _ledger(store)
+    rows[1]["created_at"] = created_at
+
+    with pytest.raises(CoherenceError, match="created_at"):
+        store.import_versions("fresh", rows)
+
+    assert store.head("fresh") is None
+
+
+def test_given_an_offset_import_timestamp_then_the_same_instant_survives(store):
+    rows = _ledger(store)
+    rows[0]["created_at"] = "2026-09-07T12:30:15.123456+05:30"
+
+    store.import_versions("fresh", rows)
+
+    assert store.get("fresh", 1).created_at.isoformat() == "2026-09-07T07:00:15.123456+00:00"
+
+
+@pytest.mark.parametrize("existing_target", [False, True])
+def test_given_a_later_invalid_row_when_importing_then_the_entire_transaction_rolls_back(
+    store, existing_target
+):
+    rows = _ledger(store)
+    rows[1]["principles"] = [{"title": ""}]
+    if existing_target:
+        with store.engine.begin() as connection:
+            connection.execute(
+                insert(store._constitutions).values(
+                    name="fresh", current_version=0, created_at=store.head("default").created_at
+                )
+            )
+
+    with pytest.raises(CoherenceError, match="title"):
+        store.import_versions("fresh", rows)
+
+    with store.engine.connect() as connection:
+        target = connection.execute(
+            select(store._constitutions).where(store._constitutions.c.name == "fresh")
+        ).first()
+        assert (target is not None) is existing_target
+        if target is not None:
+            assert target.current_version == 0
+    assert store.export_versions("fresh") == []
+    assert store.head("default").version == 2
+
+
+def test_given_an_imported_ledger_when_authoring_again_then_it_appends_after_the_import(store):
+    rows = _ledger(store)
+    rows[0]["declaration"] = "The first declaration"
+    rows[1]["declaration"] = "The revised declaration"
+    rows[1]["principles"] = [{"title": "care", "description": "Check the result"}]
+    store.import_versions("fresh", rows)
+
+    result = ControlPlane(store).set_direction(
+        constitution="fresh", mission="M3", change_note="next", created_by="operator"
+    )
+
+    assert result.version == 3
+    assert store.export_versions("fresh")[:2] == rows
+    assert store.head("fresh").principles == (Principle("care", "Check the result"),)
+
+
+@pytest.mark.parametrize(
+    "field", ["mission", "declaration", "change_note", "created_by", "authorized_by"]
+)
+@pytest.mark.parametrize("value", [False, 123, []])
+def test_given_a_nontext_import_field_then_it_refuses_without_coercing_content(store, field, value):
+    rows = _ledger(store)
+    rows[1][field] = value
+
+    with pytest.raises(CoherenceError, match=field):
+        store.import_versions("fresh", rows)
+
+    assert store.head("fresh") is None
+
+
+@pytest.mark.parametrize(
+    "mission, principles, changed_mission, changed_principles",
+    [
+        ("M1", ["p1"], False, False),
+        ("M2", ["p1"], True, False),
+        ("M1", [{"title": "p1", "description": "new detail"}], False, True),
+        ("", [], True, True),
+    ],
+)
+def test_given_imported_content_changes_then_the_flags_describe_each_transition(
+    store, mission, principles, changed_mission, changed_principles
+):
+    rows = _ledger(store)
+    rows[1].update(
+        mission=mission, principles=principles, declaration="declaration only is allowed"
+    )
+
+    store.import_versions("fresh", rows)
+
+    first = store.get("fresh", 1)
+    assert first.changed_mission is True
+    assert first.changed_principles is True
+    head = store.head("fresh")
+    assert head.changed_mission is changed_mission
+    assert head.changed_principles is changed_principles
+    assert head.declaration == "declaration only is allowed"
+
+
+def test_given_an_existing_empty_constitution_when_importing_then_it_reuses_the_target(store):
+    rows = _ledger(store)
+    with store.engine.begin() as connection:
+        target_id = connection.execute(
+            insert(store._constitutions).values(
+                name="fresh", current_version=0, created_at=store.head("default").created_at
+            )
+        ).inserted_primary_key[0]
+
+    store.import_versions("fresh", rows)
+
+    with store.engine.connect() as connection:
+        target = connection.execute(
+            select(store._constitutions).where(store._constitutions.c.name == "fresh")
+        ).one()
+    assert target.id == target_id
+    assert target.current_version == 2
+    assert store.export_versions("fresh") == rows

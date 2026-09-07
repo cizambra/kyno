@@ -375,6 +375,45 @@ def test_given_a_missing_file_when_importing_then_the_error_says_it_cannot_read(
     assert "cannot read" in r.output
 
 
+@pytest.mark.parametrize(
+    "rows, message",
+    [
+        ([None], "row 1"),
+        ([{"version": "oops"}], "row 1"),
+        ([{"version": True}], "row 1"),
+        ([{"version": 1, "created_at": "invalid"}], "created_at"),
+        ([], "no versions"),
+    ],
+)
+def test_given_malformed_import_rows_then_the_cli_reports_a_clean_error(
+    tmp_path, monkeypatch, rows, message
+):
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    backup = tmp_path / "bad.json"
+    backup.write_text(json.dumps(rows))
+
+    result = runner.invoke(app, ["import", str(backup)])
+
+    assert result.exit_code == 1
+    assert "error:" in result.stderr
+    assert message in result.stderr
+    assert result.stdout == ""
+
+
+def test_given_non_utf8_import_content_then_the_cli_reports_a_clean_error(tmp_path, monkeypatch):
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    backup = tmp_path / "bad.json"
+    backup.write_bytes(b"\xff\xfe\x00")
+
+    result = runner.invoke(app, ["import", str(backup)])
+
+    assert result.exit_code == 1
+    assert "cannot read" in result.stderr
+    assert result.stdout == ""
+
+
 def test_given_an_uninitialized_db_when_exporting_then_the_error_is_clean(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "never_init.sqlite3")
     r = runner.invoke(app, ["export"])

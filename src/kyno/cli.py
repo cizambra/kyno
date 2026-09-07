@@ -946,8 +946,8 @@ def import_ledger(
 
 def _read_export(file: str) -> list[dict]:
     try:
-        rows = json.loads(Path(file).read_text())
-    except OSError as exc:
+        rows = json.loads(Path(file).read_text(encoding="utf-8"))
+    except (OSError, UnicodeError) as exc:
         raise CoherenceError(f"cannot read {file}: {exc}") from None
     except json.JSONDecodeError:
         raise CoherenceError(f"{file} is not a kyno export: the file is not JSON") from None

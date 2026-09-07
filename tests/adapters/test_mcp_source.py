@@ -331,9 +331,10 @@ def test_given_a_call_in_flight_when_the_runner_is_closed_then_it_reports_the_se
 
         yield _Session()
 
-    # A long timeout on purpose: the call answers when the session thread
-    # finishes, so waiting any part of it out would be a regression.
-    runner = SessionRunner(connect, timeout=10.0)
+    # The runner's patience is short on purpose. The call answers when
+    # the session thread finishes, in about a millisecond; waiting any of
+    # that patience out instead would show up in the elapsed time below.
+    runner = SessionRunner(connect, timeout=0.5)
     runner.start()
     closer = threading.Thread(target=lambda: (started.wait(5), runner.close()), daemon=True)
     closer.start()
@@ -341,7 +342,7 @@ def test_given_a_call_in_flight_when_the_runner_is_closed_then_it_reports_the_se
     try:
         with pytest.raises(KynoUnavailableError, match="ended mid-call"):
             runner.call(lambda session: session.slow_call())
-        assert time.monotonic() - began < 2.0
+        assert time.monotonic() - began < 0.1
     finally:
         closer.join(timeout=5)
 

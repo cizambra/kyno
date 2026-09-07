@@ -46,6 +46,8 @@ write it in that place.
   tests, fewer integration tests, fewest end to end tests. Each layer
   above catches what the one below cannot, and each costs more to run
   and more to keep working.
+- [TESTING.md](TESTING.md) works through the layers with examples from
+  this suite. The rules here are what review checks.
 - A unit test covers one module in isolation, and lives in
   `test_<module>.py`, one file per production module. The filename says
   what is covered, so the file needs no docstring.

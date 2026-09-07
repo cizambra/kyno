@@ -9,6 +9,7 @@ On this page:
 
 - [The file](#the-file)
 - [Multiple constitutions](#multiple-constitutions)
+- [Exporting and restoring history](#exporting-and-restoring-history)
 
 
 ## The file
@@ -72,8 +73,16 @@ lands where it says. The flags describe the edit: `--note` (required,
 what changed and why) and `--by` (who made it, your system username when
 omitted). Fields the file leaves out are carried forward from the
 previous version; to clear one, write it empty, like `declaration: ""`.
-And every edit appends a new version, so nothing you had is ever
-overwritten.
+An edit that changes content appends a new version; applying the same
+content again is a no-op. Previous versions are never overwritten.
+
+Use `kyno set constitution.yaml --dry-run` to see the proposed delta
+without writing. A stale file can still restore older content as a new
+version: Kyno applies the fields the file supplies, even if they came
+from an earlier read. An interactive remote apply asks for confirmation
+when the content matches an older version; local applies do not ask.
+The [remote authoring workflow](operating.md#remote-mode) explains
+the approval and automation options.
 
 ## Multiple constitutions
 
@@ -98,6 +107,39 @@ file. Each name has its own version sequence: bumping `eu` to v2 leaves
 reads as the same version-0 empty state an untouched store does. The
 subscribable resource is the default constitution's; agents on another
 one pull it by name with `get_changes_since`.
+
+## Exporting and restoring history
+
+`set` writes a new version from a YAML file. `export` and `import` move
+the existing ledger as JSON, preserving its version numbers, dates and
+authors:
+
+```bash
+kyno export --constitution eu > eu-history.json
+kyno import eu-history.json --as restored-eu
+kyno log --constitution restored-eu
+```
+
+Run `import` in a workspace whose database has been initialized with
+`kyno db init`. It writes directly to that local database and has no
+`--remote` option. An export can come from a remote instance:
+`kyno export --remote --constitution eu > eu-history.json`.
+
+The export contains versions, not a constitution name or database ids
+for the constitution. `--as` chooses the target name; without it, import
+uses `default`. A target that already has versions is refused. Export
+also refuses an empty or unknown constitution.
+
+Import requires a nonempty sequence numbered 1 through N in order.
+Missing leading versions, gaps and duplicates are refused. The bare
+list has no original-head marker, so this cannot detect a file whose
+final versions were removed. Keep the complete export for a backup.
+
+Each timestamp must include a timezone; it is stored as the same
+instant in UTC. Token ids are cleared because they belong to the source
+database. Import recomputes the mission and principle change flags,
+and a failed import rolls back the entire write. This restores history;
+it does not copy token credentials or publication settings.
 
 ## 💬 Questions?
 

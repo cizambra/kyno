@@ -15,10 +15,9 @@ On this page:
 ## The loop
 
 The loop is the cycle an adapter runs around every step: pull the
-direction in force, put it in front of the agent, and listen for
-changes. It's what keeps a running system on the current version
-instead of on a copy. Everything an adapter is expected to do falls out
-of these four behaviors.
+direction in force and put it in front of the agent. It's what keeps a
+running system on the current version instead of on a copy. Everything
+an adapter is expected to do falls out of these four behaviors.
 
 - **Pull before each step.** The binder injects the current mission and
   principle titles into the next model call, tagged with the constitution
@@ -35,9 +34,9 @@ of these four behaviors.
 - **Planning.** `binder.plan()` returns a tracker: `direction()` pulls
   what to plan against, and `changed()` tells you when to re-plan the
   remaining work.
-- **Adapters are read-only.** They pull and subscribe. `set_direction`
-  stays an operator action, never something an adapter calls on the
-  crew's behalf.
+- **Adapters are read-only.** They pull. `set_direction` stays an
+  operator action, never something an adapter calls on the crew's
+  behalf.
 
 ```mermaid
 ---
@@ -51,10 +50,8 @@ flowchart LR
   KY["Kyno<br/>control plane"]
   subgraph APP["your app"]
     direction LR
-    SUB["subscriber"] -. "re-pull" .-> BN["binder"]
-    BN -- "direction block" --> ACT["your agent's action<br/>(LLM call)"]
+    BN["binder"] -- "direction block" --> ACT["your agent's action<br/>(LLM call)"]
   end
-  KY -. "push when it changes" .-> APP
   APP -- "pull before each step" --> KY
 ```
 
@@ -166,6 +163,22 @@ on CrewAI and calling `interrupt()` on LangGraph when the verdict is
 Where a gate exists but its judge is unreachable, the work proceeds, and
 an `unchecked` event goes to the telemetry sink -- by default, a warning
 line in your logs. `GatePolicy(fail_closed=True)` stops instead.
+
+```mermaid
+---
+config:
+  look: handDrawn
+  theme: neutral
+---
+flowchart LR
+  W["finished work"] --> G["realignment gate"]
+  G <-- "verdict?" --> J["your judge<br/>(VerdictSource)"]
+  G -- "aligned" --> OK["work proceeds"]
+  G -- "drifted" --> ST["halted"]
+  G -. "judge unreachable" .-> P{"fail_closed?"}
+  P -- "no" --> UN["proceeds, marked<br/>unchecked"]
+  P -- "yes" --> ST
+```
 
 ```python
 from kyno.sdk import RealignmentGate

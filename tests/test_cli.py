@@ -264,28 +264,20 @@ def test_given_two_constitutions_when_exporting_default_then_stderr_reads_defaul
     assert "Constitution 'default' exported" in r.stderr
 
 
-def test_given_a_misspelled_name_when_exporting_then_stderr_carries_the_name_as_typed(
+def test_given_a_misspelled_name_when_exporting_then_it_refuses_naming_the_name_as_typed(
     tmp_path, monkeypatch
 ):
-    # An empty array alone reads like data loss; the stderr line carries
-    # the name exactly as typed, which is what makes a typo visible.
+    # The common way to ask for an empty export is a typo, and a backup
+    # script that writes an empty file and exits 0 hides it.
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="v1", constitution="default")
 
     r = runner.invoke(app, ["export", "--constitution", "defualt"])
 
-    assert r.exit_code == 0
-    assert json.loads(r.stdout) == []
-    assert "Constitution 'defualt' exported" in r.stderr
-
-
-def test_given_an_empty_store_when_exporting_then_an_empty_json_array_prints(tmp_path, monkeypatch):
-    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["db", "init"])
-    r = runner.invoke(app, ["export"])
-    assert r.exit_code == 0
-    assert json.loads(r.stdout) == []
+    assert r.exit_code == 1
+    assert "nothing to export: 'defualt' has no versions" in r.stderr
+    assert r.stdout == ""
 
 
 def test_given_an_uninitialized_db_when_exporting_then_the_error_is_clean(tmp_path, monkeypatch):
@@ -342,8 +334,10 @@ def test_given_an_unknown_constitution_when_reading_then_the_empty_state_is_repo
     apply_yaml(tmp_path, mission="M1", note="init")
     r = runner.invoke(app, ["current", "--constitution", "never-written"])
     assert r.exit_code == 0 and "version 0" in r.output
+    # Export is the exception: its output is a file somebody keeps, so an
+    # empty one is refused instead of written.
     e = runner.invoke(app, ["export", "--constitution", "never-written"])
-    assert e.exit_code == 0 and json.loads(e.stdout) == []
+    assert e.exit_code == 1 and e.stdout == ""
 
 
 def test_given_a_constitution_when_publishing_and_unpublishing_then_each_reports_what_changed(

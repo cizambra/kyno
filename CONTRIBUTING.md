@@ -39,6 +39,15 @@ write it in that place.
   test that reproduces the bug before the fix.
 - `python -m pytest -q` must pass. Postgres-specific tests run when
   `KYNO_TEST_POSTGRES_URL` is set and skip otherwise.
+- A test file reads: imports, then constants, then fixtures, then
+  helpers, then tests. After the first `def test_`, everything is a
+  test. A reader scanning for behaviors should not have to check whether
+  a block of setup means the tests have ended.
+- Support used by more than one file goes in `tests/`, imported by name
+  (`tests/workspaces.py`, `tests/mcp_requests.py`). Fixtures shared
+  across files go in `conftest.py`; plain helpers do not, because they
+  arrive with no import and a reader cannot trace them. Support used by
+  one test stays inside that test.
 - Write scripted, deterministic tests. A test may run real concurrency
   only to prove a concurrency guarantee, and its assertion must hold
   under every possible interleaving. Never use a fixed sleep to

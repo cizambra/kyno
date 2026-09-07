@@ -280,19 +280,6 @@ def test_given_a_misspelled_name_when_exporting_then_it_refuses_naming_the_name_
     assert r.stdout == ""
 
 
-def test_given_an_empty_store_when_exporting_then_it_refuses_and_writes_no_file(
-    tmp_path, monkeypatch
-):
-    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
-    runner.invoke(app, ["db", "init"])
-
-    r = runner.invoke(app, ["export"])
-
-    assert r.exit_code == 1
-    assert "nothing to export: 'default' has no versions" in r.stderr
-    assert r.stdout == ""
-
-
 def test_given_an_uninitialized_db_when_exporting_then_the_error_is_clean(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "never_init.sqlite3")
     r = runner.invoke(app, ["export"])

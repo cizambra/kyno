@@ -158,7 +158,7 @@ def test_given_a_401_inside_nested_groups_when_starting_then_the_error_reads_401
     # person at the terminal gets the status line instead.
     @asynccontextmanager
     async def connect(message_handler=None):
-        refusal = refused_with_a_closed_reply(401)
+        refusal = refused_with_an_unreadable_body(401)
         raise ExceptionGroup("unhandled", [ExceptionGroup("nested", [refusal])])
         yield  # pragma: no cover - unreachable, keeps this a generator
 
@@ -177,7 +177,7 @@ def test_given_a_failure_with_extra_message_lines_when_starting_then_the_error_k
         SessionRunner(connect).start()
 
 
-def test_given_a_readable_reply_when_building_the_message_then_it_is_what_the_server_wrote():
+def test_given_a_body_that_can_be_read_when_building_the_message_then_it_is_the_body():
     from kyno.sdk.client import _refusal_text
 
     failure = refused_with_body(403, "forbidden: this token's scope does not cover 'set_direction'")
@@ -188,10 +188,10 @@ def test_given_a_readable_reply_when_building_the_message_then_it_is_what_the_se
     assert line == "forbidden: this token's scope does not cover 'set_direction'"
 
 
-def test_given_a_closed_reply_when_building_the_message_then_it_is_the_status_line():
+def test_given_a_body_that_cannot_be_read_when_building_the_message_then_it_is_the_status_line():
     from kyno.sdk.client import _refusal_text
 
-    failure = refused_with_a_closed_reply(401)
+    failure = refused_with_an_unreadable_body(401)
 
     assert _refusal_text(ExceptionGroup("unhandled", [failure])) == "401 unauthorized"
 
@@ -206,14 +206,13 @@ class _Refused(Exception):
 
 
 def refused_with_body(status, body):
-    """A refusal whose reply can still be read, so the server's own
-    explanation is available."""
+    """A refusal whose response body can still be read."""
     return _Refused(status, body)
 
 
-def refused_with_a_closed_reply(status):
-    """A refusal whose reply the transport already closed, which is the
-    common case: reading the body raises instead of returning it."""
+def refused_with_an_unreadable_body(status):
+    """A refusal whose response body cannot be read, because the
+    transport closed the stream before anything asked for it."""
     return _Refused(status, body=None)
 
 
@@ -234,7 +233,7 @@ class _Response:
         return self._body.encode()
 
 
-def _runner_that_dies_mid_call(failure):
+def _runner_whose_session_ends_during_a_call(failure):
     """A runner whose session ends while a call is in flight, the way a
     server refusal ends it: the transport's task group raises, the loop
     unwinds, and the pending call is cancelled with it."""
@@ -261,11 +260,11 @@ def _runner_that_dies_mid_call(failure):
     return runner
 
 
-def test_given_a_call_in_flight_when_a_403_ends_the_session_then_it_raises_the_servers_body():
+def test_given_a_call_in_flight_when_a_403_ends_the_session_then_the_error_carries_the_body():
     # The refusal arrives after the call is already running, so the call
     # is cancelled rather than answered. Without this path the command
     # exits with no message at all.
-    runner = _runner_that_dies_mid_call(
+    runner = _runner_whose_session_ends_during_a_call(
         refused_with_body(403, "forbidden: this token's scope does not cover 'set_direction'")
     )
     try:
@@ -276,7 +275,7 @@ def test_given_a_call_in_flight_when_a_403_ends_the_session_then_it_raises_the_s
 
 
 def test_given_a_call_in_flight_when_the_connection_drops_then_it_raises_unavailable_not_refused():
-    runner = _runner_that_dies_mid_call(OSError("connection reset by peer"))
+    runner = _runner_whose_session_ends_during_a_call(OSError("connection reset by peer"))
     try:
         with pytest.raises(KynoUnavailableError, match="ended mid-call: connection reset") as seen:
             runner.call(lambda session: session.slow_call())

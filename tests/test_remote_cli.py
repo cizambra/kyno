@@ -32,6 +32,27 @@ def plain(output):
     return " ".join(re.sub(r"\x1b\[[0-9;]*m", "", output).split())
 
 
+class _RunnerThatRefuses:
+    """A session runner whose server turns every request away, the way one
+    with a revoked or under-scoped token does."""
+
+    def __init__(self, message):
+        self._message = message
+
+    def start(self):
+        from kyno.errors import KynoRefusedError
+
+        raise KynoRefusedError(self._message)
+
+    def call(self, fn):
+        from kyno.errors import KynoRefusedError
+
+        raise KynoRefusedError(self._message)
+
+    def close(self):
+        pass
+
+
 def write_file(dirpath, mission="M1", name="c.yaml", constitution="default"):
     path = pathlib.Path(dirpath) / name
     path.write_text(f"constitution: {constitution}\nmission: {mission}\n", encoding="utf-8")
@@ -304,6 +325,95 @@ def test_given_a_live_server_when_applying_remotely_then_the_version_is_applied(
         assert store.head("default").mission == "Live over the wire"
         r = runner.invoke(app, ["log", "--remote"])
         assert r.exit_code == 0 and "e2e" in r.stdout
+    finally:
+        server.should_exit = True
+        thread.join(timeout=5)
+
+
+def test_given_a_401_at_session_open_when_dialing_then_the_error_names_the_profile_and_url():
+    from kyno.errors import KynoRefusedError
+    from kyno.profiles import Resolved
+    from kyno.remote import RemoteClient
+
+    client = RemoteClient(
+        Resolved(profile="ops", url="https://kyno.example", token="t", chain="ops -> ...")
+    )
+    client._runner = _RunnerThatRefuses("401 unauthorized")
+
+    with pytest.raises(RemoteError) as seen:
+        client.open()
+
+    assert "'ops' at https://kyno.example refused the token: 401 unauthorized" in str(seen.value)
+    assert isinstance(seen.value.__cause__, KynoRefusedError)
+
+
+def test_given_a_403_on_a_tool_call_when_calling_it_then_the_error_names_the_refused_tool():
+    # This refusal arrives during a call, so the message names the tool.
+    from kyno.profiles import Resolved
+    from kyno.remote import RemoteClient
+
+    client = RemoteClient(
+        Resolved(profile="ops", url="https://kyno.example", token="t", chain="ops -> ...")
+    )
+    client._runner = _RunnerThatRefuses(
+        "forbidden: this token's scope does not cover 'set_direction'"
+    )
+
+    with pytest.raises(RemoteError) as seen:
+        client.call_tool("set_direction", {})
+
+    assert "the server refused set_direction: forbidden" in str(seen.value)
+
+
+@pytest.mark.e2e
+def test_given_a_revoked_token_when_going_remote_then_the_error_names_the_profile_url_and_401(
+    tmp_path, monkeypatch
+):
+    # The 401 arrives while the session opens, before any tool call.
+    import socket
+    import threading
+    import time
+
+    import uvicorn
+
+    from kyno.tokens import generate_value, hash_value
+    from kyno.transports import build_http_app
+
+    store = SqlConstitutionStore(url=f"sqlite:///{tmp_path / 'server.sqlite3'}")
+    store.create_all()
+    value = generate_value()
+    token = store.add_token("e2e", "write", token_hash=hash_value(value))
+    http_app = build_http_app(ControlPlane(store), token_store=store)
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    server = uvicorn.Server(
+        uvicorn.Config(http_app, host="127.0.0.1", port=port, log_level="error")
+    )
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    try:
+        for _ in range(200):
+            if server.started:
+                break
+            time.sleep(0.05)
+        assert server.started, "uvicorn did not come up"
+        monkeypatch.setenv("MY_TOKEN", value)
+        assert runner.invoke(app, ["credentials", "add", "--token-env", "MY_TOKEN"]).exit_code == 0
+        assert (
+            runner.invoke(app, ["remote", "add", "--url", f"http://127.0.0.1:{port}"]).exit_code
+            == 0
+        )
+        store.revoke_token(token.id)
+
+        r = runner.invoke(app, ["log", "--remote"])
+
+        assert r.exit_code == 1
+        assert f"'default' at http://127.0.0.1:{port} refused the token: 401 unauthorized" in (
+            plain(r.output)
+        )
+        assert "TaskGroup" not in r.output
     finally:
         server.should_exit = True
         thread.join(timeout=5)

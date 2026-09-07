@@ -12,7 +12,7 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
-from kyno.errors import CoherenceError, KynoUnavailableError
+from kyno.errors import CoherenceError, KynoRefusedError, KynoUnavailableError
 from kyno.models import ConstitutionVersion, normalize_principles
 from kyno.profiles import Resolved, resolve
 from kyno.sdk.client import KynoBinding, SessionRunner, http_session
@@ -34,6 +34,8 @@ class RemoteClient:
     def open(self) -> None:
         try:
             self._runner.start()
+        except KynoRefusedError as exc:
+            raise RemoteError(f"'{self.profile}' at {self.url} refused the token: {exc}") from exc
         except KynoUnavailableError as exc:
             raise RemoteError(f"cannot reach '{self.profile}' at {self.url}: {exc}") from exc
 
@@ -43,7 +45,10 @@ class RemoteClient:
     def call_tool(self, name: str, arguments: dict) -> Any:
         """One tool call, decoded. A server-side refusal comes back as a
         RemoteError carrying the server's own words."""
-        reply = self._runner.call(lambda session: session.call_tool(name, arguments))
+        try:
+            reply = self._runner.call(lambda session: session.call_tool(name, arguments))
+        except KynoRefusedError as exc:
+            raise RemoteError(f"the server refused {name}: {exc}") from exc
         text = reply.content[0].text if reply.content else ""
         if getattr(reply, "isError", False):
             raise RemoteError(text or f"the server refused {name}")

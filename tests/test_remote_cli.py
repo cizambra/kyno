@@ -343,8 +343,7 @@ def test_given_a_401_at_session_open_when_dialing_then_the_error_names_the_profi
 
 
 def test_given_a_403_on_a_tool_call_when_calling_it_then_the_error_names_the_refused_tool():
-    # A scope refusal arrives once the call is under way, so the message
-    # has to say which tool was refused; the profile alone would not say.
+    # This refusal arrives during a call, so the message names the tool.
     from kyno.profiles import Resolved
     from kyno.remote import RemoteClient
 
@@ -365,8 +364,7 @@ def test_given_a_403_on_a_tool_call_when_calling_it_then_the_error_names_the_ref
 def test_given_a_revoked_token_when_going_remote_then_the_error_names_the_profile_url_and_401(
     tmp_path, monkeypatch
 ):
-    # The server answers 401 while the session opens. Before this read as
-    # "unhandled errors in a TaskGroup"; now the line says who refused what.
+    # The 401 arrives while the session opens, before any tool call.
     import socket
     import threading
     import time

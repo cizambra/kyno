@@ -152,50 +152,6 @@ def test_given_a_runner_that_cannot_connect_when_starting_then_it_fails_loudly()
         SessionRunner(connect).start()
 
 
-def test_given_a_401_inside_nested_groups_when_starting_then_the_error_reads_401_unauthorized():
-    # The async stack buries an HTTP refusal inside nested exception groups
-    # whose own text only says "unhandled errors in a TaskGroup". The
-    # person at the terminal gets the status line instead.
-    @asynccontextmanager
-    async def connect(message_handler=None):
-        refusal = refused_with_an_unreadable_body(401)
-        raise ExceptionGroup("unhandled", [ExceptionGroup("nested", [refusal])])
-        yield  # pragma: no cover - unreachable, keeps this a generator
-
-    with pytest.raises(KynoRefusedError, match="401 unauthorized"):
-        SessionRunner(connect).start()
-
-
-def test_given_a_failure_with_extra_message_lines_when_starting_then_the_error_keeps_the_first():
-    # httpx appends a documentation link on a second line.
-    @asynccontextmanager
-    async def connect(message_handler=None):
-        raise OSError("connection refused\nFor more information check: https://example.com")
-        yield  # pragma: no cover - unreachable, keeps this a generator
-
-    with pytest.raises(KynoUnavailableError, match="connection refused$"):
-        SessionRunner(connect).start()
-
-
-def test_given_a_body_that_can_be_read_when_building_the_message_then_it_is_the_body():
-    from kyno.sdk.client import _refusal_text
-
-    failure = refused_with_body(403, "forbidden: this token's scope does not cover 'set_direction'")
-
-    # A refusal reaches this function inside the group the transport raised.
-    line = _refusal_text(ExceptionGroup("unhandled", [failure]))
-
-    assert line == "forbidden: this token's scope does not cover 'set_direction'"
-
-
-def test_given_a_body_that_cannot_be_read_when_building_the_message_then_it_is_the_status_line():
-    from kyno.sdk.client import _refusal_text
-
-    failure = refused_with_an_unreadable_body(401)
-
-    assert _refusal_text(ExceptionGroup("unhandled", [failure])) == "401 unauthorized"
-
-
 class _Refused(Exception):
     """What an HTTP client raises for a status it will not follow: the
     exception carries the response that produced it."""
@@ -258,6 +214,50 @@ def _runner_whose_session_ends_during_a_call(failure):
     runner = SessionRunner(connect, timeout=5.0)
     runner.start()
     return runner
+
+
+def test_given_a_401_inside_nested_groups_when_starting_then_the_error_reads_401_unauthorized():
+    # The async stack buries an HTTP refusal inside nested exception groups
+    # whose own text only says "unhandled errors in a TaskGroup". The
+    # person at the terminal gets the status line instead.
+    @asynccontextmanager
+    async def connect(message_handler=None):
+        refusal = refused_with_an_unreadable_body(401)
+        raise ExceptionGroup("unhandled", [ExceptionGroup("nested", [refusal])])
+        yield  # pragma: no cover - unreachable, keeps this a generator
+
+    with pytest.raises(KynoRefusedError, match="401 unauthorized"):
+        SessionRunner(connect).start()
+
+
+def test_given_a_failure_with_extra_message_lines_when_starting_then_the_error_keeps_the_first():
+    # httpx appends a documentation link on a second line.
+    @asynccontextmanager
+    async def connect(message_handler=None):
+        raise OSError("connection refused\nFor more information check: https://example.com")
+        yield  # pragma: no cover - unreachable, keeps this a generator
+
+    with pytest.raises(KynoUnavailableError, match="connection refused$"):
+        SessionRunner(connect).start()
+
+
+def test_given_a_body_that_can_be_read_when_building_the_message_then_it_is_the_body():
+    from kyno.sdk.client import _refusal_text
+
+    failure = refused_with_body(403, "forbidden: this token's scope does not cover 'set_direction'")
+
+    # A refusal reaches this function inside the group the transport raised.
+    line = _refusal_text(ExceptionGroup("unhandled", [failure]))
+
+    assert line == "forbidden: this token's scope does not cover 'set_direction'"
+
+
+def test_given_a_body_that_cannot_be_read_when_building_the_message_then_it_is_the_status_line():
+    from kyno.sdk.client import _refusal_text
+
+    failure = refused_with_an_unreadable_body(401)
+
+    assert _refusal_text(ExceptionGroup("unhandled", [failure])) == "401 unauthorized"
 
 
 def test_given_a_call_in_flight_when_a_403_ends_the_session_then_the_error_carries_the_body():

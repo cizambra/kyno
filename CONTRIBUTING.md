@@ -39,6 +39,25 @@ write it in that place.
   test that reproduces the bug before the fix.
 - `python -m pytest -q` must pass. Postgres-specific tests run when
   `KYNO_TEST_POSTGRES_URL` is set and skip otherwise.
+- Test code is code. It gets the same style, the same naming care, and
+  the same review as `src/`.
+- Tests come in three layers, and the layer decides how a file is named
+  and how much it explains. A healthy suite is a pyramid: many unit
+  tests, fewer integration tests, fewest end to end tests. Each layer
+  above catches what the one below cannot, and each costs more to run
+  and more to keep working.
+- A unit test covers one module in isolation, and lives in
+  `test_<module>.py`, one file per production module. The filename says
+  what is covered, so the file needs no docstring.
+- An integration test covers behavior that spans modules, and an end to
+  end test walks a whole story through a running system. Both are named
+  for the behavior rather than for a module, and both open with a
+  one-line docstring saying what the file covers, because the filename
+  cannot. These check the spec, not whether one component does its job.
+- Keep commentary in tests to a minimum. Test functions need no docstring
+  at any layer: the name says what is checked and the code says how. Test
+  support code needs none either. Comment only what the code cannot say,
+  like why a case exists at all.
 - A test file reads: imports, then constants, then fixtures, then
   helpers, then tests. After the first test, everything is a test. A
   reader scanning for behaviors should not have to check whether a block
@@ -49,10 +68,9 @@ write it in that place.
   arrive with no import and a reader cannot trace them. Support used by
   one test stays inside that test.
 - Write deterministic tests. Run one twice and it gives the same result,
-  and how fast the machine is must not change that. A test may run real
-  concurrency to prove a concurrency guarantee: the ordering is out of
-  your control, so the assertion has to hold under every ordering. The
-  test is still deterministic; only the scheduling is not.
+  and how fast the machine is must not change that. Real concurrency is
+  fine where it proves a concurrency guarantee, as long as the assertion
+  holds under every ordering.
 - When the behavior you are testing relies on concurrency, keep two
   things in mind:
   - Don't use wait time as the success criteria. Whether the work

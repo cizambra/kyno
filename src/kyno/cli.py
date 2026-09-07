@@ -938,21 +938,22 @@ def import_ledger(
     """Write a file made by `kyno export` back into the database, keeping
     every version's number, dates and authors. Local only: it writes
     straight to the workspace's database, and there is no --remote."""
+    with _clean_errors():
+        count = _store().import_versions(as_name, _read_export(file))
+    word = "version" if count == 1 else "versions"
+    typer.echo(f"imported {count} {word} into '{as_name}'")
+
+
+def _read_export(file: str) -> list[dict]:
     try:
         rows = json.loads(Path(file).read_text())
     except OSError as exc:
-        typer.echo(f"error: cannot read {file}: {exc}", err=True)
-        raise typer.Exit(code=1) from None
+        raise CoherenceError(f"cannot read {file}: {exc}") from None
     except json.JSONDecodeError:
-        typer.echo(f"error: {file} is not a kyno export: the file is not JSON", err=True)
-        raise typer.Exit(code=1) from None
+        raise CoherenceError(f"{file} is not a kyno export: the file is not JSON") from None
     if not isinstance(rows, list):
-        typer.echo(f"error: {file} is not a kyno export: expected a list of versions", err=True)
-        raise typer.Exit(code=1)
-    with _clean_errors():
-        count = _store().import_versions(as_name, rows)
-    word = "version" if count == 1 else "versions"
-    typer.echo(f"imported {count} {word} into '{as_name}'")
+        raise CoherenceError(f"{file} is not a kyno export: expected a list of versions")
+    return rows
 
 
 def _fetch_remote_rows(

@@ -208,28 +208,33 @@ class SqlConstitutionStore:
             self._write_ledger(conn, cid, rows, now)
         return len(rows)
 
-    def _empty_target_constitution_id(self, conn, constitution: str, versions: int, now) -> int:
+    def _upsert_constitution_id(self, conn, constitution: str, current_version: int, now) -> int:
         cid = self._constitution_id(conn, constitution)
         if cid is None:
             return conn.execute(
                 insert(self._constitutions).values(
-                    name=constitution, current_version=versions, created_at=now
+                    name=constitution, current_version=current_version, created_at=now
                 )
             ).inserted_primary_key[0]
-        head = conn.execute(
-            select(self._versions.c.id).where(self._versions.c.constitution_id == cid).limit(1)
-        ).first()
-        if head is not None:
-            raise VersionConflictError(
-                f"'{constitution}' already has versions; an import writes "
-                "into an empty constitution only"
-            )
         conn.execute(
             update(self._constitutions)
             .where(self._constitutions.c.id == cid)
-            .values(current_version=versions)
+            .values(current_version=current_version)
         )
         return cid
+
+    def _empty_target_constitution_id(self, conn, constitution: str, versions: int, now) -> int:
+        cid = self._constitution_id(conn, constitution)
+        if cid is not None:
+            head = conn.execute(
+                select(self._versions.c.id).where(self._versions.c.constitution_id == cid).limit(1)
+            ).first()
+            if head is not None:
+                raise VersionConflictError(
+                    f"'{constitution}' already has versions; an import writes "
+                    "into an empty constitution only"
+                )
+        return self._upsert_constitution_id(conn, constitution, versions, now)
 
     def _write_ledger(self, conn, cid: int, rows: list[dict], now) -> None:
         previous_mission = ""
@@ -312,21 +317,7 @@ class SqlConstitutionStore:
         now = datetime.now(UTC)
         try:
             with self.engine.begin() as conn:
-                cid = self._constitution_id(conn, constitution)
-                if cid is None:
-                    cid = conn.execute(
-                        insert(self._constitutions).values(
-                            name=constitution,
-                            current_version=version,
-                            created_at=now,
-                        )
-                    ).inserted_primary_key[0]
-                else:
-                    conn.execute(
-                        update(self._constitutions)
-                        .where(self._constitutions.c.id == cid)
-                        .values(current_version=version)
-                    )
+                cid = self._upsert_constitution_id(conn, constitution, version, now)
                 conn.execute(
                     insert(self._versions).values(
                         constitution_id=cid,

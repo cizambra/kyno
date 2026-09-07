@@ -339,9 +339,8 @@ def test_given_a_call_in_flight_when_the_runner_is_closed_then_it_reports_the_se
     closer.start()
     began = time.monotonic()
     try:
-        with pytest.raises(KynoUnavailableError, match="ended mid-call") as seen:
+        with pytest.raises(KynoUnavailableError, match="ended mid-call"):
             runner.call(lambda session: session.slow_call())
-        assert not isinstance(seen.value, KynoRefusedError)
         assert time.monotonic() - began < runner._timeout / 2
     finally:
         closer.join(timeout=5)

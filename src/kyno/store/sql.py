@@ -7,7 +7,7 @@ from sqlalchemy import Engine, create_engine, insert, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 
-from kyno.errors import ConfigError, CorruptStateError, VersionConflictError
+from kyno.errors import CoherenceError, ConfigError, CorruptStateError, VersionConflictError
 from kyno.models import (
     ConstitutionVersion,
     Principle,
@@ -16,6 +16,32 @@ from kyno.models import (
     normalize_principles,
 )
 from kyno.store.schema import build_metadata
+
+
+def _require_whole_ledger(rows: list[dict]) -> None:
+    if not rows:
+        raise CoherenceError("nothing to import: the file has no versions")
+    for position, row in enumerate(rows, start=1):
+        if not isinstance(row, dict):
+            raise CoherenceError(f"row {position} must be a version object")
+        version = row.get("version")
+        if type(version) is not int or version != position:
+            raise CoherenceError(
+                f"an import takes a whole ledger, versions 1 to {len(rows)} in "
+                f"order with integer version numbers; row {position} is v{version}"
+            )
+
+
+def _import_timestamp(row: dict) -> datetime:
+    try:
+        timestamp = datetime.fromisoformat(row.get("created_at"))
+    except (TypeError, ValueError):
+        raise CoherenceError(
+            f"row {row['version']} needs an ISO timestamp with a timezone in created_at"
+        ) from None
+    if timestamp.tzinfo is None:
+        raise CoherenceError(f"row {row['version']} needs a timezone in created_at")
+    return timestamp.astimezone(UTC)
 
 
 def _encode_principles(principles) -> str:
@@ -180,6 +206,84 @@ class SqlConstitutionStore:
             for v in versions
         ]
 
+    def import_versions(self, constitution: str, rows: list[dict]) -> int:
+        """Write rows in export_versions' shape back as a constitution's
+        whole ledger, keeping every version's number, dates and authors.
+        Returns the number written, and refuses a file that is not a
+        whole ledger or a target that already has versions.
+
+        token_id is never carried over, because a token id names a row in
+        the exporting database's own token table. The changed_mission and
+        changed_principles flags are not in the export; recomputing them
+        against the version before gives what authoring wrote."""
+        _require_whole_ledger(rows)
+        now = datetime.now(UTC)
+        with self.engine.begin() as conn:
+            cid = self._empty_target_constitution_id(conn, constitution, len(rows), now)
+            self._write_ledger(conn, cid, rows)
+        return len(rows)
+
+    def _upsert_constitution_id(self, conn, constitution: str, current_version: int, now) -> int:
+        cid = self._constitution_id(conn, constitution)
+        if cid is None:
+            return conn.execute(
+                insert(self._constitutions).values(
+                    name=constitution, current_version=current_version, created_at=now
+                )
+            ).inserted_primary_key[0]
+        conn.execute(
+            update(self._constitutions)
+            .where(self._constitutions.c.id == cid)
+            .values(current_version=current_version)
+        )
+        return cid
+
+    def _empty_target_constitution_id(self, conn, constitution: str, versions: int, now) -> int:
+        head = conn.execute(
+            select(self._versions.c.id)
+            .join(self._constitutions)
+            .where(self._constitutions.c.name == constitution)
+            .limit(1)
+        ).first()
+        if head is not None:
+            raise VersionConflictError(
+                f"'{constitution}' already has versions; an import writes "
+                "into an empty constitution only"
+            )
+        return self._upsert_constitution_id(conn, constitution, versions, now)
+
+    def _write_ledger(self, conn, cid: int, rows: list[dict]) -> None:
+        previous_mission = ""
+        previous_principles: tuple[Principle, ...] = ()
+        for row in rows:
+            for field in ("mission", "declaration", "change_note", "created_by", "authorized_by"):
+                value = row.get(field)
+                if value is not None and not isinstance(value, str):
+                    raise CoherenceError(f"row {row['version']} {field} must be text or null")
+            mission = row.get("mission") or ""
+            raw_principles = row.get("principles", [])
+            if not isinstance(raw_principles, list):
+                raise CoherenceError(f"row {row['version']} principles must be a list")
+            principles = normalize_principles(raw_principles) or ()
+            created_at = _import_timestamp(row)
+            conn.execute(
+                insert(self._versions).values(
+                    constitution_id=cid,
+                    version=row["version"],
+                    mission=mission,
+                    declaration=row.get("declaration") or "",
+                    principles=_encode_principles(principles),
+                    change_note=row.get("change_note") or "",
+                    changed_mission=mission != previous_mission,
+                    changed_principles=principles != previous_principles,
+                    created_by=row.get("created_by"),
+                    authorized_by=row.get("authorized_by"),
+                    token_id=None,
+                    created_at=created_at,
+                )
+            )
+            previous_mission, previous_principles = mission, principles
+
     def publication(self, constitution: str) -> Publication:
         with self.engine.connect() as conn:
             row = conn.execute(
@@ -236,21 +340,7 @@ class SqlConstitutionStore:
         now = datetime.now(UTC)
         try:
             with self.engine.begin() as conn:
-                cid = self._constitution_id(conn, constitution)
-                if cid is None:
-                    cid = conn.execute(
-                        insert(self._constitutions).values(
-                            name=constitution,
-                            current_version=version,
-                            created_at=now,
-                        )
-                    ).inserted_primary_key[0]
-                else:
-                    conn.execute(
-                        update(self._constitutions)
-                        .where(self._constitutions.c.id == cid)
-                        .values(current_version=version)
-                    )
+                cid = self._upsert_constitution_id(conn, constitution, version, now)
                 conn.execute(
                     insert(self._versions).values(
                         constitution_id=cid,

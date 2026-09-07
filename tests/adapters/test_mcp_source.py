@@ -1,4 +1,5 @@
 import asyncio
+import threading
 from contextlib import asynccontextmanager
 
 import pytest
@@ -108,6 +109,37 @@ def _runner_whose_session_ends_during_a_call(failure):
     runner = SessionRunner(connect, timeout=5.0)
     runner.start()
     return runner
+
+
+def _fake_transport(monkeypatch) -> dict:
+    """Stands in for the network so the header wiring is checked, not mocked."""
+    import mcp
+    import mcp.client.streamable_http as streamable_http
+
+    captured: dict = {}
+
+    @asynccontextmanager
+    async def fake_client(url, headers=None):
+        captured["url"] = url
+        captured["headers"] = headers
+        yield ("read", "write", "session-id")
+
+    class FakeSession:
+        def __init__(self, read, write, message_handler=None):
+            captured["message_handler"] = message_handler
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc_info):
+            return False
+
+        async def initialize(self):
+            captured["initialized"] = True
+
+    monkeypatch.setattr(streamable_http, "streamablehttp_client", fake_client)
+    monkeypatch.setattr(mcp, "ClientSession", FakeSession)
+    return captured
 
 
 def test_given_a_name_when_the_mcp_source_pulls_then_that_constitution_comes(in_memory_runner):
@@ -284,6 +316,38 @@ def test_given_a_call_in_flight_when_the_connection_drops_then_it_raises_unavail
         runner.close()
 
 
+def test_given_a_call_in_flight_when_the_runner_is_closed_then_it_reports_the_session_ended():
+    # Closing ends the session without an error, so the cancelled call
+    # has nothing to describe and says only that the session ended.
+    started = threading.Event()
+
+    @asynccontextmanager
+    async def connect(message_handler=None):
+        class _Session:
+            async def slow_call(self):
+                started.set()
+                await asyncio.sleep(30)
+
+        yield _Session()
+
+    runner = SessionRunner(connect, timeout=0.5)
+    runner.start()
+    closer = threading.Thread(target=lambda: (started.wait(5), runner.close()), daemon=True)
+    closer.start()
+    try:
+        with pytest.raises(KynoUnavailableError, match="ended mid-call") as seen:
+            runner.call(lambda session: session.slow_call())
+        assert not isinstance(seen.value, KynoRefusedError)
+    finally:
+        closer.join(timeout=5)
+
+
+def test_given_a_failure_with_no_message_when_summarizing_then_its_type_stands_in():
+    from kyno.sdk.client import _summary
+
+    assert _summary(ExceptionGroup("unhandled", [OSError()])) == "OSError"
+
+
 def test_given_a_500_when_building_the_message_then_there_is_no_refusal_message():
     # 401 and 403 mean the credential was turned away. A 500 is the
     # server failing, and must not be reported as a token problem.
@@ -334,37 +398,6 @@ async def test_given_no_token_when_the_http_session_connects_then_no_auth_header
 
     assert captured["headers"] is None
     assert captured["message_handler"] == "handler"
-
-
-def _fake_transport(monkeypatch) -> dict:
-    """Stands in for the network so the header wiring is checked, not mocked."""
-    import mcp
-    import mcp.client.streamable_http as streamable_http
-
-    captured: dict = {}
-
-    @asynccontextmanager
-    async def fake_client(url, headers=None):
-        captured["url"] = url
-        captured["headers"] = headers
-        yield ("read", "write", "session-id")
-
-    class FakeSession:
-        def __init__(self, read, write, message_handler=None):
-            captured["message_handler"] = message_handler
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *exc_info):
-            return False
-
-        async def initialize(self):
-            captured["initialized"] = True
-
-    monkeypatch.setattr(streamable_http, "streamablehttp_client", fake_client)
-    monkeypatch.setattr(mcp, "ClientSession", FakeSession)
-    return captured
 
 
 def test_given_a_full_binding_when_pulling_then_the_declaration_and_descriptions_come(

@@ -48,10 +48,20 @@ write it in that place.
   across files go in `conftest.py`; plain helpers do not, because they
   arrive with no import and a reader cannot trace them. Support used by
   one test stays inside that test.
-- Write scripted, deterministic tests. A test may run real concurrency
-  only to prove a concurrency guarantee, and its assertion must hold
-  under every possible interleaving. Never use a fixed sleep to
-  synchronize; wait on the task, event, or condition instead.
+- Write deterministic tests. Run one twice and it gives the same result,
+  and how fast the machine is must not change that. A test may run real
+  concurrency to prove a concurrency guarantee: the ordering is out of
+  your control, so the assertion has to hold under every ordering. The
+  test is still deterministic; only the scheduling is not.
+- When the behavior you are testing relies on concurrency, keep two
+  things in mind:
+  - Don't use wait time as the success criteria. Whether the work
+    finished within two seconds says more about the machine that ran it
+    than about your code, so the answer changes between your laptop and
+    a loaded CI runner.
+  - Decide what happens when the work never finishes. A test with no
+    answer for that hangs, reports nothing, and blocks CI until someone
+    kills it.
 
 ## Pull requests
 

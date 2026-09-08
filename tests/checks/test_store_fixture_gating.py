@@ -4,6 +4,7 @@ table-prefix generator.
 """
 
 import re
+
 from tests.conftest import POSTGRES_URL_ENV, _postgres_url, _random_prefix, needs_postgres
 from tests.paths import REPO_ROOT
 

@@ -1,5 +1,6 @@
 import subprocess
 import sys
+
 import kyno.sdk as core
 from tests.paths import REPO_ROOT
 

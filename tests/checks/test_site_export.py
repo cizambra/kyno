@@ -5,6 +5,7 @@ import html
 import re
 
 import pytest
+
 from tests.paths import REPO_ROOT
 
 ROOT = REPO_ROOT

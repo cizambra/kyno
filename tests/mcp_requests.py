@@ -17,6 +17,16 @@ def token_store():
     return store
 
 
+def gated_http_app():
+    """Build a token-gated HTTP app with one live write token."""
+    from kyno.service import ControlPlane
+    from kyno.transports import build_http_app
+
+    store = token_store()
+    value = mint(store)
+    return store, value, build_http_app(ControlPlane(store), token_store=store)
+
+
 def mint(store, scope="write", name="t", expires_at=None):
     """Mint a token into the store and return the value a client would hold."""
     value = generate_value()

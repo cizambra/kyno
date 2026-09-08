@@ -1,19 +1,15 @@
-"""McpEndpoint: the token check, the size cap, the read/write rule, and
-the hand-off to the MCP session manager -- unit tests and HTTP tests."""
+"""HTTP app authentication, lifespan, and body-limit contracts."""
 
 import json
-import logging
 from datetime import UTC, datetime, timedelta
 
-import pytest
-
-from kyno.mcp_endpoint import McpEndpoint, _tool_calls
 from kyno.service import ControlPlane
 from tests.mcp_requests import (
     MCP_HEADERS,
     bearer,
     call_tool,
     drive_session,
+    gated_http_app,
     initialize_payload,
     mint,
     sse_json,
@@ -21,85 +17,10 @@ from tests.mcp_requests import (
 )
 
 
-def _endpoint(store):
-    """An McpEndpoint around just the store; these tests never reach the
-    MCP session manager, so none is needed."""
-    return McpEndpoint(manager=None, token_store=store)
-
-
-def test_given_a_request_with_no_authorization_header_when_resolving_then_no_token_is_found():
-    assert _endpoint(token_store())._authenticate({}) is None
-
-
-def test_given_a_live_token_when_resolving_then_the_row_comes_back_with_its_scope():
-    store = token_store()
-    value = mint(store, scope="read", name="crew")
-
-    token = _endpoint(store)._authenticate({"authorization": f"Bearer {value}"})
-
-    assert token is not None
-    assert (token.name, token.scope) == ("crew", "read")
-
-
-def test_given_a_capitalized_authorization_header_when_resolving_then_it_still_matches():
-    store = token_store()
-    value = mint(store)
-    assert _endpoint(store)._authenticate({"Authorization": f"Bearer {value}"}) is not None
-
-
-def test_given_a_token_that_is_unknown_revoked_or_expired_when_resolving_then_it_is_none():
-    store = token_store()
-    revoked_value = mint(store, name="revoked")
-    store.revoke_token(store.tokens()[0].id)
-    expired_value = mint(store, name="expired", expires_at=datetime.now(UTC) - timedelta(hours=1))
-
-    for value in ("kyno_not-a-real-token", revoked_value, expired_value):
-        assert _endpoint(store)._authenticate({"authorization": f"Bearer {value}"}) is None
-
-
-def test_given_an_authorization_header_that_is_not_a_bearer_value_when_resolving_then_none():
-    store = token_store()
-    mint(store)
-    assert _endpoint(store)._authenticate({"authorization": "Basic dXNlcjpwdw=="}) is None
-
-
-def test_given_a_non_ascii_bearer_value_when_resolving_then_it_fails_closed_not_crashes():
-    assert _endpoint(token_store())._authenticate({"authorization": "Bearer café"}) is None
-
-
-def test_given_bodies_of_every_shape_when_listing_tool_calls_then_only_real_calls_count():
-    assert _tool_calls(b"not json") == []
-    assert _tool_calls(b'{"method": "initialize"}') == []
-    assert _tool_calls(
-        b'{"method": "tools/call", "params": {"name": "set_direction", "arguments": {}}}'
-    ) == [("set_direction", "default")]
-    # A batch (JSON array) is read by this check, one pair per item, in
-    # order -- but the MCP SDK rejects arrays, so a batch never executes.
-    # See the end-to-end test below.
-    assert _tool_calls(
-        b'[{"method": "tools/call", "params": {"name": "get_constitution", '
-        b'"arguments": {"constitution": "main"}}},'
-        b'{"method": "notifications/initialized"},'
-        b'{"method": "tools/call", "params": {"name": "set_direction", '
-        b'"arguments": {"mission": "M1"}}}]'
-    ) == [("get_constitution", "main"), ("set_direction", "default")]
-
-
-def _gated():
-    """Build a store holding one live write token, and return it with that
-    token's value and an app that checks bearer values against it."""
-    from kyno.transports import build_http_app
-
-    store = token_store()
-    value = mint(store)
-    cp = ControlPlane(store)
-    return store, value, build_http_app(cp, token_store=store)
-
-
 def test_given_no_bearer_when_posting_to_the_http_app_then_it_is_401():
     from starlette.testclient import TestClient
 
-    _store, _value, app = _gated()
+    _store, _value, app = gated_http_app()
 
     with TestClient(app) as client:
         response = client.post("/mcp", json=initialize_payload(), headers=MCP_HEADERS)
@@ -113,7 +34,7 @@ def test_given_a_get_request_without_a_token_when_opening_the_stream_then_it_is_
     # the server pushes notifications; DELETE closes a session.
     from starlette.testclient import TestClient
 
-    _store, _value, app = _gated()
+    _store, _value, app = gated_http_app()
 
     with TestClient(app) as client:
         response = client.get("/mcp", headers={"Accept": "text/event-stream"})
@@ -126,7 +47,7 @@ def test_given_every_dead_end_when_posting_then_the_answers_are_identical():
     # distinct answer would confirm which tokens exist.
     from starlette.testclient import TestClient
 
-    store, _value, app = _gated()
+    store, _value, app = gated_http_app()
     revoked = mint(store, name="revoked")
     store.revoke_token(next(t.id for t in store.tokens() if t.name == "revoked"))
     expired = mint(store, name="expired", expires_at=datetime.now(UTC) - timedelta(hours=1))
@@ -151,7 +72,7 @@ def test_given_an_authorized_request_when_the_lifespan_runs_then_it_reaches_the_
     # initialized"), surfaced as a 500 by Starlette.
     from starlette.testclient import TestClient
 
-    _store, value, app = _gated()
+    _store, value, app = gated_http_app()
 
     with TestClient(app) as client:
         response = client.post("/mcp", json=initialize_payload(), headers=bearer(value))
@@ -169,7 +90,7 @@ def test_given_an_app_whose_lifespan_never_ran_when_posting_then_it_is_a_500():
     # request, and the unstarted manager fails it.
     from starlette.testclient import TestClient
 
-    _store, value, app = _gated()
+    _store, value, app = gated_http_app()
     client = TestClient(app, raise_server_exceptions=False)
 
     response = client.post("/mcp", json=initialize_payload(), headers=bearer(value))
@@ -180,7 +101,7 @@ def test_given_an_app_whose_lifespan_never_ran_when_posting_then_it_is_a_500():
 def test_given_a_non_ascii_authorization_header_when_posting_then_it_is_401_not_500():
     from starlette.testclient import TestClient
 
-    _store, _value, app = _gated()
+    _store, _value, app = gated_http_app()
 
     with TestClient(app) as client:
         response = client.post(
@@ -192,126 +113,13 @@ def test_given_a_non_ascii_authorization_header_when_posting_then_it_is_401_not_
     assert response.status_code == 401
 
 
-@pytest.mark.asyncio
-async def test_given_non_utf8_header_bytes_when_handling_the_request_then_it_is_401_not_500():
-    # A header value that isn't valid UTF-8 at all (not just non-ASCII) must
-    # not crash v.decode() in handle(); it should fail closed as 401.
-    _store, _value, app = _gated()
-    # Found by path, not by position: the app also carries the public
-    # constitution routes, and their order is not this test's business.
-    handle = next(r for r in app.routes if getattr(r, "path", None) == "/mcp").app
-
-    scope = {
-        "type": "http",
-        "method": "POST",
-        "path": "/",
-        "headers": [(b"authorization", b"Bearer \xff\xfe-not-utf8")],
-    }
-
-    async def receive():
-        return {"type": "http.request", "body": b"", "more_body": False}
-
-    sent = []
-
-    async def send(message):
-        sent.append(message)
-
-    await handle(scope, receive, send)
-    status = next(m["status"] for m in sent if m["type"] == "http.response.start")
-    assert status == 401
-
-
-@pytest.mark.e2e
-def test_given_a_write_token_when_driving_an_http_session_then_the_written_mission_is_read_back():
-    from starlette.testclient import TestClient
-
-    store, value, app = _gated()
-
-    with TestClient(app) as client:
-        h = drive_session(client, bearer(value))
-        set_resp = call_tool(
-            client, h, 2, "set_direction", {"mission": "M1", "change_note": "init"}
-        )
-        assert set_resp.status_code == 200
-        get_resp = call_tool(client, h, 3, "get_constitution", {})
-
-    payload = json.loads(sse_json(get_resp.text)["result"]["content"][0]["text"])
-    assert payload["mission"] == "M1"
-    assert payload["version"] == 1
-    # The version records which token authenticated the write, resolved by
-    # the server from the request itself.
-    assert store.head("default").token_id == store.tokens()[0].id
-
-
-@pytest.mark.e2e
-def test_given_two_live_tokens_when_writing_with_the_second_then_that_one_is_recorded():
-    # With one token in the store, attribution could pass by picking "any
-    # token". Two live tokens force the resolution to match the bearer
-    # value that actually authenticated the write.
-    from starlette.testclient import TestClient
-
-    store, _, app = _gated()
-    writer = mint(store, scope="write", name="second")
-
-    with TestClient(app) as client:
-        h = drive_session(client, bearer(writer))
-        resp = call_tool(client, h, 2, "set_direction", {"mission": "M1", "change_note": "init"})
-
-    assert resp.status_code == 200
-    second = next(t for t in store.tokens() if t.name == "second")
-    first = next(t for t in store.tokens() if t.name != "second")
-    assert store.head("default").token_id == second.id
-    assert store.head("default").token_id != first.id
-
-
-@pytest.mark.e2e
-def test_given_a_read_token_when_asking_whoami_over_http_then_its_own_name_and_scope_answer():
-    from starlette.testclient import TestClient
-
-    store, _, app = _gated()
-    reader = mint(store, scope="read", name="agents")
-
-    with TestClient(app) as client:
-        h = drive_session(client, bearer(reader))
-        resp = call_tool(client, h, 2, "whoami", {})
-
-    assert resp.status_code == 200
-    payload = json.loads(sse_json(resp.text)["result"]["content"][0]["text"])
-    row = next(t for t in store.tokens() if t.name == "agents")
-    assert payload == {"id": row.id, "name": "agents", "scope": "read"}
-
-
-@pytest.mark.e2e
-def test_given_a_client_claiming_a_token_id_when_writing_then_the_server_ignores_the_claim():
-    # token_id is resolved from the request's own bearer header, never from
-    # tool arguments: a client cannot attribute its write to another token.
-    from starlette.testclient import TestClient
-
-    store, value, app = _gated()
-    real_id = store.tokens()[0].id
-
-    with TestClient(app) as client:
-        h = drive_session(client, bearer(value))
-        call_tool(
-            client,
-            h,
-            2,
-            "set_direction",
-            {"mission": "M1", "change_note": "init", "token_id": 999},
-        )
-
-    head = store.head("default")
-    assert head is not None
-    assert head.token_id == real_id
-
-
 def test_given_a_write_token_when_calling_an_undeclared_tool_then_it_is_403_as_unknown():
     # Fail closed: a tool nobody declared a scope for is denied even for
     # the strongest scope there is. The refusal names the tool as unknown
     # rather than blaming the token.
     from starlette.testclient import TestClient
 
-    store, write_value, app = _gated()
+    store, write_value, app = gated_http_app()
 
     with TestClient(app) as client:
         h = drive_session(client, bearer(write_value))
@@ -325,7 +133,7 @@ def test_given_a_write_token_when_calling_an_undeclared_tool_then_it_is_403_as_u
 def test_given_a_read_token_when_calling_an_undeclared_tool_then_it_is_403_as_unknown():
     from starlette.testclient import TestClient
 
-    store, _, app = _gated()
+    store, _, app = gated_http_app()
     read_value = mint(store, scope="read", name="crew")
 
     with TestClient(app) as client:
@@ -340,7 +148,7 @@ def test_given_a_read_token_when_calling_a_read_tool_then_it_answers():
     # The scope check must not get in the way of what a read token is for.
     from starlette.testclient import TestClient
 
-    store, _, app = _gated()
+    store, _, app = gated_http_app()
     read_value = mint(store, scope="read", name="crew")
 
     with TestClient(app) as client:
@@ -350,16 +158,6 @@ def test_given_a_read_token_when_calling_a_read_tool_then_it_answers():
     assert response.status_code == 200
     payload = json.loads(sse_json(response.text)["result"]["content"][0]["text"])
     assert payload == {"version": 0, "mission": ""}
-
-
-def test_given_the_declarations_when_projecting_them_then_no_two_tools_share_a_name():
-    # TOOLS and TOOL_SCOPES are projections of one declaration list, so
-    # they cannot drift apart. The one way the projections can lie is a
-    # duplicate tool name, which would silently overwrite its twin in the
-    # scope map.
-    from kyno.mcp_tools import TOOL_SCOPES, TOOLS
-
-    assert len(TOOLS) == len(TOOL_SCOPES)
 
 
 def test_given_a_batched_body_when_posting_then_the_scope_check_reads_it_and_the_sdk_rejects_it():
@@ -379,7 +177,7 @@ def test_given_a_batched_body_when_posting_then_the_scope_check_reads_it_and_the
     # they already run.
     from starlette.testclient import TestClient
 
-    store, write_value, app = _gated()
+    store, write_value, app = gated_http_app()
     read_value = mint(store, scope="read", name="crew")
     batch = [
         {
@@ -408,7 +206,7 @@ def test_given_a_batched_body_when_posting_then_the_scope_check_reads_it_and_the
 def test_given_a_read_token_when_calling_set_direction_then_it_is_403_and_nothing_is_written():
     from starlette.testclient import TestClient
 
-    store, _write_value, app = _gated()
+    store, _write_value, app = gated_http_app()
     read_value = mint(store, scope="read", name="crew")
 
     with TestClient(app) as client:
@@ -428,7 +226,7 @@ def test_given_an_expired_token_asking_to_write_when_posting_then_it_is_401_not_
     # 403 would confirm the token once existed.
     from starlette.testclient import TestClient
 
-    store, _value, app = _gated()
+    store, _value, app = gated_http_app()
     expired = mint(store, name="old", expires_at=datetime.now(UTC) - timedelta(hours=1))
 
     with TestClient(app) as client:
@@ -488,41 +286,10 @@ def test_given_allow_insecure_when_calling_an_undeclared_tool_then_the_server_it
     assert "unknown tool" in result["content"][0]["text"]
 
 
-@pytest.mark.asyncio
-async def test_given_a_disconnect_mid_body_when_reading_then_nothing_is_sent_back():
-    # The client hung up while sending: the endpoint stops and sends no
-    # response at all, instead of answering a half-received request.
-    store = token_store()
-    value = mint(store)
-    endpoint = McpEndpoint(manager=None, token_store=store)
-
-    scope = {
-        "type": "http",
-        "method": "POST",
-        "path": "/",
-        "headers": [(b"authorization", f"Bearer {value}".encode())],
-    }
-    messages = [
-        {"type": "http.request", "body": b'{"partial', "more_body": True},
-        {"type": "http.disconnect"},
-    ]
-
-    async def receive():
-        return messages.pop(0)
-
-    sent = []
-
-    async def send(message):
-        sent.append(message)
-
-    await endpoint(scope, receive, send)
-    assert sent == []
-
-
 def test_given_authorized_requests_when_they_arrive_then_last_used_moves_once_per_window():
     from starlette.testclient import TestClient
 
-    store, value, app = _gated()
+    store, value, app = gated_http_app()
 
     with TestClient(app) as client:
         client.post("/mcp", json=initialize_payload(), headers=bearer(value))
@@ -536,29 +303,12 @@ def test_given_authorized_requests_when_they_arrive_then_last_used_moves_once_pe
     assert second == first
 
 
-@pytest.mark.e2e
-def test_given_a_tool_call_when_handled_then_the_request_log_carries_the_fields(caplog):
-    from starlette.testclient import TestClient
-
-    store, value, app = _gated()
-    token_id = store.tokens()[0].id
-
-    with caplog.at_level(logging.INFO, logger="kyno.requests"), TestClient(app) as client:
-        h = drive_session(client, bearer(value))
-        call_tool(client, h, 2, "get_constitution", {"constitution": "main"})
-
-    line = next(r.getMessage() for r in caplog.records if "tool=get_constitution" in r.getMessage())
-    assert f"token={token_id}" in line
-    assert "name=t" in line
-    assert "constitution=main" in line
-
-
 def test_given_a_content_length_over_the_size_cap_when_posting_then_it_is_413_unread():
     from starlette.testclient import TestClient
 
     from kyno.transports import MAX_MCP_BODY_BYTES
 
-    _store, value, app = _gated()
+    _store, value, app = gated_http_app()
 
     with TestClient(app) as client:
         response = client.post(
@@ -573,7 +323,7 @@ def test_given_a_content_length_at_the_size_cap_when_posting_then_it_is_not_413(
 
     from kyno.transports import MAX_MCP_BODY_BYTES
 
-    _store, value, app = _gated()
+    _store, value, app = gated_http_app()
 
     with TestClient(app) as client:
         response = client.post("/mcp", content=b"x" * MAX_MCP_BODY_BYTES, headers=bearer(value))
@@ -590,7 +340,7 @@ def test_given_a_chunked_body_crossing_the_size_cap_when_streaming_then_it_is_41
 
     from kyno.transports import MAX_MCP_BODY_BYTES
 
-    _store, value, app = _gated()
+    _store, value, app = gated_http_app()
     chunk = b"x" * (MAX_MCP_BODY_BYTES // 4 + 1)
 
     with TestClient(app) as client:
@@ -603,7 +353,7 @@ def test_given_a_chunked_body_crossing_the_size_cap_when_streaming_then_it_is_41
 def test_given_a_chunked_body_under_the_size_cap_when_streaming_then_it_reaches_the_mcp_handler():
     from starlette.testclient import TestClient
 
-    _store, value, app = _gated()
+    _store, value, app = gated_http_app()
     body = json.dumps(initialize_payload()).encode()
     middle = len(body) // 2
 

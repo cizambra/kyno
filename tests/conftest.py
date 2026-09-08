@@ -3,12 +3,20 @@ import uuid
 
 import pytest
 
+from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 
 # Set this to point the "postgres" case of `store` at a real server, e.g.:
 #   KYNO_TEST_POSTGRES_URL=postgresql+psycopg://user:pass@host/db pytest
 POSTGRES_URL_ENV = "KYNO_TEST_POSTGRES_URL"
 MYSQL_URL_ENV = "KYNO_TEST_MYSQL_URL"
+
+
+@pytest.fixture
+def control_plane():
+    store = SqlConstitutionStore(url="sqlite://")
+    store.create_all()
+    return ControlPlane(store)
 
 
 def _postgres_url() -> str | None:

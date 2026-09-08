@@ -2,12 +2,13 @@
 constitution.yaml, and the landing page must load nothing from the network."""
 
 import html
-import pathlib
 import re
 
 import pytest
 
-ROOT = pathlib.Path(__file__).parent.parent
+from tests.paths import REPO_ROOT
+
+ROOT = REPO_ROOT
 SITE = ROOT / "site"
 
 pytestmark = pytest.mark.skipif(not SITE.exists(), reason="site/ not present")

@@ -11,6 +11,7 @@ from kyno.public_page import PageConfig, PageTheme, render_constitution, render_
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 from kyno.transports import build_http_app
+from tests.paths import REPO_ROOT
 
 HOSTILE = "<script>alert('xss')</script>"
 
@@ -311,9 +312,7 @@ def test_given_the_docs_when_comparing_to_the_code_then_the_documented_placehold
 ):
     # The publishing page is how an operator learns these names; a placeholder
     # it documents but we do not fill would render as literal text on their page.
-    from pathlib import Path as _Path
-
-    readme = (_Path(__file__).parent.parent / "docs" / "publishing.md").read_text()
+    readme = (REPO_ROOT / "docs" / "publishing.md").read_text()
     documented = [
         "$stylesheet",
         "$name",

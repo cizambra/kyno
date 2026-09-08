@@ -1,8 +1,8 @@
 import subprocess
 import sys
-from pathlib import Path
 
 import kyno.sdk as core
+from tests.paths import REPO_ROOT
 
 EXPECTED = {
     "Direction",
@@ -32,7 +32,7 @@ EXPECTED = {
     "RunTrace",
 }
 
-ADAPTERS = Path(__file__).resolve().parents[2] / "src" / "kyno" / "adapters"
+ADAPTERS = REPO_ROOT / "src" / "kyno" / "adapters"
 
 
 def test_given_the_core_when_reading_its_exports_then_one_documented_surface_shows():

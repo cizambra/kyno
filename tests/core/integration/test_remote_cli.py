@@ -1,12 +1,10 @@
-"""--remote: the same five commands, dialing a profile's endpoint."""
+"""Remote CLI behavior through the fake remote/control-plane seam."""
 
 import json
 import pathlib
-import re
 from datetime import UTC, datetime
 
 import pytest
-from typer.testing import CliRunner
 
 import kyno.cli as cli
 from kyno import mcp_server
@@ -15,61 +13,23 @@ from kyno.models import Token
 from kyno.remote import RemoteError
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
-from tests.servers import free_port, wait_until
+from tests.remote_cli import plain, runner, write_file
 from tests.workspaces import cli_workspace
-
-runner = CliRunner()
 
 
 @pytest.fixture(autouse=True)
-def home(tmp_path, monkeypatch):
-    monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setenv("USERPROFILE", str(tmp_path))
-    cli_workspace(monkeypatch, tmp_path, tmp_path / "local.sqlite3", root=tmp_path / "work")
-    return tmp_path
-
-
-def plain(output):
-    return " ".join(re.sub(r"\x1b\[[0-9;]*m", "", output).split())
-
-
-class _RunnerThatRefuses:
-    """A session runner whose server turns every request away, the way one
-    with a revoked or under-scoped token does."""
-
-    def __init__(self, message):
-        self._message = message
-
-    def start(self):
-        from kyno.errors import KynoRefusedError
-
-        raise KynoRefusedError(self._message)
-
-    def call(self, fn):
-        from kyno.errors import KynoRefusedError
-
-        raise KynoRefusedError(self._message)
-
-    def close(self):
-        pass
-
-
-def write_file(dirpath, mission="M1", name="c.yaml", constitution="default"):
-    path = pathlib.Path(dirpath) / name
-    path.write_text(f"constitution: {constitution}\nmission: {mission}\n", encoding="utf-8")
-    return str(path)
+def home(remote_cli_home):
+    return remote_cli_home
 
 
 class FakeRemote:
-    """What dial() answers in tests: the real dispatch handlers over a real
-    control plane, minus the network. Refusals surface the way the wire
-    surfaces them: as RemoteError carrying the server's words."""
+    """What dial() answers in tests: real dispatch handlers over a real
+    control plane, minus the network."""
 
     def __init__(self, cp):
         self.cp = cp
         self.closed = False
         self.url = "https://fake.kyno.test"
-        # What the real endpoint would have resolved from the bearer header.
         self.token = None
 
     def call_tool(self, name, arguments):
@@ -111,7 +71,6 @@ class FakeRemote:
     def close(self):
         self.closed = True
 
-    # A hook for race tests: runs after the head is served, before the write.
     after_fetch = None
 
 
@@ -133,6 +92,12 @@ def fake_dial(remote_cp, monkeypatch):
 
     monkeypatch.setattr(cli, "dial", dial)
     return fake
+
+
+def _three_versions(remote_cp):
+    remote_cp.set_direction(mission="M1", change_note="v1")
+    remote_cp.set_direction(mission="M2", change_note="v2")
+    remote_cp.set_direction(mission="M3", change_note="v3")
 
 
 def test_given_a_remote_head_when_reading_current_remotely_then_it_prints(fake_dial, remote_cp):
@@ -279,129 +244,6 @@ def test_given_no_profiles_when_going_remote_then_the_error_names_have_and_fix()
     assert "error: no remote profile 'default'; you have: none" in plain(r.output)
 
 
-@pytest.mark.e2e
-def test_given_a_live_server_when_applying_remotely_then_the_version_is_applied(
-    tmp_path, monkeypatch
-):
-    """The one true end-to-end: a real HTTP server, the real bearer gate,
-    the real client. Everything else in this file skips the wire."""
-    import threading
-
-    import uvicorn
-
-    from kyno.tokens import generate_value, hash_value
-    from kyno.transports import build_http_app
-
-    store = SqlConstitutionStore(url=f"sqlite:///{tmp_path / 'server.sqlite3'}")
-    store.create_all()
-    value = generate_value()
-    store.add_token("e2e", "write", token_hash=hash_value(value))
-    http_app = build_http_app(ControlPlane(store), token_store=store)
-    port = free_port()
-    server = uvicorn.Server(
-        uvicorn.Config(http_app, host="127.0.0.1", port=port, log_level="error")
-    )
-    thread = threading.Thread(target=server.run, daemon=True)
-    thread.start()
-    try:
-        wait_until(lambda: server.started, "uvicorn did not come up")
-        monkeypatch.setenv("MY_TOKEN", value)
-        assert runner.invoke(app, ["credentials", "add", "--token-env", "MY_TOKEN"]).exit_code == 0
-        assert (
-            runner.invoke(app, ["remote", "add", "--url", f"http://127.0.0.1:{port}"]).exit_code
-            == 0
-        )
-        path = write_file(tmp_path, mission="Live over the wire")
-        r = runner.invoke(app, ["set", path, "--note", "e2e", "--remote", "--no-interactive"])
-        assert r.exit_code == 0, r.output
-        assert store.head("default").mission == "Live over the wire"
-        r = runner.invoke(app, ["log", "--remote"])
-        assert r.exit_code == 0 and "e2e" in r.stdout
-    finally:
-        server.should_exit = True
-        thread.join(timeout=5)
-
-
-def test_given_a_401_at_session_open_when_dialing_then_the_error_names_the_profile_and_url():
-    from kyno.errors import KynoRefusedError
-    from kyno.profiles import Resolved
-    from kyno.remote import RemoteClient
-
-    client = RemoteClient(
-        Resolved(profile="ops", url="https://kyno.example", token="t", chain="ops -> ...")
-    )
-    client._runner = _RunnerThatRefuses("401 unauthorized")
-
-    with pytest.raises(RemoteError) as seen:
-        client.open()
-
-    assert "'ops' at https://kyno.example refused the token: 401 unauthorized" in str(seen.value)
-    assert isinstance(seen.value.__cause__, KynoRefusedError)
-
-
-def test_given_a_403_on_a_tool_call_when_calling_it_then_the_error_names_the_refused_tool():
-    # This refusal arrives during a call, so the message names the tool.
-    from kyno.profiles import Resolved
-    from kyno.remote import RemoteClient
-
-    client = RemoteClient(
-        Resolved(profile="ops", url="https://kyno.example", token="t", chain="ops -> ...")
-    )
-    client._runner = _RunnerThatRefuses(
-        "forbidden: this token's scope does not cover 'set_direction'"
-    )
-
-    with pytest.raises(RemoteError) as seen:
-        client.call_tool("set_direction", {})
-
-    assert "the server refused set_direction: forbidden" in str(seen.value)
-
-
-@pytest.mark.e2e
-def test_given_a_revoked_token_when_going_remote_then_the_error_names_the_profile_url_and_401(
-    tmp_path, monkeypatch
-):
-    # The 401 arrives while the session opens, before any tool call.
-    import threading
-
-    import uvicorn
-
-    from kyno.tokens import generate_value, hash_value
-    from kyno.transports import build_http_app
-
-    store = SqlConstitutionStore(url=f"sqlite:///{tmp_path / 'server.sqlite3'}")
-    store.create_all()
-    value = generate_value()
-    token = store.add_token("e2e", "write", token_hash=hash_value(value))
-    http_app = build_http_app(ControlPlane(store), token_store=store)
-    port = free_port()
-    server = uvicorn.Server(
-        uvicorn.Config(http_app, host="127.0.0.1", port=port, log_level="error")
-    )
-    thread = threading.Thread(target=server.run, daemon=True)
-    thread.start()
-    try:
-        wait_until(lambda: server.started, "uvicorn did not come up")
-        monkeypatch.setenv("MY_TOKEN", value)
-        assert runner.invoke(app, ["credentials", "add", "--token-env", "MY_TOKEN"]).exit_code == 0
-        assert (
-            runner.invoke(app, ["remote", "add", "--url", f"http://127.0.0.1:{port}"]).exit_code
-            == 0
-        )
-        store.revoke_token(token.id)
-
-        r = runner.invoke(app, ["log", "--remote"])
-
-        assert r.exit_code == 1
-        assert f"'default' at http://127.0.0.1:{port} refused the token: 401 unauthorized" in (
-            plain(r.output)
-        )
-        assert "TaskGroup" not in r.output
-    finally:
-        server.should_exit = True
-        thread.join(timeout=5)
-
-
 def test_given_a_writer_racing_in_mid_apply_when_applying_remotely_then_nothing_is_applied(
     fake_dial, remote_cp, tmp_path
 ):
@@ -514,12 +356,6 @@ def test_given_both_question_flags_when_applying_then_it_is_refused_as_redundant
     assert r.exit_code != 0
     assert "pick one" in plain(r.output)
     assert remote_cp.current().version == 0
-
-
-def _three_versions(remote_cp):
-    remote_cp.set_direction(mission="M1", change_note="v1")
-    remote_cp.set_direction(mission="M2", change_note="v2")
-    remote_cp.set_direction(mission="M3", change_note="v3")
 
 
 def test_given_an_older_versions_content_when_applying_interactively_then_the_revert_asks(
@@ -639,62 +475,6 @@ def test_given_stdin_ending_at_the_revert_prompt_when_applying_then_nothing_is_a
     assert r.exit_code == 1
     assert "not applied: the revert question had nobody to answer it" in r.output
     assert remote_cp.current().version == 3
-
-
-@pytest.mark.e2e
-def test_given_an_endpoint_nothing_listens_on_when_opening_then_cannot_reach_names_the_profile():
-    from kyno.profiles import Resolved
-    from kyno.remote import RemoteClient
-
-    client = RemoteClient(Resolved(profile="p", url="http://127.0.0.1:9", token="t", chain="c"))
-    with pytest.raises(RemoteError, match="cannot reach 'p' at http://127.0.0.1:9"):
-        client.open()
-
-
-def test_given_an_error_reply_when_decoding_then_the_servers_words_come_back():
-    from types import SimpleNamespace
-
-    from kyno.profiles import Resolved
-    from kyno.remote import RemoteClient
-
-    client = RemoteClient(Resolved(profile="p", url="http://x", token="t", chain="c"))
-    reply = SimpleNamespace(content=[SimpleNamespace(text="no field changed")], isError=True)
-    client._runner = SimpleNamespace(call=lambda fn: reply)
-    with pytest.raises(RemoteError, match="no field changed"):
-        client.call_tool("set_direction", {})
-
-
-def test_given_an_error_reply_with_no_text_when_decoding_then_the_tool_is_named():
-    from types import SimpleNamespace
-
-    from kyno.profiles import Resolved
-    from kyno.remote import RemoteClient
-
-    client = RemoteClient(Resolved(profile="p", url="http://x", token="t", chain="c"))
-    reply = SimpleNamespace(content=[], isError=True)
-    client._runner = SimpleNamespace(call=lambda fn: reply)
-    with pytest.raises(RemoteError, match="the server refused set_direction"):
-        client.call_tool("set_direction", {})
-
-
-@pytest.mark.parametrize("raw", [None, "not-a-date"])
-def test_given_a_payload_without_a_usable_created_at_then_the_version_still_builds(raw):
-    from datetime import datetime
-
-    from kyno.remote import version_from_payload
-
-    payload = {"version": 1, "mission": "M"}
-    if raw is not None:
-        payload["created_at"] = raw
-    version = version_from_payload(payload)
-    assert version.mission == "M" and isinstance(version.created_at, datetime)
-    assert version.created_at.tzinfo is not None
-
-
-def test_given_a_version_zero_payload_then_it_reads_as_no_head():
-    from kyno.remote import version_from_payload
-
-    assert version_from_payload({"version": 0}) is None
 
 
 def test_given_an_empty_remote_when_reading_current_yaml_then_nothing_to_read_exits_1(fake_dial):

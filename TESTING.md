@@ -165,7 +165,9 @@ otherwise. CI holds coverage at 90%, counting only shipped behavior.
 ## Where the suite stands
 
 The move is in progress. The unambiguous files now live in their target
-`core`, `surface`, and `checks` lanes. The remaining mixed files are
-listed in `tests/layout_manifest.toml`; each will be split before it is
-moved. New tests follow the target layout now, so the tree does not grow
-the old ambiguity while the remaining files are migrated.
+`core`, `surface`, and `checks` lanes, and the adapter suites that mixed
+scripted SDK behavior with real control-plane behavior are now split
+between `surface/unit` and `core/integration`. The remaining mixed core
+files are listed in `tests/layout_manifest.toml`; each will be split before
+it is moved. New tests follow the target layout now, so the tree does not
+grow the old ambiguity while the remaining files are migrated.

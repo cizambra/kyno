@@ -15,8 +15,8 @@ from datetime import UTC, datetime
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from kyno.config import Settings
 from kyno.errors import ConfigError
+from kyno.server_config import Settings
 from kyno.service import ControlPlane
 
 

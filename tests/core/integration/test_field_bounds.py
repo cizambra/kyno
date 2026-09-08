@@ -150,7 +150,7 @@ def test_given_a_marker_refusal_when_reading_the_error_then_it_names_the_field(c
 def test_given_refusal_and_injected_header_when_comparing_then_one_marker_string_is_shared():
     # The write-side refusal and the block adapters inject must never drift
     # apart, or forged headers would slip through the seam between them.
-    from kyno.models import DIRECTION_MARKER as model_marker
+    from kyno.wire.models import DIRECTION_MARKER as model_marker
 
     assert model_marker is DIRECTION_MARKER
 

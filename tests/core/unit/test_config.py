@@ -3,8 +3,8 @@ reads no environment variables."""
 
 import pytest
 
-from kyno.config import Settings, store_from_settings
 from kyno.errors import ConfigError
+from kyno.server_config import Settings, store_from_settings
 from kyno.workspace import create_workspace
 
 

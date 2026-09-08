@@ -7,7 +7,8 @@ unlabeled is under the Elastic License 2.0."""
 from tests.paths import REPO_ROOT
 
 SRC = REPO_ROOT / "src" / "kyno"
-MIT_DIRS = ("sdk", "adapters", "conformance")
+MIT_DIRS = ("sdk", "adapters", "conformance", "wire", "config")
+MIT_FILES = ("client_errors.py",)
 HEADER = "# SPDX-License-Identifier: MIT"
 
 
@@ -20,13 +21,22 @@ def test_given_the_mit_subtrees_when_scanning_headers_then_every_file_starts_wit
             if path.read_text().split("\n", 1)[0] != HEADER:
                 name = path.relative_to(SRC.parent.parent)
                 missing.append(f"{name}: add this first line -> {HEADER}")
+    for relative in MIT_FILES:
+        path = SRC / relative
+        if path.read_text().split("\n", 1)[0] != HEADER:
+            missing.append(
+                f"{path.relative_to(SRC.parent.parent)}: add this first line -> {HEADER}"
+            )
     assert not missing, "\n" + "\n".join(missing)
 
 
 def test_given_files_outside_the_mit_subtrees_when_scanning_headers_then_none_claims_mit():
     wrong = []
     for path in sorted(SRC.rglob("*.py")):
-        if "__pycache__" in path.parts or path.relative_to(SRC).parts[0] in MIT_DIRS:
+        relative = path.relative_to(SRC)
+        if "__pycache__" in path.parts or relative.parts[0] in MIT_DIRS:
+            continue
+        if relative.as_posix() in MIT_FILES:
             continue
         if path.read_text().split("\n", 1)[0] == HEADER:
             wrong.append(str(path.relative_to(SRC.parent.parent)))

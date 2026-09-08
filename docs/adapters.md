@@ -73,10 +73,15 @@ every next step to the version in force right now:
 import kyno
 from kyno.adapters.crewai import CrewAiKyno
 
-connection = kyno.connect()  # reads KYNO_URL and KYNO_TOKEN
+connection = kyno.connect()  # uses the default profile from ~/.kyno
 adapter = CrewAiKyno(connection.binder(), constitution="eu")
 adapter.register()  # injects the current direction before each model call
 ```
+
+`kyno.connect()` resolves the default profile from `~/.kyno`. A named profile
+uses `kyno.connect(profile="ops")`; an application that owns its wiring can use
+`kyno.connect(url=endpoint, token=token)`. The SDK does not choose environment
+variable names or read `KYNO_URL` and `KYNO_TOKEN` itself.
 
 That's the whole integration. Every model call runs under the version in force,
 and a version published mid-run reaches the next step. The pieces behind

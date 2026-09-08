@@ -4,15 +4,14 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import json
-import os
 import threading
 from collections.abc import Callable, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
-from kyno.errors import KynoRefusedError, KynoUnavailableError
-from kyno.models import COMPACT, ChangesSince
+from kyno.client_errors import KynoRefusedError, KynoUnavailableError
+from kyno.wire.models import COMPACT, ChangesSince
 
 # The resource Kyno announces version changes on. The server sends a `resources/updated`
 # notification here every time a version is appended, and any client can subscribe. Defined in
@@ -27,13 +26,6 @@ class KynoBinding:
     endpoint: str | None = None
     # repr=False: bindings travel into logs and tracebacks; the credential must not.
     token: str | None = field(default=None, repr=False)
-
-    @classmethod
-    def from_env(cls) -> KynoBinding:
-        return cls(
-            endpoint=os.environ.get("KYNO_URL") or None,
-            token=os.environ.get("KYNO_TOKEN") or None,
-        )
 
 
 @runtime_checkable
@@ -248,7 +240,7 @@ def http_session(binding: KynoBinding):
     The token is held here and never travels into integrator state or a
     checkpoint, which may be persisted."""
     if not binding.endpoint:
-        raise KynoUnavailableError("no KYNO_URL configured for this binding")
+        raise KynoUnavailableError("no endpoint configured for this binding")
 
     def connect(message_handler=None):
         return _http_session(binding, message_handler=message_handler)

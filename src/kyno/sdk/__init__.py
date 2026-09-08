@@ -4,7 +4,7 @@ in force.
 
     import kyno
 
-    connection = kyno.connect("http://localhost:8080/mcp/", token="...")
+    connection = kyno.connect(url="http://localhost:8080/mcp", token="...")
     binder = connection.binder()
 
     # in your orchestrator's before-each-step hook:
@@ -14,6 +14,7 @@ Everything an adapter needs is exported here; the framework adapters in
 `kyno.adapters` are thin layers over this module.
 """
 
+import kyno.config as _config
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.cell import (
     COMPACT,
@@ -115,14 +116,29 @@ class KynoConnection:
         self.close()
 
 
-def connect(url: str | None = None, token: str | None = None) -> KynoConnection:
+def connect(
+    profile: str | None = None, *, url: str | None = None, token: str | None = None
+) -> KynoConnection:
     """Open a session to a Kyno serving MCP over HTTP.
 
-    With no arguments, the binding comes from KYNO_URL and KYNO_TOKEN. Fails
-    here rather than at the first step, so a wiring mistake surfaces while
-    someone is still looking at it.
+    With no URL, resolve the named profile or the default profile. Explicit
+    values are accepted for applications that own their wiring; the SDK never
+    chooses environment variable names or falls back between sources.
     """
-    binding = KynoBinding.from_env() if url is None else KynoBinding(endpoint=url, token=token)
+    if profile is not None and url is not None:
+        raise _config.ProfileError(
+            "profile and url cannot be combined; choose one connection source"
+        )
+    if url is not None:
+        if token is None or not token.strip():
+            raise _config.ProfileError("explicit url requires token")
+        binding = KynoBinding(endpoint=_config.normalize_endpoint(url, profile=False), token=token)
+    else:
+        resolved = _config.resolve(profile or _config.DEFAULT_PROFILE, token_override=token)
+        binding = KynoBinding(
+            endpoint=_config.normalize_endpoint(resolved.url, profile=True),
+            token=resolved.token,
+        )
     runner = SessionRunner(http_session(binding))
     runner.start()
     return KynoConnection(runner)

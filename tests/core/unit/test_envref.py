@@ -2,9 +2,9 @@
 
 import pytest
 
+from kyno.config import ProfileError
 from kyno.envref import resolve
 from kyno.errors import ConfigError
-from kyno.profiles import ProfileError
 
 
 def test_given_a_literal_value_when_resolving_then_it_passes_through_stripped():

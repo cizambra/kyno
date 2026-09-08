@@ -5,9 +5,9 @@ import pytest
 from sqlalchemy import create_engine, delete
 
 from kyno.errors import CorruptStateError, VersionConflictError
-from kyno.models import Principle
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
+from kyno.wire.models import Principle
 
 # The `store` fixture (sqlite + postgres, see tests/conftest.py) is injected
 # by pytest, so there is no local definition here.

@@ -12,10 +12,12 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
-from kyno.errors import CoherenceError, KynoRefusedError, KynoUnavailableError
-from kyno.models import ConstitutionVersion, normalize_principles
-from kyno.profiles import Resolved, resolve
+from kyno.client_errors import KynoRefusedError, KynoUnavailableError
+from kyno.config import Resolved, normalize_endpoint, resolve
+from kyno.models import ConstitutionVersion
 from kyno.sdk.client import KynoBinding, SessionRunner, http_session
+from kyno.wire.errors import CoherenceError
+from kyno.wire.models import normalize_principles
 
 
 class RemoteError(CoherenceError):
@@ -26,7 +28,9 @@ class RemoteClient:
     """One MCP session against one resolved profile, for one command."""
 
     def __init__(self, resolved: Resolved) -> None:
-        binding = KynoBinding(endpoint=resolved.url.rstrip("/") + "/mcp", token=resolved.token)
+        binding = KynoBinding(
+            endpoint=normalize_endpoint(resolved.url, profile=True), token=resolved.token
+        )
         self.profile = resolved.profile
         self.url = resolved.url
         self._runner = SessionRunner(http_session(binding))

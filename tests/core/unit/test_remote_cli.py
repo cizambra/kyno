@@ -10,12 +10,12 @@ class _RunnerThatRefuses:
         self._message = message
 
     def start(self):
-        from kyno.errors import KynoRefusedError
+        from kyno.client_errors import KynoRefusedError
 
         raise KynoRefusedError(self._message)
 
     def call(self, fn):
-        from kyno.errors import KynoRefusedError
+        from kyno.client_errors import KynoRefusedError
 
         raise KynoRefusedError(self._message)
 
@@ -24,8 +24,8 @@ class _RunnerThatRefuses:
 
 
 def test_given_a_401_at_session_open_when_dialing_then_the_error_names_the_profile_and_url():
-    from kyno.errors import KynoRefusedError
-    from kyno.profiles import Resolved
+    from kyno.client_errors import KynoRefusedError
+    from kyno.config import Resolved
     from kyno.remote import RemoteClient
 
     client = RemoteClient(
@@ -42,7 +42,7 @@ def test_given_a_401_at_session_open_when_dialing_then_the_error_names_the_profi
 
 def test_given_a_403_on_a_tool_call_when_calling_it_then_the_error_names_the_refused_tool():
     # This refusal arrives during a call, so the message names the tool.
-    from kyno.profiles import Resolved
+    from kyno.config import Resolved
     from kyno.remote import RemoteClient
 
     client = RemoteClient(
@@ -61,7 +61,7 @@ def test_given_a_403_on_a_tool_call_when_calling_it_then_the_error_names_the_ref
 def test_given_an_error_reply_when_decoding_then_the_servers_words_come_back():
     from types import SimpleNamespace
 
-    from kyno.profiles import Resolved
+    from kyno.config import Resolved
     from kyno.remote import RemoteClient
 
     client = RemoteClient(Resolved(profile="p", url="http://x", token="t", chain="c"))
@@ -74,7 +74,7 @@ def test_given_an_error_reply_when_decoding_then_the_servers_words_come_back():
 def test_given_an_error_reply_with_no_text_when_decoding_then_the_tool_is_named():
     from types import SimpleNamespace
 
-    from kyno.profiles import Resolved
+    from kyno.config import Resolved
     from kyno.remote import RemoteClient
 
     client = RemoteClient(Resolved(profile="p", url="http://x", token="t", chain="c"))

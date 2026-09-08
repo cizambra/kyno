@@ -7,15 +7,11 @@ from sqlalchemy import Engine, create_engine, insert, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 
-from kyno.errors import CoherenceError, ConfigError, CorruptStateError, VersionConflictError
-from kyno.models import (
-    ConstitutionVersion,
-    Principle,
-    Publication,
-    Token,
-    normalize_principles,
-)
+from kyno.errors import ConfigError, CorruptStateError, VersionConflictError
+from kyno.models import ConstitutionVersion, Publication, Token
 from kyno.store.schema import build_metadata
+from kyno.wire.errors import CoherenceError
+from kyno.wire.models import Principle, normalize_principles
 
 
 def _require_whole_ledger(rows: list[dict]) -> None:

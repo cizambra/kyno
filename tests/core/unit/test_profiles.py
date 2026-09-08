@@ -8,7 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 from kyno.cli import app
-from kyno.profiles import (
+from kyno.config import (
     ProfileError,
     add_credentials,
     add_remote,

@@ -5,9 +5,9 @@ import itertools
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
-from kyno.models import HoldsPrinciples, Principle
 from kyno.sdk.cell import Direction
 from kyno.sdk.gate import GateDecision, Verdict
+from kyno.wire.models import HoldsPrinciples, Principle
 
 # The per-step record shape offered to drift analysis. Declared as a named tuple so renaming a
 # field breaks a test in this repo instead of a consumer elsewhere.

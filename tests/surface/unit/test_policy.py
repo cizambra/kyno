@@ -1,6 +1,6 @@
 import logging
 
-from kyno.errors import CoherenceError, KynoUnavailableError
+from kyno.client_errors import KynoUnavailableError
 from kyno.sdk.policy import (
     UNCHECKED,
     GatePolicy,
@@ -9,6 +9,7 @@ from kyno.sdk.policy import (
     RecordingSink,
     TelemetryEvent,
 )
+from kyno.wire.errors import CoherenceError
 
 
 def test_given_no_choice_when_building_the_policy_then_the_default_is_fail_open():

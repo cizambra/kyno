@@ -4,7 +4,7 @@ from __future__ import annotations
 import threading
 from dataclasses import dataclass
 
-from kyno.models import (
+from kyno.wire.models import (
     COMPACT,
     DIRECTION_MARKER,
     FULL,

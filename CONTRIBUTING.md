@@ -48,6 +48,11 @@ write it in that place.
   and more to keep working.
 - [TESTING.md](TESTING.md) works through the layers with examples from
   this suite. The rules here are what review checks.
+- Before adding a test, check its dependencies. Put isolated SDK and adapter
+  tests in `surface/unit`, isolated Kyno module tests in `core/unit`, tests
+  using multiple Kyno modules or a real store in `core/integration`, real
+  client journeys in `core/e2e`, and repository checks in `checks`. See
+  `TESTING.md` for examples.
 - A unit test covers one module in isolation, and lives in
   `test_<module>.py`, one file per production module. The filename says
   what is covered, so the file needs no docstring.

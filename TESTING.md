@@ -164,12 +164,19 @@ otherwise. CI holds coverage at 90%, counting only shipped behavior.
 
 ## Where the suite stands
 
-The move is in progress. The unambiguous files now live in their target
-`core`, `surface`, and `checks` lanes, and the adapter suites that mixed
-scripted SDK behavior with real control-plane behavior are now split
-between `surface/unit` and `core/integration`. The remaining mixed core
-files are listed in `tests/layout_manifest.toml`; the MCP contract,
-endpoint, and remote CLI suites are now split across all three lanes, and
-each remaining mixed file will be split before it is moved. New tests follow
-the target layout now, so the tree does not grow the old ambiguity while the
-remaining files are migrated.
+The directory tree shows the current test layout. Look at nearby tests before
+adding a new file.
+
+Use these directories:
+
+- `surface/unit/`: SDK and adapter tests that use fakes or scripted
+  collaborators. They do not start Kyno or use a Kyno control plane.
+- `core/unit/`: one Kyno module tested in isolation.
+- `core/integration/`: multiple Kyno modules working together, or a test that
+  uses a real control plane or store.
+- `core/e2e/`: a real client using a running Kyno server.
+- `checks/`: repository, packaging, licensing, and distribution checks.
+
+Choose the directory from the dependencies in the test. A test that imports a
+production module but also starts a server belongs in the server's lane, not
+next to that module.

@@ -27,7 +27,6 @@ RICH = dict(
 )
 
 
-
 @pytest.mark.asyncio
 @pytest.mark.e2e
 async def test_given_a_real_subscription_when_setting_direction_then_the_server_run_notifies():

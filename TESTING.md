@@ -30,11 +30,14 @@ which no single module guarantees on its own: it falls out of the store,
 the service, and a database constraint together. Named for the behavior,
 because no module name would be honest.
 
-**End to end.** Walks a whole story through a running system.
-`tests/core/e2e/test_deployment_e2e.py` creates a workspace, starts a real
-`kyno serve` process, mints tokens, reads, gets refused, writes, and
-revokes, using the commands a person would type. These check the spec:
-what an operator can do, in order.
+**End to end.** There are two e2e lanes. `tests/surface/e2e/` starts a real
+Kyno server and drives it through an adapter. These tests check that the
+adapter can connect, make calls, receive direction, and inject the result;
+they do not try to prove that the whole control plane works. `tests/core/e2e/`
+walks a complete control-plane journey. For example,
+`test_deployment_e2e.py` creates a workspace, starts a real `kyno serve`
+process, mints tokens, reads, gets refused, writes, and revokes, using the
+commands an operator would type.
 
 Aim for a pyramid. Most tests are unit tests, fewer are integration
 tests, fewest are end to end. Each layer above catches what the one below
@@ -48,8 +51,9 @@ Ask what would have to break for this test to fail.
 
 If the answer names one module, it is a unit test. If it names two or
 more, it is an integration test, even when the test reads like it is
-about one of them. If it names the whole running system, including a
-process or a socket, it is end to end.
+about one of them. If it names a process or socket, it is end to end.
+When an adapter is the client making that round trip, use `surface/e2e`.
+When the test follows the complete control-plane journey, use `core/e2e`.
 
 One case trips people up: **importing several modules does not make it
 an integration test.** `test_sql_store.py` imports the models and the
@@ -171,12 +175,16 @@ Use these directories:
 
 - `surface/unit/`: SDK and adapter tests that use fakes or scripted
   collaborators. They do not start Kyno or use a Kyno control plane.
+- `surface/integration/`: SDK and adapter tests against real framework APIs
+  or controlled Kyno collaborators, without a server round trip.
+- `surface/e2e/`: adapter tests that start a real Kyno server and verify the
+  adapter's calls and injected results over that connection.
 - `core/unit/`: one Kyno module tested in isolation.
 - `core/integration/`: multiple Kyno modules working together, or a test that
   uses a real control plane or store.
-- `core/e2e/`: a real client using a running Kyno server.
+- `core/e2e/`: complete control-plane journeys through the running system.
 - `checks/`: repository, packaging, licensing, and distribution checks.
 
-Choose the directory from the dependencies in the test. A test that imports a
-production module but also starts a server belongs in the server's lane, not
-next to that module.
+Choose the directory from the behavior under test. A server round trip made
+by an adapter belongs in `surface/e2e`; a complete control-plane journey
+belongs in `core/e2e`.

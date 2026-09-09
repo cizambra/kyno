@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -29,6 +30,8 @@ from kyno.wire.models import (
     Principle,
     normalize_principles,
 )
+
+_log = logging.getLogger(__name__)
 
 # The size limits for a constitution, checked before anything is written. Large enough for a
 # hand-written document, and a hard stop for a machine-generated payload.
@@ -426,8 +429,16 @@ class ControlPlane:
             raise VersionConflictError(
                 f"the head of '{name}' moved while applying; read it again and re-apply"
             ) from None
-        for cb in self._subscribers:
-            cb(version)
+        for subscriber in tuple(self._subscribers):
+            try:
+                subscriber(version)
+            except Exception:
+                _log.exception(
+                    "direction notification failed constitution=%s version=%s subscriber=%r",
+                    name,
+                    version.version,
+                    subscriber,
+                )
         return version
 
     def _effective(self, name: str, *, mission, declaration, principles):

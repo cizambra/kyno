@@ -25,6 +25,33 @@ async def test_given_a_subscribed_session_when_the_version_bumps_then_it_is_noti
     assert received == [mcp_server.RESOURCE_URI]
 
 
+@pytest.mark.asyncio
+async def test_given_an_mcp_subscriber_raises_when_notifying_then_another_receives_the_update(cp):
+    server = mcp_server.build_server(cp)
+    received = []
+
+    class BrokenSession:
+        async def send_resource_updated(self, _uri):
+            raise RuntimeError("session closed")
+
+    class HealthySession:
+        async def send_resource_updated(self, uri):
+            received.append(str(uri))
+
+    broken = BrokenSession()
+    healthy = HealthySession()
+    server._kyno_subscribers.update((broken, healthy))
+
+    result = mcp_server.handle_set_direction(
+        cp, mission="M1", principles=["p1"], change_note="init", created_by=None
+    )
+    await asyncio.gather(*server._kyno_pending)
+
+    assert result["version"] == 1
+    assert received == [mcp_server.RESOURCE_URI]
+    assert server._kyno_subscribers == {healthy}
+
+
 def test_given_no_running_loop_when_notifying_then_it_is_a_noop(cp):
     # No running event loop means no async subscribers are reachable;
     # the notify hook must not raise anyway.

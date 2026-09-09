@@ -219,18 +219,66 @@ def test_given_an_empty_principles_tuple_when_setting_direction_then_the_list_cl
     assert v2.changed_principles is True
 
 
-def test_given_a_raising_subscriber_when_writing_then_the_exception_propagates_after_commit(cp):
-    # Deliberate: in-process on_change hooks are NOT isolated. A raising
-    # subscriber propagates to the caller, after the write already committed.
-    # (The MCP layer's own notify hook swallows exceptions instead.)
+def test_given_a_raising_subscriber_when_writing_then_the_committed_version_returns(cp, caplog):
     def bad_subscriber(_version):
         raise RuntimeError("subscriber blew up")
 
     cp.on_change(bad_subscriber)
-    with pytest.raises(RuntimeError, match="subscriber blew up"):
+    version = cp.set_direction(mission="M1", change_note="init")
+
+    assert version.version == 1
+    assert cp.current() == version
+    assert "subscriber blew up" in caplog.text
+    assert "direction notification failed constitution=default version=1" in caplog.text
+    assert "bad_subscriber" in caplog.text
+
+
+def test_given_a_raising_subscriber_when_notifying_then_later_subscribers_still_run(cp):
+    notifications = []
+
+    def bad_subscriber(version):
+        notifications.append(("bad", version.version))
+        raise RuntimeError("subscriber blew up")
+
+    def healthy_subscriber(version):
+        notifications.append(("healthy", version.version))
+
+    cp.on_change(bad_subscriber)
+    cp.on_change(healthy_subscriber)
+
+    cp.set_direction(mission="M1", change_note="init")
+
+    assert notifications == [("bad", 1), ("healthy", 1)]
+
+
+def test_given_a_process_control_exception_when_notifying_then_it_still_propagates(cp):
+    def interrupted_subscriber(_version):
+        raise KeyboardInterrupt
+
+    cp.on_change(interrupted_subscriber)
+
+    with pytest.raises(KeyboardInterrupt):
         cp.set_direction(mission="M1", change_note="init")
+
     assert cp.current().version == 1
-    assert cp.current().mission == "M1"
+
+
+def test_given_a_subscriber_added_during_notification_when_writing_then_it_starts_next_time(cp):
+    notifications = []
+
+    def late_subscriber(version):
+        notifications.append(version.version)
+
+    def registering_subscriber(_version):
+        cp.on_change(late_subscriber)
+
+    cp.on_change(registering_subscriber)
+
+    cp.set_direction(mission="M1", change_note="init")
+    assert notifications == []
+
+    cp.set_direction(mission="M2", change_note="next")
+    assert notifications == [2]
 
 
 def test_given_all_empty_fields_when_setting_direction_then_an_empty_v1_is_allowed(cp):

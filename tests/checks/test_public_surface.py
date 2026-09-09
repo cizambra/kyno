@@ -3,6 +3,8 @@ import sys
 
 import kyno.sdk as core
 import kyno.sdk.client as client
+import kyno.sdk.policy as policy
+import kyno.sdk.telemetry as telemetry
 import kyno.sdk.trace as trace
 from tests.paths import REPO_ROOT
 
@@ -20,10 +22,7 @@ EXPECTED = {
     "RealignmentGate",
     "GatePolicy",
     "PullPolicy",
-    "TelemetryEvent",
     "TelemetrySink",
-    "LogSink",
-    "RecordingSink",
 }
 
 ADAPTERS = REPO_ROOT / "src" / "kyno" / "adapters"
@@ -46,6 +45,7 @@ def test_given_the_exports_when_comparing_to_the_docs_then_nothing_extra_leaks()
         "plan",
         "policy",
         "subscriber",
+        "telemetry",
         "trace",
     }
     public = {name for name in vars(core) if not name.startswith("_")} - modules
@@ -74,6 +74,16 @@ def test_given_connection_plumbing_when_importing_the_sdk_then_it_only_lives_in_
     assert names.isdisjoint(core.__all__)
     assert names.isdisjoint(vars(core))
     assert all(hasattr(client, name) for name in names)
+
+
+def test_given_telemetry_helpers_when_importing_then_only_the_telemetry_module_exposes_them():
+    helpers = {"LogSink", "RecordingSink", "TelemetryEvent"}
+    telemetry_types = helpers | {"EventType", "TelemetrySink"}
+
+    assert helpers.isdisjoint(core.__all__)
+    assert helpers.isdisjoint(vars(core))
+    assert telemetry_types.isdisjoint(vars(policy))
+    assert all(hasattr(telemetry, name) for name in telemetry_types)
 
 
 def test_given_any_adapter_when_looking_for_writes_then_none_can_write_direction():

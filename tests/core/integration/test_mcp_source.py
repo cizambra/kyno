@@ -8,7 +8,7 @@ from kyno.mcp_server import build_server
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.client import DirectionSource, LocalDirectionSource, McpDirectionSource, SessionRunner
 from kyno.sdk.errors import KynoUnavailableError
-from kyno.sdk.policy import PULL_FAILED_STALE, RecordingSink
+from kyno.sdk.telemetry import EventType, RecordingSink
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 from kyno.wire.models import FULL
@@ -126,7 +126,7 @@ def test_given_kyno_going_away_when_a_crew_is_running_then_the_last_direction_ca
     direction = binder.bind()
 
     assert direction.version == 1 and direction.mission == "M1"
-    assert [e.kind for e in sink.events] == [PULL_FAILED_STALE]
+    assert [event.kind for event in sink.events] == [EventType.PULL_FAILED_STALE]
 
 
 def test_given_no_message_handler_when_the_session_opens_then_it_is_refused(in_memory_runner):

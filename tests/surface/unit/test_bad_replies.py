@@ -16,7 +16,7 @@ import pytest
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.client import McpDirectionSource
 from kyno.sdk.errors import KynoUnavailableError
-from kyno.sdk.policy import PULL_FAILED_EMPTY, PULL_FAILED_STALE, RecordingSink
+from kyno.sdk.telemetry import EventType, RecordingSink
 
 
 class Text:
@@ -102,7 +102,7 @@ def test_given_a_malformed_reply_when_a_crew_is_running_then_the_last_direction_
     direction = binder.bind()
 
     assert direction.version == 2 and direction.mission == "M2"
-    assert [e.kind for e in sink.events] == [PULL_FAILED_STALE]
+    assert [event.kind for event in sink.events] == [EventType.PULL_FAILED_STALE]
 
 
 @pytest.mark.parametrize("shape", sorted(MALFORMED))
@@ -116,7 +116,7 @@ def test_given_a_malformed_reply_and_nothing_cached_when_pulling_then_the_empty_
     direction = binder.bind("eu")
 
     assert direction.version == 0 and direction.constitution == "eu"
-    assert [e.kind for e in sink.events] == [PULL_FAILED_EMPTY]
+    assert [event.kind for event in sink.events] == [EventType.PULL_FAILED_EMPTY]
 
 
 def test_given_a_protocol_error_from_the_session_when_pulling_then_it_arrives_as_unavailable():

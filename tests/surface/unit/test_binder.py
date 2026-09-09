@@ -4,10 +4,9 @@ from kyno.errors import UnknownVersionError
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.cell import COMPACT, FULL, Direction, DirectionCell
 from kyno.sdk.errors import KynoUnavailableError
-from kyno.sdk.policy import (
-    PULL_FAILED_EMPTY,
-    PULL_FAILED_STALE,
-    PullPolicy,
+from kyno.sdk.policy import PullPolicy
+from kyno.sdk.telemetry import (
+    EventType,
     RecordingSink,
 )
 
@@ -48,7 +47,7 @@ def test_given_a_pull_failure_when_binding_then_the_last_known_direction_serves(
     direction = binder.bind()
 
     assert direction.version == 3 and direction.mission == "M3"
-    assert [e.kind for e in sink.events] == [PULL_FAILED_STALE]
+    assert [event.kind for event in sink.events] == [EventType.PULL_FAILED_STALE]
 
 
 def test_given_a_pull_failure_and_an_empty_cell_when_binding_then_the_empty_direction_serves(
@@ -61,7 +60,7 @@ def test_given_a_pull_failure_and_an_empty_cell_when_binding_then_the_empty_dire
     direction = binder.bind("eu")
 
     assert direction.version == 0 and direction.constitution == "eu"
-    assert [e.kind for e in sink.events] == [PULL_FAILED_EMPTY]
+    assert [event.kind for event in sink.events] == [EventType.PULL_FAILED_EMPTY]
 
 
 def test_given_a_fail_closed_policy_when_a_pull_fails_then_it_raises_instead_of_degrading(
@@ -108,7 +107,7 @@ def test_given_a_kyno_error_when_binding_then_it_degrades_like_an_unreachable_ky
     direction = binder.bind()
 
     assert direction.version == 3
-    assert [e.kind for e in sink.events] == [PULL_FAILED_STALE]
+    assert [event.kind for event in sink.events] == [EventType.PULL_FAILED_STALE]
 
 
 def test_given_an_unexpected_error_when_binding_then_it_is_not_swallowed(scripted_source):

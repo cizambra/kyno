@@ -7,12 +7,9 @@ from kyno.sdk.gate import (
     RealignmentGate,
     Verdict,
 )
-from kyno.sdk.policy import (
-    DRIFT_BLOCKED,
-    DRIFT_PAUSED,
-    PAUSE_UNSUPPORTED,
-    UNCHECKED,
-    GatePolicy,
+from kyno.sdk.policy import GatePolicy
+from kyno.sdk.telemetry import (
+    EventType,
     RecordingSink,
 )
 from kyno.wire.models import Principle
@@ -69,7 +66,7 @@ def test_given_no_judge_source_when_gating_then_it_proceeds_unchecked_and_says_s
     assert decision.action is Action.PROCEED
     assert decision.checked is False and decision.reason == NO_SOURCE
     assert decision.constitution == "eu" and decision.version == 4
-    assert [e.kind for e in sink.events] == [UNCHECKED]
+    assert [event.kind for event in sink.events] == [EventType.UNCHECKED]
 
 
 def test_given_a_broken_judge_when_gating_then_it_proceeds_unchecked_not_blocked():
@@ -103,7 +100,10 @@ def test_given_drift_when_the_framework_cannot_pause_then_it_blocks():
     decision = gate.review(output="off-mission", direction=DIRECTION)
 
     assert decision.action is Action.BLOCK and decision.checked is True
-    assert {e.kind for e in sink.events} == {DRIFT_BLOCKED, PAUSE_UNSUPPORTED}
+    assert {event.kind for event in sink.events} == {
+        EventType.DRIFT_BLOCKED,
+        EventType.PAUSE_UNSUPPORTED,
+    }
 
 
 def test_given_drift_when_the_framework_can_pause_then_it_pauses():
@@ -113,7 +113,7 @@ def test_given_drift_when_the_framework_can_pause_then_it_pauses():
     decision = gate.review(output="off-mission", direction=DIRECTION)
 
     assert decision.action is Action.PAUSE and decision.checked is True
-    assert [e.kind for e in sink.events] == [DRIFT_PAUSED]
+    assert [event.kind for event in sink.events] == [EventType.DRIFT_PAUSED]
 
 
 def test_given_a_fail_open_policy_when_drift_is_found_then_it_still_blocks():

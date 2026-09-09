@@ -14,8 +14,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
-from kyno.errors import AuthoringError, CoherenceError
-from kyno.models import ConstitutionVersion, Principle, normalize_principles
+from kyno.errors import AuthoringError
+from kyno.models import ConstitutionVersion
+from kyno.wire.errors import CoherenceError
+from kyno.wire.models import Principle, normalize_principles
 
 # The keys kyno reads. Every other key in the file is the operator's own
 # and is ignored, so one file can serve other tools too.

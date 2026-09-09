@@ -1,5 +1,4 @@
-class CoherenceError(Exception):
-    """Base class for all kyno errors."""
+from kyno.wire.errors import CoherenceError
 
 
 class UnknownConstitutionError(CoherenceError):

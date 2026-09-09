@@ -114,7 +114,7 @@ class RegressingSource:
         self.calls = 0
 
     def changes_since(self, known_version, constitution, detail="compact"):
-        from kyno.models import ChangesSince
+        from kyno.wire.models import ChangesSince
 
         self.calls += 1
         version = 2 if self.calls == 1 else 1

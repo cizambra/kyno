@@ -2,7 +2,6 @@ import threading
 
 import pytest
 
-from kyno.models import ChangesSince, Principle
 from kyno.sdk.cell import (
     COMPACT,
     DIRECTION_MARKER,
@@ -10,6 +9,7 @@ from kyno.sdk.cell import (
     Direction,
     DirectionCell,
 )
+from kyno.wire.models import ChangesSince, Principle
 
 
 def _direction(version: int, constitution: str = "default") -> Direction:

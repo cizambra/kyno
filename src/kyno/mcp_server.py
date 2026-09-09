@@ -7,12 +7,13 @@ import mcp.types as types
 from mcp.server import Server
 from pydantic import AnyUrl
 
-from kyno.errors import CoherenceError
 from kyno.mcp_tools import PRINCIPLES_DETAIL_LEVELS, TITLES, TOOLS
-from kyno.models import COMPACT, FULL, Token, check_detail
+from kyno.models import Token
 from kyno.sdk.client import RESOURCE_URI as RESOURCE_URI  # the SDK owns the wire name
 from kyno.service import ControlPlane
 from kyno.tokens import hash_value
+from kyno.wire.errors import CoherenceError
+from kyno.wire.models import COMPACT, FULL, check_detail
 
 
 def check_principles_detail(detail: str) -> str:

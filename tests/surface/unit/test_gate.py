@@ -1,4 +1,3 @@
-from kyno.models import Principle
 from kyno.sdk.cell import Direction
 from kyno.sdk.gate import (
     NO_SOURCE,
@@ -16,6 +15,7 @@ from kyno.sdk.policy import (
     GatePolicy,
     RecordingSink,
 )
+from kyno.wire.models import Principle
 
 DIRECTION = Direction(
     constitution="eu", version=4, mission="Ship trustworthy lending", principles=("Be honest",)

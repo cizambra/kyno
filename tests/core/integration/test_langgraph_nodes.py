@@ -290,7 +290,7 @@ def test_given_the_gate_node_when_it_judges_a_step_then_the_step_is_recorded(bin
 def test_given_a_described_principle_when_checkpoint_round_tripping_then_it_survives():
     # State is persisted and re-read, so a description dropped here would
     # reach the gate node as a principle that means something else.
-    from kyno.models import Principle
+    from kyno.wire.models import Principle
 
     original = Direction(
         constitution="eu",

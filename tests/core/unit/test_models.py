@@ -2,8 +2,9 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kyno.errors import MalformedPrincipleError
-from kyno.models import ChangesSince, ConstitutionVersion, Principle, normalize_principles
+from kyno.models import ConstitutionVersion
+from kyno.wire.errors import MalformedPrincipleError
+from kyno.wire.models import ChangesSince, Principle, normalize_principles
 
 
 def test_given_a_version_when_assigning_a_field_then_it_is_frozen_and_still_serializes():

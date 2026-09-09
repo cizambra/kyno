@@ -6,12 +6,12 @@ import pytest
 
 from kyno.errors import KynoUnavailableError
 from kyno.mcp_server import build_server
-from kyno.models import FULL
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.client import DirectionSource, LocalDirectionSource, McpDirectionSource, SessionRunner
 from kyno.sdk.policy import PULL_FAILED_STALE, RecordingSink
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
+from kyno.wire.models import FULL
 
 
 @pytest.fixture

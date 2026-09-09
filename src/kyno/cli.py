@@ -17,8 +17,8 @@ from kyno.authoring import (
     render_constitution_yaml,
 )
 from kyno.config import Settings, store_from_settings
-from kyno.errors import AuthoringError, CoherenceError, NoFieldChangedError
-from kyno.models import AUTOMATION, OPERATOR, OVERRIDE, SCOPES, normalize_principles
+from kyno.errors import AuthoringError, NoFieldChangedError
+from kyno.models import AUTOMATION, OPERATOR, OVERRIDE, SCOPES
 from kyno.profiles import (
     add_credentials,
     add_remote,
@@ -32,6 +32,8 @@ from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
 from kyno.remote import RemoteError, dial, version_from_payload
 from kyno.service import ControlPlane, edit_delta, effective_content
 from kyno.tokens import age, generate_value, hash_value, parse_ttl
+from kyno.wire.errors import CoherenceError
+from kyno.wire.models import normalize_principles
 from kyno.workspace import create_workspace
 
 app = typer.Typer(help="Coherence engine control plane.")

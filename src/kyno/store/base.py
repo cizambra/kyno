@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
-from kyno.models import ConstitutionVersion, Principle, Publication
+from kyno.models import ConstitutionVersion, Publication
+from kyno.wire.models import Principle
 
 
 @runtime_checkable

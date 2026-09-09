@@ -4,11 +4,10 @@ from __future__ import annotations
 from kyno.sdk.cell import COMPACT, Direction, DirectionCell, check_context
 from kyno.sdk.client import DirectionSource
 from kyno.sdk.errors import KynoUnavailableError
-from kyno.sdk.policy import (
-    PULL_FAILED_EMPTY,
-    PULL_FAILED_STALE,
+from kyno.sdk.policy import PullPolicy
+from kyno.sdk.telemetry import (
+    EventType,
     LogSink,
-    PullPolicy,
     TelemetryEvent,
     TelemetrySink,
 )
@@ -55,9 +54,9 @@ class DirectionBinder:
         if self._policy.fail_closed:
             raise KynoUnavailableError(f"cannot reach kyno for '{constitution}': {exc}") from exc
         if last is not None:
-            self._emit(PULL_FAILED_STALE, constitution, last.version, str(exc))
+            self._emit(EventType.PULL_FAILED_STALE, constitution, last.version, str(exc))
             return last
-        self._emit(PULL_FAILED_EMPTY, constitution, 0, str(exc))
+        self._emit(EventType.PULL_FAILED_EMPTY, constitution, 0, str(exc))
         return Direction.empty(constitution, self.context)
 
     def plan(self, constitution: str = "default"):
@@ -65,7 +64,7 @@ class DirectionBinder:
 
         return PlanTracker(self, constitution)
 
-    def _emit(self, kind: str, constitution: str, version: int, detail: str) -> None:
+    def _emit(self, kind: EventType, constitution: str, version: int, detail: str) -> None:
         self._telemetry.emit(
             TelemetryEvent(kind=kind, constitution=constitution, version=version, detail=detail)
         )

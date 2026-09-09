@@ -37,12 +37,9 @@ from kyno.sdk.gate import (
 from kyno.sdk.plan import PlanTracker
 from kyno.sdk.policy import (
     GatePolicy,
-    LogSink,
     PullPolicy,
-    RecordingSink,
-    TelemetryEvent,
-    TelemetrySink,
 )
+from kyno.sdk.telemetry import TelemetrySink
 
 __all__ = [
     "COMPACT",
@@ -60,11 +57,8 @@ __all__ = [
     "DirectionSource",
     "KynoConnection",
     "LocalDirectionSource",
-    "LogSink",
     "PlanTracker",
     "PullPolicy",
-    "RecordingSink",
-    "TelemetryEvent",
     "TelemetrySink",
     "connect",
     "is_direction_block",

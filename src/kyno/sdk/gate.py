@@ -6,12 +6,9 @@ from enum import Enum
 from typing import Protocol
 
 from kyno.sdk.cell import Direction
-from kyno.sdk.policy import (
-    DRIFT_BLOCKED,
-    DRIFT_PAUSED,
-    PAUSE_UNSUPPORTED,
-    UNCHECKED,
-    GatePolicy,
+from kyno.sdk.policy import GatePolicy
+from kyno.sdk.telemetry import (
+    EventType,
     LogSink,
     TelemetryEvent,
     TelemetrySink,
@@ -119,15 +116,19 @@ class RealignmentGate:
 
     def _on_drift(self, direction: Direction) -> GateDecision:
         if self._can_pause:
-            self._emit(DRIFT_PAUSED, direction, DRIFTED_REASON)
+            self._emit(EventType.DRIFT_PAUSED, direction, DRIFTED_REASON)
             return self._decision(Action.PAUSE, Verdict.DRIFTED, True, DRIFTED_REASON, direction)
-        self._emit(DRIFT_BLOCKED, direction, DRIFTED_REASON)
-        self._emit(PAUSE_UNSUPPORTED, direction, "framework cannot pause; blocked instead")
+        self._emit(EventType.DRIFT_BLOCKED, direction, DRIFTED_REASON)
+        self._emit(
+            EventType.PAUSE_UNSUPPORTED,
+            direction,
+            "framework cannot pause; blocked instead",
+        )
         return self._decision(Action.BLOCK, Verdict.DRIFTED, True, DRIFTED_REASON, direction)
 
     def _on_unknown(self, reason: str, direction: Direction) -> GateDecision:
         detail, _, message = reason.partition(":")
-        self._emit(UNCHECKED, direction, message or detail)
+        self._emit(EventType.UNCHECKED, direction, message or detail)
         action = Action.BLOCK if self._policy.fail_closed else Action.PROCEED
         return self._decision(action, Verdict.UNKNOWN, False, detail, direction)
 
@@ -143,7 +144,7 @@ class RealignmentGate:
             version=direction.version,
         )
 
-    def _emit(self, kind: str, direction: Direction, detail: str) -> None:
+    def _emit(self, kind: EventType, direction: Direction, detail: str) -> None:
         self._telemetry.emit(
             TelemetryEvent(
                 kind=kind,

@@ -2,9 +2,10 @@ import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import create_engine, delete
+from sqlalchemy import create_engine, delete, text
 
 from kyno.errors import CorruptStateError, VersionConflictError
+from kyno.models import TokenScope
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 from kyno.wire.models import Principle
@@ -696,6 +697,24 @@ def test_given_a_minted_token_when_reading_it_back_then_states_are_null_and_the_
     assert r.last_used_at is None and r.expires_at is None and r.revoked_at is None
     # The hash never leaves the store: the Token object has no field for it.
     assert not hasattr(r, "token_hash")
+
+
+def test_given_a_token_scope_when_storing_then_the_database_keeps_its_plain_string_value(store):
+    token = store.add_token("ci", TokenScope.WRITE, token_hash="b" * 64)
+
+    with store.engine.connect() as conn:
+        stored_scope = conn.execute(text("SELECT scope FROM kyno_tokens")).scalar_one()
+
+    assert token.scope is TokenScope.WRITE
+    assert store.token(token.id).scope is TokenScope.WRITE
+    assert stored_scope == "write"
+
+
+def test_given_an_unknown_token_scope_when_storing_then_it_is_refused_without_a_row(store):
+    with pytest.raises(ValueError, match="admin"):
+        store.add_token("ci", "admin", token_hash="b" * 64)
+
+    assert store.tokens() == []
 
 
 def test_given_two_tokens_sharing_a_name_when_minting_then_both_rows_exist(store):

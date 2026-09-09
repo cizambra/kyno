@@ -133,3 +133,11 @@ def test_given_the_declarations_when_projecting_them_then_no_two_tools_share_a_n
     from kyno.mcp_tools import TOOL_SCOPES, TOOLS
 
     assert len(TOOLS) == len(TOOL_SCOPES)
+
+
+def test_given_tool_declarations_when_reading_scopes_then_every_scope_is_typed():
+    from kyno.mcp_tools import TOOL_SCOPES
+    from kyno.models import TokenScope
+
+    assert all(type(scope) is TokenScope for scope in TOOL_SCOPES.values())
+    assert TOOL_SCOPES["set_direction"] is TokenScope.WRITE

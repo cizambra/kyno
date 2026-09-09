@@ -26,7 +26,7 @@ from kyno.config import (
     remotes_path,
 )
 from kyno.errors import AuthoringError, NoFieldChangedError
-from kyno.models import AUTOMATION, OPERATOR, OVERRIDE, SCOPES
+from kyno.models import AUTOMATION, OPERATOR, OVERRIDE, TokenScope
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
 from kyno.remote import RemoteError, dial, version_from_payload
 from kyno.server_config import Settings, store_from_settings
@@ -110,9 +110,11 @@ def token_add(
     ),
 ) -> None:
     """Mint a token: prints the value, once. Only its hash is stored."""
-    if scope not in SCOPES:
+    try:
+        token_scope = TokenScope(scope)
+    except ValueError:
         typer.echo(f"error: unknown scope '{scope}': choose read or write", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
     expires_at = None
     if ttl is not None:
         try:
@@ -122,7 +124,7 @@ def token_add(
             raise typer.Exit(code=1) from None
     value = generate_value()
     try:
-        _store().add_token(name, scope, token_hash=hash_value(value), expires_at=expires_at)
+        _store().add_token(name, token_scope, token_hash=hash_value(value), expires_at=expires_at)
     except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
@@ -150,10 +152,10 @@ def token_list(
         return
     id_w = max(len(str(t.id)) for t in rows)
     name_w = max(len(t.name) for t in rows)
-    scope_w = max(len(t.scope) for t in rows)
+    scope_w = max(len(t.scope.value) for t in rows)
     for t in rows:
         line = (
-            f"{t.id:<{id_w}}  {t.name:<{name_w}}  {t.scope:<{scope_w}}  "
+            f"{t.id:<{id_w}}  {t.name:<{name_w}}  {t.scope.value:<{scope_w}}  "
             f"created {t.created_at.date().isoformat()}  last used {age(t.last_used_at, now)}"
         )
         # Only --all reaches a dead row; the default list holds live tokens only.

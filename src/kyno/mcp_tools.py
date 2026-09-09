@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import mcp.types as types
 
-from kyno.models import READ, WRITE
+from kyno.models import TokenScope
 from kyno.wire.models import DETAIL_LEVELS, FULL
 
 # get_principles has its own detail vocabulary: "titles" names exactly what
@@ -74,7 +74,7 @@ DECLARATIONS = [
                 "properties": {"constitution": _CONSTITUTION_ARG, "detail": _DETAIL_ARG},
             },
         ),
-        READ,
+        TokenScope.READ,
     ),
     (
         types.Tool(
@@ -94,7 +94,7 @@ DECLARATIONS = [
                 "required": ["known_version"],
             },
         ),
-        READ,
+        TokenScope.READ,
     ),
     (
         types.Tool(
@@ -105,7 +105,7 @@ DECLARATIONS = [
             ),
             inputSchema={"type": "object", "properties": {"constitution": _CONSTITUTION_ARG}},
         ),
-        READ,
+        TokenScope.READ,
     ),
     (
         types.Tool(
@@ -116,7 +116,7 @@ DECLARATIONS = [
             ),
             inputSchema={"type": "object", "properties": {"constitution": _CONSTITUTION_ARG}},
         ),
-        READ,
+        TokenScope.READ,
     ),
     (
         types.Tool(
@@ -134,7 +134,7 @@ DECLARATIONS = [
                 },
             },
         ),
-        READ,
+        TokenScope.READ,
     ),
     (
         types.Tool(
@@ -156,7 +156,7 @@ DECLARATIONS = [
                 "required": ["title"],
             },
         ),
-        READ,
+        TokenScope.READ,
     ),
     (
         types.Tool(
@@ -174,7 +174,7 @@ DECLARATIONS = [
                 },
             },
         ),
-        READ,
+        TokenScope.READ,
     ),
     (
         types.Tool(
@@ -202,7 +202,7 @@ DECLARATIONS = [
                 "required": ["change_note"],
             },
         ),
-        WRITE,
+        TokenScope.WRITE,
     ),
     (
         types.Tool(
@@ -214,7 +214,7 @@ DECLARATIONS = [
             ),
             inputSchema={"type": "object", "properties": {}},
         ),
-        READ,
+        TokenScope.READ,
     ),
 ]
 

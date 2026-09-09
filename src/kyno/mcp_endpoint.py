@@ -12,7 +12,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from kyno.mcp_tools import TOOL_SCOPES
-from kyno.models import WRITE, Token
+from kyno.models import Token, TokenScope
 from kyno.tokens import hash_value
 
 # A JSON-RPC request is small. The largest legitimate one carries a full constitution, and the
@@ -92,7 +92,7 @@ def _refusal(token, calls) -> str | None:
         required = TOOL_SCOPES.get(name)
         if required is None:
             return f"unknown tool: '{name}' does not exist"
-        if required == WRITE and token.scope != WRITE:
+        if required is TokenScope.WRITE and token.scope is not TokenScope.WRITE:
             return f"forbidden: this token's scope does not cover '{name}'"
     return None
 

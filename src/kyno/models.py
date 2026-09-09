@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 
 from kyno.wire.errors import UnknownPrincipleError
 from kyno.wire.models import (
@@ -19,11 +20,13 @@ AUTOMATION = "automation"
 OVERRIDE = "override"
 AUTHORIZATIONS = (OPERATOR, AUTOMATION, OVERRIDE)
 
-# What a token may do. read covers every tool except set_direction; write
-# covers everything.
-READ = "read"
-WRITE = "write"
-SCOPES = (READ, WRITE)
+
+class TokenScope(StrEnum):
+    """What a token may do. Read covers every tool except set_direction;
+    write covers every tool."""
+
+    READ = "read"
+    WRITE = "write"
 
 
 @dataclass(frozen=True)
@@ -139,11 +142,14 @@ class Token:
 
     id: int
     name: str
-    scope: str
+    scope: TokenScope
     created_at: datetime
     last_used_at: datetime | None = None
     expires_at: datetime | None = None
     revoked_at: datetime | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "scope", TokenScope(self.scope))
 
     def live_at(self, now: datetime) -> bool:
         """Live means the server would accept it: not revoked, not expired.

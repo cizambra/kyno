@@ -1,8 +1,20 @@
 """Direct MCP handler and schema contracts."""
 
+from datetime import UTC, datetime
+
 import pytest
 
 from kyno import mcp_server, mcp_tools
+from kyno.models import Token, TokenScope
+
+
+def test_given_a_typed_token_scope_when_asking_whoami_then_a_plain_string_is_returned():
+    token = Token(id=7, name="deploy", scope=TokenScope.WRITE, created_at=datetime.now(UTC))
+
+    answer = mcp_server.handle_whoami(token)
+
+    assert answer["scope"] == "write"
+    assert type(answer["scope"]) is str
 
 
 def test_given_a_set_direction_when_getting_the_constitution_then_it_round_trips(cp):

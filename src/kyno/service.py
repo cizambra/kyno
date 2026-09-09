@@ -17,7 +17,7 @@ from kyno.errors import (
     VersionConflictError,
 )
 from kyno.models import (
-    AUTHORIZATIONS,
+    AuthorizationType,
     ConstitutionVersion,
     Publication,
     PublicConstitution,
@@ -367,7 +367,7 @@ class ControlPlane:
         created_by: str | None = None,
         constitution: str | None = None,
         expected_version: int | None = None,
-        authorized_by: str | None = None,
+        authorized_by: AuthorizationType | str | None = None,
         token_id: int | None = None,
     ) -> ConstitutionVersion:
         """Append a version. With expected_version, the write is pinned to
@@ -376,11 +376,14 @@ class ControlPlane:
         computed against whatever the head is now."""
         if not change_note or not change_note.strip():
             raise EmptyChangeError("change_note is required")
-        if authorized_by is not None and authorized_by not in AUTHORIZATIONS:
-            raise AuthoringError(
-                f"unknown authorized_by '{authorized_by}': "
-                f"one of {', '.join(AUTHORIZATIONS)}, or nothing"
-            )
+        if authorized_by is not None:
+            try:
+                authorized_by = AuthorizationType(authorized_by)
+            except ValueError:
+                raise AuthoringError(
+                    f"unknown authorized_by '{authorized_by}': "
+                    f"one of {', '.join(AuthorizationType)}, or nothing"
+                ) from None
         # Checked before the retry loop: a malformed principle is the caller's mistake, and re-
         # checking it on every attempt adds nothing.
         principles = normalize_principles(principles)

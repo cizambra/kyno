@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kyno.models import ConstitutionVersion, TokenScope
+from kyno.models import AuthorizationType, ConstitutionVersion, TokenScope
 from kyno.wire.errors import MalformedPrincipleError
 from kyno.wire.models import ChangesSince, Principle, normalize_principles
 
@@ -15,6 +15,37 @@ def test_given_a_supported_token_scope_when_parsing_then_it_becomes_the_matching
 def test_given_an_unknown_token_scope_when_parsing_then_it_is_refused():
     with pytest.raises(ValueError, match="admin"):
         TokenScope("admin")
+
+
+def test_given_an_authorization_string_when_constructing_a_version_then_it_becomes_the_enum():
+    version = ConstitutionVersion(
+        version=1,
+        mission="M",
+        principles=(),
+        change_note="init",
+        changed_mission=True,
+        changed_principles=False,
+        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        created_by=None,
+        authorized_by="operator",
+    )
+
+    assert version.authorized_by is AuthorizationType.OPERATOR
+
+
+def test_given_an_unknown_authorization_when_constructing_a_version_then_it_is_refused():
+    with pytest.raises(ValueError, match="sudo"):
+        ConstitutionVersion(
+            version=1,
+            mission="M",
+            principles=(),
+            change_note="init",
+            changed_mission=True,
+            changed_principles=False,
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+            created_by=None,
+            authorized_by="sudo",
+        )
 
 
 def test_given_a_version_when_assigning_a_field_then_it_is_frozen_and_still_serializes():

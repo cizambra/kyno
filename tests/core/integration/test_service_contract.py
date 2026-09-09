@@ -797,12 +797,16 @@ def test_given_an_unknown_authorization_when_applying_then_it_is_refused():
     cp = ControlPlane(store)
     with pytest.raises(AuthoringError, match="unknown authorized_by 'sudo'"):
         cp.set_direction(mission="M", change_note="init", authorized_by="sudo")
+    assert store.head("default") is None
 
 
 def test_given_an_authorization_when_applying_then_the_version_carries_it():
+    from kyno.models import AuthorizationType
+
     store = SqlConstitutionStore(url="sqlite://")
     store.create_all()
     cp = ControlPlane(store)
     v = cp.set_direction(mission="M", change_note="init", authorized_by="operator")
-    assert v.authorized_by == "operator"
+    assert v.authorized_by is AuthorizationType.OPERATOR
     assert v.to_dict()["authorized_by"] == "operator"
+    assert type(v.to_dict()["authorized_by"]) is str

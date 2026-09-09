@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: MIT
 from __future__ import annotations
 
-from kyno.client_errors import KynoUnavailableError
 from kyno.sdk.cell import COMPACT, Direction, DirectionCell, check_context
 from kyno.sdk.client import DirectionSource
+from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.policy import (
     PULL_FAILED_EMPTY,
     PULL_FAILED_STALE,

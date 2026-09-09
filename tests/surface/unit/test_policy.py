@@ -1,6 +1,6 @@
 import logging
 
-from kyno.client_errors import KynoUnavailableError
+from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.policy import (
     UNCHECKED,
     GatePolicy,

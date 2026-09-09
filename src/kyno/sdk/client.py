@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
-from kyno.client_errors import KynoRefusedError, KynoUnavailableError
+from kyno.sdk.errors import KynoRefusedError, KynoUnavailableError
 from kyno.wire.models import COMPACT, ChangesSince
 
 # The resource Kyno announces version changes on. The server sends a `resources/updated`

@@ -12,8 +12,8 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
+from kyno.client_errors import KynoRefusedError, KynoUnavailableError
 from kyno.config import Resolved, resolve
-from kyno.errors import KynoRefusedError, KynoUnavailableError
 from kyno.models import ConstitutionVersion
 from kyno.sdk.client import KynoBinding, SessionRunner, http_session
 from kyno.wire.errors import CoherenceError

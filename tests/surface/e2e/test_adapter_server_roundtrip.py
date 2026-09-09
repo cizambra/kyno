@@ -43,7 +43,7 @@ def test_given_a_live_server_when_the_adapter_refreshes_then_the_latest_directio
     control_plane, url, token = live_server
     control_plane.set_direction(mission="M1", change_note="init")
 
-    with connect(url, token) as connection:
+    with connect(url=url, token=token) as connection:
         adapter = CrewAiKyno(connection.binder())
         context = FakeCtx()
 
@@ -67,7 +67,7 @@ def test_given_a_live_server_when_langgraph_refreshes_then_the_latest_direction_
     control_plane, url, token = live_server
     control_plane.set_direction(mission="M1", change_note="init")
 
-    with connect(url, token) as connection:
+    with connect(url=url, token=token) as connection:
         refresh = direction_node(connection.binder())
         first = refresh({})
         control_plane.set_direction(mission="M2", change_note="pivot")

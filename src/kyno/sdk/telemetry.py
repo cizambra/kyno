@@ -25,6 +25,9 @@ class TelemetryEvent:
     version: int
     detail: str = ""
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "kind", EventType(self.kind))
+
     def to_dict(self) -> dict:
         return {
             "kind": self.kind.value,

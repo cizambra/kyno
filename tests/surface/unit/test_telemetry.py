@@ -1,6 +1,28 @@
 import logging
 
+import pytest
+
 from kyno.sdk.telemetry import EventType, LogSink, RecordingSink, TelemetryEvent
+
+
+def test_given_a_string_event_type_when_creating_an_event_then_it_becomes_the_matching_type():
+    event = TelemetryEvent(kind="unchecked", constitution="eu", version=1)
+
+    assert event.kind is EventType.UNCHECKED
+
+
+def test_given_an_unknown_event_type_when_creating_an_event_then_it_is_refused():
+    with pytest.raises(ValueError, match="unknown"):
+        TelemetryEvent(kind="unknown", constitution="eu", version=1)
+
+
+def test_given_a_typed_event_when_serializing_then_its_type_is_a_plain_string():
+    event = TelemetryEvent(kind=EventType.UNCHECKED, constitution="eu", version=1)
+
+    payload = event.to_dict()
+
+    assert payload["kind"] == "unchecked"
+    assert type(payload["kind"]) is str
 
 
 def test_given_events_when_the_recording_sink_takes_them_then_their_order_is_kept():

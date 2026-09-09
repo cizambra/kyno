@@ -2,6 +2,7 @@ import subprocess
 import sys
 
 import kyno.sdk as core
+import kyno.sdk.client as client
 import kyno.sdk.trace as trace
 from tests.paths import REPO_ROOT
 
@@ -9,14 +10,9 @@ EXPECTED = {
     "Direction",
     "DirectionCell",
     "DIRECTION_MARKER",
-    "KynoBinding",
     "DirectionSource",
     "LocalDirectionSource",
-    "McpDirectionSource",
-    "SessionRunner",
-    "http_session",
     "DirectionBinder",
-    "RESOURCE_URI",
     "Verdict",
     "VerdictSource",
     "Action",
@@ -64,6 +60,20 @@ def test_given_trace_types_when_importing_the_sdk_then_they_only_live_in_the_tra
     assert names.isdisjoint(core.__all__)
     assert names.isdisjoint(vars(core))
     assert all(hasattr(trace, name) for name in names)
+
+
+def test_given_connection_plumbing_when_importing_the_sdk_then_it_only_lives_in_the_client_module():
+    names = {
+        "KynoBinding",
+        "McpDirectionSource",
+        "RESOURCE_URI",
+        "SessionRunner",
+        "http_session",
+    }
+
+    assert names.isdisjoint(core.__all__)
+    assert names.isdisjoint(vars(core))
+    assert all(hasattr(client, name) for name in names)
 
 
 def test_given_any_adapter_when_looking_for_writes_then_none_can_write_direction():

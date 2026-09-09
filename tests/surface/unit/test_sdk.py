@@ -30,8 +30,8 @@ def captured_binding(monkeypatch):
 
         return factory
 
-    monkeypatch.setattr("kyno.sdk.http_session", fake_http_session)
-    monkeypatch.setattr("kyno.sdk.SessionRunner", FakeRunner)
+    monkeypatch.setattr("kyno.sdk._client.http_session", fake_http_session)
+    monkeypatch.setattr("kyno.sdk._client.SessionRunner", FakeRunner)
     return captured
 
 
@@ -42,7 +42,7 @@ def test_given_only_legacy_environment_wiring_when_connecting_then_it_is_refused
     monkeypatch.setenv("KYNO_TOKEN", "legacy-token")
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr(
-        "kyno.sdk.http_session",
+        "kyno.sdk._client.http_session",
         lambda binding: pytest.fail("connection started before profile resolution"),
     )
 
@@ -143,7 +143,7 @@ def test_given_a_profile_with_a_blank_token_override_when_connecting_then_it_is_
 
 def test_given_an_invalid_explicit_endpoint_when_connecting_then_it_is_refused(monkeypatch):
     monkeypatch.setattr(
-        "kyno.sdk.http_session",
+        "kyno.sdk._client.http_session",
         lambda binding: pytest.fail("connection started before endpoint validation"),
     )
 

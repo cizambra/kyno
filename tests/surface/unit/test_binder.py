@@ -74,7 +74,9 @@ def test_given_a_fail_closed_policy_when_a_pull_fails_then_it_raises_instead_of_
         binder.bind()
 
 
-def test_given_a_subscriber_when_sharing_the_cell_then_both_see_the_same_direction(scripted_source):
+def test_given_a_shared_cell_when_binding_then_the_binder_and_caller_see_the_same_direction(
+    scripted_source,
+):
     cell = DirectionCell()
     scripted_source.set("default", 2, "M2")
     binder = DirectionBinder(scripted_source, cell=cell)
@@ -137,7 +139,7 @@ def test_given_a_degraded_bind_when_reading_the_event_then_the_reason_and_versio
 def test_given_a_stale_reply_when_binding_then_the_bound_direction_does_not_roll_back(
     scripted_source,
 ):
-    """A push and a pull race by design, so an older reply must lose."""
+    """Overlapping pulls can finish out of order, so an older reply must lose."""
     scripted_source.set("default", 5, "M5")
     binder = DirectionBinder(scripted_source)
     binder.bind()

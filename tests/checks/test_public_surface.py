@@ -61,8 +61,8 @@ def test_given_the_exports_when_comparing_to_the_docs_then_nothing_extra_leaks()
 
 
 def test_given_any_adapter_when_looking_for_writes_then_none_can_write_direction():
-    """Adapters pull and subscribe. Editing the rulebook is an operator act,
-    so the write path simply does not exist in this package."""
+    """Adapters only pull. Editing the rulebook is an operator act, so the
+    write path simply does not exist in this package."""
     offenders = [
         path.relative_to(ADAPTERS).as_posix()
         for path in ADAPTERS.rglob("*.py")

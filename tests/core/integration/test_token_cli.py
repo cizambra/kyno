@@ -7,7 +7,7 @@ from sqlalchemy import text
 from typer.testing import CliRunner
 
 from kyno.cli import app
-from kyno.config import Settings, store_from_settings
+from kyno.server_config import Settings, store_from_settings
 from kyno.tokens import hash_value
 from tests.workspaces import cli_workspace
 

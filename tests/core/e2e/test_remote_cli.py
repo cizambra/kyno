@@ -105,7 +105,7 @@ def test_given_a_revoked_token_when_going_remote_then_the_error_names_the_profil
 
 @pytest.mark.e2e
 def test_given_an_endpoint_nothing_listens_on_when_opening_then_cannot_reach_names_the_profile():
-    from kyno.profiles import Resolved
+    from kyno.config import Resolved
     from kyno.remote import RemoteClient
 
     client = RemoteClient(Resolved(profile="p", url="http://127.0.0.1:9", token="t", chain="c"))

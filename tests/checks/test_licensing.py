@@ -7,7 +7,7 @@ unlabeled is under the Elastic License 2.0."""
 from tests.paths import REPO_ROOT
 
 SRC = REPO_ROOT / "src" / "kyno"
-MIT_DIRS = ("sdk", "adapters", "conformance", "wire")
+MIT_DIRS = ("sdk", "adapters", "conformance", "wire", "config")
 HEADER = "# SPDX-License-Identifier: MIT"
 
 

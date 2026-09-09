@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """The two client-side files behind remote mode: remotes and credentials.
 
 Both live in the user config directory and are written only by the
@@ -13,10 +14,9 @@ import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
-from kyno.envref import ENV_REF as _ENV_REF
-from kyno.errors import ConfigError
+from kyno.config.errors import ProfileError
 
 DEFAULT_PROFILE = "default"
 REMOTES_FILE = "remotes"
@@ -24,10 +24,7 @@ CREDENTIALS_FILE = "credentials"
 
 _PROFILE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 _ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-
-
-class ProfileError(ConfigError):
-    """A profile is missing, ambiguous, or does not resolve."""
+_ENV_REF = re.compile(r"^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$")
 
 
 def config_dir() -> Path:
@@ -130,6 +127,23 @@ def _server_url(url: str) -> bool:
         and not parts.query
         and not parts.fragment
     )
+
+
+def normalize_endpoint(url: str, *, profile: bool) -> str:
+    """Return an MCP endpoint from a profile base URL or explicit endpoint."""
+    if not _server_url(url):
+        raise ProfileError(
+            f"'{url}' is not a server URL Kyno can dial: use http(s)://host[:port][/path]"
+        )
+    parts = urlsplit(url)
+    if not profile:
+        if not parts.path.rstrip("/").endswith("/mcp"):
+            raise ProfileError("explicit url must be a full MCP endpoint ending in /mcp")
+        return url
+    path = parts.path.rstrip("/")
+    if path.endswith("/mcp"):
+        path = path[:-4].rstrip("/")
+    return urlunsplit((parts.scheme, parts.netloc, f"{path}/mcp", "", ""))
 
 
 def _listing(names: list[str]) -> str:
@@ -287,10 +301,14 @@ def resolve(
     *,
     credentials_profile: str | None = None,
     token_env: str | None = None,
+    token_override: str | None = None,
 ) -> Resolved:
-    """Follow one chain to a URL and a token. A per-run credentials profile
-    or variable swaps the token source without touching the files. Anything
-    that does not resolve fails loudly, never as a fallback."""
+    """Follow one chain to a URL and a token.
+
+    A per-run credentials profile, variable, or literal token swaps the token
+    source without touching the files. Anything that does not resolve fails
+    loudly, never as a fallback.
+    """
     have = remotes()
     if profile not in have:
         fix = "kyno remote add --url URL" + (
@@ -307,7 +325,12 @@ def resolve(
             "pick one: --credentials takes the token from a credentials profile; "
             "--token-env reads it from a variable"
         )
-    if token_env is not None:
+    if token_override is not None:
+        if not token_override.strip():
+            raise ProfileError("a blank token was supplied; nothing to connect with")
+        token = token_override
+        chain = f"{profile} -> {remote.url} -> explicit token (this run)"
+    elif token_env is not None:
         _check_env_name(token_env)
         token = _token_from_env(token_env, owner="this run")
         chain = f"{profile} -> {remote.url} -> ${{{token_env}}} (this run)"

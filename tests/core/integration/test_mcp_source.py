@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 import pytest
 
-from kyno.errors import KynoUnavailableError
+from kyno.client_errors import KynoUnavailableError
 from kyno.mcp_server import build_server
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.client import DirectionSource, LocalDirectionSource, McpDirectionSource, SessionRunner

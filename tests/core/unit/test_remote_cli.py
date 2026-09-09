@@ -10,12 +10,12 @@ class _RunnerThatRefuses:
         self._message = message
 
     def start(self):
-        from kyno.errors import KynoRefusedError
+        from kyno.client_errors import KynoRefusedError
 
         raise KynoRefusedError(self._message)
 
     def call(self, fn):
-        from kyno.errors import KynoRefusedError
+        from kyno.client_errors import KynoRefusedError
 
         raise KynoRefusedError(self._message)
 
@@ -24,8 +24,8 @@ class _RunnerThatRefuses:
 
 
 def test_given_a_401_at_session_open_when_dialing_then_the_error_names_the_profile_and_url():
+    from kyno.client_errors import KynoRefusedError
     from kyno.config import Resolved
-    from kyno.errors import KynoRefusedError
     from kyno.remote import RemoteClient
 
     client = RemoteClient(

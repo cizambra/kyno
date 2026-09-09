@@ -359,10 +359,10 @@ and the versions simply stop changing at the point where the server died.
 If all five stages pass their checks, your adapter behaves exactly like the
 ones that ship with Kyno. Two smaller things worth adding after:
 
-- **Push notifications.** Kyno announces new versions on the MCP resource
-  `kyno://constitution/current`. If your MCP client supports subscriptions,
-  a notification is a good moment to fetch sooner. It's optional, because fetching
-  before every step already keeps you correct.
+- **Core notifications for generic MCP clients.** Kyno announces new versions
+  on the MCP resource `kyno://constitution/current`. A generic MCP client can
+  subscribe and use the notification as a reason to fetch sooner. The shipped
+  SDK and adapters do not subscribe; their step-boundary pulls are sufficient.
 - **Planning.** If your orchestrator makes a plan before executing it,
   fetch the direction at planning time too, and re-plan the remaining steps
   whenever a fetch returns a higher version than the plan was made under.

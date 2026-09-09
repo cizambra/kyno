@@ -18,9 +18,9 @@ from kyno.wire.errors import CoherenceError
 class DirectionBinder:
     """Bind the next step to the version in force right now.
 
-    Pull runs at every step boundary even when a push already refreshed the
-    cell: the pull is cheap and self-describing, and the subscription's role
-    is only to keep the stale-fallback fresher for the pulls that fail.
+    Shipped adapters pull at every step boundary. The successful response
+    becomes the latest-known direction in the cell and remains available as
+    the fallback if a later pull cannot reach Kyno.
     """
 
     def __init__(

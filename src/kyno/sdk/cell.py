@@ -116,8 +116,8 @@ class Direction(HoldsPrinciples):
 class DirectionCell:
     """The process-local latest-known direction, one entry per constitution.
 
-    Updates are monotonic: a late reply carrying an older version must not
-    undo a newer one, which is what lets the pull and the push race freely.
+    Updates are monotonic so overlapping pulls can finish out of order
+    without an older response replacing a newer direction.
     """
 
     def __init__(self) -> None:

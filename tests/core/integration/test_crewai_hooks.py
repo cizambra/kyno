@@ -80,7 +80,7 @@ def test_given_the_adapter_when_asking_then_it_reports_which_constitution_it_ser
 
 
 def test_given_a_shared_cell_when_the_gate_judges_then_it_uses_the_cell_not_its_own_pull(crew_kyno):
-    """Freshness is the binder's and subscriber's job; a pull here would double it."""
+    """Freshness is the binder's job; a pull here would duplicate the step-boundary pull."""
     adapter, control_plane = crew_kyno
     adapter.before_llm_call(FakeCtx(messages=[]))
     control_plane.set_direction(mission="M2", change_note="pivot")

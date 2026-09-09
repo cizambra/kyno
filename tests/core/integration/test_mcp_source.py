@@ -11,7 +11,7 @@ from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.telemetry import EventType, RecordingSink
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
-from kyno.wire.models import FULL
+from kyno.wire.models import DetailLevel
 
 
 @pytest.fixture
@@ -155,7 +155,7 @@ def test_given_a_full_binding_when_pulling_then_the_declaration_and_descriptions
     source = McpDirectionSource(runner)
 
     compact = source.changes_since(0, "default")
-    full = source.changes_since(0, "default", FULL)
+    full = source.changes_since(0, "default", DetailLevel.FULL)
 
     assert compact.declaration == ""
     assert compact.principles[0].description == ""

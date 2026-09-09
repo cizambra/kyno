@@ -2,13 +2,14 @@ import pytest
 
 from kyno.errors import UnknownVersionError
 from kyno.sdk.binder import DirectionBinder
-from kyno.sdk.cell import COMPACT, FULL, Direction, DirectionCell
+from kyno.sdk.cell import Direction, DirectionCell
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.policy import PullPolicy
 from kyno.sdk.telemetry import (
     EventType,
     RecordingSink,
 )
+from kyno.wire.models import DetailLevel
 
 
 def test_given_a_bound_step_when_the_next_pull_asks_then_the_known_version_has_advanced(
@@ -160,21 +161,21 @@ def test_given_a_binder_when_binding_any_direction_then_its_context_is_stamped_o
     scripted_source,
 ):
     scripted_source.set("eu", 2, "EU")
-    binder = DirectionBinder(scripted_source, context=FULL)
-    assert binder.bind("eu").context == FULL
+    binder = DirectionBinder(scripted_source, context=DetailLevel.FULL)
+    assert binder.bind("eu").context is DetailLevel.FULL
 
 
 def test_given_a_degraded_bind_when_reading_the_empty_direction_then_the_context_is_stamped(
     scripted_source,
 ):
     scripted_source.failure = OSError("connection refused")
-    binder = DirectionBinder(scripted_source, context=FULL, policy=PullPolicy())
-    assert binder.bind("eu").context == FULL
+    binder = DirectionBinder(scripted_source, context=DetailLevel.FULL, policy=PullPolicy())
+    assert binder.bind("eu").context is DetailLevel.FULL
 
 
 def test_given_no_context_asked_when_binding_then_the_compact_context_is_used(scripted_source):
     scripted_source.set("eu", 2, "EU")
-    assert DirectionBinder(scripted_source).bind("eu").context == COMPACT
+    assert DirectionBinder(scripted_source).bind("eu").context is DetailLevel.COMPACT
 
 
 def test_given_an_unknown_context_when_building_the_binder_then_it_is_refused(scripted_source):
@@ -190,5 +191,5 @@ def test_given_a_compact_binding_when_pulling_then_kyno_is_asked_for_the_compact
     # Do not fetch what you will not inject: the pull matches the binding.
     scripted_source.set("eu", 2, "EU")
     DirectionBinder(scripted_source).bind("eu")
-    DirectionBinder(scripted_source, context=FULL).bind("eu")
-    assert scripted_source.details == [COMPACT, FULL]
+    DirectionBinder(scripted_source, context=DetailLevel.FULL).bind("eu")
+    assert scripted_source.details == [DetailLevel.COMPACT, DetailLevel.FULL]

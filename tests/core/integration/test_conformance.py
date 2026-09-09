@@ -10,7 +10,7 @@ from kyno.conformance import SEPARATOR, check_log
 from kyno.sdk.cell import Direction
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
-from kyno.wire.models import COMPACT, FULL
+from kyno.wire.models import DetailLevel
 from tests.paths import REPO_ROOT
 
 ROOT = REPO_ROOT
@@ -30,9 +30,11 @@ def expected(name: str) -> str:
 
 def test_given_the_example_files_when_replayed_then_they_match_what_kyno_produces(plane):
     ch0 = plane.changes_since(0)
-    assert json.loads(expected("response_before_any_direction.json")) == ch0.to_dict(COMPACT)
+    assert json.loads(expected("response_before_any_direction.json")) == ch0.to_dict(
+        DetailLevel.COMPACT
+    )
     assert expected("block_before_any_direction.txt") == (
-        Direction.from_changes(ch0, "default", COMPACT).render() + "\n"
+        Direction.from_changes(ch0, "default", DetailLevel.COMPACT).render() + "\n"
     )
 
     f1 = read_constitution_file(CONFORMANCE / "v1.yaml")
@@ -43,13 +45,15 @@ def test_given_the_example_files_when_replayed_then_they_match_what_kyno_produce
         change_note="initial constitution",
     )
     ch1 = plane.changes_since(0)
-    assert json.loads(expected("response_version1_compact.json")) == ch1.to_dict(COMPACT)
-    assert json.loads(expected("response_version1_full.json")) == ch1.to_dict(FULL)
+    assert json.loads(expected("response_version1_compact.json")) == ch1.to_dict(
+        DetailLevel.COMPACT
+    )
+    assert json.loads(expected("response_version1_full.json")) == ch1.to_dict(DetailLevel.FULL)
     assert expected("block_version1_compact.txt") == (
-        Direction.from_changes(ch1, "default", COMPACT).render() + "\n"
+        Direction.from_changes(ch1, "default", DetailLevel.COMPACT).render() + "\n"
     )
     assert expected("block_version1_full.txt") == (
-        Direction.from_changes(ch1, "default", FULL).render() + "\n"
+        Direction.from_changes(ch1, "default", DetailLevel.FULL).render() + "\n"
     )
 
     f2 = read_constitution_file(CONFORMANCE / "v2.yaml")
@@ -60,9 +64,11 @@ def test_given_the_example_files_when_replayed_then_they_match_what_kyno_produce
         change_note="second reviewer required above $25,000",
     )
     ch2 = plane.changes_since(1)
-    assert json.loads(expected("response_version2_after_knowing_1.json")) == ch2.to_dict(COMPACT)
+    assert json.loads(expected("response_version2_after_knowing_1.json")) == ch2.to_dict(
+        DetailLevel.COMPACT
+    )
     assert expected("block_version2_compact.txt") == (
-        Direction.from_changes(ch2, "default", COMPACT).render() + "\n"
+        Direction.from_changes(ch2, "default", DetailLevel.COMPACT).render() + "\n"
     )
 
 

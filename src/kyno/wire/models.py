@@ -3,21 +3,26 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 
 from kyno.wire.errors import MalformedPrincipleError
 
 _PRINCIPLE_KEYS = ("title", "description")
 
 DIRECTION_MARKER = "[kyno:direction"
-COMPACT = "compact"
-FULL = "full"
-DETAIL_LEVELS = (COMPACT, FULL)
 
 
-def check_detail(detail: str, what: str = "detail") -> str:
-    if detail not in DETAIL_LEVELS:
-        raise ValueError(f"unknown {what} '{detail}': choose one of {', '.join(DETAIL_LEVELS)}")
-    return detail
+class DetailLevel(StrEnum):
+    COMPACT = "compact"
+    FULL = "full"
+
+
+def check_detail(detail: str | DetailLevel, what: str = "detail") -> DetailLevel:
+    try:
+        return DetailLevel(detail)
+    except ValueError:
+        choices = ", ".join(DetailLevel)
+        raise ValueError(f"unknown {what} '{detail}': choose one of {choices}") from None
 
 
 def _text(value, field: str) -> str:
@@ -59,8 +64,8 @@ class Principle:
             f"a principle must be a title or a title-and-description, got {type(value).__name__}"
         )
 
-    def to_dict(self, detail: str = FULL) -> dict:
-        if check_detail(detail) == COMPACT:
+    def to_dict(self, detail: str | DetailLevel = DetailLevel.FULL) -> dict:
+        if check_detail(detail) is DetailLevel.COMPACT:
             return {"title": self.title}
         return {"title": self.title, "description": self.description}
 
@@ -99,13 +104,13 @@ class ChangesSince(HoldsPrinciples):
     declaration: str = ""
     delta: tuple[str, ...] = ()
 
-    def to_dict(self, detail: str = FULL) -> dict:
+    def to_dict(self, detail: str | DetailLevel = DetailLevel.FULL) -> dict:
         payload = {
             "current_version": self.current_version,
             "changed": self.changed,
             "mission": self.mission,
         }
-        if check_detail(detail) == FULL:
+        if check_detail(detail) is DetailLevel.FULL:
             payload["declaration"] = self.declaration
         payload["principles"] = [principle.to_dict(detail) for principle in self.principles]
         payload["changed_mission"] = self.changed_mission

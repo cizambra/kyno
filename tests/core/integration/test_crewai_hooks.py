@@ -6,9 +6,10 @@ pytest.importorskip("crewai")
 
 from kyno.adapters.crewai.hooks import CrewAiKyno  # noqa: E402
 from kyno.sdk.binder import DirectionBinder  # noqa: E402
-from kyno.sdk.cell import DIRECTION_MARKER, FULL  # noqa: E402
+from kyno.sdk.cell import DIRECTION_MARKER  # noqa: E402
 from kyno.sdk.client import LocalDirectionSource  # noqa: E402
 from kyno.sdk.trace import RunTrace  # noqa: E402
+from kyno.wire.models import DetailLevel  # noqa: E402
 
 
 class FakeCtx:
@@ -119,7 +120,7 @@ def test_given_a_full_binder_when_injecting_then_the_message_carries_the_full_do
         principles=({"title": "Be honest", "description": "Say the hard number first."},),
         change_note="init",
     )
-    binder = DirectionBinder(LocalDirectionSource(control_plane), context=FULL)
+    binder = DirectionBinder(LocalDirectionSource(control_plane), context=DetailLevel.FULL)
     adapter = CrewAiKyno(binder)
     ctx = FakeCtx(messages=[{"role": "user", "content": "go"}])
 

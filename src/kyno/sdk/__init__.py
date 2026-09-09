@@ -18,9 +18,7 @@ import kyno.config as _config
 import kyno.sdk.client as _client
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.cell import (
-    COMPACT,
     DIRECTION_MARKER,
-    FULL,
     Direction,
     DirectionCell,
     is_direction_block,
@@ -40,11 +38,10 @@ from kyno.sdk.policy import (
     PullPolicy,
 )
 from kyno.sdk.telemetry import TelemetrySink
+from kyno.wire.models import DetailLevel
 
 __all__ = [
-    "COMPACT",
     "DIRECTION_MARKER",
-    "FULL",
     "Action",
     "GateDecision",
     "GatePolicy",
@@ -55,6 +52,7 @@ __all__ = [
     "DirectionBinder",
     "DirectionCell",
     "DirectionSource",
+    "DetailLevel",
     "KynoConnection",
     "LocalDirectionSource",
     "PlanTracker",
@@ -78,7 +76,7 @@ class KynoConnection:
         policy: PullPolicy | None = None,
         cell: DirectionCell | None = None,
         telemetry: TelemetrySink | None = None,
-        context: str = COMPACT,
+        context: str | DetailLevel = DetailLevel.COMPACT,
     ) -> DirectionBinder:
         return DirectionBinder(
             self._source, cell=cell, policy=policy, telemetry=telemetry, context=context

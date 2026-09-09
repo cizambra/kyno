@@ -1,14 +1,24 @@
+import json
+
 from kyno.wire.errors import CoherenceError, MalformedPrincipleError
-from kyno.wire.models import COMPACT, DIRECTION_MARKER, FULL, Principle, check_detail
+from kyno.wire.models import DIRECTION_MARKER, DetailLevel, Principle, check_detail
 
 
-def test_given_a_wire_detail_when_checking_it_then_the_same_value_is_returned():
-    assert check_detail(COMPACT) == COMPACT
-    assert check_detail(FULL) == FULL
+def test_given_a_detail_string_when_checking_it_then_the_matching_detail_level_is_returned():
+    assert check_detail("compact") is DetailLevel.COMPACT
+    assert check_detail("full") is DetailLevel.FULL
+
+
+def test_given_a_detail_level_when_serializing_it_then_its_plain_string_value_is_returned():
+    encoded = json.dumps({"detail": DetailLevel.FULL})
+
+    assert json.loads(encoded) == {"detail": "full"}
 
 
 def test_given_a_wire_principle_when_serializing_compact_then_only_the_title_is_returned():
-    assert Principle("safe", "Keep the boundary explicit").to_dict(COMPACT) == {"title": "safe"}
+    assert Principle("safe", "Keep the boundary explicit").to_dict(DetailLevel.COMPACT) == {
+        "title": "safe"
+    }
 
 
 def test_given_a_malformed_wire_principle_when_constructing_it_then_a_wire_error_is_raised():

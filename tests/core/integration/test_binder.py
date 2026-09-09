@@ -1,8 +1,8 @@
 """Binder behavior against a real control plane."""
 
 from kyno.sdk.binder import DirectionBinder
-from kyno.sdk.cell import FULL
 from kyno.sdk.client import LocalDirectionSource
+from kyno.wire.models import DetailLevel
 
 
 def test_given_a_step_when_binding_then_the_current_version_is_bound(control_plane):
@@ -39,7 +39,7 @@ def test_given_a_context_choice_when_binding_then_only_the_injected_block_change
     )
     source = LocalDirectionSource(control_plane)
     compact = DirectionBinder(source).bind()
-    full = DirectionBinder(source, context=FULL).bind()
+    full = DirectionBinder(source, context=DetailLevel.FULL).bind()
 
     assert "The long form." not in compact.render()
     assert "The long form." in full.render()

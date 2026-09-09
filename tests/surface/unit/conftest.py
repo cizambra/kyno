@@ -1,6 +1,6 @@
 import pytest
 
-from kyno.wire.models import COMPACT, ChangesSince
+from kyno.wire.models import ChangesSince, DetailLevel
 
 
 class ScriptedDirectionSource:
@@ -25,7 +25,10 @@ class ScriptedDirectionSource:
         )
 
     def changes_since(
-        self, known_version: int, constitution: str, detail: str = COMPACT
+        self,
+        known_version: int,
+        constitution: str,
+        detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> ChangesSince:
         self.calls.append((known_version, constitution))
         self.details.append(detail)

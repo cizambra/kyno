@@ -3,11 +3,9 @@
 
 from kyno.wire.errors import CoherenceError, MalformedPrincipleError, UnknownPrincipleError
 from kyno.wire.models import (
-    COMPACT,
-    DETAIL_LEVELS,
     DIRECTION_MARKER,
-    FULL,
     ChangesSince,
+    DetailLevel,
     HoldsPrinciples,
     Principle,
     check_detail,
@@ -15,12 +13,10 @@ from kyno.wire.models import (
 )
 
 __all__ = [
-    "COMPACT",
-    "DETAIL_LEVELS",
     "DIRECTION_MARKER",
-    "FULL",
     "ChangesSince",
     "CoherenceError",
+    "DetailLevel",
     "HoldsPrinciples",
     "MalformedPrincipleError",
     "Principle",

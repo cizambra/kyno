@@ -7,18 +7,18 @@ from __future__ import annotations
 import mcp.types as types
 
 from kyno.models import AuthorizationType, TokenScope
-from kyno.wire.models import DETAIL_LEVELS, FULL
+from kyno.wire.models import DetailLevel
 
 # get_principles has its own detail vocabulary: "titles" names exactly what
 # the small answer contains, where "compact" only means something when the
 # payload is the whole document.
 TITLES = "titles"
-PRINCIPLES_DETAIL_LEVELS = (TITLES, FULL)
+PRINCIPLES_DETAIL_LEVELS = (TITLES, DetailLevel.FULL)
 
 
 _PRINCIPLES_DETAIL_ARG = {
     "type": "string",
-    "enum": list(PRINCIPLES_DETAIL_LEVELS),
+    "enum": [str(detail) for detail in PRINCIPLES_DETAIL_LEVELS],
     "description": (
         'How much of each principle to return. "titles" (the default) is the '
         'handles alone; "full" adds the description under each one.'
@@ -27,7 +27,7 @@ _PRINCIPLES_DETAIL_ARG = {
 
 _DETAIL_ARG = {
     "type": "string",
-    "enum": list(DETAIL_LEVELS),
+    "enum": [detail.value for detail in DetailLevel],
     "description": (
         'How much to return. "compact" (the default) is the mission and the '
         'principle titles; "full" adds the declaration and each principle\'s '

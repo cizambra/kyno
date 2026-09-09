@@ -5,7 +5,8 @@ from contextlib import asynccontextmanager
 import pytest
 
 from kyno.mcp_server import build_server
-from kyno.sdk import KynoConnection, SessionRunner
+from kyno.sdk import KynoConnection
+from kyno.sdk.client import SessionRunner
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 

@@ -15,6 +15,7 @@ Everything an adapter needs is exported here; the framework adapters in
 """
 
 import kyno.config as _config
+import kyno.sdk.client as _client
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.cell import (
     COMPACT,
@@ -25,15 +26,7 @@ from kyno.sdk.cell import (
     is_direction_block,
     refresh,
 )
-from kyno.sdk.client import (
-    RESOURCE_URI,
-    DirectionSource,
-    KynoBinding,
-    LocalDirectionSource,
-    McpDirectionSource,
-    SessionRunner,
-    http_session,
-)
+from kyno.sdk.client import DirectionSource, LocalDirectionSource
 from kyno.sdk.gate import (
     Action,
     GateDecision,
@@ -56,7 +49,6 @@ __all__ = [
     "DIRECTION_MARKER",
     "FULL",
     "Action",
-    "RESOURCE_URI",
     "GateDecision",
     "GatePolicy",
     "RealignmentGate",
@@ -66,19 +58,15 @@ __all__ = [
     "DirectionBinder",
     "DirectionCell",
     "DirectionSource",
-    "KynoBinding",
     "KynoConnection",
     "LocalDirectionSource",
     "LogSink",
-    "McpDirectionSource",
     "PlanTracker",
     "PullPolicy",
     "RecordingSink",
-    "SessionRunner",
     "TelemetryEvent",
     "TelemetrySink",
     "connect",
-    "http_session",
     "is_direction_block",
     "refresh",
 ]
@@ -87,9 +75,9 @@ __all__ = [
 class KynoConnection:
     """One open session to a control plane, handing out binders that share it."""
 
-    def __init__(self, runner: SessionRunner) -> None:
+    def __init__(self, runner: _client.SessionRunner) -> None:
         self._runner = runner
-        self._source = McpDirectionSource(runner)
+        self._source = _client.McpDirectionSource(runner)
 
     def binder(
         self,
@@ -128,14 +116,16 @@ def connect(
     if url is not None:
         if token is None or not token.strip():
             raise _config.ProfileError("explicit url requires token")
-        binding = KynoBinding(endpoint=_config.normalize_endpoint(url, profile=False), token=token)
+        binding = _client.KynoBinding(
+            endpoint=_config.normalize_endpoint(url, profile=False), token=token
+        )
     else:
         selected_profile = _config.DEFAULT_PROFILE if profile is None else profile
         resolved = _config.resolve(selected_profile, token_override=token)
-        binding = KynoBinding(
+        binding = _client.KynoBinding(
             endpoint=_config.normalize_endpoint(resolved.url, profile=True),
             token=resolved.token,
         )
-    runner = SessionRunner(http_session(binding))
+    runner = _client.SessionRunner(_client.http_session(binding))
     runner.start()
     return KynoConnection(runner)

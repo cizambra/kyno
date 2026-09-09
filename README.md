@@ -84,10 +84,14 @@ pip install "kyno[crewai]"      # or: pip install "kyno[langgraph]"
 import kyno
 from kyno.adapters.crewai import CrewAiKyno
 
-connection = kyno.connect()  # reads KYNO_URL and KYNO_TOKEN
+connection = kyno.connect()  # uses the default profile from ~/.kyno
 adapter = CrewAiKyno(connection.binder())
 adapter.register()  # injects the current direction before each model call
 ```
+
+Create the profile with `kyno remote add`, or pass values the application already
+owns: `kyno.connect(url=KYNO_URL, token=APP_TOKEN)`. The SDK does not read
+`KYNO_URL` or `KYNO_TOKEN` by name.
 
 That is the whole integration. Every model call runs under the version in
 force, and a version published mid-run reaches the next step. Adapters

@@ -107,7 +107,7 @@ what the CLI does: read the settings, build the store, and hand the
 control plane to the binder.
 
 ```python
-from kyno.config import Settings, store_from_settings
+from kyno.server_config import Settings, store_from_settings
 from kyno.service import ControlPlane
 from kyno.sdk import DirectionBinder, LocalDirectionSource
 

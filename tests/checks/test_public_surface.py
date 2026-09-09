@@ -2,6 +2,7 @@ import subprocess
 import sys
 
 import kyno.sdk as core
+import kyno.sdk.trace as trace
 from tests.paths import REPO_ROOT
 
 EXPECTED = {
@@ -27,9 +28,6 @@ EXPECTED = {
     "TelemetrySink",
     "LogSink",
     "RecordingSink",
-    "StepRecord",
-    "DecompositionEdge",
-    "RunTrace",
 }
 
 ADAPTERS = REPO_ROOT / "src" / "kyno" / "adapters"
@@ -58,6 +56,14 @@ def test_given_the_exports_when_comparing_to_the_docs_then_nothing_extra_leaks()
 
     assert public == set(core.__all__)
     assert len(core.__all__) == len(set(core.__all__))
+
+
+def test_given_trace_types_when_importing_the_sdk_then_they_only_live_in_the_trace_module():
+    names = {"RunTrace", "StepRecord", "DecompositionEdge"}
+
+    assert names.isdisjoint(core.__all__)
+    assert names.isdisjoint(vars(core))
+    assert all(hasattr(trace, name) for name in names)
 
 
 def test_given_any_adapter_when_looking_for_writes_then_none_can_write_direction():

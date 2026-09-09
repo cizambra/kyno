@@ -50,7 +50,6 @@ from kyno.sdk.policy import (
     TelemetryEvent,
     TelemetrySink,
 )
-from kyno.sdk.trace import DecompositionEdge, RunTrace, StepRecord
 
 __all__ = [
     "COMPACT",
@@ -58,11 +57,9 @@ __all__ = [
     "FULL",
     "Action",
     "RESOURCE_URI",
-    "DecompositionEdge",
     "GateDecision",
     "GatePolicy",
     "RealignmentGate",
-    "StepRecord",
     "Verdict",
     "VerdictSource",
     "Direction",
@@ -77,7 +74,6 @@ __all__ = [
     "PlanTracker",
     "PullPolicy",
     "RecordingSink",
-    "RunTrace",
     "SessionRunner",
     "TelemetryEvent",
     "TelemetrySink",

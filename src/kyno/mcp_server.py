@@ -119,7 +119,7 @@ def handle_whoami(token: Token | None) -> dict:
     Those answer with nulls in every field."""
     if token is None:
         return {"id": None, "name": None, "scope": None}
-    return {"id": token.id, "name": token.name, "scope": token.scope}
+    return {"id": token.id, "name": token.name, "scope": token.scope.value}
 
 
 def handle_set_direction(

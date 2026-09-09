@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 
 from kyno.errors import ConfigError, CorruptStateError, VersionConflictError
-from kyno.models import ConstitutionVersion, Publication, Token
+from kyno.models import ConstitutionVersion, Publication, Token, TokenScope
 from kyno.store.schema import build_metadata
 from kyno.wire.errors import CoherenceError
 from kyno.wire.models import Principle, normalize_principles
@@ -389,22 +389,28 @@ class SqlConstitutionStore:
         )
 
     def add_token(
-        self, name: str, scope: str, *, token_hash: str, expires_at: datetime | None = None
+        self,
+        name: str,
+        scope: TokenScope | str,
+        *,
+        token_hash: str,
+        expires_at: datetime | None = None,
     ) -> Token:
         """Insert one token row. The caller holds the value; only its hash
         arrives here."""
+        token_scope = TokenScope(scope)
         now = datetime.now(UTC)
         with self.engine.begin() as conn:
             tid = conn.execute(
                 insert(self._tokens).values(
                     name=name,
-                    scope=scope,
+                    scope=token_scope.value,
                     token_hash=token_hash,
                     created_at=now,
                     expires_at=expires_at,
                 )
             ).inserted_primary_key[0]
-        return Token(id=tid, name=name, scope=scope, created_at=now, expires_at=expires_at)
+        return Token(id=tid, name=name, scope=token_scope, created_at=now, expires_at=expires_at)
 
     def token(self, token_id: int) -> Token | None:
         with self.engine.connect() as conn:

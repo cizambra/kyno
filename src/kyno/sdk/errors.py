@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: MIT
 """Transport errors raised while an SDK connection is unavailable."""
 
 from kyno.wire.errors import CoherenceError

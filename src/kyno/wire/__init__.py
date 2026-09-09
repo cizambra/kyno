@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: MIT
 """Portable contracts shared by Core, the SDK, and adapters."""
 
 from kyno.wire.errors import CoherenceError, MalformedPrincipleError, UnknownPrincipleError

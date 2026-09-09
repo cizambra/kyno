@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from kyno.sdk.cell import COMPACT, Direction, DirectionCell, check_context

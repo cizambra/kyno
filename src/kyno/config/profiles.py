@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: MIT
 """The two client-side files behind remote mode: remotes and credentials.
 
 Both live in the user config directory and are written only by the

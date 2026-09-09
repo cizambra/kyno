@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: MIT
 """Errors raised while resolving client-owned configuration."""
 
 from kyno.wire.errors import CoherenceError

@@ -1,8 +1,4 @@
-"""Files under the MIT subtrees carry their license with them, because they
-are the files meant to be copied out of the repository. A contributor who
-forgets the header gets told here, with the exact line to paste. Files
-outside these subtrees need no header: the root LICENSE says everything
-unlabeled is under the Elastic License 2.0."""
+"""Licensing follows package boundaries, not individual source files."""
 
 from tests.paths import REPO_ROOT
 
@@ -11,24 +7,20 @@ MIT_DIRS = ("sdk", "adapters", "conformance", "wire", "config")
 HEADER = "# SPDX-License-Identifier: MIT"
 
 
-def test_given_the_mit_subtrees_when_scanning_headers_then_every_file_starts_with_mit():
+def test_given_the_mit_subtrees_when_reading_their_licenses_then_each_is_mit():
     missing = []
     for mit_dir in MIT_DIRS:
-        for path in sorted((SRC / mit_dir).rglob("*.py")):
-            if "__pycache__" in path.parts:
-                continue
-            if path.read_text().split("\n", 1)[0] != HEADER:
-                name = path.relative_to(SRC.parent.parent)
-                missing.append(f"{name}: add this first line -> {HEADER}")
+        path = SRC / mit_dir / "LICENSE"
+        if not path.exists() or not path.read_text().startswith("MIT License"):
+            missing.append(str(path.relative_to(REPO_ROOT)))
     assert not missing, "\n" + "\n".join(missing)
 
 
-def test_given_files_outside_the_mit_subtrees_when_scanning_headers_then_none_claims_mit():
-    wrong = []
+def test_given_python_files_when_scanning_headers_then_none_claims_its_own_license():
+    headers = []
     for path in sorted(SRC.rglob("*.py")):
-        relative = path.relative_to(SRC)
-        if "__pycache__" in path.parts or relative.parts[0] in MIT_DIRS:
+        if "__pycache__" in path.parts:
             continue
         if path.read_text().split("\n", 1)[0] == HEADER:
-            wrong.append(str(path.relative_to(SRC.parent.parent)))
-    assert not wrong, f"these files are not under an MIT subtree: {wrong}"
+            headers.append(str(path.relative_to(REPO_ROOT)))
+    assert not headers, f"licenses belong at package boundaries, not source files: {headers}"

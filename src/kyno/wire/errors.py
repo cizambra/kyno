@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: MIT
 """Errors that cross the Core/SDK contract boundary."""
 
 

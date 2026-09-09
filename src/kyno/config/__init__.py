@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: MIT
 """Portable profile and credential resolution shared by Core and the SDK."""
 
 from kyno.config.errors import ConfigError, ProfileError

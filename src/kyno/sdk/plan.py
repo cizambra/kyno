@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: MIT
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.cell import Direction
 

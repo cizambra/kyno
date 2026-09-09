@@ -110,7 +110,8 @@ write it in that place.
 
 ## Licensing of new files
 
-New files under `src/kyno/sdk/`, `src/kyno/adapters/`, or
-`src/kyno/conformance/` start with the SPDX license line. Copy it from
-any neighboring file; a test fails if it is missing. Files anywhere else
-need no header.
+Licensing follows package boundaries. Portable MIT code belongs under a
+subtree with its own `LICENSE` file, such as `src/kyno/sdk/`,
+`src/kyno/adapters/`, `src/kyno/conformance/`, `src/kyno/wire/`, or
+`src/kyno/config/`. Source files do not carry individual license headers.
+Files outside those subtrees are covered by the repository's root license.

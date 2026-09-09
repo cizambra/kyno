@@ -17,16 +17,18 @@ from kyno.errors import (
 )
 from kyno.models import (
     AUTHORIZATIONS,
-    DIRECTION_MARKER,
-    ChangesSince,
     ConstitutionVersion,
-    Principle,
     Publication,
     PublicConstitution,
     PublicVersion,
-    normalize_principles,
 )
 from kyno.store.base import ConstitutionStore
+from kyno.wire.models import (
+    DIRECTION_MARKER,
+    ChangesSince,
+    Principle,
+    normalize_principles,
+)
 
 # The size limits for a constitution, checked before anything is written. Large enough for a
 # hand-written document, and a hard stop for a machine-generated payload.

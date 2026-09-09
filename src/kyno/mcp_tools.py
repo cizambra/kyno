@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import mcp.types as types
 
-from kyno.models import DETAIL_LEVELS, FULL, READ, WRITE
+from kyno.models import READ, WRITE
+from kyno.wire.models import DETAIL_LEVELS, FULL
 
 # get_principles has its own detail vocabulary: "titles" names exactly what
 # the small answer contains, where "compact" only means something when the

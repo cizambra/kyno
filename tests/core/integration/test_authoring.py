@@ -10,9 +10,9 @@ from typer.testing import CliRunner
 from kyno.authoring import read_constitution_file
 from kyno.cli import app
 from kyno.errors import AuthoringError
-from kyno.models import Principle
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
+from kyno.wire.models import Principle
 from tests.workspaces import cli_workspace
 
 runner = CliRunner()

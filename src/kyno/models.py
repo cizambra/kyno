@@ -1,23 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 
-from kyno.errors import MalformedPrincipleError, UnknownPrincipleError
-
-_PRINCIPLE_KEYS = ("title", "description")
-
-# The header the adapters put on the direction block they inject into model calls. Defined next
-# to the document model because the write path rejects constitution text containing it, so a
-# field cannot fake a direction block.
-DIRECTION_MARKER = "[kyno:direction"
-
-# How much of a constitution a caller wants: the titles only, or the whole document. The long
-# text is the expensive part, so compact is the default.
-COMPACT = "compact"
-FULL = "full"
-DETAIL_LEVELS = (COMPACT, FULL)
+from kyno.wire.errors import UnknownPrincipleError
+from kyno.wire.models import (
+    FULL,
+    HoldsPrinciples,
+    Principle,
+    check_detail,
+)
 
 # Who approved a write. Recorded at write time because it cannot be worked out later: an
 # operator answered the questions, automation ran under the checks, or the override flag skipped
@@ -32,87 +24,6 @@ AUTHORIZATIONS = (OPERATOR, AUTOMATION, OVERRIDE)
 READ = "read"
 WRITE = "write"
 SCOPES = (READ, WRITE)
-
-
-def check_detail(detail: str, what: str = "detail") -> str:
-    if detail not in DETAIL_LEVELS:
-        raise ValueError(f"unknown {what} '{detail}': choose one of {', '.join(DETAIL_LEVELS)}")
-    return detail
-
-
-def _text(value, field: str) -> str:
-    if value is None:
-        return ""
-    if not isinstance(value, str):
-        raise MalformedPrincipleError(
-            f"a principle's {field} must be text, got {type(value).__name__}"
-        )
-    return value.strip()
-
-
-@dataclass(frozen=True)
-class Principle:
-    """The short operational handle an agent is steered by, and the paragraph
-    that settles an argument about what it means. A principle with no
-    description is the whole of what a principle used to be."""
-
-    title: str
-    description: str = ""
-
-    @classmethod
-    def of(cls, value) -> Principle:
-        """Accept a principle in any shape a caller may hold one: the object,
-        a plain title, or a {title, description} mapping."""
-        if isinstance(value, cls):
-            return value
-        if isinstance(value, str):
-            return cls(title=_require_title(_text(value, "title")))
-        if isinstance(value, Mapping):
-            unknown = sorted(set(value) - set(_PRINCIPLE_KEYS))
-            if unknown:
-                raise MalformedPrincipleError(
-                    f"unknown key(s) on a principle: {', '.join(unknown)} "
-                    f"(a principle takes {' and '.join(_PRINCIPLE_KEYS)})"
-                )
-            return cls(
-                title=_require_title(_text(value.get("title"), "title")),
-                description=_text(value.get("description"), "description"),
-            )
-        raise MalformedPrincipleError(
-            f"a principle must be a title or a title-and-description, got {type(value).__name__}"
-        )
-
-    def to_dict(self, detail: str = FULL) -> dict:
-        # At full detail both keys are always present, and "" means the principle has no
-        # description. A compact read leaves the key out entirely, which means the caller did
-        # not ask for it.
-        if check_detail(detail) == COMPACT:
-            return {"title": self.title}
-        return {"title": self.title, "description": self.description}
-
-
-def _require_title(title: str) -> str:
-    if not title:
-        raise MalformedPrincipleError("a principle needs a title")
-    return title
-
-
-def normalize_principles(values: Iterable | None) -> tuple[Principle, ...] | None:
-    """None survives as None, because that is how callers say "carry the
-    previous principles forward" rather than "set an empty list"."""
-    if values is None:
-        return None
-    if isinstance(values, str | Mapping):
-        raise MalformedPrincipleError("principles must be a list of principles, not a single one")
-    return tuple(Principle.of(v) for v in values)
-
-
-class HoldsPrinciples:
-    """Normalizes on construction, so every caller that has always passed
-    plain strings keeps working and every reader sees the same shape."""
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "principles", normalize_principles(self.principles) or ())
 
 
 @dataclass(frozen=True)
@@ -218,38 +129,6 @@ class PublicConstitution(HoldsPrinciples):
             "version": self.version,
             "last_changed_at": self.last_changed_at.isoformat(),
         }
-
-
-@dataclass(frozen=True)
-class ChangesSince(HoldsPrinciples):
-    current_version: int
-    changed: bool
-    mission: str
-    principles: tuple[Principle, ...]
-    changed_mission: bool
-    changed_principles: bool
-    change_notes: tuple[str, ...]
-    declaration: str = ""
-    # What changed, computed rather than written. The note says why the direction changed; the
-    # delta says which fields changed.
-    delta: tuple[str, ...] = ()
-
-    def to_dict(self, detail: str = FULL) -> dict:
-        # The change metadata is included at every detail level: it is small, and it tells a
-        # consumer whether to read further.
-        payload = {
-            "current_version": self.current_version,
-            "changed": self.changed,
-            "mission": self.mission,
-        }
-        if check_detail(detail) == FULL:
-            payload["declaration"] = self.declaration
-        payload["principles"] = [p.to_dict(detail) for p in self.principles]
-        payload["changed_mission"] = self.changed_mission
-        payload["changed_principles"] = self.changed_principles
-        payload["change_notes"] = list(self.change_notes)
-        payload["delta"] = list(self.delta)
-        return payload
 
 
 @dataclass(frozen=True)

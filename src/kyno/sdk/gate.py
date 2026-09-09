@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Protocol
 
-from kyno.models import Principle
 from kyno.sdk.cell import Direction
 from kyno.sdk.policy import (
     DRIFT_BLOCKED,
@@ -17,6 +16,7 @@ from kyno.sdk.policy import (
     TelemetryEvent,
     TelemetrySink,
 )
+from kyno.wire.models import Principle
 
 NO_SOURCE = "no_source"
 SOURCE_ERROR = "source_error"

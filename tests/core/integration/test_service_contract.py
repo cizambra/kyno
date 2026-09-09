@@ -4,15 +4,15 @@ import pytest
 
 from kyno.errors import (
     EmptyChangeError,
-    MalformedPrincipleError,
     UnknownConstitutionError,
     UnknownVersionError,
     UnpublishableNameError,
     VersionConflictError,
 )
-from kyno.models import Principle
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
+from kyno.wire.errors import MalformedPrincipleError
+from kyno.wire.models import Principle
 
 
 class AlwaysConflictStore:

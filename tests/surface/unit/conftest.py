@@ -1,6 +1,6 @@
 import pytest
 
-from kyno.models import COMPACT, ChangesSince
+from kyno.wire.models import COMPACT, ChangesSince
 
 
 class ScriptedDirectionSource:

@@ -1,9 +1,9 @@
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from kyno.models import normalize_principles
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
+from kyno.wire.models import normalize_principles
 
 # A title must survive being stripped; the shapes are mixed on purpose, so
 # the change-detection property covers described and title-only principles

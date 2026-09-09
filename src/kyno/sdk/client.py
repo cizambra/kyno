@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
 from kyno.errors import KynoRefusedError, KynoUnavailableError
-from kyno.models import COMPACT, ChangesSince
+from kyno.wire.models import COMPACT, ChangesSince
 
 # The resource Kyno announces version changes on. The server sends a `resources/updated`
 # notification here every time a version is appended, and any client can subscribe. Defined in

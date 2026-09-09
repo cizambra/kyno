@@ -43,7 +43,17 @@ def test_given_the_core_when_reading_its_exports_then_one_documented_surface_sho
 
 def test_given_the_exports_when_comparing_to_the_docs_then_nothing_extra_leaks():
     """__all__ is the public contract; anything else public is an accident."""
-    modules = {"binder", "cell", "client", "gate", "plan", "policy", "subscriber", "trace"}
+    modules = {
+        "binder",
+        "cell",
+        "client",
+        "errors",
+        "gate",
+        "plan",
+        "policy",
+        "subscriber",
+        "trace",
+    }
     public = {name for name in vars(core) if not name.startswith("_")} - modules
 
     assert public == set(core.__all__)

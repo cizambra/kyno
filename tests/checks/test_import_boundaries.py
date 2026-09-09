@@ -1,6 +1,7 @@
 """The MIT integration surface must not depend on Elastic/Core modules."""
 
 import ast
+import importlib
 import subprocess
 import sys
 from pathlib import Path
@@ -9,7 +10,7 @@ from tests.paths import REPO_ROOT
 
 SRC = REPO_ROOT / "src" / "kyno"
 MIT_SUBTREES = {"sdk", "adapters", "conformance", "wire", "config"}
-MIT_MODULES = MIT_SUBTREES | {"client_errors"}
+MIT_MODULES = MIT_SUBTREES
 
 
 def _kyno_imports(path: Path) -> list[str]:
@@ -42,3 +43,10 @@ def test_given_the_mit_config_when_imported_then_it_does_not_load_core_modules()
         "assert not {'kyno.errors', 'kyno.models', 'kyno.service'} & set(sys.modules), sys.modules"
     )
     assert subprocess.run([sys.executable, "-c", code], check=False).returncode == 0
+
+
+def test_given_sdk_transport_errors_when_importing_them_then_the_sdk_owns_the_module():
+    errors = importlib.import_module("kyno.sdk.errors")
+
+    assert errors.KynoUnavailableError.__module__ == "kyno.sdk.errors"
+    assert errors.KynoRefusedError.__module__ == "kyno.sdk.errors"

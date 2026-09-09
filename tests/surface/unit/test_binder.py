@@ -1,9 +1,9 @@
 import pytest
 
-from kyno.client_errors import KynoUnavailableError
 from kyno.errors import UnknownVersionError
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.cell import COMPACT, FULL, Direction, DirectionCell
+from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.policy import (
     PULL_FAILED_EMPTY,
     PULL_FAILED_STALE,

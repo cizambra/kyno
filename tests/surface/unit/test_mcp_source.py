@@ -4,8 +4,8 @@ from contextlib import asynccontextmanager
 
 import pytest
 
-from kyno.client_errors import KynoRefusedError, KynoUnavailableError
 from kyno.sdk.client import KynoBinding, SessionRunner, http_session
+from kyno.sdk.errors import KynoRefusedError, KynoUnavailableError
 
 
 class _Refused(Exception):

@@ -134,7 +134,8 @@ def connect(
             raise _config.ProfileError("explicit url requires token")
         binding = KynoBinding(endpoint=_config.normalize_endpoint(url, profile=False), token=token)
     else:
-        resolved = _config.resolve(profile or _config.DEFAULT_PROFILE, token_override=token)
+        selected_profile = _config.DEFAULT_PROFILE if profile is None else profile
+        resolved = _config.resolve(selected_profile, token_override=token)
         binding = KynoBinding(
             endpoint=_config.normalize_endpoint(resolved.url, profile=True),
             token=resolved.token,

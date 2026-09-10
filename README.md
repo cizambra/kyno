@@ -162,7 +162,7 @@ rather than judging outputs itself.
 Kyno runs locally with SQLite or uses PostgreSQL for production deployments.
 Serve it over stdio for a local process or HTTP with scoped, revocable
 bearer tokens. See [Operating Kyno](docs/operating.md) for configuration,
-migrations, authentication, and deployment.
+authentication, and deployment.
 
 ## Documentation
 

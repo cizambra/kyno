@@ -115,3 +115,42 @@ def test_given_an_existing_recovery_file_when_extracting_then_it_is_not_overwrit
 
     assert result.returncode != 0
     assert output.read_text() == "reviewed file"
+
+
+def test_given_three_versions_when_extracting_v2_then_only_v2_content_is_written(tmp_path):
+    history = tmp_path / "history.json"
+    rows = [
+        {
+            "version": version,
+            "mission": f"Mission {version}",
+            "declaration": f"Declaration {version}",
+            "principles": [{"title": f"Principle {version}", "description": "Full detail"}],
+            "created_by": "previous author",
+        }
+        for version in (1, 2, 3)
+    ]
+    history.write_text(json.dumps(rows), encoding="utf-8")
+    output = tmp_path / "recovery.json"
+
+    result = extract(history, 2, "support", output)
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(output.read_text()) == {
+        "constitution": "support",
+        "mission": "Mission 2",
+        "declaration": "Declaration 2",
+        "principles": [{"title": "Principle 2", "description": "Full detail"}],
+    }
+
+
+def test_given_duplicate_versions_when_extracting_then_no_recovery_file_is_created(tmp_path):
+    history = tmp_path / "history.json"
+    row = {"version": 2, "mission": "Help", "declaration": "", "principles": []}
+    history.write_text(json.dumps([row, {**row, "mission": "Different content"}]), encoding="utf-8")
+    output = tmp_path / "recovery.json"
+
+    result = extract(history, 2, "support", output)
+
+    assert result.returncode != 0
+    assert "Expected exactly one version 2; found 2" in result.stderr
+    assert not output.exists()

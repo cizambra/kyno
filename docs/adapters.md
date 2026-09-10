@@ -157,20 +157,50 @@ flowchart TB
   end
 ```
 
-On LangGraph, inherit `KynoState` in your graph's state schema and put
-`direction_node` ahead of the work. LangGraph passes along only the keys a schema
-declares, so without `KynoState` the direction a node pulls never reaches the
-nodes after it:
+### LangGraph: required integration
+
+Kyno supplies `KynoState`, `direction_node`, and `pull_before`. You supply
+the graph and the node that calls your model.
+
+1. Inherit `KynoState` in your graph's state schema. LangGraph only carries
+   keys declared by that schema.
+2. Wrap your model-calling node with `pull_before`, or place a
+   `direction_node` before it in the graph. Choose one boundary; using both
+   there would pull twice.
+3. Include `state["kyno_direction"]` in the model's input. The adapter
+   populates graph state; it does not modify your model's messages for you.
+
+With a binder from `connection.binder()` and your configured chat model,
+the node can look like this:
 
 ```python
-from kyno.adapters.langgraph import KynoState, direction_node
+from kyno.adapters.langgraph import KynoState, pull_before
 
 
 class State(KynoState, total=False):
+    messages: list[dict]
     output: str
+
+
+@pull_before(binder, constitution="customer-support")
+def answer(state):
+    messages = [
+        {"role": "system", "content": state["kyno_direction"]},
+        *state["messages"],
+    ]
+    return {"output": model.invoke(messages).content}
 ```
 
-### Recording direction supplied to a LangGraph step
+`answer` is an example name for your own graph node, not a Kyno function
+to implement or override. Decorate your existing node and register it in
+your graph as usual. `model` is your application's model client.
+
+The decorator pulls once before the node runs, applies the binder's
+failure policy, and supplies direction and delivery metadata in state.
+You do not need to implement those steps yourself. You also do not need
+receipt storage, run IDs, or step IDs for this integration to work.
+
+### LangGraph: delivery metadata provided by Kyno
 
 `direction_node` and `pull_before` write `kyno_delivery_status` alongside
 the existing constitution, version, and rendered `kyno_direction` block.
@@ -181,42 +211,47 @@ you need an enum. A missing key or `None` means unknown, not `current`.
 Calling `direction_update(direction)` without binding status writes `None`
 so it cannot preserve a status from an earlier binding.
 
-Record the state received by the work node, not the binder's latest cached
-value. Use `kyno_direction` directly: it contains the exact rendered block,
-including any change notes and delta. Rebuilding it with
-`direction_from_state()` loses that change context.
-
-```python
-from kyno.adapters.langgraph import pull_before
-
-
-@pull_before(binder, constitution="customer-support")
-def answer(state):
-    block = state["kyno_direction"]
-    messages = [{"role": "system", "content": block}, *state["messages"]]
-    record_receipt(
-        run_id=state["run_id"],
-        step_id=state["step_id"],
-        constitution=state["kyno_constitution"],
-        version=state["kyno_version"],
-        status=state["kyno_delivery_status"],
-        context=state["kyno_context"],
-        direction=block,
-    )
-    return {"output": model.invoke(messages).content}
-```
-
-Here `model` and `record_receipt` belong to your application. Declare the
-additional input keys in your state schema and assign a unique step ID
-within each run. Store receipts only where you intend to retain potentially
-sensitive direction. A receipt records supplied context, not a completed
-model call or evidence that the model followed it.
+If you configure a LangGraph checkpointer, these declared state keys are
+saved with the graph's other state. Kyno does not configure checkpoint
+storage for you. Checkpointing is optional for consuming direction.
 
 A direction node before a fan-out supplies the same snapshot to its branches.
 Later pulls do not change earlier receipts. Resuming a checkpoint without
 another pull preserves the original delivery status; it does not establish
 that the saved version is still current. Work nodes should leave the
 `kyno_` direction keys unchanged so the checkpoint describes their input.
+
+### LangGraph: optional per-step receipt recording
+
+Only add this if your application needs a separate record of the direction
+supplied to each model call. It is not required by the adapter.
+
+Record the state received by the work node, not the binder's latest cached
+value. Use `kyno_direction` directly: it contains the exact rendered block,
+including any change notes and delta. Rebuilding it with
+`direction_from_state()` loses that change context.
+
+For example, insert this inside your node after constructing the model's
+messages and before calling the model:
+
+```python
+record_receipt(
+    run_id=state["run_id"],
+    step_id=state["step_id"],
+    constitution=state["kyno_constitution"],
+    version=state["kyno_version"],
+    status=state["kyno_delivery_status"],
+    context=state["kyno_context"],
+    direction=state["kyno_direction"],
+)
+```
+
+`record_receipt` is an application-defined function, not a Kyno API.
+If you choose this extension, provide that function, declare `run_id` and
+`step_id` in your state schema, and assign a unique step ID within each
+run. Store receipts only where you intend to retain potentially
+sensitive direction. A receipt records supplied context, not a completed
+model call or evidence that the model followed it.
 
 ### Acting on a change
 

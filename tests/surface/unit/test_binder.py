@@ -271,7 +271,7 @@ def test_given_a_failed_pull_when_the_source_recovers_then_a_new_binding_is_curr
     assert fallback.status is (DeliveryStatus.CACHED if cached else DeliveryStatus.EMPTY)
 
 
-def test_given_one_cached_constitution_when_another_pull_fails_then_it_has_no_fallback(
+def test_given_only_sales_cached_when_support_pull_fails_then_support_binding_is_empty(
     scripted_source,
 ):
     binder = DirectionBinder(scripted_source)

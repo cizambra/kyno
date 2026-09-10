@@ -101,7 +101,7 @@ still needs that context even if it has been trained to behave safely.
 ## Quick start
 
 ```bash
-pip install "kyno[crewai]"
+pip install kyno
 kyno new acme && cd acme  # the workspace: this instance's config and store
 kyno db init
 printf 'constitution: default\nmission: Ship a lending product people trust\n' > constitution.yaml
@@ -122,7 +122,30 @@ Leave the server running. In another terminal, make the token available as
 token for that terminal, run `export APP_TOKEN="$(kyno token add reader --scope read)"`
 from the same workspace. Keep tokens out of source control.
 
+```python
+import kyno
+
+with kyno.connect() as connection:
+    direction = connection.binder().bind()
+    print(direction.version, direction.mission)
+```
+
+This reads direction through the SDK without an agent framework. It uses
+the default profile created above. You can also pass values the application
+already owns: `kyno.connect(url=KYNO_URL, token=APP_TOKEN)`. The SDK does not
+read `KYNO_URL` or `KYNO_TOKEN` by name.
+
 ## Use it from an agent framework
+
+To connect CrewAI, install its extra in the same Python environment:
+
+```bash
+pip install "kyno[crewai]"
+```
+
+The adapter code is bundled with Kyno; the extra adds its framework
+dependencies. You can install it after the base package, without
+uninstalling Kyno. Then extend the Python example to register the hook:
 
 ```python
 import kyno
@@ -142,14 +165,21 @@ with kyno.connect() as connection:
 Run your existing crew inside the `try` block, while the connection and
 hook are active. The example fetches direction without making a model call.
 
-The example uses the default profile created above. You can also pass values the application already
-owns: `kyno.connect(url=KYNO_URL, token=APP_TOKEN)`. The SDK does not read
-`KYNO_URL` or `KYNO_TOKEN` by name.
-
 The CrewAI hook pulls before each model call and refreshes the direction
-in its context. For LangGraph, install `kyno[langgraph]` and place a
-`direction_node` before each work node that needs a refresh. Shipped
-adapters are read-only and pull-only. They do not subscribe to Core notifications.
+in its context.
+
+For LangGraph instead, install its extra:
+
+```bash
+pip install "kyno[langgraph]"
+```
+
+Place a `direction_node` before each work node that needs a refresh; see
+the [LangGraph integration](docs/adapters.md). If you use both frameworks
+in one environment, install `pip install "kyno[crewai,langgraph]"`.
+Each integration can select a different named constitution from the same
+server. Shipped adapters are read-only and pull-only. They do not subscribe
+to Core notifications.
 
 If a pull fails, the default policy logs the failure and uses cached
 direction, or empty version 0 if nothing has been fetched yet. Set

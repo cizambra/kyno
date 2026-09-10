@@ -113,7 +113,7 @@ def test_given_checkpointed_direction_when_resuming_without_a_pull_then_its_stat
     assert resumed["receipts"][0]["kyno_direction"] == paused["kyno_direction"]
 
 
-def test_given_a_fan_out_when_a_later_pull_fails_then_earlier_receipts_keep_their_current_status(
+def test_given_two_current_step_receipts_when_next_pull_fails_then_only_new_receipt_is_cached(
     source,
 ):
     binder = DirectionBinder(source)

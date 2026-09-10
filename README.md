@@ -7,47 +7,26 @@
 [![Site](https://img.shields.io/badge/site-cizambra.github.io%2Fkyno-blue)](https://cizambra.github.io/kyno/)
 
 **Kyno makes direction a first-class runtime primitive.** It gives running
-agents a shared, versioned source of mission and principles. Direction has
-its own identity, current version, history, and interface for retrieving it.
-
-You publish direction to Kyno. Adapters fetch it and put it into the agent's
-context before its next step. You can change direction while a workflow
-continues; subsequent successful pulls receive the updated version.
-
-Your framework still schedules tasks and runs agents. The model reasons
-about what to do. Kyno supplies the direction that reasoning should use.
-
-![An operator publishes a constitution change into Kyno, and each agent in a four-agent workflow picks the new version up at its own next step.](https://raw.githubusercontent.com/cizambra/kyno/main/docs/media/demo.gif)
-
-## When agents work toward the wrong goal
+agents a shared, versioned source of mission and principles, with its own
+identity, current version, history, and interface for retrieving it.
 
 Suppose your sales agent is optimizing for new revenue. You change the
-priority to retaining existing customers, but a running workflow still
-carries the old instructions. The agent can execute its task correctly
-while working toward yesterday's goal.
+priority to retaining customers, but its workflow still carries the old
+instructions. It can execute correctly while working toward yesterday's goal.
+Direction copied into prompts and configuration can become stale or diverge
+between agents. Kyno gives those integrations one authoritative source to consult.
 
-Even an up-to-date goal can leave important tradeoffs unstated. A goal
-tells an agent what to optimize. Principles help it judge how:
+A goal tells an agent what to optimize. Principles help it judge how—for
+example, protecting long-term trust over short-term revenue. The aim is to
+**optimize locally without losing coherence globally**, not to promise that
+supplying principles makes every decision correct.
 
-```text
-Mission: Build sustainable revenue by delivering real value customers willingly pay for.
+Kyno is a coherence control plane, not an orchestrator or a general AI
+governance system. Your framework runs the workflow, permissions restrict
+available actions, and the model reasons. Kyno supplies the organizational
+direction that reasoning should use.
 
-Principles:
-- Revenue follows value delivered.
-- Never manufacture demand or consent.
-- Protect long-term trust over short-term metrics.
-```
-
-The aim is to **optimize locally without losing coherence globally**.
-An agent can make a locally reasonable choice that conflicts with broader
-intent. Supplying that intent gives the model more information for its
-judgment; it does not prove the judgment will be correct.
-
-Agent systems already give tools, memory, reasoning, and execution their
-own infrastructure. Direction is often copied into prompts, configuration,
-repository files, or framework state. Those copies can become stale or
-diverge as work moves between agents. Kyno gives them one authoritative
-source to consult, whether direction changes or stays the same.
+![An operator changes direction while a four-agent workflow continues; agents fetch the new version at their next steps.](https://raw.githubusercontent.com/cizambra/kyno/main/docs/media/demo.gif)
 
 ## A change during a run
 
@@ -64,7 +43,7 @@ sequenceDiagram
     Adapter->>Kyno: Fetch current direction
     Kyno-->>Adapter: Version 1
     Adapter->>Agent: Supply v1 before the step
-    Operator->>Kyno: Publish revised mission and principles
+    Operator->>Kyno: Apply revised mission and principles
     Note over Kyno: Commit version 2
     Note over Adapter,Agent: The workflow continues
     Adapter->>Kyno: Fetch at the next step
@@ -77,26 +56,9 @@ CrewAI, the hook before a model call; for LangGraph, the direction node
 you place before a work node. The model does not have to remember to fetch
 direction itself.
 
-## Where Kyno fits
-
-| Component | Responsibility |
-| --- | --- |
-| Permissions and security controls | Restrict the actions an agent may take. |
-| Your framework | Schedule tasks, call tools, and run the workflow. |
-| Memory | Retain information the system can use. |
-| Kyno | Store, version, and deliver current mission and principles. |
-| The model | Reason about the task and the supplied direction. |
-| An optional verifier | Evaluate whether the output or action cohered with that direction. |
-
-Kyno is a coherence control plane: its control is over the direction record
-and access to it. It is not an orchestrator or a general AI governance
-system. Boundaries constrain what agents may do. Kyno supplies the direction
-they should use to decide what to do.
-
-Model alignment concerns the values and behavioral tendencies developed
-in a model. Kyno provides runtime organizational direction: the mission,
-principles, and tradeoffs for this particular system, today. Your model
-still needs that context even if it has been trained to behave safely.
+Direction responses include a version your integration can record for each
+step. That lets you retrieve the mission and principles supplied at that
+point, rather than infer them from when an update was applied.
 
 ## Quick start
 
@@ -181,109 +143,32 @@ Each integration can select a different named constitution from the same
 server. Shipped adapters are read-only and pull-only. They do not subscribe
 to Core notifications.
 
-If a pull fails, the default policy logs the failure and uses cached
-direction, or empty version 0 if nothing has been fetched yet. Set
-`PullPolicy(fail_closed=True)` on the binder to raise an error instead.
-See [adapter failure policies](docs/adapters.md) before deploying.
+## Limits
 
-## Could I do this with Git or a system prompt?
+Current direction depends on a successful pull. By default, a failed pull
+is logged and the binder uses cached direction, or empty version 0 if it
+has never fetched direction. Set `PullPolicy(fail_closed=True)` on the
+binder to raise an error instead. See [adapter failure policies](docs/adapters.md)
+before deploying.
 
-Yes. Git can store and review mission and principles, and a prompt or file
-can be enough for a short workflow with fixed direction.
-
-For a running system, you still need to decide which revision is active,
-fetch it before work proceeds, refresh the agent's context, and record
-which version was supplied. Kyno provides that shared runtime contract.
-Direction has its own publication and retrieval operations, independent
-of deploying workflow code.
-
-You can author and review a constitution in Git, then publish it explicitly
-with `kyno apply`. Automatic Git synchronization is not part of the MVP.
-
-## What Kyno does, and its limits
-
-These describe the implemented behavior, not a promise about agent outcomes
-or uninterrupted delivery. A failed pull follows the configured failure policy.
-
-- Each named constitution has an authoritative current version and immutable history.
-- Committed updates are available to subsequent reads without restarting the workflow.
-- Integrated adapters pull at the boundaries where they are installed. A successful
-  pull supplies the version current at the time of the read; failure follows the configured policy.
-- Direction responses carry a version. Your integration can record it for each step.
-- Authenticated HTTP access uses scoped, revocable tokens; remote writes record token attribution.
-
-The supplied version tells you which direction the agent received. It does
-not prove that the agent followed it. Kyno cannot guarantee correct
-principle interpretation, prevent all drift, or establish that a system is safe.
-New direction also does not rewrite an already-running task or replan a workflow.
-
-An independent verifier such as [Canon](https://github.com/cizambra/canon)
-can assess outputs against that direction. Kyno's optional realignment gate
-consumes external verdicts; Kyno does not ship a judge. Verification and
-hard execution boundaries complement direction delivery.
-
-The architecture addresses stale and divergent direction copies. Claims
-about improved agent behavior require benchmarks of the actual integration
-and task; external alignment research alone does not establish Kyno's effectiveness.
-
-- [The adapters in depth](docs/adapters.md): CrewAI, LangGraph, the
-  failure postures, and the realignment gate.
-- [Build your own adapter](docs/integrating.md): everything you need to
-  build one, for any framework or language, with a conformance checker.
-
-## What a constitution is
-
-A constitution is a mission plus ordered principles. The mission is the
-overarching purpose, and the tie-breaker when principles conflict. Both
-can hold longer prose: a declaration under the mission, a description
-under any principle.
-
-The examples in this README read like strategy, but a constitution is
-not limited to it. Operational principles are just as good a use case:
-your quality bar, the tone you expect, or how you prioritize.
-
-It is written in a file:
-
-```yaml
-# constitution.yaml
-constitution: default
-mission: Ship a lending product people trust with their worst month
-principles:
-  - Say the hard number first
-  - title: Refuse clearly
-    description: |
-      If we cannot lend, we say so on the first screen, and we say why.
-```
-
-```bash
-kyno apply constitution.yaml --note "the constitution as written"
-```
-
-The full file semantics, and running several constitutions side by side,
-are in [Writing constitutions](docs/constitutions.md).
-
-## Why versioning matters
-
-Every change appends a new immutable version with a plain-language change
-note. When your integration records the version supplied to a step, you
-can retrieve that exact mission and principles later. Store history alone
-does not tell you what an agent received, especially if a pull failed and
-the adapter used a cached version.
+Receiving principles does not mean following them. Kyno does not establish
+that an action is aligned or safe, and a direction update does not rewrite
+an active task or replan the workflow. Verification is separate: the
+optional [realignment gate](docs/adapters.md) consumes external verdicts
+rather than judging outputs itself.
 
 ## Self-hosting
 
-Kyno self-hosts with no external services: SQLite out of the box,
-PostgreSQL in production through the workspace's `[database]` section,
-served over stdio for a
-local process or over HTTP with a bearer token for a fleet. Tokens are
-minted, listed and revoked at the database with `kyno token`, and
-`kyno whoami --remote` asks a server which token it sees behind your
-requests. A pip install ships with its own migration scripts. The
-details live in [Operating Kyno](docs/operating.md).
+Kyno runs locally with SQLite or uses PostgreSQL for production deployments.
+Serve it over stdio for a local process or HTTP with scoped, revocable
+bearer tokens. See [Operating Kyno](docs/operating.md) for configuration,
+migrations, authentication, and deployment.
 
 ## Documentation
 
-The [documentation index](docs/README.md) lays these out in reading order.
+The [website FAQ](https://cizambra.github.io/kyno/#faq) covers Git and system
+prompts, when Kyno is useful, and its relationship to governance and verification.
+The [documentation index](docs/README.md) provides a reading order for integration:
 
 - [Writing constitutions](docs/constitutions.md): the file, its fields,
   and multiple constitutions.
@@ -316,6 +201,3 @@ hosted service.
 Issues and PRs welcome on [GitHub](https://github.com/cizambra/kyno/issues).
 See [CONTRIBUTING.md](CONTRIBUTING.md) for style, test expectations, and
 how licensing applies to new files.
-
-Sibling project: [Canon](https://github.com/cizambra/canon) tests whether
-your system's outputs actually cohere with the constitution Kyno serves.

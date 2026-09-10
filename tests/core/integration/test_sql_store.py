@@ -2,7 +2,7 @@ import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import create_engine, delete, text
+from sqlalchemy import create_engine, delete, select
 
 from kyno.errors import CorruptStateError, VersionConflictError
 from kyno.models import AuthorizationType, TokenScope
@@ -477,8 +477,6 @@ def test_given_a_published_name_when_appending_a_version_then_publication_is_unt
 
 def _raw_principles(store, version=1, constitution="default"):
     """The JSON text actually written to the column."""
-    from sqlalchemy import select
-
     with store.engine.connect() as conn:
         cid = store._constitution_id(conn, constitution)
         return conn.execute(
@@ -751,7 +749,7 @@ def test_given_a_token_scope_when_storing_then_the_database_keeps_its_plain_stri
     token = store.add_token("ci", TokenScope.WRITE, token_hash="b" * 64)
 
     with store.engine.connect() as conn:
-        stored_scope = conn.execute(text("SELECT scope FROM kyno_tokens")).scalar_one()
+        stored_scope = conn.execute(select(store._tokens.c.scope)).scalar_one()
 
     assert token.scope is TokenScope.WRITE
     assert store.token(token.id).scope is TokenScope.WRITE

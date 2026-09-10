@@ -17,6 +17,7 @@ Everything an adapter needs is exported here; the framework adapters in
 import kyno.config as _config
 import kyno.sdk.client as _client
 from kyno.sdk.binder import DirectionBinder
+from kyno.sdk.binding import DeliveryStatus, DirectionBinding
 from kyno.sdk.cell import (
     DIRECTION_MARKER,
     Direction,
@@ -41,6 +42,8 @@ from kyno.sdk.telemetry import TelemetrySink
 from kyno.wire.models import DetailLevel
 
 __all__ = [
+    "DeliveryStatus",
+    "DirectionBinding",
     "DIRECTION_MARKER",
     "Action",
     "GateDecision",

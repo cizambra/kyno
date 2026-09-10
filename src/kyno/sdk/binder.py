@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 from __future__ import annotations
 
+from kyno.sdk.binding import DeliveryStatus, DirectionBinding
 from kyno.sdk.cell import Direction, DirectionCell, check_context
 from kyno.sdk.client import DirectionSource
 from kyno.sdk.errors import KynoUnavailableError
@@ -40,6 +41,17 @@ class DirectionBinder:
         self.context = check_context(context)
 
     def bind(self, constitution: str = "default") -> Direction:
+        """Pull direction, applying the configured failure policy."""
+        return self.bind_with_status(constitution).direction
+
+    def bind_with_status(self, constitution: str = "default") -> DirectionBinding:
+        """Pull once and return direction with its per-call delivery status.
+
+        Current identifies a successful read, including an unchanged or empty
+        constitution. Cached identifies a retained value after failure or an
+        older overlapping response. Empty identifies failure without a cached
+        value. A fail-closed pull failure raises instead of returning a binding.
+        """
         known = self.cell.known_version(constitution)
         try:
             changes = self._source.changes_since(known, constitution, self.context)
@@ -48,17 +60,23 @@ class DirectionBinder:
             # CoherenceError covers everything kyno raises, including the
             # adapters' KynoUnavailableError.
             return self._degrade(constitution, exc)
-        return self.cell.update(Direction.from_changes(changes, constitution, self.context))
+        direction = self.cell.update(Direction.from_changes(changes, constitution, self.context))
+        status = (
+            DeliveryStatus.CACHED
+            if direction.version > changes.current_version
+            else DeliveryStatus.CURRENT
+        )
+        return DirectionBinding(direction, status)
 
-    def _degrade(self, constitution: str, exc: Exception) -> Direction:
+    def _degrade(self, constitution: str, exc: Exception) -> DirectionBinding:
         last = self.cell.get(constitution)
         if self._policy.fail_closed:
             raise KynoUnavailableError(f"cannot reach kyno for '{constitution}': {exc}") from exc
         if last is not None:
             self._emit(EventType.PULL_FAILED_STALE, constitution, last.version, str(exc))
-            return last
+            return DirectionBinding(last, DeliveryStatus.CACHED)
         self._emit(EventType.PULL_FAILED_EMPTY, constitution, 0, str(exc))
-        return Direction.empty(constitution, self.context)
+        return DirectionBinding(Direction.empty(constitution, self.context), DeliveryStatus.EMPTY)
 
     def plan(self, constitution: str = "default"):
         from kyno.sdk.plan import PlanTracker

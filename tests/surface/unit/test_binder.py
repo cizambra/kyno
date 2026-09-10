@@ -1,7 +1,12 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
+from types import SimpleNamespace
+
 import pytest
 
 from kyno.errors import UnknownVersionError
 from kyno.sdk.binder import DirectionBinder
+from kyno.sdk.binding import DeliveryStatus
 from kyno.sdk.cell import Direction, DirectionCell
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.policy import PullPolicy
@@ -193,3 +198,142 @@ def test_given_a_compact_binding_when_pulling_then_kyno_is_asked_for_the_compact
     DirectionBinder(scripted_source).bind("eu")
     DirectionBinder(scripted_source, context=DetailLevel.FULL).bind("eu")
     assert scripted_source.details == [DetailLevel.COMPACT, DetailLevel.FULL]
+
+
+@pytest.mark.parametrize("version", [0, 3])
+def test_given_an_authoritative_reply_when_binding_with_status_then_it_is_current(
+    scripted_source, version
+):
+    scripted_source.set("sales", version, "Mission" if version else "")
+    binder = DirectionBinder(scripted_source)
+    binding = binder.bind_with_status("sales")
+    assert binding.status is DeliveryStatus.CURRENT
+    assert binding.direction.version == version
+    assert binding.direction.constitution == "sales"
+    assert scripted_source.calls == [(0, "sales")]
+
+
+@pytest.mark.parametrize("version", [0, 3])
+@pytest.mark.parametrize("failure", [OSError("offline"), UnknownVersionError("unknown")])
+def test_given_a_cached_version_when_the_pull_fails_then_the_binding_is_cached(
+    scripted_source, version, failure
+):
+    scripted_source.set("sales", version, "Mission" if version else "")
+    binder = DirectionBinder(scripted_source)
+    first = binder.bind_with_status("sales")
+    scripted_source.failure = failure
+    fallback = binder.bind_with_status("sales")
+    assert fallback.status is DeliveryStatus.CACHED
+    assert fallback.direction is first.direction
+    assert first.status is DeliveryStatus.CURRENT
+
+
+def test_given_no_cached_direction_when_the_pull_fails_then_the_binding_is_empty(scripted_source):
+    scripted_source.failure = OSError("offline")
+    binder = DirectionBinder(scripted_source, context=DetailLevel.FULL)
+    binding = binder.bind_with_status("sales")
+    assert binding.status is DeliveryStatus.EMPTY
+    assert binding.direction == Direction.empty("sales", DetailLevel.FULL)
+
+
+@pytest.mark.parametrize("cached", [False, True])
+def test_given_fail_closed_when_binding_with_status_fails_then_it_raises(scripted_source, cached):
+    binder = DirectionBinder(scripted_source, policy=PullPolicy(fail_closed=True))
+    if cached:
+        scripted_source.set("sales", 2, "Mission")
+        binder.bind_with_status("sales")
+    scripted_source.failure = OSError("offline")
+    with pytest.raises(KynoUnavailableError):
+        binder.bind_with_status("sales")
+
+
+def test_given_an_unexpected_error_when_binding_with_status_then_it_propagates(scripted_source):
+    scripted_source.failure = ValueError("bad wiring")
+    with pytest.raises(ValueError, match="bad wiring"):
+        DirectionBinder(scripted_source).bind_with_status()
+
+
+@pytest.mark.parametrize("cached", [False, True])
+def test_given_a_failed_pull_when_the_source_recovers_then_a_new_binding_is_current(
+    scripted_source, cached
+):
+    binder = DirectionBinder(scripted_source)
+    if cached:
+        scripted_source.set("sales", 1, "Old")
+        binder.bind_with_status("sales")
+    scripted_source.failure = OSError("offline")
+    fallback = binder.bind_with_status("sales")
+    scripted_source.failure = None
+    scripted_source.set("sales", 2, "New")
+    recovered = binder.bind_with_status("sales")
+    assert recovered.status is DeliveryStatus.CURRENT
+    assert recovered.direction.version == 2
+    assert fallback.status is (DeliveryStatus.CACHED if cached else DeliveryStatus.EMPTY)
+
+
+def test_given_one_cached_constitution_when_another_pull_fails_then_it_has_no_fallback(
+    scripted_source,
+):
+    binder = DirectionBinder(scripted_source)
+    scripted_source.set("sales", 3, "Sales")
+    binder.bind_with_status("sales")
+    scripted_source.failure = OSError("offline")
+    assert binder.bind_with_status("sales").status is DeliveryStatus.CACHED
+    support = binder.bind_with_status("support")
+    assert support.status is DeliveryStatus.EMPTY
+    assert support.direction.constitution == "support"
+
+
+def test_given_an_older_reply_when_the_cell_holds_newer_direction_then_the_binding_is_cached(
+    scripted_source,
+):
+    scripted_source.set("sales", 5, "New")
+    binder = DirectionBinder(scripted_source)
+    first = binder.bind_with_status("sales")
+    scripted_source.set("sales", 4, "Old")
+    retained = binder.bind_with_status("sales")
+    assert retained.direction is first.direction
+    assert retained.status is DeliveryStatus.CACHED
+    assert first.status is DeliveryStatus.CURRENT
+
+
+def test_given_bind_without_status_when_pulling_then_it_returns_direction_with_one_request(
+    scripted_source,
+):
+    scripted_source.set("sales", 2, "Sales")
+    direction = DirectionBinder(scripted_source).bind("sales")
+    assert isinstance(direction, Direction)
+    assert direction.version == 2
+    assert scripted_source.calls == [(0, "sales")]
+
+
+def test_given_overlapping_pulls_when_the_older_reply_finishes_last_then_it_returns_cached(
+    scripted_source,
+):
+    scripted_source.set("sales", 4, "Old")
+    old_reply = scripted_source.replies["sales"]
+    started = Event()
+    release = Event()
+    cell = DirectionCell()
+
+    def delayed_changes(known_version, constitution, context):
+        started.set()
+        assert release.wait(timeout=10)
+        return old_reply
+
+    slower = DirectionBinder(SimpleNamespace(changes_since=delayed_changes), cell=cell)
+    faster = DirectionBinder(scripted_source, cell=cell)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        pending = executor.submit(slower.bind_with_status, "sales")
+        try:
+            assert started.wait(timeout=10)
+            scripted_source.set("sales", 5, "New")
+            current = faster.bind_with_status("sales")
+        finally:
+            release.set()
+        retained = pending.result(timeout=10)
+
+    assert current.status is DeliveryStatus.CURRENT
+    assert retained.status is DeliveryStatus.CACHED
+    assert retained.direction is current.direction
+    assert retained.direction.version == cell.known_version("sales") == 5

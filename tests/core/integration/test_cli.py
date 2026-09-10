@@ -29,12 +29,25 @@ def apply_yaml(
         lines.extend(f"  - {p}" for p in principles)
     path = tmp_path / name
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    args = ["set", str(path)]
+    args = ["apply", str(path)]
     if note is not None:
         args += ["--note", note]
     if by is not None:
         args += ["--by", by]
     return runner.invoke(app, args)
+
+
+@pytest.mark.parametrize("command", ["apply", "history"])
+def test_given_a_direction_command_when_requesting_help_then_it_is_available(command):
+    result = runner.invoke(app, [command, "--help"])
+    assert result.exit_code == 0
+
+
+@pytest.mark.parametrize("command", ["set", "log"])
+def test_given_an_unknown_command_when_invoked_then_it_is_rejected(command):
+    result = runner.invoke(app, [command])
+    assert result.exit_code == 2
+    assert "No such command" in result.output
 
 
 def test_given_an_applied_file_when_reading_current_then_that_content_is_served(
@@ -75,7 +88,9 @@ def test_given_an_uninitialized_db_when_running_current_then_the_error_is_clean(
     assert "Traceback" not in r.output
 
 
-def test_given_an_uninitialized_db_when_running_set_then_the_error_is_clean(tmp_path, monkeypatch):
+def test_given_an_uninitialized_db_when_running_apply_then_the_error_is_clean(
+    tmp_path, monkeypatch
+):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "never_init.sqlite3")
     r = apply_yaml(tmp_path, mission="M1", note="init")
     assert r.exit_code == 1
@@ -454,7 +469,7 @@ def test_given_the_yaml_read_out_when_reapplied_then_nothing_changes(tmp_path, m
     out = runner.invoke(app, ["current", "--yaml"]).stdout
     target = tmp_path / "recovered.yaml"
     target.write_text(out, encoding="utf-8")
-    r = runner.invoke(app, ["set", str(target), "--note", "reapply"])
+    r = runner.invoke(app, ["apply", str(target), "--note", "reapply"])
     assert r.exit_code == 0
     assert "no field changed" in r.output
 
@@ -490,7 +505,7 @@ def test_given_a_named_constitution_when_reading_current_yaml_then_the_name_rout
     # The name in the output is enough to route a later apply back to eu.
     target = tmp_path / "eu.yaml"
     target.write_text(out, encoding="utf-8")
-    r = runner.invoke(app, ["set", str(target), "--note", "reapply"])
+    r = runner.invoke(app, ["apply", str(target), "--note", "reapply"])
     assert "no field changed" in r.output
 
 
@@ -514,7 +529,7 @@ def test_given_typos_and_custom_keys_when_checking_then_the_report_lists_them_wi
     )
     r = runner.invoke(app, ["check", str(target)])
     assert r.exit_code == 0
-    assert "kyno fields set: constitution, mission" in r.output
+    assert "kyno fields present: constitution, mission" in r.output
     assert "principles" in r.output
     assert "note, principals" in r.output
 
@@ -535,7 +550,7 @@ def test_given_custom_fields_when_applying_then_they_are_ignored(tmp_path, monke
     target.write_text(
         "constitution: default\nmission: M1\nnote: the file note\nteam: lending\n", encoding="utf-8"
     )
-    r = runner.invoke(app, ["set", str(target), "--note", "the real note"])
+    r = runner.invoke(app, ["apply", str(target), "--note", "the real note"])
     assert r.exit_code == 0
     payload = json.loads(r.stdout)
     assert payload["change_note"] == "the real note"
@@ -569,7 +584,7 @@ def test_given_dry_run_when_applying_then_the_delta_prints_and_nothing_is_persis
     apply_yaml(tmp_path, mission="M1", note="init")
     target = tmp_path / "next.yaml"
     target.write_text("constitution: default\nmission: M2\n", encoding="utf-8")
-    r = runner.invoke(app, ["set", str(target), "--dry-run"])
+    r = runner.invoke(app, ["apply", str(target), "--dry-run"])
     assert r.exit_code == 0
     assert 'The mission was "M1" and is now "M2".' in r.output
     head = json.loads(runner.invoke(app, ["current"]).stdout)
@@ -582,7 +597,7 @@ def test_given_identical_content_when_dry_running_then_it_says_no_field_changed(
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init", name="same.yaml")
-    r = runner.invoke(app, ["set", str(tmp_path / "same.yaml"), "--dry-run"])
+    r = runner.invoke(app, ["apply", str(tmp_path / "same.yaml"), "--dry-run"])
     assert r.exit_code == 0
     assert "no field changed" in r.output
 
@@ -592,7 +607,7 @@ def test_given_dry_run_when_no_note_is_passed_then_it_still_runs(tmp_path, monke
     runner.invoke(app, ["db", "init"])
     target = tmp_path / "next.yaml"
     target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
-    r = runner.invoke(app, ["set", str(target), "--dry-run"])
+    r = runner.invoke(app, ["apply", str(target), "--dry-run"])
     assert r.exit_code == 0
 
 
@@ -618,7 +633,7 @@ def test_given_identical_content_when_applying_then_nothing_is_written_and_the_e
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init", name="same.yaml")
-    r = runner.invoke(app, ["set", str(tmp_path / "same.yaml"), "--note", "again"])
+    r = runner.invoke(app, ["apply", str(tmp_path / "same.yaml"), "--note", "again"])
     assert r.exit_code == 0
     assert "no field changed" in r.output
     assert json.loads(r.stdout)["version"] == 1
@@ -646,33 +661,35 @@ def test_given_a_file_without_a_constitution_key_when_applying_then_it_is_refuse
     assert "no constitution set" in runner.invoke(app, ["current"]).output
 
 
-def test_given_versions_when_reading_log_then_they_list_newest_first(tmp_path, monkeypatch):
+def test_given_versions_when_reading_history_then_they_list_newest_first(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="first", by="camilo")
     apply_yaml(tmp_path, mission="M2", note="second", by="ci")
-    r = runner.invoke(app, ["log"])
+    r = runner.invoke(app, ["history"])
     assert r.exit_code == 0
     lines = r.stdout.strip().splitlines()
     assert lines[0].startswith("v2") and "ci" in lines[0] and "second" in lines[0]
     assert lines[1].startswith("v1") and "camilo" in lines[1] and "first" in lines[1]
 
 
-def test_given_an_empty_store_when_reading_log_then_it_says_so(tmp_path, monkeypatch):
+def test_given_an_empty_store_when_reading_history_then_it_says_so(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
-    r = runner.invoke(app, ["log"])
+    r = runner.invoke(app, ["history"])
     assert r.exit_code == 0
     assert "no constitution set" in r.stdout
 
 
-def test_given_a_matching_file_when_checking_then_the_store_agrees(tmp_path, monkeypatch):
+def test_given_a_matching_file_when_checking_then_it_matches_current_direction(
+    tmp_path, monkeypatch
+):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init", name="c.yaml")
     r = runner.invoke(app, ["check", str(tmp_path / "c.yaml")])
     assert r.exit_code == 0
-    assert "store: agrees with 'default' (version 1)" in r.stdout
+    assert "direction: 'default' matches current version 1" in r.stdout
 
 
 def test_given_a_stale_file_when_checking_then_it_fails_and_shows_the_delta(tmp_path, monkeypatch):
@@ -683,7 +700,7 @@ def test_given_a_stale_file_when_checking_then_it_fails_and_shows_the_delta(tmp_
     stale.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(stale)])
     assert r.exit_code == 1
-    assert "store: differs from 'default' (version 1):" in r.stdout
+    assert "direction: 'default' differs from current version 1:" in r.stdout
     assert 'The mission was "M2" and is now "M1".' in r.stdout
 
 
@@ -694,7 +711,7 @@ def test_given_an_empty_store_when_checking_then_it_fails(tmp_path, monkeypatch)
     target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(target)])
     assert r.exit_code == 1
-    assert "has no versions" in r.stdout
+    assert "direction: 'default' has no versions; applying this file creates version 1" in r.stdout
 
 
 def test_given_an_unreachable_store_when_checking_then_the_report_still_prints(
@@ -706,9 +723,9 @@ def test_given_an_unreachable_store_when_checking_then_the_report_still_prints(
     target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(target)])
     assert r.exit_code == 0
-    assert "kyno fields set: constitution, mission" in r.stdout
-    assert "store: not compared" in r.stdout
-    assert "[SQL:" not in r.stdout and r.stdout.count("store:") == 1
+    assert "kyno fields present: constitution, mission" in r.stdout
+    assert "direction: not compared" in r.stdout
+    assert "[SQL:" not in r.stdout and r.stdout.count("direction:") == 1
 
 
 def test_given_a_file_without_a_constitution_key_when_checking_then_the_store_is_not_compared(
@@ -720,8 +737,8 @@ def test_given_a_file_without_a_constitution_key_when_checking_then_the_store_is
     target.write_text("mission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(target)])
     assert r.exit_code == 1
-    assert "kyno fields not set: constitution" in r.output
-    assert "store: not compared" in r.output and "constitution: <name>" in r.output
+    assert "kyno fields omitted: constitution" in r.output
+    assert "direction: not compared" in r.output and "constitution: <name>" in r.output
 
 
 def test_given_a_check_when_comparing_with_the_store_then_the_head_is_read_once(
@@ -740,7 +757,7 @@ def test_given_a_check_when_comparing_with_the_store_then_the_head_is_read_once(
         SqlConstitutionStore, "head", lambda self, name: reads.append(name) or real_head(self, name)
     )
     r = runner.invoke(app, ["check", str(tmp_path / "c.yaml")])
-    assert r.exit_code == 0 and "agrees" in r.output
+    assert r.exit_code == 0 and "matches current version" in r.output
     assert reads == ["default"]
 
 
@@ -815,11 +832,11 @@ def test_given_a_local_apply_when_reading_the_version_then_no_authorization_is_r
     assert json.loads(r.stdout)["authorized_by"] is None
 
 
-def test_given_a_local_version_when_reading_log_then_the_authorization_column_is_a_dash(
+def test_given_a_local_version_when_reading_history_then_the_authorization_column_is_a_dash(
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="first", by="camilo")
-    line = runner.invoke(app, ["log"]).stdout.strip().splitlines()[0]
+    line = runner.invoke(app, ["history"]).stdout.strip().splitlines()[0]
     assert line.split()[:4] == ["v1", line.split()[1], "camilo", "-"]

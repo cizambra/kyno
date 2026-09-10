@@ -8,7 +8,7 @@ here (site-src/constitution.html) instead of shipping inside kyno.
 Usage:
     python site-src/build-constitution.py --version 6 --updated 2026-08-24
 
-Version and date come from the store's ledger (kyno log), not from this
+Version and date come from the store's ledger (kyno history), not from this
 script: the page states them, it does not decide them.
 """
 
@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", type=int, required=True)
-    parser.add_argument("--updated", required=True, help="YYYY-MM-DD, from kyno log")
+    parser.add_argument("--updated", required=True, help="YYYY-MM-DD, from kyno history")
     args = parser.parse_args()
 
     fields = read_constitution_file(str(ROOT / "constitution.yaml"))

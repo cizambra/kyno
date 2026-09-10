@@ -166,11 +166,11 @@ def test_given_principles_that_are_not_a_list_when_reading_then_they_are_refused
 # --- through the CLI -------------------------------------------------------
 
 
-def test_given_a_full_file_when_running_set_then_the_store_carries_its_content(db, tmp_path):
+def test_given_a_full_file_when_running_apply_then_the_store_carries_its_content(db, tmp_path):
     result = runner.invoke(
         app,
         [
-            "set",
+            "apply",
             write(tmp_path, FULL_FILE),
             "--note",
             "the constitution as written",
@@ -192,7 +192,7 @@ def test_given_a_full_file_when_running_set_then_the_store_carries_its_content(d
 
 def test_given_a_named_file_when_applying_then_the_name_in_the_file_routes_it(db, tmp_path):
     path = write(tmp_path, FULL_FILE)
-    result = runner.invoke(app, ["set", path, "--note", "the acme edit", "--by", "ops"])
+    result = runner.invoke(app, ["apply", path, "--note", "the acme edit", "--by", "ops"])
     assert result.exit_code == 0, result.output
 
     head = plane(db).current("acme")
@@ -201,35 +201,35 @@ def test_given_a_named_file_when_applying_then_the_name_in_the_file_routes_it(db
 
 
 @pytest.mark.parametrize("flag", ["--mission", "--declaration", "--principle", "--constitution"])
-def test_given_a_content_or_name_flag_when_running_set_then_it_is_rejected_as_unknown(
+def test_given_a_content_or_name_flag_when_running_apply_then_it_is_rejected_as_unknown(
     db, tmp_path, flag
 ):
     # The file is the only source of content, the name included. These flags
     # deliberately don't exist, and the CLI reports them as unknown.
-    result = runner.invoke(app, ["set", write(tmp_path, FULL_FILE), flag, "X"])
+    result = runner.invoke(app, ["apply", write(tmp_path, FULL_FILE), flag, "X"])
     assert result.exit_code != 0
     assert "no such option" in plain(result).lower()
 
 
-def test_given_no_note_when_running_set_then_it_is_refused(db, tmp_path):
+def test_given_no_note_when_running_apply_then_it_is_refused(db, tmp_path):
     path = write(tmp_path, "mission: M\n")
-    result = runner.invoke(app, ["set", path])
+    result = runner.invoke(app, ["apply", path])
     assert result.exit_code != 0
     assert "note" in plain(result).lower()
 
 
-def test_given_a_missing_file_when_running_set_then_the_error_is_clean(db, tmp_path):
-    result = runner.invoke(app, ["set", str(tmp_path / "nowhere.yaml"), "--note", "n"])
+def test_given_a_missing_file_when_running_apply_then_the_error_is_clean(db, tmp_path):
+    result = runner.invoke(app, ["apply", str(tmp_path / "nowhere.yaml"), "--note", "n"])
     assert result.exit_code == 1
     assert "error:" in plain(result).lower()
     assert "Traceback" not in result.output
 
 
 def test_given_a_second_file_when_applying_then_a_version_appends_and_omissions_carry(db, tmp_path):
-    runner.invoke(app, ["set", write(tmp_path, FULL_FILE), "--note", "init"])
+    runner.invoke(app, ["apply", write(tmp_path, FULL_FILE), "--note", "init"])
     second = write(tmp_path, "constitution: acme\nmission: A sharper mission\n", "2.yaml")
 
-    assert runner.invoke(app, ["set", second, "--note", "sharpen"]).exit_code == 0
+    assert runner.invoke(app, ["apply", second, "--note", "sharpen"]).exit_code == 0
 
     head = plane(db).current("acme")
     assert head.version == 2
@@ -239,17 +239,17 @@ def test_given_a_second_file_when_applying_then_a_version_appends_and_omissions_
 
 
 def test_given_a_clearing_file_when_applying_then_the_declaration_clears(db, tmp_path):
-    runner.invoke(app, ["set", write(tmp_path, FULL_FILE), "--note", "init"])
+    runner.invoke(app, ["apply", write(tmp_path, FULL_FILE), "--note", "init"])
     clearing = write(tmp_path, 'constitution: acme\ndeclaration: ""\n', "3.yaml")
 
-    assert runner.invoke(app, ["set", clearing, "--note", "retract"]).exit_code == 0
+    assert runner.invoke(app, ["apply", clearing, "--note", "retract"]).exit_code == 0
     assert plane(db).current("acme").declaration == ""
 
 
-def test_given_no_file_argument_when_running_set_then_it_is_refused(db):
+def test_given_no_file_argument_when_running_apply_then_it_is_refused(db):
     """The file is the only source of content and it's a required
-    argument, so `kyno set` with no file doesn't parse."""
-    result = runner.invoke(app, ["set", "--note", "init"])
+    argument, so `kyno apply` with no file doesn't parse."""
+    result = runner.invoke(app, ["apply", "--note", "init"])
     assert result.exit_code != 0
     assert "file" in plain(result).lower()
 

@@ -11,7 +11,7 @@ The store serves direction; version control explains it. Keep the file
 in a repo, change it by pull request, and let the PR be the approval: what merged is
 what a reviewer read, and the version's note names the commit. Kyno keeps
 no approval records of its own because the audit is the join of the two
-ledgers — the merged PR on one side, `kyno log` on the other.
+ledgers — the merged PR on one side, `kyno history` on the other.
 
 ```mermaid
 ---
@@ -22,7 +22,7 @@ config:
 flowchart LR
   E["edit constitution.yaml"] --> P["pull request"]
   P -- review, merge --> M["main"]
-  M --> C["pipeline: check, set"]
+  M --> C["pipeline: check, apply"]
   C --> K["kyno server"]
   K -- pull each step --> A["agents"]
 ```
@@ -34,7 +34,7 @@ review, and read; CI writes. On day one you'll apply from a laptop, and
 that's fine — remote mode asks you the [consent
 question](operating.md#3-go-remote) precisely because there's no
 reviewer between you and production. The day CI takes over,
-applying by hand becomes the exception that stands out in the log.
+applying by hand becomes the exception that stands out in the direction history.
 
 ## The CI recipe
 
@@ -47,7 +47,7 @@ revision.
 ```bash
 git show HEAD^:constitution.yaml > /tmp/parent.yaml
 kyno check /tmp/parent.yaml --remote   # agree = safe, differ = fail
-kyno set constitution.yaml --remote --no-interactive --note "$(git log -1 --pretty=%s)"
+kyno apply constitution.yaml --remote --no-interactive --note "$(git log -1 --pretty=%s)"
 ```
 
 If the store matches the parent, nothing landed that your file misses:
@@ -97,7 +97,7 @@ platform's secret store instead of through the repo.
 
 ## Read the ledger
 
-`kyno log` is one line per version: who wrote it, when, who authorized it
+`kyno history` is one line per version: who wrote it, when, who authorized it
 (`operator`, `automation`, or `override`), and the note. In a healthy setup almost every line is the
 pipeline's. A version somebody applied by hand is not an error — it's a
 line that should have a story.

@@ -128,7 +128,16 @@ def test_given_a_file_when_applying_remotely_then_the_delta_shows_and_the_versio
     path = write_file(tmp_path, mission="Ship it")
     r = runner.invoke(
         app,
-        ["set", path, "--note", "over the wire", "--remote", "--by", "camilo", "--no-interactive"],
+        [
+            "apply",
+            path,
+            "--note",
+            "over the wire",
+            "--remote",
+            "--by",
+            "camilo",
+            "--no-interactive",
+        ],
     )
     assert r.exit_code == 0, r.output
     assert "Creates 'default' at version 1." in r.output
@@ -142,7 +151,7 @@ def test_given_identical_content_when_applying_remotely_then_it_is_a_clean_no_op
 ):
     remote_cp.set_direction(mission="Same", change_note="init")
     path = write_file(tmp_path, mission="Same")
-    r = runner.invoke(app, ["set", path, "--note", "again", "--remote", "--no-interactive"])
+    r = runner.invoke(app, ["apply", path, "--note", "again", "--remote", "--no-interactive"])
     assert r.exit_code == 0, r.output
     assert "no field changed" in r.output
     assert json.loads(r.stdout)["version"] == 1
@@ -153,20 +162,20 @@ def test_given_dry_run_when_applying_remotely_then_the_delta_prints_and_nothing_
     fake_dial, remote_cp, tmp_path
 ):
     path = write_file(tmp_path, mission="Draft")
-    r = runner.invoke(app, ["set", path, "--dry-run", "--remote"])
+    r = runner.invoke(app, ["apply", path, "--dry-run", "--remote"])
     assert r.exit_code == 0
     assert "Creates 'default' at version 1." in r.output
     assert remote_cp.current().version == 0
 
 
-def test_given_a_matching_file_when_checking_remotely_then_the_store_agrees(
+def test_given_a_matching_file_when_checking_remotely_then_it_matches_current_direction(
     fake_dial, remote_cp, tmp_path
 ):
     remote_cp.set_direction(mission="M1", change_note="init")
     path = write_file(tmp_path, mission="M1")
     r = runner.invoke(app, ["check", path, "--remote"])
     assert r.exit_code == 0, r.output
-    assert "store: agrees with 'default' (version 1)" in r.output
+    assert "direction: 'default' matches current version 1" in r.output
 
 
 def test_given_a_stale_file_when_checking_remotely_then_it_fails_with_the_delta(
@@ -176,7 +185,7 @@ def test_given_a_stale_file_when_checking_remotely_then_it_fails_with_the_delta(
     path = write_file(tmp_path, mission="M2")
     r = runner.invoke(app, ["check", path, "--remote"])
     assert r.exit_code == 1
-    assert "store: differs from 'default' (version 1):" in r.output
+    assert "direction: 'default' differs from current version 1:" in r.output
     assert 'The mission was "M1" and is now "M2".' in r.output
 
 
@@ -190,14 +199,16 @@ def test_given_an_unreachable_endpoint_when_checking_remotely_then_not_compared_
     path = write_file(tmp_path, mission="M1")
     r = runner.invoke(app, ["check", path, "--remote"])
     assert r.exit_code == 0
-    assert "kyno fields set: constitution, mission" in r.output
-    assert "store: not compared (cannot reach 'default'" in r.output
+    assert "kyno fields present: constitution, mission" in r.output
+    assert "direction: not compared (cannot reach 'default'" in r.output
 
 
-def test_given_remote_history_when_reading_log_remotely_then_the_lines_print(fake_dial, remote_cp):
+def test_given_remote_history_when_reading_history_remotely_then_the_lines_print(
+    fake_dial, remote_cp
+):
     remote_cp.set_direction(mission="M1", change_note="init", created_by="camilo")
     remote_cp.set_direction(mission="M2", change_note="pivot", created_by="ci")
-    r = runner.invoke(app, ["log", "--remote"])
+    r = runner.invoke(app, ["history", "--remote"])
     assert r.exit_code == 0
     lines = r.stdout.strip().splitlines()
     assert lines[0].startswith("v2") and "pivot" in lines[0]
@@ -228,7 +239,7 @@ def test_given_remote_flags_when_dialing_then_they_pass_through(fake_dial, remot
     "args",
     [
         ["current", "--profile", "oncall"],
-        ["log", "--credentials", "ops"],
+        ["history", "--credentials", "ops"],
         ["export", "--token-env", "T"],
     ],
 )
@@ -255,7 +266,7 @@ def test_given_a_writer_racing_in_mid_apply_when_applying_remotely_then_nothing_
         mission="Raced in", change_note="someone else"
     )
     path = write_file(tmp_path, mission="M2")
-    r = runner.invoke(app, ["set", path, "--note", "stale", "--remote", "--no-interactive"])
+    r = runner.invoke(app, ["apply", path, "--note", "stale", "--remote", "--no-interactive"])
     assert r.exit_code == 1
     assert "moved while applying; read it again and re-apply" in r.output
     assert remote_cp.current().mission == "Raced in" and remote_cp.current().version == 2
@@ -265,9 +276,12 @@ def test_given_a_yes_at_the_consent_question_when_applying_remotely_then_the_ver
     fake_dial, remote_cp, tmp_path
 ):
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "init", "--remote"], input="y\n")
+    r = runner.invoke(app, ["apply", path, "--note", "init", "--remote"], input="y\n")
     assert r.exit_code == 0, r.output
     assert "Have you evaluated it against your workflow?" in r.output
+    assert (
+        "The updated direction is available to agents on subsequent successful pulls." in r.output
+    )
     assert remote_cp.current().version == 1
 
 
@@ -275,7 +289,7 @@ def test_given_a_no_at_the_consent_question_when_applying_remotely_then_nothing_
     fake_dial, remote_cp, tmp_path
 ):
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "init", "--remote"], input="n\n")
+    r = runner.invoke(app, ["apply", path, "--note", "init", "--remote"], input="n\n")
     assert r.exit_code == 1
     assert "not applied: the consent question was answered no" in r.output
     assert remote_cp.current().version == 0
@@ -288,7 +302,7 @@ def test_given_nobody_at_the_keyboard_when_the_consent_question_asks_then_nothin
     the error says what to pass, instead of hanging or trying to guess
     whether a terminal is attached."""
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "init", "--remote"])
+    r = runner.invoke(app, ["apply", path, "--note", "init", "--remote"])
     assert r.exit_code == 1
     assert "nobody to answer it" in r.output
     assert "--no-interactive" in r.output and "--unsafe-approval" in r.output
@@ -299,7 +313,7 @@ def test_given_unsafe_approval_when_applying_remotely_then_no_question_is_asked(
     fake_dial, remote_cp, tmp_path
 ):
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "init", "--remote", "--unsafe-approval"])
+    r = runner.invoke(app, ["apply", path, "--note", "init", "--remote", "--unsafe-approval"])
     assert r.exit_code == 0, r.output
     assert "evaluated it against your workflow" not in r.output
     assert remote_cp.current().version == 1
@@ -310,16 +324,16 @@ def test_given_no_interactive_when_applying_remotely_then_no_question_is_asked(
 ):
     """CI passes --no-interactive and is never asked anything."""
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "init", "--remote", "--no-interactive"])
+    r = runner.invoke(app, ["apply", path, "--note", "init", "--remote", "--no-interactive"])
     assert r.exit_code == 0, r.output
     assert "evaluated it against your workflow" not in r.output
 
 
-def test_given_a_local_apply_when_running_set_then_no_question_is_asked(tmp_path, monkeypatch):
+def test_given_a_local_apply_when_running_apply_then_no_question_is_asked(tmp_path, monkeypatch):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "init"])
+    r = runner.invoke(app, ["apply", path, "--note", "init"])
     assert r.exit_code == 0, r.output
     assert "evaluated it against your workflow" not in r.output
 
@@ -328,7 +342,7 @@ def test_given_a_dry_run_when_applying_remotely_then_no_question_is_asked(
     fake_dial, remote_cp, tmp_path
 ):
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--dry-run", "--remote"])
+    r = runner.invoke(app, ["apply", path, "--dry-run", "--remote"])
     assert r.exit_code == 0, r.output
     assert "evaluated it against your workflow" not in r.output
 
@@ -339,7 +353,7 @@ def test_given_a_question_flag_without_remote_when_applying_then_it_is_refused(
 ):
     monkeypatch.setenv("KYNO_DATABASE_URL", f"sqlite:///{tmp_path / 'c.sqlite3'}")
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "init", flag])
+    r = runner.invoke(app, ["apply", path, "--note", "init", flag])
     assert r.exit_code != 0
     assert "add --remote" in plain(r.output)
 
@@ -351,7 +365,7 @@ def test_given_both_question_flags_when_applying_then_it_is_refused_as_redundant
     both means nothing extra; Kyno asks you to pick one."""
     path = write_file(tmp_path, mission="M1")
     r = runner.invoke(
-        app, ["set", path, "--note", "init", "--remote", "--no-interactive", "--unsafe-approval"]
+        app, ["apply", path, "--note", "init", "--remote", "--no-interactive", "--unsafe-approval"]
     )
     assert r.exit_code != 0
     assert "pick one" in plain(r.output)
@@ -363,7 +377,7 @@ def test_given_an_older_versions_content_when_applying_interactively_then_the_re
 ):
     _three_versions(remote_cp)
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "back to v1", "--remote"], input="y\ny\n")
+    r = runner.invoke(app, ["apply", path, "--note", "back to v1", "--remote"], input="y\ny\n")
     assert r.exit_code == 0, r.output
     assert "the same content as v1" in r.output and "back as v4" in r.output
     assert remote_cp.current().version == 4 and remote_cp.current().mission == "M1"
@@ -374,7 +388,7 @@ def test_given_a_no_at_the_revert_question_when_applying_then_nothing_is_applied
 ):
     _three_versions(remote_cp)
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "back", "--remote"], input="y\nn\n")
+    r = runner.invoke(app, ["apply", path, "--note", "back", "--remote"], input="y\nn\n")
     assert r.exit_code == 1
     assert "not applied: the revert question was answered no" in r.output
     assert remote_cp.current().version == 3
@@ -385,7 +399,7 @@ def test_given_fresh_content_when_applying_interactively_then_only_consent_is_as
 ):
     _three_versions(remote_cp)
     path = write_file(tmp_path, mission="M4")
-    r = runner.invoke(app, ["set", path, "--note", "new", "--remote"], input="y\n")
+    r = runner.invoke(app, ["apply", path, "--note", "new", "--remote"], input="y\n")
     assert r.exit_code == 0, r.output
     assert "deliberate revert" not in r.output
 
@@ -397,7 +411,7 @@ def test_given_an_older_versions_content_when_applying_headless_then_no_question
     it isn't asked; in CI the parent-commit comparison covers this case."""
     _three_versions(remote_cp)
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "back", "--remote", "--no-interactive"])
+    r = runner.invoke(app, ["apply", path, "--note", "back", "--remote", "--no-interactive"])
     assert r.exit_code == 0, r.output
     assert "revert" not in r.output
     assert remote_cp.current().version == 4
@@ -408,7 +422,7 @@ def test_given_unsafe_approval_when_re_landing_old_content_then_it_proceeds_unas
 ):
     _three_versions(remote_cp)
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "back", "--remote", "--unsafe-approval"])
+    r = runner.invoke(app, ["apply", path, "--note", "back", "--remote", "--unsafe-approval"])
     assert r.exit_code == 0, r.output
     assert "deliberate revert" not in r.output and remote_cp.current().version == 4
 
@@ -420,7 +434,7 @@ def test_given_content_equal_to_the_head_when_applying_interactively_then_no_rev
     the ordinary no-op."""
     _three_versions(remote_cp)
     path = write_file(tmp_path, mission="M3")
-    r = runner.invoke(app, ["set", path, "--note", "same", "--remote"], input="y\n")
+    r = runner.invoke(app, ["apply", path, "--note", "same", "--remote"], input="y\n")
     assert r.exit_code == 0, r.output
     assert "deliberate revert" not in r.output
     assert "no field changed" in r.output
@@ -435,7 +449,7 @@ def test_given_two_older_versions_with_the_same_content_when_asking_then_the_new
     remote_cp.set_direction(mission="M1", change_note="v3, back to v1")
     remote_cp.set_direction(mission="M4", change_note="v4")
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "back", "--remote"], input="y\ny\n")
+    r = runner.invoke(app, ["apply", path, "--note", "back", "--remote"], input="y\ny\n")
     assert r.exit_code == 0, r.output
     assert "the same content as v3." in r.output and "as v1." not in r.output
 
@@ -449,7 +463,7 @@ def test_given_a_file_omitting_fields_when_carry_forward_matches_an_old_version_
     remote_cp.set_direction(mission="M2", principles=["p1"], change_note="v2")
     # The file omits principles; p1 carries forward, so the result is v1.
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "back", "--remote"], input="y\ny\n")
+    r = runner.invoke(app, ["apply", path, "--note", "back", "--remote"], input="y\ny\n")
     assert r.exit_code == 0, r.output
     assert "the same content as v1." in r.output
 
@@ -461,7 +475,7 @@ def test_given_the_same_mission_but_different_principles_when_applying_then_no_r
     remote_cp.set_direction(mission="M2", principles=["p1"], change_note="v2")
     p = pathlib.Path(tmp_path) / "c.yaml"
     p.write_text("constitution: default\nmission: M1\nprinciples:\n  - p2\n", encoding="utf-8")
-    r = runner.invoke(app, ["set", str(p), "--note", "new mix", "--remote"], input="y\n")
+    r = runner.invoke(app, ["apply", str(p), "--note", "new mix", "--remote"], input="y\n")
     assert r.exit_code == 0, r.output
     assert "deliberate revert" not in r.output
 
@@ -471,7 +485,7 @@ def test_given_stdin_ending_at_the_revert_prompt_when_applying_then_nothing_is_a
 ):
     _three_versions(remote_cp)
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "back", "--remote"], input="y\n")
+    r = runner.invoke(app, ["apply", path, "--note", "back", "--remote"], input="y\n")
     assert r.exit_code == 1
     assert "not applied: the revert question had nobody to answer it" in r.output
     assert remote_cp.current().version == 3
@@ -490,16 +504,16 @@ def test_given_a_file_without_a_constitution_key_when_checking_remotely_then_not
     target.write_text("mission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(target), "--remote"])
     assert r.exit_code == 1
-    assert "kyno fields not set: constitution" in r.output
-    assert "store: not compared" in r.output and "constitution: <name>" in r.output
+    assert "kyno fields omitted: constitution" in r.output
+    assert "direction: not compared" in r.output and "constitution: <name>" in r.output
 
 
-def test_given_dial_failing_when_reading_log_remotely_then_the_error_is_one_line(monkeypatch):
+def test_given_dial_failing_when_reading_history_remotely_then_the_error_is_one_line(monkeypatch):
     def dial(profile, **_):
         raise RemoteError(f"cannot reach '{profile}' at https://kyno.mybiz.com: refused")
 
     monkeypatch.setattr(cli, "dial", dial)
-    r = runner.invoke(app, ["log", "--remote"])
+    r = runner.invoke(app, ["history", "--remote"])
     assert r.exit_code == 1
     assert "error: cannot reach 'default'" in r.output and "Traceback" not in r.output
 
@@ -508,7 +522,7 @@ def test_given_a_person_answering_yes_when_applying_then_person_answered_is_reco
     fake_dial, remote_cp, tmp_path
 ):
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "init", "--remote"], input="y\n")
+    r = runner.invoke(app, ["apply", path, "--note", "init", "--remote"], input="y\n")
     assert r.exit_code == 0, r.output
     assert remote_cp.current().authorized_by is AuthorizationType.OPERATOR
 
@@ -517,7 +531,7 @@ def test_given_no_interactive_when_applying_then_automation_is_recorded(
     fake_dial, remote_cp, tmp_path
 ):
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "init", "--remote", "--no-interactive"])
+    r = runner.invoke(app, ["apply", path, "--note", "init", "--remote", "--no-interactive"])
     assert r.exit_code == 0, r.output
     assert remote_cp.current().authorized_by is AuthorizationType.AUTOMATION
 
@@ -526,17 +540,17 @@ def test_given_unsafe_approval_when_applying_then_unsafe_approved_is_recorded(
     fake_dial, remote_cp, tmp_path
 ):
     path = write_file(tmp_path, mission="M1")
-    r = runner.invoke(app, ["set", path, "--note", "init", "--remote", "--unsafe-approval"])
+    r = runner.invoke(app, ["apply", path, "--note", "init", "--remote", "--unsafe-approval"])
     assert r.exit_code == 0, r.output
     assert remote_cp.current().authorized_by is AuthorizationType.OVERRIDE
 
 
-def test_given_recorded_authorizations_when_reading_log_remotely_then_authorized_by_is_printed(
+def test_given_recorded_authorizations_when_reading_history_remotely_then_authorized_by_is_printed(
     fake_dial, remote_cp, tmp_path
 ):
     path = write_file(tmp_path, mission="M1")
-    runner.invoke(app, ["set", path, "--note", "init", "--remote", "--unsafe-approval"])
-    r = runner.invoke(app, ["log", "--remote"])
+    runner.invoke(app, ["apply", path, "--note", "init", "--remote", "--unsafe-approval"])
+    r = runner.invoke(app, ["history", "--remote"])
     assert r.exit_code == 0
     assert "override" in r.stdout
 

@@ -63,10 +63,14 @@ _README_TEMPLATE = """\
 # {name}
 
 This directory is a Kyno instance: its configuration and, on SQLite,
-its store. The direction itself lives in your team's repo and arrives
-over the wire.
+its store. Author proposed direction in a constitution file, then apply
+it to make it current in Kyno.
 
     kyno db init                 create the store
+    kyno check constitution.yaml compare proposed and current direction
+    kyno apply constitution.yaml --note "initial direction"
+    kyno current                 read current direction
+    kyno history                 read its version history
     kyno serve --transport http  serve it
 """
 

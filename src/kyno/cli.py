@@ -221,8 +221,8 @@ _CONSTITUTION_OPTION = typer.Option(
 _REMOTE_HELP = "Run against a remote profile's endpoint instead of the local store."
 
 
-@app.command("set")
-def set_direction_cmd(
+@app.command("apply")
+def apply_direction_cmd(
     file: str = typer.Argument(..., help="The constitution file. The only source of content."),
     note: str | None = typer.Option(None, "--note", help="What changed in this new version?"),
     by: str | None = typer.Option(
@@ -246,7 +246,7 @@ def set_direction_cmd(
         False, "--unsafe-approval", help="Skip the questions, answering yes to all of them."
     ),
 ) -> None:
-    """Append a version from a file. The file says what the constitution
+    """Apply proposed direction from a file. The file says what the constitution
     is, including which one it is; the flags say what this edit is. Every
     apply prints the delta it makes; --dry-run prints it and stops."""
     if not dry_run and not (note and note.strip()):
@@ -375,7 +375,9 @@ def _answer_consent(target: str, url: str, no_interactive: bool, unsafe_approval
     if no_interactive or unsafe_approval:
         return
     typer.echo(f"You are applying to '{target}' at {url}.", err=True)
-    typer.echo("Every agent using it will follow this change on its next pull.", err=True)
+    typer.echo(
+        "The updated direction is available to agents on subsequent successful pulls.", err=True
+    )
     try:
         answered_yes = typer.confirm(
             "Have you evaluated it against your workflow?", default=False, err=True
@@ -691,7 +693,7 @@ def current(
     as_yaml: bool = typer.Option(
         False,
         "--yaml",
-        help="Print the head in the file format `kyno set --file` reads.",
+        help="Print current direction in the file format `kyno apply` reads.",
     ),
     remote: bool = typer.Option(False, "--remote", help=_REMOTE_HELP),
     profile: str = typer.Option("default", "--profile", help="Which remote profile to use."),
@@ -753,9 +755,9 @@ def check(
         None, "--token-env", help="Take the token from this variable, this run."
     ),
 ) -> None:
-    """Report how Kyno reads a file, then whether the store agrees with it.
-    The field report never blocks anything. The store comparison is what a
-    pipeline gates on: exit 1 when the file and the head are out of sync."""
+    """Report the file fields and compare proposed direction with current direction.
+    The field report never blocks anything. The comparison exits 1 when
+    proposed direction differs or the constitution has no versions."""
     _remote_options_guard(remote, profile, credentials, token_env)
     try:
         report = check_constitution_file(file)
@@ -763,8 +765,8 @@ def check(
     except CoherenceError as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
-    typer.echo(f"kyno fields set: {', '.join(report.present) or 'none'}")
-    typer.echo(f"kyno fields not set: {', '.join(report.missing) or 'none'}")
+    typer.echo(f"kyno fields present: {', '.join(report.present) or 'none'}")
+    typer.echo(f"kyno fields omitted: {', '.join(report.missing) or 'none'}")
     typer.echo(f"custom fields: {', '.join(report.custom) or 'none'}")
     if remote:
         _compare_with_remote(fields, file, profile, credentials, token_env)
@@ -779,14 +781,14 @@ def _compare_with_store(fields: ConstitutionFile, path: str) -> None:
     try:
         target = _constitution_name(fields, path)
     except AuthoringError as exc:
-        typer.echo(f"store: not compared ({exc})")
+        typer.echo(f"direction: not compared ({exc})")
         raise typer.Exit(code=1) from None
     try:
         head, delta = _control_plane().head_and_delta(**_content_of(fields), constitution=target)
     except (CoherenceError, SQLAlchemyError) as exc:
         # The cause is the first line. A database error then quotes its SQL, which tells the
         # operator nothing about the file.
-        typer.echo(f"store: not compared ({str(exc).splitlines()[0]})")
+        typer.echo(f"direction: not compared ({str(exc).splitlines()[0]})")
         return
     _render_comparison(target, head, delta)
 
@@ -804,7 +806,7 @@ def _compare_with_remote(
     try:
         target = _constitution_name(fields, path)
     except AuthoringError as exc:
-        typer.echo(f"store: not compared ({exc})")
+        typer.echo(f"direction: not compared ({exc})")
         raise typer.Exit(code=1) from None
     try:
         client = dial(profile, credentials_profile=credentials, token_env=token_env)
@@ -814,19 +816,19 @@ def _compare_with_remote(
             client.close()
         delta = edit_delta(head, target, **_content_of(fields))
     except CoherenceError as exc:
-        typer.echo(f"store: not compared ({str(exc).splitlines()[0]})")
+        typer.echo(f"direction: not compared ({str(exc).splitlines()[0]})")
         return
     _render_comparison(target, head, delta)
 
 
 def _render_comparison(target: str, head, delta: tuple[str, ...]) -> None:
     if head is None or head.version == 0:
-        typer.echo(f"store: '{target}' has no versions; applying this file creates version 1")
+        typer.echo(f"direction: '{target}' has no versions; applying this file creates version 1")
         raise typer.Exit(code=1)
     if not delta:
-        typer.echo(f"store: agrees with '{target}' (version {head.version})")
+        typer.echo(f"direction: '{target}' matches current version {head.version}")
         return
-    typer.echo(f"store: differs from '{target}' (version {head.version}):")
+    typer.echo(f"direction: '{target}' differs from current version {head.version}:")
     for line in delta:
         typer.echo(f"  {line}")
     raise typer.Exit(code=1)
@@ -866,7 +868,7 @@ def unpublish(constitution: str = _CONSTITUTION_OPTION) -> None:
 
 
 @app.command()
-def log(
+def history(
     constitution: str = _CONSTITUTION_OPTION,
     remote: bool = typer.Option(False, "--remote", help=_REMOTE_HELP),
     profile: str = typer.Option("default", "--profile", help="Which remote profile to use."),
@@ -910,7 +912,7 @@ def export(
         None, "--token-env", help="Take the token from this variable, this run."
     ),
 ) -> None:
-    """One constitution's whole ledger as JSON on stdout: full content,
+    """One constitution's complete version history as JSON on stdout: full content,
     every version, the file `kyno import` reads back. A line on stderr
     names the constitution, so stdout stays pipeable. A constitution
     with no versions is refused, the same as `kyno current --yaml`."""
@@ -943,7 +945,7 @@ def import_ledger(
         "default", "--as", help="The constitution to write the history under."
     ),
 ) -> None:
-    """Write a file made by `kyno export` back into the database, keeping
+    """Restore a constitution version history from a Kyno export, keeping
     every version's number, dates and authors. Local only: it writes
     straight to the workspace's database, and there is no --remote."""
     with _clean_errors():

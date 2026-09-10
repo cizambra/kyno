@@ -69,7 +69,7 @@ def check_constitution_file(path: str) -> FileReport:
 
 
 def render_constitution_yaml(version: ConstitutionVersion, constitution: str) -> str:
-    """The current version in the file format `kyno set --file` reads back.
+    """The current version in the file format `kyno apply --file` reads back.
     Applying it unchanged is a no-op edit."""
     document: dict = {"constitution": constitution}
     if version.mission:

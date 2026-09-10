@@ -22,7 +22,7 @@ dependencies = [
     "typer>=0.12,<1.0",
     "starlette>=0.40,<2.0",
     "uvicorn>=0.30,<1.0",
-    # `kyno set --file`: a block scalar is the readable way to hold prose.
+    # `kyno apply --file`: a block scalar is the readable way to hold prose.
     "pyyaml>=6.0,<7.0",
     # The published page renders the declaration; CommonMark, pure Python.
     "markdown-it-py>=3.0,<5.0",

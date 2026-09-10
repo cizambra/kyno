@@ -57,7 +57,7 @@ declaration: |
 ```
 
 ```bash
-kyno set constitution.yaml --note "the constitution as written"
+kyno apply constitution.yaml --note "the constitution as written"
 ```
 
 The declaration can be written using markdown. How the published page
@@ -76,7 +76,7 @@ previous version; to clear one, write it empty, like `declaration: ""`.
 An edit that changes content appends a new version; applying the same
 content again is a no-op. Previous versions are never overwritten.
 
-Use `kyno set constitution.yaml --dry-run` to see the proposed delta
+Use `kyno apply constitution.yaml --dry-run` to see the proposed delta
 without writing. A stale file can still restore older content as a new
 version: Kyno applies the fields the file supplies, even if they came
 from an earlier read. An interactive remote apply asks for confirmation
@@ -96,7 +96,7 @@ mission: Lend in the EU the way the EU expects
 ```
 
 ```bash
-kyno set eu.yaml --note "the EU edit"
+kyno apply eu.yaml --note "the EU edit"
 kyno current --constitution eu
 ```
 
@@ -110,14 +110,14 @@ one pull it by name with `get_changes_since`.
 
 ## Exporting and restoring history
 
-`set` writes a new version from a YAML file. `export` and `import` move
+`apply` writes a new version from a YAML file. `export` and `import` move
 the existing ledger as JSON, preserving its version numbers, dates and
 authors:
 
 ```bash
 kyno export --constitution eu > eu-history.json
 kyno import eu-history.json --as restored-eu
-kyno log --constitution restored-eu
+kyno history --constitution restored-eu
 ```
 
 Run `import` in a workspace whose database has been initialized with

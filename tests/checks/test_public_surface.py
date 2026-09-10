@@ -18,6 +18,8 @@ EXPECTED = {
     "DetailLevel",
     "LocalDirectionSource",
     "DirectionBinder",
+    "DirectionBinding",
+    "DeliveryStatus",
     "Verdict",
     "VerdictSource",
     "Action",
@@ -41,6 +43,7 @@ def test_given_the_exports_when_comparing_to_the_docs_then_nothing_extra_leaks()
     """__all__ is the public contract; anything else public is an accident."""
     modules = {
         "binder",
+        "binding",
         "cell",
         "client",
         "errors",

@@ -1,6 +1,7 @@
 """Binder behavior against a real control plane."""
 
 from kyno.sdk.binder import DirectionBinder
+from kyno.sdk.binding import DeliveryStatus
 from kyno.sdk.client import LocalDirectionSource
 from kyno.wire.models import DetailLevel
 
@@ -45,3 +46,29 @@ def test_given_a_context_choice_when_binding_then_only_the_injected_block_change
     assert "The long form." in full.render()
     assert compact.declaration == full.declaration == "The long form."
     assert compact.principles == full.principles
+
+
+def test_given_an_unchanged_version_when_binding_again_then_the_successful_read_is_current(
+    control_plane,
+):
+    control_plane.set_direction(mission="Mission", change_note="initial", constitution="sales")
+    binder = DirectionBinder(LocalDirectionSource(control_plane))
+    first = binder.bind_with_status("sales")
+    second = binder.bind_with_status("sales")
+    assert first.direction.version == second.direction.version == 1
+    assert first.status is second.status is DeliveryStatus.CURRENT
+
+
+def test_given_a_direction_change_when_binding_again_then_the_prior_result_stays_unchanged(
+    control_plane,
+):
+    control_plane.set_direction(mission="Old", change_note="initial", constitution="sales")
+    binder = DirectionBinder(LocalDirectionSource(control_plane))
+    first = binder.bind_with_status("sales")
+    control_plane.set_direction(mission="New", change_note="pivot", constitution="sales")
+    second = binder.bind_with_status("sales")
+    assert (first.direction.version, first.direction.mission) == (1, "Old")
+    assert (second.direction.version, second.direction.mission) == (2, "New")
+    assert second.direction.change_notes == ("pivot",)
+    assert second.direction.delta
+    assert first.status is second.status is DeliveryStatus.CURRENT

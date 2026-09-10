@@ -57,6 +57,45 @@ flowchart LR
 
 
 
+## Inspecting delivery status
+
+Custom integrations can use `binder.bind_with_status()` to distinguish a
+successful read from fallback. It returns an immutable `DirectionBinding`
+containing `direction` and a `DeliveryStatus` enum, both exported from
+`kyno.sdk`:
+
+```python
+from kyno.sdk import DeliveryStatus
+
+binding = binder.bind_with_status("customer-support")
+if binding.status is DeliveryStatus.CACHED:
+    print("Using retained direction", binding.direction.version)
+block = binding.direction.render()
+```
+
+- `current`: this successful read confirmed the returned direction, even
+  if its version did not change. It does not mean the version stays current
+  after the read.
+- `cached`: the binder retained a value after a pull failure, or kept a
+  newer value when an older overlapping response arrived. This does not
+  prove that the retained direction is obsolete.
+- `empty`: the pull failed before any direction was cached. The direction
+  is the existing empty version-0 fallback.
+
+A successful read of an unwritten constitution is `current` at version 0.
+If a later read fails, that cached version 0 is `cached`, not `empty`.
+Fail-closed still raises `KynoUnavailableError` rather than returning a
+binding. Unexpected programming errors still propagate.
+
+Each result keeps its own status; later pulls cannot relabel it. The status
+values serialize as lowercase strings. They describe the local binding,
+not constitution content, and are not added to MCP payloads or injected
+direction text. Shipped adapters continue using `bind()` in this change;
+they do not yet expose delivery status in framework state or callbacks.
+
+`binder.bind()` continues to return only `Direction`. Both methods perform
+one pull and use the same failure policy and telemetry.
+
 ## The integration
 
 ```bash

@@ -8,6 +8,7 @@ On this page:
 - [Storage](#storage)
 - [Running Kyno embedded](#running-kyno-embedded)
 - [Auth](#auth)
+- [Who should hold write access](#who-should-hold-write-access)
 - [Deploying](#deploying)
 - [Testing](#testing)
 
@@ -153,7 +154,7 @@ working against the same database for edits and inspection.
   chose to open.
 
 A write token is direction control: whoever holds it steers the
-instructions of every agent bound to this Kyno. Treat it like a system-prompt
+direction available to agents consuming the constitutions they change. Treat it like a system-prompt
 credential: serve `/mcp` over TLS and keep the token out of logs and
 checkpoints (Kyno's own reprs never print it). One related caution: the
 `[kyno:direction …]` header on the injected block is a record for reading
@@ -161,6 +162,80 @@ transcripts, not a security check. Text arriving from tools or users can
 imitate it, so nothing should trust a block just for looking like one. Kyno
 refuses constitution text containing the marker, and the adapters only ever
 replace the block they injected themselves.
+
+### Who should hold write access
+
+Give agent applications **read-only tokens**. Keep write tokens in a
+separate operator environment or trusted deployment job. An agent needs
+to receive direction, not permission to rewrite it.
+
+The distinction is about credentials and process access, not just which
+tools you show the model. Shipped adapters only pull, but an application
+holding a write token can call `set_direction` directly. Removing that
+tool from the agent's tool list does not reduce the token's authority.
+
+```mermaid
+flowchart LR
+  O["Operator or trusted deployment job<br/>write token"] -->|"apply reviewed direction"| K["Kyno HTTP endpoint"]
+  A["Agent application<br/>read token only"] -->|"pull direction"| K
+  K -->|"versioned direction"| A
+```
+
+These are separate credential environments. Do not give the agent process
+access to the operator's write token, credentials file, or database
+credentials. Do not put write credentials in prompts, tool results, logs,
+saved workflow state, or direction receipts. A variable reference avoids
+copying the secret into configuration; it does not protect the secret
+from a process that can read the referenced environment variable.
+
+#### What the permissions cover
+
+Token scopes apply across the server, not to individual constitution
+names. A read token can read any constitution available through that
+server's MCP tools. A write token can also change any of those
+constitutions. Selecting `constitution="customer-support"` in an adapter
+chooses what it reads; it is not an access restriction.
+
+Do not use constitution names as a privacy boundary between teams or
+customers. Where separate access boundaries are required, use separately
+isolated deployments and credentials. Deliberately published constitution
+pages remain public regardless of token scope.
+
+HTTP token checks do not protect direct database access. Local CLI
+commands, an embedded control plane, and stdio operate with the access
+of their host process. Keep workspace and database access outside the
+agent environment if HTTP read scope is the boundary you rely on.
+`allow_insecure = true` removes the HTTP token boundary entirely.
+
+#### Approval and attribution are different
+
+Authentication establishes which live credential a request used and
+whether its scope permits the tool. It does not establish that the new
+mission or principles are sensible, safe, or reviewed.
+
+The remote CLI's confirmation questions help an operator review an
+apply. They are not a server-enforced approval workflow. Another client
+with a write token can call `set_direction` without answering them.
+Review requirements belong in the surrounding deployment process and
+in who can obtain its write credentials.
+
+Read version attribution with these limits in mind:
+
+| Field | What it records | What it does not prove |
+| --- | --- | --- |
+| `created_by` | The actor name supplied by the client. | The identity of the person who made the request. |
+| `authorized_by` | The client's reported approval method: `operator`, `automation`, or `override`. | That a human approved the change or a trusted pipeline performed it. |
+| `token_id` | For an authenticated HTTP write, the credential verified by the server. | Who physically used that credential or whether its holder was authorized by your organization to make this particular change. |
+
+Local writes have no authenticated HTTP token identity. Keep external
+review or deployment records if you need evidence of approval, and use
+separate credentials for independently operated writers so their requests
+can be distinguished.
+
+Revoking a token stops subsequent authenticated requests using it. It
+does not remove direction already cached by agents, cancel running work,
+or undo completed actions. A read failure may still use cached direction
+under the application's [configured failure policy](adapters.md#inspecting-delivery-status).
 
 ### Minting and revoking tokens
 
@@ -203,8 +278,8 @@ window.
 A remote write also records the token on the version it appends. Three
 fields say three different things about a version, and only the last one
 is checked by the server: `created_by` is the actor the client claimed,
-`authorized_by` is how the apply was approved (`operator`, `automation`
-or `override`), and the token id is the credential the server itself
+`authorized_by` is how the client says the apply was approved (`operator`,
+`automation` or `override`), and the token id is the credential the server itself
 verified from the request. A local apply has no token, so that field
 stays empty.
 

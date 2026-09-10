@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kyno — one direction, every agent, every step</title>
-  <meta name="description" content="Kyno is a coherence control plane for multi-agent systems: one versioned source of direction, pulled at the moment each agent needs it.">
+  <meta name="description" content="Kyno makes direction a first-class runtime primitive: shared, versioned mission and principles that agents pull before their next step.">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
 </head>
@@ -19,6 +19,7 @@
     <nav>
       <a href="#how">How it works</a>
       <a href="#start">Quick start</a>
+      <a href="#faq">FAQ</a>
       <a href="constitution/">Constitution</a>
       <a href="https://github.com/cizambra/kyno">GitHub ↗</a>
     </nav>
@@ -28,7 +29,7 @@
     <section class="hero wrap">
       <div class="hero-copy">
         <h1><span class="headline-line headline-plain">One direction.</span><span class="headline-line">Every agent.</span><span class="headline-line violet">Every step.</span></h1>
-        <p>Kyno is the versioned source of truth for multi-agent systems. Change direction once, and every agent picks up the current version at its next step.</p>
+        <p>Kyno makes direction a first-class runtime primitive. Your mission and principles have their own current version, history, and interface. Adapters fetch them and supply them to running agents before their next step.</p>
         <div class="actions">
           <button class="install" data-copy="pip install kyno" aria-label="Copy pip install kyno">
             <span class="prompt">›_</span><code>pip install kyno</code><span class="copy-label">copy</span>
@@ -123,23 +124,33 @@
     <section class="pillars wrap" id="how">
       <article>
         <span class="pillar-icon layers">▱</span>
-        <div><h2>Versioned direction</h2><p>Every change appends a new immutable version. You always know what direction was in force.</p></div>
+        <div><h2>Versioned direction</h2><p>Each named constitution has a current version and immutable history. Publish a change while the workflow continues.</p></div>
       </article>
       <article>
         <span class="pillar-icon signal">◉</span>
-        <div><h2>Live propagation</h2><p>Agents pull the latest direction when they reach the boundary where your workflow needs it.</p></div>
+        <div><h2>Direction at each step</h2><p>Adapters pull before work proceeds. Successful pulls return current direction; failed pulls follow your configured policy.</p></div>
       </article>
       <article>
         <span class="pillar-icon shield">◇</span>
-        <div><h2>Auditability built in</h2><p>Every answer can say which version it served, making direction inspectable after the run.</p></div>
+        <div><h2>Version attribution</h2><p>Record the direction version supplied to each step. Retrieve that mission and principles when reviewing the run.</p></div>
       </article>
+    </section>
+
+    <section class="explanation wrap" aria-labelledby="direction-heading">
+      <h2 id="direction-heading">A reasonable decision. Yesterday's goal.</h2>
+      <p>Suppose your sales agent is optimizing for new revenue. You change the priority to retaining existing customers, but its running workflow still carries the old instructions. The agent can execute its task correctly while working toward yesterday's goal.</p>
+      <p>A goal tells an agent what to optimize. Principles help it judge how: protect long-term trust over short-term metrics, for example. We want agent systems to optimize locally without losing coherence globally.</p>
+      <p>Kyno gives mission and principles one authoritative source. Adapters refresh the agent's context from it, whether direction changes or stays the same. The model still has to interpret that direction and make a sound decision.</p>
+      <h3>Where it fits</h3>
+      <p>Your framework schedules tasks and runs agents. Kyno supplies versioned direction before a step. The model reasons and produces an action or output. An optional verifier evaluates the result, while permissions and security controls restrict execution.</p>
+      <p>In the animation, the workflow continues after an operator publishes a new version. Each successful pull supplies it at that agent's next step. The final state shows delivery, not proof that the agents followed it.</p>
     </section>
 
     <section class="start wrap" id="start">
       <div class="start-copy">
-        <h2>Run a control plane locally.</h2>
+        <h2>Publish your first direction.</h2>
         <p>Start with SQLite and stdio. Add HTTP or your own adapter when the workflow needs it.</p>
-        <a href="https://github.com/cizambra/kyno/blob/main/docs/integrating.md">Build an adapter →</a>
+        <a href="https://github.com/cizambra/kyno#quick-start">Connect a shipped adapter →</a>
       </div>
       <div class="terminal">
         <header><span>~/acme</span><button data-copy-target="#quick-code">copy</button></header>
@@ -150,6 +161,24 @@
 <b>$</b> kyno apply constitution.yaml --note "initial constitution"
 <b>$</b> kyno serve --transport stdio</code></pre>
       </div>
+    </section>
+
+    <section class="explanation wrap" id="faq" aria-labelledby="faq-heading">
+      <h2 id="faq-heading">Questions before you integrate</h2>
+      <h3>Could I do this with Git or a system prompt?</h3>
+      <p>Yes. A prompt or file may be enough for a short workflow with fixed direction. Git gives you storage, history, and review. For a running system, you still need to choose the active revision, fetch it before steps, refresh context, and record the supplied version. Kyno provides that runtime contract. You can review direction in Git and publish it with <code>kyno apply</code>. Automatic Git synchronization is deferred.</p>
+      <h3>Is Kyno an orchestrator?</h3>
+      <p>Your framework continues scheduling tasks, invoking tools, and running agents. Kyno stores and delivers direction through MCP. Its adapters connect that direction to the workflow you already have; updates do not rewrite tasks or replan the workflow.</p>
+      <h3>Is Kyno an AI governance system?</h3>
+      <p>Kyno supplies runtime organizational direction: your current mission, principles, and tradeoffs. Permissions, approval processes, and enforcement belong to the surrounding system. Model training and alignment remain separate too; even a well-trained model needs your organization's current direction.</p>
+      <h3>Does Kyno prevent drift or guarantee alignment?</h3>
+      <p>No. Kyno stores versioned direction and its adapters pull it before work proceeds. Pulls can fail, and an agent can receive the right principles and still misinterpret them or make a bad decision. Claims about improved behavior require evidence from the actual integration and task.</p>
+      <h3>What happens if a pull fails?</h3>
+      <p>By default, the binder logs the failure and uses cached direction. If it has never fetched direction, it supplies empty version 0. Configure <code>PullPolicy(fail_closed=True)</code> to raise an error instead. Current direction depends on a successful pull; an update committed after that read becomes available on a later pull.</p>
+      <h3>Do I need Canon?</h3>
+      <p>No. Verification is optional. An independent verifier such as <a href="https://github.com/cizambra/canon">Canon</a> can evaluate outputs against the supplied constitution. Kyno's optional realignment gate accepts external verdicts; it does not ship its own judge.</p>
+      <h3>When is Kyno useful?</h3>
+      <p>When several agents need shared direction, when priorities change during a run, or when your integration needs to record which direction a step received. For a short workflow whose direction is fixed, an existing prompt or file may meet your needs.</p>
     </section>
 
     <section class="constitution wrap">

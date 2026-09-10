@@ -26,7 +26,7 @@ from kyno.config import (
     remotes_path,
 )
 from kyno.errors import AuthoringError, NoFieldChangedError
-from kyno.models import AUTOMATION, OPERATOR, OVERRIDE, TokenScope
+from kyno.models import AuthorizationType, TokenScope
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
 from kyno.remote import RemoteError, dial, version_from_payload
 from kyno.server_config import Settings, store_from_settings
@@ -348,7 +348,11 @@ def _remote_set(
             # Who stood behind this write, recorded on the version: an
             # operator answered, automation ran, or the override flag did.
             "authorized_by": (
-                OVERRIDE if unsafe_approval else AUTOMATION if no_interactive else OPERATOR
+                AuthorizationType.OVERRIDE.value
+                if unsafe_approval
+                else AuthorizationType.AUTOMATION.value
+                if no_interactive
+                else AuthorizationType.OPERATOR.value
             ),
         }
         try:

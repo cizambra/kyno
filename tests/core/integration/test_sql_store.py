@@ -5,9 +5,10 @@ import pytest
 from sqlalchemy import create_engine, delete, text
 
 from kyno.errors import CorruptStateError, VersionConflictError
-from kyno.models import TokenScope
+from kyno.models import AuthorizationType, TokenScope
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
+from kyno.wire.errors import CoherenceError
 from kyno.wire.models import Principle
 
 # The `store` fixture (sqlite + postgres, see tests/conftest.py) is injected
@@ -614,6 +615,8 @@ def test_given_an_unwritten_name_when_pulling_versions_after_zero_then_nothing_c
 
 
 def test_given_authorized_by_when_appending_then_head_and_export_return_it(store):
+    from kyno.models import AuthorizationType
+
     store.append(
         "default",
         1,
@@ -623,10 +626,12 @@ def test_given_authorized_by_when_appending_then_head_and_export_return_it(store
         changed_mission=True,
         changed_principles=False,
         created_by="ci",
-        authorized_by="automation",
+        authorized_by=AuthorizationType.AUTOMATION,
     )
-    assert store.head("default").authorized_by == "automation"
-    assert store.export_versions("default")[0]["authorized_by"] == "automation"
+    assert store.head("default").authorized_by is AuthorizationType.AUTOMATION
+    exported = store.export_versions("default")[0]["authorized_by"]
+    assert exported == "automation"
+    assert type(exported) is str
 
 
 def test_given_no_authorized_by_when_appending_then_it_reads_back_as_null(store):
@@ -641,6 +646,49 @@ def test_given_no_authorized_by_when_appending_then_it_reads_back_as_null(store)
         created_by=None,
     )
     assert store.head("default").authorized_by is None
+
+
+def test_given_override_authorization_when_importing_then_core_has_enum_and_export_has_string(
+    store,
+):
+    store.append(
+        "default",
+        1,
+        mission="M",
+        principles=(),
+        change_note="init",
+        changed_mission=True,
+        changed_principles=False,
+        created_by="ci",
+        authorized_by=AuthorizationType.OVERRIDE,
+    )
+
+    store.import_versions("copy", store.export_versions("default"))
+
+    assert store.head("copy").authorized_by is AuthorizationType.OVERRIDE
+    exported = store.export_versions("copy")[0]["authorized_by"]
+    assert exported == "override"
+    assert type(exported) is str
+
+
+def test_given_an_unknown_authorization_when_importing_then_no_ledger_is_written(store):
+    store.append(
+        "default",
+        1,
+        mission="M",
+        principles=(),
+        change_note="init",
+        changed_mission=True,
+        changed_principles=False,
+        created_by="ci",
+    )
+    rows = store.export_versions("default")
+    rows[0]["authorized_by"] = "sudo"
+
+    with pytest.raises(CoherenceError, match="authorized_by"):
+        store.import_versions("copy", rows)
+
+    assert store.head("copy") is None
 
 
 def test_given_a_url_whose_driver_is_missing_when_building_the_store_then_the_error_names_the_fix(

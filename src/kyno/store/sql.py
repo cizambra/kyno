@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 
 from kyno.errors import ConfigError, CorruptStateError, VersionConflictError
-from kyno.models import ConstitutionVersion, Publication, Token, TokenScope
+from kyno.models import AuthorizationType, ConstitutionVersion, Publication, Token, TokenScope
 from kyno.store.schema import build_metadata
 from kyno.wire.errors import CoherenceError
 from kyno.wire.models import Principle, normalize_principles
@@ -108,7 +108,7 @@ class SqlConstitutionStore:
             changed_principles=bool(row.changed_principles),
             created_at=created_at,
             created_by=row.created_by,
-            authorized_by=row.authorized_by,
+            authorized_by=(AuthorizationType(row.authorized_by) if row.authorized_by else None),
             token_id=row.token_id,
         )
 
@@ -195,7 +195,7 @@ class SqlConstitutionStore:
                 "principles": [p.to_dict() for p in v.principles],
                 "change_note": v.change_note,
                 "created_by": v.created_by,
-                "authorized_by": v.authorized_by,
+                "authorized_by": v.authorized_by.value if v.authorized_by else None,
                 "token_id": v.token_id,
                 "created_at": v.created_at.isoformat(),
             }
@@ -262,6 +262,15 @@ class SqlConstitutionStore:
                 raise CoherenceError(f"row {row['version']} principles must be a list")
             principles = normalize_principles(raw_principles) or ()
             created_at = _import_timestamp(row)
+            authorized_by = row.get("authorized_by")
+            if authorized_by is not None:
+                try:
+                    authorized_by = AuthorizationType(authorized_by)
+                except ValueError:
+                    raise CoherenceError(
+                        f"row {row['version']} authorized_by must be one of "
+                        f"{', '.join(AuthorizationType)}, or null"
+                    ) from None
             conn.execute(
                 insert(self._versions).values(
                     constitution_id=cid,
@@ -273,7 +282,7 @@ class SqlConstitutionStore:
                     changed_mission=mission != previous_mission,
                     changed_principles=principles != previous_principles,
                     created_by=row.get("created_by"),
-                    authorized_by=row.get("authorized_by"),
+                    authorized_by=authorized_by.value if authorized_by else None,
                     token_id=None,
                     created_at=created_at,
                 )
@@ -330,7 +339,7 @@ class SqlConstitutionStore:
         changed_mission: bool,
         changed_principles: bool,
         created_by: str | None,
-        authorized_by: str | None = None,
+        authorized_by: AuthorizationType | None = None,
         token_id: int | None = None,
     ) -> ConstitutionVersion:
         now = datetime.now(UTC)

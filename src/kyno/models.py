@@ -12,13 +12,11 @@ from kyno.wire.models import (
     check_detail,
 )
 
-# Who approved a write. Recorded at write time because it cannot be worked out later: an
-# operator answered the questions, automation ran under the checks, or the override flag skipped
-# them.
-OPERATOR = "operator"
-AUTOMATION = "automation"
-OVERRIDE = "override"
-AUTHORIZATIONS = (OPERATOR, AUTOMATION, OVERRIDE)
+
+class AuthorizationType(StrEnum):
+    OPERATOR = "operator"
+    AUTOMATION = "automation"
+    OVERRIDE = "override"
 
 
 class TokenScope(StrEnum):
@@ -43,11 +41,16 @@ class ConstitutionVersion(HoldsPrinciples):
     # sits next to the mission it expands.
     declaration: str = ""
     # None on local and direct writes: those paths ask no approval questions.
-    authorized_by: str | None = None
+    authorized_by: AuthorizationType | None = None
     # The id of the token that authenticated a remote write. Resolved by the
     # server from the request itself, never taken from the client. None on
     # local and stdio writes.
     token_id: int | None = None
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.authorized_by is not None:
+            object.__setattr__(self, "authorized_by", AuthorizationType(self.authorized_by))
 
     def principle(self, title: str) -> Principle:
         """The one principle with this exact title. Titles are not unique, so
@@ -67,7 +70,7 @@ class ConstitutionVersion(HoldsPrinciples):
         payload["changed_principles"] = self.changed_principles
         payload["created_at"] = self.created_at.isoformat()
         payload["created_by"] = self.created_by
-        payload["authorized_by"] = self.authorized_by
+        payload["authorized_by"] = self.authorized_by.value if self.authorized_by else None
         return payload
 
 

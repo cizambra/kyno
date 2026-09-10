@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 import pytest
 
 from kyno import mcp_server, mcp_tools
-from kyno.models import Token, TokenScope
+from kyno.models import AuthorizationType, Token, TokenScope
 
 
 def test_given_a_typed_token_scope_when_asking_whoami_then_a_plain_string_is_returned():
@@ -457,6 +457,15 @@ def test_given_an_authorization_argument_when_setting_direction_then_it_is_recor
         authorized_by="automation",
     )
     assert result["authorized_by"] == "automation"
+    assert type(result["authorized_by"]) is str
+
+
+def test_given_authorization_types_when_inspecting_set_direction_then_the_schema_uses_strings():
+    set_direction = next(tool for tool in mcp_tools.TOOLS if tool.name == "set_direction")
+    values = set_direction.inputSchema["properties"]["authorized_by"]["enum"]
+
+    assert values == [value.value for value in AuthorizationType] + [None]
+    assert all(type(value) is str for value in values[:-1])
 
 
 RICH = dict(

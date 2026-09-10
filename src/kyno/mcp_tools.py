@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import mcp.types as types
 
-from kyno.models import TokenScope
+from kyno.models import AuthorizationType, TokenScope
 from kyno.wire.models import DETAIL_LEVELS, FULL
 
 # get_principles has its own detail vocabulary: "titles" names exactly what
@@ -196,7 +196,7 @@ DECLARATIONS = [
                     "expected_version": {"type": ["integer", "null"]},
                     "authorized_by": {
                         "type": ["string", "null"],
-                        "enum": ["operator", "automation", "override", None],
+                        "enum": [value.value for value in AuthorizationType] + [None],
                     },
                 },
                 "required": ["change_note"],

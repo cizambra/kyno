@@ -9,7 +9,7 @@ import pytest
 import kyno.cli as cli
 from kyno import mcp_server
 from kyno.cli import app
-from kyno.models import Token
+from kyno.models import AuthorizationType, Token
 from kyno.remote import RemoteError
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
@@ -510,7 +510,7 @@ def test_given_a_person_answering_yes_when_applying_then_person_answered_is_reco
     path = write_file(tmp_path, mission="M1")
     r = runner.invoke(app, ["set", path, "--note", "init", "--remote"], input="y\n")
     assert r.exit_code == 0, r.output
-    assert remote_cp.current().authorized_by == "operator"
+    assert remote_cp.current().authorized_by is AuthorizationType.OPERATOR
 
 
 def test_given_no_interactive_when_applying_then_automation_is_recorded(
@@ -519,7 +519,7 @@ def test_given_no_interactive_when_applying_then_automation_is_recorded(
     path = write_file(tmp_path, mission="M1")
     r = runner.invoke(app, ["set", path, "--note", "init", "--remote", "--no-interactive"])
     assert r.exit_code == 0, r.output
-    assert remote_cp.current().authorized_by == "automation"
+    assert remote_cp.current().authorized_by is AuthorizationType.AUTOMATION
 
 
 def test_given_unsafe_approval_when_applying_then_unsafe_approved_is_recorded(
@@ -528,7 +528,7 @@ def test_given_unsafe_approval_when_applying_then_unsafe_approved_is_recorded(
     path = write_file(tmp_path, mission="M1")
     r = runner.invoke(app, ["set", path, "--note", "init", "--remote", "--unsafe-approval"])
     assert r.exit_code == 0, r.output
-    assert remote_cp.current().authorized_by == "override"
+    assert remote_cp.current().authorized_by is AuthorizationType.OVERRIDE
 
 
 def test_given_recorded_authorizations_when_reading_log_remotely_then_authorized_by_is_printed(

@@ -11,14 +11,20 @@ from typer.testing import CliRunner
 from kyno.cli import app
 from tests.workspaces import cli_workspace
 
-GUIDE = Path(__file__).resolve().parents[3] / "docs" / "recovery.md"
+RECOVERY_EXAMPLE = Path(__file__).resolve().parents[3] / "examples" / "extract_direction.py"
 runner = CliRunner()
 
 
-def extract(history, version, constitution, output):
-    code = GUIDE.read_text(encoding="utf-8").split("```python\n", 1)[1].split("```", 1)[0]
+def run_recovery_example(history, version, constitution, output):
     return subprocess.run(
-        [sys.executable, "-c", code, str(history), str(version), constitution, str(output)],
+        [
+            sys.executable,
+            str(RECOVERY_EXAMPLE),
+            str(history),
+            str(version),
+            constitution,
+            str(output),
+        ],
         capture_output=True,
         text=True,
         timeout=10,
@@ -63,7 +69,7 @@ def test_given_an_earlier_version_when_reapplied_then_its_full_content_returns_a
     history.write_text(exported.stdout, encoding="utf-8")
     recovery = tmp_path / "recovery.json"
 
-    extracted = extract(history, 1, constitution, recovery)
+    extracted = run_recovery_example(history, 1, constitution, recovery)
 
     assert extracted.returncode == 0, extracted.stderr
     assert json.loads(recovery.read_text()) == good
@@ -95,7 +101,7 @@ def test_given_a_missing_version_when_extracting_then_no_recovery_file_is_create
     history.write_text("[]", encoding="utf-8")
     output = tmp_path / "recovery.json"
 
-    result = extract(history, 8, "support", output)
+    result = run_recovery_example(history, 8, "support", output)
 
     assert result.returncode != 0
     assert "Expected exactly one version 8" in result.stderr
@@ -111,7 +117,7 @@ def test_given_an_existing_recovery_file_when_extracting_then_it_is_not_overwrit
     output = tmp_path / "recovery.json"
     output.write_text("reviewed file", encoding="utf-8")
 
-    result = extract(history, 1, "support", output)
+    result = run_recovery_example(history, 1, "support", output)
 
     assert result.returncode != 0
     assert output.read_text() == "reviewed file"
@@ -132,7 +138,7 @@ def test_given_three_versions_when_extracting_v2_then_only_v2_content_is_written
     history.write_text(json.dumps(rows), encoding="utf-8")
     output = tmp_path / "recovery.json"
 
-    result = extract(history, 2, "support", output)
+    result = run_recovery_example(history, 2, "support", output)
 
     assert result.returncode == 0, result.stderr
     assert json.loads(output.read_text()) == {
@@ -149,7 +155,7 @@ def test_given_duplicate_versions_when_extracting_then_no_recovery_file_is_creat
     history.write_text(json.dumps([row, {**row, "mission": "Different content"}]), encoding="utf-8")
     output = tmp_path / "recovery.json"
 
-    result = extract(history, 2, "support", output)
+    result = run_recovery_example(history, 2, "support", output)
 
     assert result.returncode != 0
     assert "Expected exactly one version 2; found 2" in result.stderr

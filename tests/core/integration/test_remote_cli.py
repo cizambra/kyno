@@ -168,25 +168,41 @@ def test_given_dry_run_when_applying_remotely_then_the_delta_prints_and_nothing_
     assert remote_cp.current().version == 0
 
 
+@pytest.mark.parametrize("constitution", ["default", "sales"])
 def test_given_a_matching_file_when_checking_remotely_then_it_matches_current_direction(
-    fake_dial, remote_cp, tmp_path
+    fake_dial, remote_cp, tmp_path, constitution
 ):
-    remote_cp.set_direction(mission="M1", change_note="init")
-    path = write_file(tmp_path, mission="M1")
+    remote_cp.set_direction(mission="M1", change_note="init", constitution=constitution)
+    path = write_file(tmp_path, mission="M1", constitution=constitution)
     r = runner.invoke(app, ["check", path, "--remote"])
     assert r.exit_code == 0, r.output
-    assert "direction: 'default' matches current version 1" in r.output
+    assert f"direction: '{constitution}' matches current version 1" in r.output
 
 
+@pytest.mark.parametrize("constitution", ["default", "sales"])
 def test_given_a_stale_file_when_checking_remotely_then_it_fails_with_the_delta(
-    fake_dial, remote_cp, tmp_path
+    fake_dial, remote_cp, tmp_path, constitution
 ):
-    remote_cp.set_direction(mission="M1", change_note="init")
-    path = write_file(tmp_path, mission="M2")
+    remote_cp.set_direction(mission="M1", change_note="init", constitution=constitution)
+    path = write_file(tmp_path, mission="M2", constitution=constitution)
     r = runner.invoke(app, ["check", path, "--remote"])
     assert r.exit_code == 1
-    assert "direction: 'default' differs from current version 1:" in r.output
+    assert f"direction: '{constitution}' differs from current version 1:" in r.output
     assert 'The mission was "M1" and is now "M2".' in r.output
+
+
+@pytest.mark.parametrize("constitution", ["default", "sales"])
+def test_given_unwritten_direction_when_checking_remotely_then_it_reports_version_one_creation(
+    fake_dial, remote_cp, tmp_path, constitution
+):
+    path = write_file(tmp_path, constitution=constitution)
+    result = runner.invoke(app, ["check", path, "--remote"])
+    assert result.exit_code == 1
+    assert (
+        f"direction: '{constitution}' has no versions; applying this file creates version 1"
+        in result.output
+    )
+    assert remote_cp.current(constitution).version == 0
 
 
 def test_given_an_unreachable_endpoint_when_checking_remotely_then_not_compared_exit_0(

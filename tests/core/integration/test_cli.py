@@ -681,26 +681,30 @@ def test_given_an_empty_store_when_reading_history_then_it_says_so(tmp_path, mon
     assert "no constitution set" in r.stdout
 
 
+@pytest.mark.parametrize("constitution", ["default", "sales"])
 def test_given_a_matching_file_when_checking_then_it_matches_current_direction(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, constitution
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
-    apply_yaml(tmp_path, mission="M1", note="init", name="c.yaml")
+    apply_yaml(tmp_path, mission="M1", note="init", name="c.yaml", constitution=constitution)
     r = runner.invoke(app, ["check", str(tmp_path / "c.yaml")])
     assert r.exit_code == 0
-    assert "direction: 'default' matches current version 1" in r.stdout
+    assert f"direction: '{constitution}' matches current version 1" in r.stdout
 
 
-def test_given_a_stale_file_when_checking_then_it_fails_and_shows_the_delta(tmp_path, monkeypatch):
+@pytest.mark.parametrize("constitution", ["default", "sales"])
+def test_given_a_stale_file_when_checking_then_it_fails_and_shows_the_delta(
+    tmp_path, monkeypatch, constitution
+):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
-    apply_yaml(tmp_path, mission="M2", note="hotfix")
+    apply_yaml(tmp_path, mission="M2", note="hotfix", constitution=constitution)
     stale = tmp_path / "stale.yaml"
-    stale.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
+    stale.write_text(f"constitution: {constitution}\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(stale)])
     assert r.exit_code == 1
-    assert "direction: 'default' differs from current version 1:" in r.stdout
+    assert f"direction: '{constitution}' differs from current version 1:" in r.stdout
     assert 'The mission was "M2" and is now "M1".' in r.stdout
 
 

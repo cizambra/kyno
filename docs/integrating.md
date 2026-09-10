@@ -64,7 +64,7 @@ Start a local Kyno with the sample constitution:
 ```bash
 pip install kyno
 kyno db init
-kyno set --file conformance/v1.yaml
+kyno apply --file conformance/v1.yaml
 kyno token add dev --scope write   # copy the printed value
 kyno serve --transport http
 ```
@@ -326,7 +326,7 @@ Start a run that takes several steps. While it's running, publish the
 second version of the sample constitution from another terminal:
 
 ```bash
-kyno set --file conformance/v2.yaml
+kyno apply --file conformance/v2.yaml
 ```
 
 **Check:** run the checker on your log again. It prints where the version

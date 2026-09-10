@@ -48,10 +48,10 @@ def test_given_a_live_server_when_applying_remotely_then_the_version_is_applied(
             == 0
         )
         path = write_file(tmp_path, mission="Live over the wire")
-        r = runner.invoke(app, ["set", path, "--note", "e2e", "--remote", "--no-interactive"])
+        r = runner.invoke(app, ["apply", path, "--note", "e2e", "--remote", "--no-interactive"])
         assert r.exit_code == 0, r.output
         assert store.head("default").mission == "Live over the wire"
-        r = runner.invoke(app, ["log", "--remote"])
+        r = runner.invoke(app, ["history", "--remote"])
         assert r.exit_code == 0 and "e2e" in r.stdout
     finally:
         server.should_exit = True
@@ -91,7 +91,7 @@ def test_given_a_revoked_token_when_going_remote_then_the_error_names_the_profil
         )
         store.revoke_token(token.id)
 
-        r = runner.invoke(app, ["log", "--remote"])
+        r = runner.invoke(app, ["history", "--remote"])
 
         assert r.exit_code == 1
         assert f"'default' at http://127.0.0.1:{port} refused the token: 401 unauthorized" in (

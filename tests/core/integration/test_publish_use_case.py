@@ -34,7 +34,7 @@ def apply_yaml(
         lines.extend(f"  - {p}" for p in principles)
     path = tmp_path / name
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    args = ["set", str(path)]
+    args = ["apply", str(path)]
     if note is not None:
         args += ["--note", note]
     if by is not None:

@@ -254,16 +254,16 @@ One flag, on the commands you already use:
 
 ```bash
 kyno current --remote
-kyno set constitution.yaml --note "sharpen the mission" --remote
+kyno apply constitution.yaml --note "sharpen the mission" --remote
 kyno check constitution.yaml --remote
-kyno log --remote
+kyno history --remote
 kyno export --remote
 kyno whoami --remote
 ```
 
 They work against the profile's endpoint instead of your local store and print exactly what their local versions print. `--profile oncall` picks a different remote profile; `--credentials` or `--token-env` beside it swaps the token source for that one run. Without `--remote` you are always on your local store — there is no fallback in either direction.
 
-When you run a remote `set` from a terminal, Kyno asks a question after showing the delta: have you evaluated this change against your workflow? The default answer is no, and if the answer is no, nothing is applied. If the file has the same content as an older version, Kyno also asks whether this is a deliberate revert, to catch applies from stale files.
+When you run a remote `apply` from a terminal, Kyno asks a question after showing the delta: have you evaluated this change against your workflow? The default answer is no, and if the answer is no, nothing is applied. If the file has the same content as an older version, Kyno also asks whether this is a deliberate revert, to catch applies from stale files.
 
 Two flags skip the questions, with two different meanings, and you pass at most one:
 
@@ -275,9 +275,9 @@ Two flags skip the questions, with two different meanings, and you pass at most 
 
 `--no-interactive` is the CI lane: the yes already happened in review, and the version pin plus the `check` step do the guarding. `--unsafe-approval` is for overriding on purpose, and it stands out in review by design.
 
-Who stood behind an apply is recorded on the version it writes as `authorized_by` — `operator`, `automation`, or `override` — and `kyno log` prints it. It's written at write time because it can't be reconstructed later. Local applies record nothing: there were no questions to answer.
+Who stood behind an apply is recorded on the version it writes as `authorized_by` — `operator`, `automation`, or `override` — and `kyno history` prints it. It's written at write time because it can't be reconstructed later. Local applies record nothing: there were no questions to answer.
 
-Two behaviors worth knowing. A remote `set` fetches the server's head and shows you the same delta a local set shows, before it applies; a duplicate apply is the same clean no-op. And a server you can't reach is a plain one-line error — except under `check`, which still prints its field-by-field report and ends with a comparison line saying the store was not compared, and why.
+Two behaviors worth knowing. A remote `apply` fetches the server's head and shows you the same delta a local apply shows, before it applies; a duplicate apply is the same clean no-op. And a server you can't reach is a plain one-line error — except under `check`, which still prints its field-by-field report and ends with a comparison line saying the store was not compared, and why.
 
 ### Checking your wiring
 

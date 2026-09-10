@@ -58,7 +58,7 @@ pip install kyno          # CLI: kyno
 kyno new acme && cd acme  # the workspace: this instance's config and store
 kyno db init
 printf 'constitution: default\nmission: Ship a lending product people trust\n' > constitution.yaml
-kyno set constitution.yaml --note "initial constitution"
+kyno apply constitution.yaml --note "initial constitution"
 kyno current
 kyno serve --transport stdio
 ```
@@ -128,7 +128,7 @@ principles:
 ```
 
 ```bash
-kyno set constitution.yaml --note "the constitution as written"
+kyno apply constitution.yaml --note "the constitution as written"
 ```
 
 The full file semantics, and running several constitutions side by side,

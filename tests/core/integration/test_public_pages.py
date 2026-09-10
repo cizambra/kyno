@@ -152,7 +152,7 @@ def test_given_no_principles_when_rendering_then_the_principles_list_is_omitted(
 
 
 def test_given_no_mission_when_rendering_then_the_name_is_the_headline(plane, client):
-    # Reachable: `kyno set --principle p --note init` sets no mission. A
+    # Reachable: `kyno apply --principle p --note init` sets no mission. A
     # blank headline would read as a broken page rather than a sparse one.
     plane.set_direction(principles=("p1",), change_note="init", constitution="rules")
     plane.publish(constitution="rules")

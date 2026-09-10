@@ -297,7 +297,7 @@ def test_given_an_older_reply_when_the_cell_holds_newer_direction_then_the_bindi
     assert first.status is DeliveryStatus.CURRENT
 
 
-def test_given_bind_without_status_when_pulling_then_it_returns_direction_with_one_request(
+def test_given_uncached_sales_when_bind_is_called_then_it_returns_direction_after_one_pull(
     scripted_source,
 ):
     scripted_source.set("sales", 2, "Sales")

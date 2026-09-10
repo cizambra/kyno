@@ -286,7 +286,7 @@ def test_given_an_observer_when_direction_is_injected_then_it_receives_that_bind
     assert len(scripted_source.calls) == 1
 
 
-def test_given_an_observer_returning_false_when_direction_is_injected_then_the_hook_does_not_block(
+def test_given_observer_returns_false_when_hook_runs_then_crewai_receives_no_cancellation_signal(
     scripted_source,
 ):
     scripted_source.set("default", 1, "Help")

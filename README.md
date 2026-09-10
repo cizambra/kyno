@@ -200,7 +200,10 @@ of deploying workflow code.
 You can author and review a constitution in Git, then publish it explicitly
 with `kyno set`. Automatic Git synchronization is not part of the MVP.
 
-## What Kyno guarantees
+## What Kyno does, and its limits
+
+These describe the implemented behavior, not a promise about agent outcomes
+or uninterrupted delivery. A failed pull follows the configured failure policy.
 
 - Each named constitution has an authoritative current version and immutable history.
 - Committed updates are available to subsequent reads without restarting the workflow.

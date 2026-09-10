@@ -172,7 +172,7 @@
       <h3>Is Kyno an AI governance system?</h3>
       <p>Kyno supplies runtime organizational direction: your current mission, principles, and tradeoffs. Permissions, approval processes, and enforcement belong to the surrounding system. Model training and alignment remain separate too; even a well-trained model needs your organization's current direction.</p>
       <h3>Does Kyno prevent drift or guarantee alignment?</h3>
-      <p>No. It addresses stale and divergent copies of direction. An agent can receive the right principles and still misinterpret them or make a bad decision. Kyno guarantees properties of the direction record and its delivery interfaces. Claims about improved behavior require evidence from the actual integration and task.</p>
+      <p>No. Kyno stores versioned direction and its adapters pull it before work proceeds. Pulls can fail, and an agent can receive the right principles and still misinterpret them or make a bad decision. Claims about improved behavior require evidence from the actual integration and task.</p>
       <h3>What happens if a pull fails?</h3>
       <p>By default, the binder logs the failure and uses cached direction. If it has never fetched direction, it supplies empty version 0. Configure <code>PullPolicy(fail_closed=True)</code> to raise an error instead. Current direction depends on a successful pull; an update committed after that read becomes available on a later pull.</p>
       <h3>Do I need Canon?</h3>

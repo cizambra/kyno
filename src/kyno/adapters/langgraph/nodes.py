@@ -8,6 +8,7 @@ from typing import Any, TypedDict
 from langgraph.types import interrupt
 
 from kyno.sdk.binder import DirectionBinder
+from kyno.sdk.binding import DeliveryStatus
 from kyno.sdk.cell import Direction
 from kyno.sdk.gate import Action, RealignmentGate
 from kyno.sdk.trace import RunTrace
@@ -27,14 +28,17 @@ class KynoState(TypedDict, total=False):
     kyno_principles: list[dict]
     kyno_context: DetailLevel
     kyno_direction: str
+    kyno_delivery_status: DeliveryStatus | None
     kyno_verdict: str
     kyno_checked: bool
     kyno_blocked: bool
 
 
-def direction_update(direction: Direction) -> dict:
+def direction_update(direction: Direction, *, status: DeliveryStatus | None = None) -> dict:
     """Direction travels in graph state so a persisted checkpoint says which
-    constitution and version a step served, without any other context."""
+    constitution and version a step served, without any other context.
+    Status is unknown when no binding metadata is supplied.
+    """
     return {
         "kyno_constitution": direction.constitution,
         "kyno_version": direction.version,
@@ -42,6 +46,7 @@ def direction_update(direction: Direction) -> dict:
         "kyno_principles": [p.to_dict() for p in direction.principles],
         "kyno_direction": direction.render(),
         "kyno_context": direction.context,
+        "kyno_delivery_status": DeliveryStatus(status).value if status is not None else None,
     }
 
 
@@ -60,7 +65,8 @@ def direction_node(binder: DirectionBinder, constitution: str = "default") -> Ca
     one refresh ahead of a fan-out serves every node downstream."""
 
     def node(state: dict) -> dict:
-        return direction_update(binder.bind(constitution))
+        binding = binder.bind_with_status(constitution)
+        return direction_update(binding.direction, status=binding.status)
 
     return node
 
@@ -69,8 +75,8 @@ def pull_before(binder: DirectionBinder, constitution: str = "default") -> Calla
     def decorator(node: Callable) -> Callable:
         @functools.wraps(node)
         def wrapped(state: dict, *args: Any, **kwargs: Any) -> dict:
-            direction = binder.bind(constitution)
-            update = direction_update(direction)
+            binding = binder.bind_with_status(constitution)
+            update = direction_update(binding.direction, status=binding.status)
             result = node({**state, **update}, *args, **kwargs) or {}
             return {**update, **result}
 

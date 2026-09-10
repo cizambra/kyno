@@ -9,6 +9,7 @@ On this page:
 
 - [The loop](#the-loop)
 - [The integration](#the-integration)
+- [Inspecting delivery status](#inspecting-delivery-status)
 - [Acting on a change](#acting-on-a-change)
 - [The realignment gate](#the-realignment-gate)
 
@@ -19,10 +20,11 @@ direction in force and put it in front of the agent. It's what keeps a
 running system on the current version instead of on a copy. Everything
 an adapter is expected to do falls out of these four behaviors.
 
-- **Pull before each step.** The binder injects the current mission and
-  principle titles into the next model call, tagged with the constitution
-  and version they came from. It stays small by default;
-  `connection.binder(context="full")` injects the declaration and the
+- **Pull at execution boundaries.** The binder returns direction tagged
+  with its constitution and version. CrewAI injects it into model messages;
+  LangGraph puts it in state for your node to include in the model input.
+  The default rendering includes the mission and principle titles;
+  `connection.binder(context="full")` includes the declaration and
   principle descriptions too. If Kyno is unreachable, the step runs on
   the last direction the binder holds, and an event goes to the telemetry
   sink -- by default, a warning line in your logs naming the constitution
@@ -90,42 +92,47 @@ binding. Unexpected programming errors still propagate.
 Each result keeps its own status; later pulls cannot relabel it. The status
 values serialize as lowercase strings. They describe the local binding,
 not constitution content, and are not added to MCP payloads or injected
-direction text. Shipped adapters continue using `bind()` in this change;
-they do not yet expose delivery status in framework state or callbacks.
+direction text. LangGraph exposes this status in graph state. CrewAI does
+not yet expose it through a callback.
 
 `binder.bind()` continues to return only `Direction`. Both methods perform
 one pull and use the same failure policy and telemetry.
 
 ## The integration
 
+Choose the setup for your framework:
+
+- [CrewAI integration](#crewai): Kyno refreshes the model's messages
+  through a before-call hook.
+- [LangGraph integration](langgraph.md): Kyno populates graph state;
+  your model-calling node includes that direction in the model's input.
+
+For another framework or language, see [Building an adapter](integrating.md).
+
+### CrewAI
+
 ```bash
-pip install "kyno[crewai]"      # or: pip install "kyno[langgraph]"
+pip install "kyno[crewai]"
 ```
-
-On a different framework or language? [integrating.md](integrating.md)
-shows how to build your own adapter.
-
-An adapter binds a crew (in CrewAI) or a graph (in LangGraph) to one named constitution and re-binds
-every next step to the version in force right now:
 
 ```python
 import kyno
 from kyno.adapters.crewai import CrewAiKyno
 
-connection = kyno.connect()  # uses the default profile from ~/.kyno
+connection = kyno.connect()
 adapter = CrewAiKyno(connection.binder(), constitution="eu")
-adapter.register()  # injects the current direction before each model call
+adapter.register()
 ```
+
+Run your crew while the connection and hook are active. Unregister the
+adapter with `adapter.unregister()` and close the connection when done.
+
+### Connection configuration
 
 `kyno.connect()` resolves the default profile from `~/.kyno`. A named profile
 uses `kyno.connect(profile="ops")`; an application that owns its wiring can use
 `kyno.connect(url=endpoint, token=token)`. The SDK does not choose environment
 variable names or read `KYNO_URL` and `KYNO_TOKEN` itself.
-
-That's the whole integration. Every model call runs under the version in force,
-and a version published mid-run reaches the next step. The pieces behind
-`connect()`, the binder, the sources, and the policies, live in `kyno.sdk` for
-anyone who needs to assemble them differently.
 
 The adapter pulls from a running Kyno, and that Kyno can run in two
 places. As its own service: `kyno serve` somewhere, `kyno.connect` from
@@ -157,20 +164,7 @@ flowchart TB
   end
 ```
 
-On LangGraph, inherit `KynoState` in your graph's state schema and put
-`direction_node` ahead of the work. LangGraph passes along only the keys a schema
-declares, so without `KynoState` the direction a node pulls never reaches the
-nodes after it:
-
-```python
-from kyno.adapters.langgraph import KynoState, direction_node
-
-
-class State(KynoState, total=False):
-    output: str
-```
-
-### Acting on a change
+## Acting on a change
 
 Kyno delivers the direction, the version, and what changed. What your
 system does when the version moves is an integration decision: you pick
@@ -178,8 +172,8 @@ the response when you wire the adapter, and each option has a cost and a
 fit.
 
 - **Carry on.** The next step gets the new direction, and finished work
-  stands. This is the default; `adapter.register()` already does it, and
-  it costs nothing beyond the pull. It fits most workflows, where any
+  stands. This requires no extra planning or verification call beyond the
+  direction boundary wired by your integration. It fits most workflows, where any
   step done under the current direction is good work.
 - **Reassess.** Re-derive the remaining plan under the new direction.
   Wire it where your orchestrator plans: call `binder.plan()`, plan
@@ -198,12 +192,13 @@ Kyno takes no position on which one is right, and they combine: most
 integrations carry on by default and add the gate where the output is
 expensive.
 
-### The realignment gate
+## The realignment gate
 
-The gate reviews each finished task. It holds no judgment of
-its own: it asks a `VerdictSource` you supply and acts on the answer, raising
-on CrewAI and calling `interrupt()` on LangGraph when the verdict is
-`DRIFTED`. Kyno ships no judge, so an adapter built without one has no gate.
+The gate reviews output at the boundary your integration chooses. It holds
+no judgment of its own: it asks a `VerdictSource` you supply and returns a
+decision. CrewAI handles halt decisions by raising from its task callback;
+LangGraph can interrupt for a pause or return a blocked flag for your graph
+to route on. Kyno ships no judge, and verification is optional.
 Where a gate exists but its judge is unreachable, the work proceeds, and
 an `unchecked` event goes to the telemetry sink -- by default, a warning
 line in your logs. `GatePolicy(fail_closed=True)` stops instead.
@@ -224,13 +219,17 @@ flowchart LR
   P -- "yes" --> ST
 ```
 
+For CrewAI, pass a gate to the adapter and attach its task callback when
+constructing your crew:
+
 ```python
 from kyno.sdk import RealignmentGate
-from kyno.adapters.langgraph import gate_node  # LangGraph
 
 adapter = CrewAiKyno(binder, gate=RealignmentGate(source=your_judge))
-crew = Crew(..., task_callback=adapter.task_callback)  # CrewAI
+crew = Crew(agents=agents, tasks=tasks, task_callback=adapter.task_callback)
 ```
+
+See [LangGraph verification](langgraph.md#optional-verification) for its wiring.
 
 ## 💬 Questions?
 

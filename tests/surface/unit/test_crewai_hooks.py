@@ -376,3 +376,52 @@ def test_given_message_injection_failure_when_the_hook_runs_then_no_observer_rec
         adapter.before_llm_call(FakeCtx(messages=UnwritableMessages()))
 
     observer.assert_not_called()
+
+
+def test_given_unchanged_direction_when_two_model_calls_start_then_both_notify_the_observer(
+    scripted_source,
+):
+    scripted_source.set("default", 2, "Help")
+    observed = []
+    ctx = FakeCtx()
+    adapter = CrewAiKyno(DirectionBinder(scripted_source), on_direction=observed.append)
+    adapter.before_llm_call(ctx)
+    first_block = ctx.messages[0]["content"]
+    scripted_source.replies["default"] = replace(
+        scripted_source.replies["default"],
+        changed=False,
+        changed_mission=False,
+        changed_principles=False,
+        change_notes=(),
+        delta=(),
+    )
+
+    adapter.before_llm_call(ctx)
+
+    first, second = observed
+    assert first.direction.version == second.direction.version == 2
+    assert first.status is second.status is DeliveryStatus.CURRENT
+    assert first.direction.render() == first_block
+    assert second.direction.render() == ctx.messages[0]["content"]
+    assert second.direction.change_notes == ()
+    assert scripted_source.calls == [(0, "default"), (2, "default")]
+
+
+def test_given_observer_failed_once_when_the_next_call_starts_then_recording_is_attempted_again(
+    scripted_source, caplog
+):
+    scripted_source.set("default", 1, "M1")
+    observer = Mock(side_effect=[RuntimeError("recording failed"), None])
+    adapter = CrewAiKyno(DirectionBinder(scripted_source), on_direction=observer)
+    ctx = FakeCtx()
+    adapter.before_llm_call(ctx)
+    scripted_source.set("default", 2, "M2")
+
+    adapter.before_llm_call(ctx)
+
+    assert observer.call_count == 2
+    first, second = [call.args[0] for call in observer.call_args_list]
+    assert (first.direction.version, second.direction.version) == (1, 2)
+    assert second.direction.render() == ctx.messages[0]["content"]
+    assert second.status is DeliveryStatus.CURRENT
+    assert sum("direction observer failed" in record.message for record in caplog.records) == 1

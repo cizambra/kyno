@@ -11,12 +11,8 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
 from kyno.sdk.errors import KynoRefusedError, KynoUnavailableError
+from kyno.wire import RESOURCE_URI as RESOURCE_URI
 from kyno.wire.models import ChangesSince, DetailLevel, check_detail
-
-# The resource Kyno announces version changes on. The server sends a `resources/updated`
-# notification here every time a version is appended, and any client can subscribe. Defined in
-# the SDK so the server imports it instead of keeping its own copy.
-RESOURCE_URI = "kyno://constitution/current"
 
 
 @dataclass(frozen=True)

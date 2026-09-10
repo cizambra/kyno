@@ -6,6 +6,8 @@ import pytest
 
 from kyno import mcp_server, mcp_tools
 from kyno.models import AuthorizationType, Token, TokenScope
+from kyno.sdk.client import RESOURCE_URI as SDK_RESOURCE_URI
+from kyno.wire import RESOURCE_URI as WIRE_RESOURCE_URI
 
 
 def test_given_a_typed_token_scope_when_asking_whoami_then_a_plain_string_is_returned():
@@ -15,6 +17,12 @@ def test_given_a_typed_token_scope_when_asking_whoami_then_a_plain_string_is_ret
 
     assert answer["scope"] == "write"
     assert type(answer["scope"]) is str
+
+
+def test_given_the_current_direction_resource_when_importing_it_then_wire_is_authoritative():
+    assert WIRE_RESOURCE_URI == "kyno://constitution/current"
+    assert SDK_RESOURCE_URI == WIRE_RESOURCE_URI
+    assert mcp_server.RESOURCE_URI == WIRE_RESOURCE_URI
 
 
 def test_given_a_set_direction_when_getting_the_constitution_then_it_round_trips(cp):

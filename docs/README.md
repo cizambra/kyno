@@ -11,7 +11,7 @@ but each one stands alone.
    and full reads, and subscriptions.
 3. [The adapters in depth](adapters.md). What the binder does on every
    pull, the failure postures, and the realignment gate. The
-   [LangGraph guide](langgraph.md) covers its framework-specific setup.
+   [CrewAI](crewai.md) and [LangGraph](langgraph.md) guides cover framework-specific setup.
 4. [Build your own adapter](integrating.md). How to build one for any
    framework or language, in five stages with a checker.
 5. [Publishing your constitution](publishing.md). The public page, the

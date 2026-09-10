@@ -1,12 +1,17 @@
 # SPDX-License-Identifier: MIT
 from __future__ import annotations
 
+import logging
+from collections.abc import Callable
 from typing import Any
 
 from kyno.sdk.binder import DirectionBinder
+from kyno.sdk.binding import DirectionBinding
 from kyno.sdk.cell import Direction, refresh
 from kyno.sdk.gate import RealignmentGate
 from kyno.sdk.trace import RunTrace
+
+_log = logging.getLogger(__name__)
 
 
 class TaskBlockedByKyno(RuntimeError):
@@ -40,6 +45,8 @@ class CrewAiKyno:
         gate: RealignmentGate | None = None,
         constitution: str = "default",
         trace: RunTrace | None = None,
+        *,
+        on_direction: Callable[[DirectionBinding], None] | None = None,
     ) -> None:
         self._binder = binder
         # No gate unless one is passed in. Kyno carries direction; checking work against it
@@ -48,9 +55,11 @@ class CrewAiKyno:
         self.gate = gate
         self.constitution = constitution
         self.trace = trace
+        self.on_direction = on_direction
 
     def before_llm_call(self, ctx: Any) -> None:
-        direction = self._binder.bind(self.constitution)
+        """Inject direction, then notify the optional observer; observer failures are logged."""
+        binding = self._binder.bind_with_status(self.constitution)
         messages = getattr(ctx, "messages", None)
         if messages is None:
             messages = ctx.messages = []
@@ -58,10 +67,19 @@ class CrewAiKyno:
         # would silently detach the hook from the call it is editing.
         messages[:] = refresh(
             messages,
-            direction.render(),
+            binding.direction.render(),
             text_of=_system_content,
             make=lambda block: {"role": "system", "content": block},
         )
+        if self.on_direction is not None:
+            try:
+                self.on_direction(binding)
+            except Exception:
+                _log.exception(
+                    "direction observer failed constitution=%s version=%s",
+                    binding.direction.constitution,
+                    binding.direction.version,
+                )
 
     def task_callback(self, task_output: Any) -> None:
         direction = self._binder.cell.get(self.constitution) or Direction.empty(self.constitution)

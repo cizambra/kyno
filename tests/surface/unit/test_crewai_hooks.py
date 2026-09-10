@@ -1,12 +1,19 @@
+from dataclasses import replace
+from unittest.mock import Mock
+
 import pytest
 
 pytest.importorskip("crewai")
 
 from kyno.adapters.crewai.hooks import CrewAiKyno, TaskBlockedByKyno  # noqa: E402
 from kyno.sdk.binder import DirectionBinder  # noqa: E402
+from kyno.sdk.binding import DeliveryStatus  # noqa: E402
 from kyno.sdk.cell import DIRECTION_MARKER  # noqa: E402
+from kyno.sdk.errors import KynoUnavailableError  # noqa: E402
 from kyno.sdk.gate import RealignmentGate, Verdict  # noqa: E402
+from kyno.sdk.policy import PullPolicy  # noqa: E402
 from kyno.sdk.trace import RunTrace  # noqa: E402
+from kyno.wire.models import DetailLevel  # noqa: E402
 
 
 class FakeCtx:
@@ -238,3 +245,134 @@ def test_given_a_gateless_adapter_when_a_step_runs_then_it_is_still_recorded(uni
     assert len(adapter.trace.steps) == 1
     assert adapter.trace.steps[0].verdict == Verdict.UNKNOWN.value
     assert adapter.trace.steps[0].checked is False
+
+
+@pytest.mark.parametrize("status", list(DeliveryStatus))
+@pytest.mark.parametrize("context", list(DetailLevel))
+def test_given_an_observer_when_direction_is_injected_then_it_receives_that_binding_after_injection(
+    scripted_source, status, context
+):
+    scripted_source.set("support", 2, "Help customers", "Be honest")
+    scripted_source.replies["support"] = replace(
+        scripted_source.replies["support"],
+        declaration="Explain the complete resolution.",
+        delta=("Mission changed.",),
+    )
+    binder = DirectionBinder(scripted_source, context=context)
+    if status is DeliveryStatus.CACHED:
+        binder.bind("support")
+    if status is not DeliveryStatus.CURRENT:
+        scripted_source.failure = OSError("offline")
+    scripted_source.calls.clear()
+    messages = [{"role": "user", "content": "Help"}]
+    ctx = FakeCtx(messages=messages)
+    observed = []
+
+    def observe(binding):
+        observed.append((binding, [message.copy() for message in ctx.messages]))
+
+    adapter = CrewAiKyno(binder, constitution="support", on_direction=observe)
+    adapter.before_llm_call(ctx)
+
+    assert len(observed) == 1
+    binding, captured_messages = observed[0]
+    assert binding.status is status
+    assert binding.direction.constitution == "support"
+    assert binding.direction.context is context
+    assert binding.direction.version == (0 if status is DeliveryStatus.EMPTY else 2)
+    assert captured_messages == messages
+    assert messages[0]["content"] == binding.direction.render()
+    assert ctx.messages is messages
+    assert len(scripted_source.calls) == 1
+
+
+def test_given_an_observer_returning_false_when_direction_is_injected_then_the_hook_does_not_block(
+    scripted_source,
+):
+    scripted_source.set("default", 1, "Help")
+    observer = Mock(return_value=False)
+    adapter = CrewAiKyno(DirectionBinder(scripted_source), on_direction=observer)
+    ctx = FakeCtx()
+
+    assert adapter.before_llm_call(ctx) is None
+
+    observer.assert_called_once()
+    assert "Mission: Help" in ctx.messages[0]["content"]
+
+
+def test_given_two_calls_when_direction_changes_then_each_observer_result_keeps_its_own_version(
+    scripted_source,
+):
+    scripted_source.set("support", 1, "M1")
+    observed = []
+    adapter = CrewAiKyno(
+        DirectionBinder(scripted_source), constitution="support", on_direction=observed.append
+    )
+    ctx = FakeCtx()
+    adapter.before_llm_call(ctx)
+    first_block = ctx.messages[0]["content"]
+    scripted_source.set("support", 2, "M2")
+    adapter.before_llm_call(ctx)
+
+    first, second = observed
+    assert first.direction.version == 1
+    assert first.direction.render() == first_block
+    assert second.direction.version == 2
+    assert second.direction.render() == ctx.messages[0]["content"]
+    assert first.status is second.status is DeliveryStatus.CURRENT
+    assert len(ctx.messages) == 1
+
+
+def test_given_a_broken_observer_when_direction_is_injected_then_failure_is_logged_without_escaping(
+    scripted_source, caplog
+):
+    scripted_source.set("support", 3, "Help")
+    observer = Mock(side_effect=RuntimeError("recording failed"))
+    adapter = CrewAiKyno(
+        DirectionBinder(scripted_source), constitution="support", on_direction=observer
+    )
+    ctx = FakeCtx()
+
+    assert adapter.before_llm_call(ctx) is None
+
+    observer.assert_called_once()
+    assert "Mission: Help" in ctx.messages[0]["content"]
+    assert "direction observer failed constitution=support version=3" in caplog.text
+    assert any(record.exc_info for record in caplog.records)
+
+
+@pytest.mark.parametrize("cached", [False, True])
+def test_given_fail_closed_when_the_pull_fails_then_no_observer_runs_or_messages_change(
+    scripted_source, cached
+):
+    scripted_source.set("default", 1, "M1")
+    binder = DirectionBinder(scripted_source, policy=PullPolicy(fail_closed=True))
+    if cached:
+        binder.bind()
+    scripted_source.failure = OSError("offline")
+    observer = Mock()
+    adapter = CrewAiKyno(binder, on_direction=observer)
+    ctx = FakeCtx(messages=[{"role": "user", "content": "Help"}])
+
+    with pytest.raises(KynoUnavailableError):
+        adapter.before_llm_call(ctx)
+
+    observer.assert_not_called()
+    assert ctx.messages == [{"role": "user", "content": "Help"}]
+
+
+def test_given_message_injection_failure_when_the_hook_runs_then_no_observer_receipt_is_emitted(
+    scripted_source,
+):
+    class UnwritableMessages(list):
+        def __setitem__(self, key, value):
+            raise RuntimeError("cannot inject")
+
+    scripted_source.set("default", 1, "M1")
+    observer = Mock()
+    adapter = CrewAiKyno(DirectionBinder(scripted_source), on_direction=observer)
+
+    with pytest.raises(RuntimeError, match="cannot inject"):
+        adapter.before_llm_call(FakeCtx(messages=UnwritableMessages()))
+
+    observer.assert_not_called()

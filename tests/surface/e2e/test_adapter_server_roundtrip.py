@@ -36,6 +36,21 @@ def live_server():
         thread.join(timeout=5)
 
 
+@pytest.fixture
+def read_failure(live_server, monkeypatch):
+    control_plane, _url, _token = live_server
+    unavailable = threading.Event()
+    changes_since = control_plane.changes_since
+
+    def controlled_read(*args, **kwargs):
+        if unavailable.is_set():
+            raise OSError("direction read unavailable")
+        return changes_since(*args, **kwargs)
+
+    monkeypatch.setattr(control_plane, "changes_since", controlled_read)
+    return unavailable
+
+
 @pytest.mark.e2e
 def test_given_a_live_server_when_the_adapter_refreshes_then_the_latest_direction_is_injected(
     live_server,
@@ -82,21 +97,13 @@ def test_given_a_live_server_when_langgraph_refreshes_then_the_latest_direction_
 @pytest.mark.parametrize("cached", [False, True], ids=["empty", "cached"])
 @pytest.mark.parametrize("wrapper", [False, True], ids=["direction-node", "pull-before"])
 def test_given_server_read_failure_when_langgraph_pulls_over_http_then_fallback_clears_on_recovery(
-    live_server, monkeypatch, cached, wrapper
+    live_server, read_failure, cached, wrapper
 ):
     pytest.importorskip("langgraph")
     from kyno.adapters.langgraph import direction_node, pull_before
 
     control_plane, url, token = live_server
-    unavailable = threading.Event()
-    changes_since = control_plane.changes_since
-
-    def controlled_read(*args, **kwargs):
-        if unavailable.is_set():
-            raise OSError("direction read unavailable")
-        return changes_since(*args, **kwargs)
-
-    monkeypatch.setattr(control_plane, "changes_since", controlled_read)
+    unavailable = read_failure
     control_plane.set_direction(mission="M1", change_note="init", constitution="support")
     supplied = []
 
@@ -127,3 +134,46 @@ def test_given_server_read_failure_when_langgraph_pulls_over_http_then_fallback_
     assert "Mission: M2" in recovered["kyno_direction"]
     if wrapper:
         assert supplied[-2:] == [fallback, recovered]
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("cached", [False, True], ids=["empty", "cached"])
+def test_given_failed_reads_when_crewai_calls_again_then_observed_fallback_recovers_to_current(
+    live_server, read_failure, cached
+):
+    control_plane, url, token = live_server
+    control_plane.set_direction(mission="M1", change_note="init", constitution="support")
+    observed = []
+    context = FakeCtx()
+
+    def observe(binding):
+        observed.append((binding, context.messages[0]["content"]))
+
+    with connect(url=url, token=token) as connection:
+        adapter = CrewAiKyno(connection.binder(), constitution="support", on_direction=observe)
+        if cached:
+            adapter.before_llm_call(context)
+            control_plane.set_direction(mission="M2", change_note="pivot", constitution="support")
+            adapter.before_llm_call(context)
+        read_failure.set()
+        adapter.before_llm_call(context)
+        control_plane.set_direction(
+            mission="Recovered", change_note="restore", constitution="support"
+        )
+        read_failure.clear()
+        adapter.before_llm_call(context)
+
+    fallback, recovered = [binding for binding, _block in observed[-2:]]
+    assert fallback.status == ("cached" if cached else "empty")
+    assert fallback.direction.version == (2 if cached else 0)
+    assert recovered.status == "current"
+    assert recovered.direction.version == (3 if cached else 2)
+    assert recovered.direction.mission == "Recovered"
+    if cached:
+        first, second = [binding for binding, _block in observed[:2]]
+        assert (first.direction.version, second.direction.version) == (1, 2)
+        assert first.status == second.status == "current"
+    for binding, block in observed:
+        assert binding.direction.constitution == "support"
+        assert binding.direction.render() == block
+    assert len([message for message in context.messages if message["role"] == "system"]) == 1

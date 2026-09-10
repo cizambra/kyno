@@ -90,3 +90,10 @@ def test_given_sdk_transport_errors_when_importing_them_then_the_sdk_owns_the_mo
 
     assert errors.KynoUnavailableError.__module__ == "kyno.sdk.errors"
     assert errors.KynoRefusedError.__module__ == "kyno.sdk.errors"
+
+
+def test_given_the_core_mcp_server_when_importing_the_resource_uri_then_wire_owns_it():
+    imports = _kyno_imports(SRC / "mcp_server.py")
+
+    assert "kyno.wire" in imports
+    assert "kyno.sdk.client" not in imports

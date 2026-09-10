@@ -9,9 +9,9 @@ from pydantic import AnyUrl
 
 from kyno.mcp_tools import PRINCIPLES_DETAIL_LEVELS, TITLES, TOOLS
 from kyno.models import Token
-from kyno.sdk.client import RESOURCE_URI as RESOURCE_URI  # the SDK owns the wire name
 from kyno.service import ControlPlane
 from kyno.tokens import hash_value
+from kyno.wire import RESOURCE_URI
 from kyno.wire.errors import CoherenceError
 from kyno.wire.models import DetailLevel, check_detail
 

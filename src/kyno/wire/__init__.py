@@ -12,6 +12,8 @@ from kyno.wire.models import (
     normalize_principles,
 )
 
+RESOURCE_URI = "kyno://constitution/current"
+
 __all__ = [
     "DIRECTION_MARKER",
     "ChangesSince",
@@ -20,6 +22,7 @@ __all__ = [
     "HoldsPrinciples",
     "MalformedPrincipleError",
     "Principle",
+    "RESOURCE_URI",
     "UnknownPrincipleError",
     "check_detail",
     "normalize_principles",

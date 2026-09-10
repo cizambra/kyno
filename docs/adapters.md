@@ -90,8 +90,8 @@ binding. Unexpected programming errors still propagate.
 Each result keeps its own status; later pulls cannot relabel it. The status
 values serialize as lowercase strings. They describe the local binding,
 not constitution content, and are not added to MCP payloads or injected
-direction text. Shipped adapters continue using `bind()` in this change;
-they do not yet expose delivery status in framework state or callbacks.
+direction text. LangGraph exposes this status in graph state. CrewAI does
+not yet expose it through a callback.
 
 `binder.bind()` continues to return only `Direction`. Both methods perform
 one pull and use the same failure policy and telemetry.
@@ -169,6 +169,54 @@ from kyno.adapters.langgraph import KynoState, direction_node
 class State(KynoState, total=False):
     output: str
 ```
+
+### Recording direction supplied to a LangGraph step
+
+`direction_node` and `pull_before` write `kyno_delivery_status` alongside
+the existing constitution, version, and rendered `kyno_direction` block.
+The status is a lowercase string in state and checkpoints: `current`,
+`cached`, or `empty`, with the meanings described above. Compare it with
+`DeliveryStatus` values, or convert it with `DeliveryStatus(value)` when
+you need an enum. A missing key or `None` means unknown, not `current`.
+Calling `direction_update(direction)` without binding status writes `None`
+so it cannot preserve a status from an earlier binding.
+
+Record the state received by the work node, not the binder's latest cached
+value. Use `kyno_direction` directly: it contains the exact rendered block,
+including any change notes and delta. Rebuilding it with
+`direction_from_state()` loses that change context.
+
+```python
+from kyno.adapters.langgraph import pull_before
+
+
+@pull_before(binder, constitution="customer-support")
+def answer(state):
+    block = state["kyno_direction"]
+    messages = [{"role": "system", "content": block}, *state["messages"]]
+    record_receipt(
+        run_id=state["run_id"],
+        step_id=state["step_id"],
+        constitution=state["kyno_constitution"],
+        version=state["kyno_version"],
+        status=state["kyno_delivery_status"],
+        context=state["kyno_context"],
+        direction=block,
+    )
+    return {"output": model.invoke(messages).content}
+```
+
+Here `model` and `record_receipt` belong to your application. Declare the
+additional input keys in your state schema and assign a unique step ID
+within each run. Store receipts only where you intend to retain potentially
+sensitive direction. A receipt records supplied context, not a completed
+model call or evidence that the model followed it.
+
+A direction node before a fan-out supplies the same snapshot to its branches.
+Later pulls do not change earlier receipts. Resuming a checkpoint without
+another pull preserves the original delivery status; it does not establish
+that the saved version is still current. Work nodes should leave the
+`kyno_` direction keys unchanged so the checkpoint describes their input.
 
 ### Acting on a change
 

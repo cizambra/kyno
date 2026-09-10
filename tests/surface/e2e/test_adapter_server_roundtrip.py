@@ -76,3 +76,54 @@ def test_given_a_live_server_when_langgraph_refreshes_then_the_latest_direction_
     assert second["kyno_version"] == 2
     assert second["kyno_mission"] == "M2"
     assert "Mission: M2" in second["kyno_direction"]
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("cached", [False, True], ids=["empty", "cached"])
+@pytest.mark.parametrize("wrapper", [False, True], ids=["direction-node", "pull-before"])
+def test_given_server_read_failure_when_langgraph_pulls_over_http_then_fallback_clears_on_recovery(
+    live_server, monkeypatch, cached, wrapper
+):
+    pytest.importorskip("langgraph")
+    from kyno.adapters.langgraph import direction_node, pull_before
+
+    control_plane, url, token = live_server
+    unavailable = threading.Event()
+    changes_since = control_plane.changes_since
+
+    def controlled_read(*args, **kwargs):
+        if unavailable.is_set():
+            raise OSError("direction read unavailable")
+        return changes_since(*args, **kwargs)
+
+    monkeypatch.setattr(control_plane, "changes_since", controlled_read)
+    control_plane.set_direction(mission="M1", change_note="init", constitution="support")
+    supplied = []
+
+    def work(state):
+        supplied.append(state.copy())
+        return {}
+
+    with connect(url=url, token=token) as connection:
+        binder = connection.binder()
+        refresh = (
+            pull_before(binder, "support")(work) if wrapper else direction_node(binder, "support")
+        )
+        first = refresh({}) if cached else {}
+        unavailable.set()
+        fallback = refresh(first)
+        control_plane.set_direction(mission="M2", change_note="pivot", constitution="support")
+        unavailable.clear()
+        recovered = refresh(fallback)
+
+    assert fallback["kyno_delivery_status"] == ("cached" if cached else "empty")
+    assert fallback["kyno_version"] == (1 if cached else 0)
+    assert fallback["kyno_constitution"] == "support"
+    if cached:
+        assert first["kyno_delivery_status"] == "current"
+        assert fallback["kyno_direction"] == first["kyno_direction"]
+    assert recovered["kyno_delivery_status"] == "current"
+    assert recovered["kyno_version"] == 2
+    assert "Mission: M2" in recovered["kyno_direction"]
+    if wrapper:
+        assert supplied[-2:] == [fallback, recovered]

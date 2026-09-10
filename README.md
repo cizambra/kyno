@@ -23,8 +23,9 @@ supplying principles makes every decision correct.
 
 Kyno is a coherence control plane, not an orchestrator or a general AI
 governance system. Your framework runs the workflow, permissions restrict
-available actions, and the model reasons. Kyno supplies the organizational
-direction that reasoning should use.
+available actions, and the model reasons. Humans define mission and principles;
+agents decide how to apply them within those boundaries. This is bottom-up
+agency. Kyno supplies the direction, not a prescribed decision.
 
 ![An operator changes direction while a four-agent workflow continues; agents fetch the new version at their next steps.](https://raw.githubusercontent.com/cizambra/kyno/main/docs/media/demo.gif)
 

@@ -142,7 +142,7 @@
       <p>A goal tells an agent what to optimize. Principles help it judge how: protect long-term trust over short-term metrics, for example. We want agent systems to optimize locally without losing coherence globally.</p>
       <p>Kyno gives mission and principles one authoritative source. Adapters refresh the agent's context from it, whether direction changes or stays the same. The model still has to interpret that direction and make a sound decision.</p>
       <h3>Where it fits</h3>
-      <p>Your framework schedules tasks and runs agents. Kyno supplies versioned direction before a step. The model reasons and produces an action or output. An optional verifier evaluates the result, while permissions and security controls restrict execution.</p>
+      <p>Your framework schedules tasks and runs agents. Permissions and security controls restrict the available actions. Humans define mission and principles; agents decide how to apply them within those boundaries. This is bottom-up agency. Kyno supplies versioned direction before a step, not a prescribed decision. An optional verifier evaluates the result.</p>
       <p>In the animation, the workflow continues after an operator publishes a new version. Each successful pull supplies it at that agent's next step. The final state shows delivery, not proof that the agents followed it.</p>
     </section>
 
@@ -170,7 +170,7 @@
       <h3>Is Kyno an orchestrator?</h3>
       <p>Your framework continues scheduling tasks, invoking tools, and running agents. Kyno stores and delivers direction through MCP. Its adapters connect that direction to the workflow you already have; updates do not rewrite tasks or replan the workflow.</p>
       <h3>Is Kyno an AI governance system?</h3>
-      <p>Kyno supplies runtime organizational direction: your current mission, principles, and tradeoffs. Permissions, approval processes, and enforcement belong to the surrounding system. Model training and alignment remain separate too; even a well-trained model needs your organization's current direction.</p>
+      <p>Kyno supplies runtime organizational direction: your current mission and principles. Principles can describe how to judge tradeoffs; tradeoffs are not a separate field in Kyno. Permissions, approval processes, and enforcement belong to the surrounding system. Model training and alignment remain separate too; even a well-trained model needs your organization's current direction.</p>
       <h3>Does Kyno prevent drift or guarantee alignment?</h3>
       <p>No. Kyno stores versioned direction and its adapters pull it before work proceeds. Pulls can fail, and an agent can receive the right principles and still misinterpret them or make a bad decision. Claims about improved behavior require evidence from the actual integration and task.</p>
       <h3>What happens if a pull fails?</h3>

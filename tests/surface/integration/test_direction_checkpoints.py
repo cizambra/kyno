@@ -1,5 +1,6 @@
 """LangGraph preserves the direction and delivery status supplied to each work node."""
 
+from dataclasses import replace
 from operator import add
 from types import SimpleNamespace
 from typing import Annotated
@@ -184,21 +185,74 @@ def test_given_state_without_delivery_metadata_when_work_runs_then_no_current_st
 
 
 @pytest.mark.parametrize("cached", [False, True])
-def test_given_fail_closed_when_the_pull_fails_then_the_wrapped_work_does_not_run(source, cached):
+@pytest.mark.parametrize("wrapper", [False, True], ids=["direction-node", "pull-before"])
+def test_given_fail_closed_when_the_pull_fails_then_downstream_work_does_not_run(
+    source, cached, wrapper
+):
     binder = DirectionBinder(source, policy=PullPolicy(fail_closed=True))
     if cached:
         binder.bind()
     source.changes_since.side_effect = OSError("offline")
     work = Mock()
-    app = (
-        StateGraph(ReceiptState)
-        .add_node("work", pull_before(binder)(work))
-        .add_edge(START, "work")
-        .add_edge("work", END)
-        .compile()
-    )
+    graph = StateGraph(ReceiptState)
+    if wrapper:
+        graph.add_node("work", pull_before(binder)(work)).add_edge(START, "work")
+    else:
+        graph.add_node("pull", direction_node(binder)).add_node("work", work)
+        graph.add_edge(START, "pull").add_edge("pull", "work")
+    app = graph.add_edge("work", END).compile()
 
     with pytest.raises(KynoUnavailableError):
         app.invoke({})
 
     work.assert_not_called()
+
+
+@pytest.mark.parametrize("wrapper", [False, True], ids=["direction-node", "pull-before"])
+@pytest.mark.parametrize("failed_read", [False, True], ids=["unchanged", "recovered"])
+def test_given_the_same_version_when_read_succeeds_then_new_step_status_is_saved_as_current(
+    source, wrapper, failed_read
+):
+    initial = source.changes_since.return_value
+    unchanged = replace(
+        initial,
+        changed=False,
+        changed_mission=False,
+        changed_principles=False,
+        change_notes=(),
+        delta=(),
+    )
+    replies = [initial, OSError("offline"), unchanged] if failed_read else [initial, unchanged]
+    source.changes_since.side_effect = replies
+    binder = DirectionBinder(source)
+    graph = StateGraph(ReceiptState)
+    if wrapper:
+        graph.add_node("work", pull_before(binder)(receipt)).add_edge(START, "work")
+    else:
+        graph.add_node("pull", direction_node(binder)).add_node("work", receipt)
+        graph.add_edge(START, "pull").add_edge("pull", "work")
+    app = graph.add_edge("work", END).compile(checkpointer=InMemorySaver())
+    config = {"configurable": {"thread_id": "same-version"}}
+    first = app.invoke({}, config)
+    first_block = first["kyno_direction"]
+    if failed_read:
+        fallback = app.invoke({}, config)
+        assert fallback["kyno_delivery_status"] == "cached"
+
+    result = app.invoke({}, config)
+    saved = app.get_state(config).values
+
+    assert saved == result
+    assert saved["kyno_version"] == 2
+    assert saved["kyno_delivery_status"] == "current"
+    assert saved["kyno_direction"] == Direction.from_changes(unchanged, "default").render()
+    assert saved["receipts"][0]["kyno_direction"] == first_block
+    assert saved["receipts"][0]["kyno_delivery_status"] == "current"
+    assert saved["receipts"][-1]["kyno_direction"] == saved["kyno_direction"]
+    assert saved["receipts"][-1]["kyno_delivery_status"] == "current"
+    if failed_read:
+        assert saved["receipts"][1]["kyno_delivery_status"] == "cached"
+        assert saved["receipts"][1]["kyno_direction"] == first_block
+        assert fallback["kyno_delivery_status"] == "cached"
+    assert len(saved["receipts"]) == len(replies)
+    assert source.changes_since.call_count == len(replies)

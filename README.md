@@ -138,7 +138,7 @@ pip install "kyno[langgraph]"
 ```
 
 Place a `direction_node` before each work node that needs a refresh; see
-the [LangGraph integration](docs/adapters.md). If you use both frameworks
+the [LangGraph integration](docs/langgraph.md). If you use both frameworks
 in one environment, install `pip install "kyno[crewai,langgraph]"`.
 Each integration can select a different named constitution from the same
 server. Shipped adapters are read-only and pull-only. They do not subscribe

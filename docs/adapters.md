@@ -92,8 +92,8 @@ binding. Unexpected programming errors still propagate.
 Each result keeps its own status; later pulls cannot relabel it. The status
 values serialize as lowercase strings. They describe the local binding,
 not constitution content, and are not added to MCP payloads or injected
-direction text. LangGraph exposes this status in graph state. CrewAI does
-not yet expose it through a callback.
+direction text. LangGraph exposes this status in graph state; CrewAI exposes
+it through the optional `on_direction` callback.
 
 `binder.bind()` continues to return only `Direction`. Both methods perform
 one pull and use the same failure policy and telemetry.
@@ -102,30 +102,12 @@ one pull and use the same failure policy and telemetry.
 
 Choose the setup for your framework:
 
-- [CrewAI integration](#crewai): Kyno refreshes the model's messages
+- [CrewAI integration](crewai.md): Kyno refreshes the model's messages
   through a before-call hook.
 - [LangGraph integration](langgraph.md): Kyno populates graph state;
   your model-calling node includes that direction in the model's input.
 
 For another framework or language, see [Building an adapter](integrating.md).
-
-### CrewAI
-
-```bash
-pip install "kyno[crewai]"
-```
-
-```python
-import kyno
-from kyno.adapters.crewai import CrewAiKyno
-
-connection = kyno.connect()
-adapter = CrewAiKyno(connection.binder(), constitution="eu")
-adapter.register()
-```
-
-Run your crew while the connection and hook are active. Unregister the
-adapter with `adapter.unregister()` and close the connection when done.
 
 ### Connection configuration
 
@@ -219,17 +201,8 @@ flowchart LR
   P -- "yes" --> ST
 ```
 
-For CrewAI, pass a gate to the adapter and attach its task callback when
-constructing your crew:
-
-```python
-from kyno.sdk import RealignmentGate
-
-adapter = CrewAiKyno(binder, gate=RealignmentGate(source=your_judge))
-crew = Crew(agents=agents, tasks=tasks, task_callback=adapter.task_callback)
-```
-
-See [LangGraph verification](langgraph.md#optional-verification) for its wiring.
+See [CrewAI verification](crewai.md#optional-verification) or
+[LangGraph verification](langgraph.md#optional-verification) for wiring.
 
 ## 💬 Questions?
 

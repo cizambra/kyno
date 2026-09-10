@@ -1,6 +1,6 @@
 # Integrating Kyno with LangGraph
 
-[Adapter overview](adapters.md) · [CrewAI setup](adapters.md#crewai)
+[Adapter overview](adapters.md) · [CrewAI guide](crewai.md)
 
 Kyno puts direction in graph state. Your model-calling node puts that
 direction into the model's input.

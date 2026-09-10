@@ -129,7 +129,8 @@ Run your existing crew inside the `try` block, while the connection and
 hook are active. The example fetches direction without making a model call.
 
 The CrewAI hook pulls before each model call and refreshes the direction
-in its context.
+in its context. See the [CrewAI integration](docs/crewai.md) for setup
+and optional recording and verification.
 
 For LangGraph instead, install its extra:
 

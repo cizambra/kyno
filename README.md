@@ -198,7 +198,7 @@ Direction has its own publication and retrieval operations, independent
 of deploying workflow code.
 
 You can author and review a constitution in Git, then publish it explicitly
-with `kyno set`. Automatic Git synchronization is not part of the MVP.
+with `kyno apply`. Automatic Git synchronization is not part of the MVP.
 
 ## What Kyno does, and its limits
 

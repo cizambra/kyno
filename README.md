@@ -8,9 +8,9 @@
 
 Kyno is a coherence control plane for multi-agent systems. It holds one
 versioned source of truth for your system's mission and principles, its
-*constitution*, and serves it over [MCP](https://modelcontextprotocol.io),
-so every agent acts on the direction in force right now, even when that
-direction changes mid-flight.
+*constitution*, and serves it over [MCP](https://modelcontextprotocol.io).
+Adapters pull the direction in force at each agent's next decision boundary,
+even when that direction changes mid-flight.
 
 ![An operator publishes a constitution change into Kyno, and each agent in a four-agent workflow picks the new version up at its own next step.](https://raw.githubusercontent.com/cizambra/kyno/main/docs/media/demo.gif)
 

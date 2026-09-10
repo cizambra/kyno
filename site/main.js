@@ -57,7 +57,7 @@
   }
   function agentState(a,v,state){
     a.version.textContent='v'+v;
-    a.el.classList.remove('is-waiting','is-fresh','is-aligned');
+    a.el.classList.remove('is-waiting','is-fresh','is-current');
     if(state) a.el.classList.add(state);
   }
   function routesOff(){
@@ -68,8 +68,8 @@
     stage(4); routesOff();
     storeVersion.textContent='v'+v; storeTime.textContent='current';
     operator.classList.remove('is-active'); store.classList.remove('is-active');
-    agents.forEach(function(a){agentState(a,v,'is-aligned');});
-    eventEl.textContent='All four agents are on v'+v+'.';
+    agents.forEach(function(a){agentState(a,v,'is-current');});
+    eventEl.textContent='All four agents received v'+v+' at their latest step.';
   }
   function round(next){
     var prev=next-1;
@@ -117,8 +117,8 @@
     later(6900,function(){
       stage(4);
       store.classList.remove('is-active');
-      agents.forEach(function(a){agentState(a,next,'is-aligned');});
-      eventEl.textContent='The system is aligned on v'+next+'.';
+      agents.forEach(function(a){agentState(a,next,'is-current');});
+      eventEl.textContent='All four agents received v'+next+' at their next step.';
     });
   }
 

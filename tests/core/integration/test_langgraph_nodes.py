@@ -15,15 +15,11 @@ from kyno.adapters.langgraph.nodes import (  # noqa: E402
     pull_before,
 )
 from kyno.sdk.binder import DirectionBinder  # noqa: E402
-from kyno.sdk.cell import (  # noqa: E402
-    COMPACT,
-    DIRECTION_MARKER,
-    FULL,
-    Direction,
-)
+from kyno.sdk.cell import DIRECTION_MARKER, Direction  # noqa: E402
 from kyno.sdk.client import LocalDirectionSource  # noqa: E402
 from kyno.sdk.gate import RealignmentGate, Verdict  # noqa: E402
 from kyno.sdk.trace import RunTrace  # noqa: E402
+from kyno.wire.models import DetailLevel  # noqa: E402
 
 
 class GraphState(KynoState, total=False):
@@ -310,13 +306,13 @@ def test_given_a_full_binder_when_state_carries_the_block_then_it_is_the_full_do
         principles=({"title": "Be honest", "description": "Say the hard number first."},),
         change_note="init",
     )
-    binder = DirectionBinder(LocalDirectionSource(control_plane), context=FULL)
+    binder = DirectionBinder(LocalDirectionSource(control_plane), context=DetailLevel.FULL)
 
     update = direction_node(binder)({})
 
     assert "The long form." in update["kyno_direction"]
     assert "Say the hard number first." in update["kyno_direction"]
-    assert update["kyno_context"] == FULL
+    assert update["kyno_context"] == DetailLevel.FULL
 
 
 def test_given_no_context_asked_when_state_carries_the_block_then_it_stays_compact(binder):
@@ -326,9 +322,18 @@ def test_given_no_context_asked_when_state_carries_the_block_then_it_stays_compa
     update = direction_node(bind)({})
 
     assert "The long form." not in update["kyno_direction"]
-    assert update["kyno_context"] == COMPACT
+    assert update["kyno_context"] == DetailLevel.COMPACT
 
 
 def test_given_a_context_when_round_tripping_through_state_then_it_survives():
-    original = Direction(constitution="eu", version=4, mission="M", principles=("P",), context=FULL)
-    assert direction_from_state(direction_update(original)) == original
+    original = Direction(
+        constitution="eu",
+        version=4,
+        mission="M",
+        principles=("P",),
+        context=DetailLevel.FULL,
+    )
+    update = direction_update(original)
+
+    assert update["kyno_context"] is DetailLevel.FULL
+    assert direction_from_state(update) == original

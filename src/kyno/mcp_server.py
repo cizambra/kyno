@@ -13,7 +13,7 @@ from kyno.sdk.client import RESOURCE_URI as RESOURCE_URI  # the SDK owns the wir
 from kyno.service import ControlPlane
 from kyno.tokens import hash_value
 from kyno.wire.errors import CoherenceError
-from kyno.wire.models import COMPACT, FULL, check_detail
+from kyno.wire.models import DetailLevel, check_detail
 
 
 def check_principles_detail(detail: str) -> str:
@@ -39,7 +39,9 @@ def _require(arguments: dict, key: str) -> None:
 # Reads default to compact. The declaration and the descriptions are the long text, and an agent
 # that pulls before every step would pay for them every time. One argument asks for them.
 def handle_get_constitution(
-    cp: ControlPlane, constitution: str | None = None, detail: str = COMPACT
+    cp: ControlPlane,
+    constitution: str | None = None,
+    detail: str | DetailLevel = DetailLevel.COMPACT,
 ) -> dict:
     check_detail(detail)
     return _guard(lambda: cp.current(constitution).to_dict(detail))
@@ -49,7 +51,7 @@ def handle_get_changes_since(
     cp: ControlPlane,
     known_version: int,
     constitution: str | None = None,
-    detail: str = COMPACT,
+    detail: str | DetailLevel = DetailLevel.COMPACT,
 ) -> dict:
     check_detail(detail)
     return _guard(lambda: cp.changes_since(known_version, constitution).to_dict(detail))
@@ -92,7 +94,7 @@ def handle_get_principles(
 
     def read() -> dict:
         head = cp.current(constitution)
-        shape = COMPACT if detail == TITLES else FULL
+        shape = DetailLevel.COMPACT if detail == TITLES else DetailLevel.FULL
         return {
             "version": head.version,
             "principles": [p.to_dict(shape) for p in head.principles],
@@ -193,7 +195,7 @@ def build_server(control_plane: ControlPlane, token_store=None) -> Server:
                 result = handle_get_constitution(
                     control_plane,
                     arguments.get("constitution"),
-                    arguments.get("detail", COMPACT),
+                    arguments.get("detail", DetailLevel.COMPACT),
                 )
             case "get_changes_since":
                 _require(arguments, "known_version")
@@ -201,7 +203,7 @@ def build_server(control_plane: ControlPlane, token_store=None) -> Server:
                     control_plane,
                     int(arguments["known_version"]),
                     arguments.get("constitution"),
-                    arguments.get("detail", COMPACT),
+                    arguments.get("detail", DetailLevel.COMPACT),
                 )
             case "get_mission":
                 result = handle_get_mission(control_plane, arguments.get("constitution"))

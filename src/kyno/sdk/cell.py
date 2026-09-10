@@ -5,10 +5,9 @@ import threading
 from dataclasses import dataclass
 
 from kyno.wire.models import (
-    COMPACT,
     DIRECTION_MARKER,
-    FULL,
     ChangesSince,
+    DetailLevel,
     HoldsPrinciples,
     Principle,
     check_detail,
@@ -33,7 +32,7 @@ def refresh(items, block, *, text_of=None, make=None):
     return [make(block), *kept]
 
 
-def check_context(context: str) -> str:
+def check_context(context: str | DetailLevel) -> DetailLevel:
     """The injected block carries the same two levels a read asks Kyno for,
     so an organization has one word for how much context it wants."""
     return check_detail(context, "injection context")
@@ -48,19 +47,24 @@ class Direction(HoldsPrinciples):
     change_notes: tuple[str, ...] = ()
     delta: tuple[str, ...] = ()
     declaration: str = ""
-    context: str = COMPACT
+    context: DetailLevel = DetailLevel.COMPACT
 
     def __post_init__(self) -> None:
         super().__post_init__()
-        check_context(self.context)
+        object.__setattr__(self, "context", check_context(self.context))
 
     @classmethod
-    def empty(cls, constitution: str, context: str = COMPACT) -> Direction:
+    def empty(
+        cls, constitution: str, context: str | DetailLevel = DetailLevel.COMPACT
+    ) -> Direction:
         return cls(constitution=constitution, version=0, mission="", principles=(), context=context)
 
     @classmethod
     def from_changes(
-        cls, changes: ChangesSince, constitution: str, context: str = COMPACT
+        cls,
+        changes: ChangesSince,
+        constitution: str,
+        context: str | DetailLevel = DetailLevel.COMPACT,
     ) -> Direction:
         return cls(
             constitution=constitution,
@@ -82,7 +86,7 @@ class Direction(HoldsPrinciples):
         header = f"{DIRECTION_MARKER} constitution={self.constitution} version={self.version}]"
         if self.version == 0:
             return f"{header}\nNo direction has been set yet."
-        full = self.context == FULL
+        full = self.context is DetailLevel.FULL
         lines = [header, f"Mission: {self.mission}"]
         if full and self.declaration:
             lines.append("Declaration:")
@@ -109,7 +113,7 @@ class Direction(HoldsPrinciples):
             "declaration": self.declaration,
             "principles": [p.to_dict() for p in self.principles],
             "change_notes": list(self.change_notes),
-            "context": self.context,
+            "context": self.context.value,
         }
 
 

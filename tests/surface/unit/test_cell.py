@@ -3,13 +3,11 @@ import threading
 import pytest
 
 from kyno.sdk.cell import (
-    COMPACT,
     DIRECTION_MARKER,
-    FULL,
     Direction,
     DirectionCell,
 )
-from kyno.wire.models import ChangesSince, Principle
+from kyno.wire.models import ChangesSince, DetailLevel, Principle
 
 
 def _direction(version: int, constitution: str = "default") -> Direction:
@@ -156,19 +154,30 @@ RICH = dict(
 def test_given_the_full_context_when_injecting_then_declaration_and_descriptions_come():
     # The opt-in: an organization that would rather spend tokens on context
     # gets the whole document in the block, not just the handles.
-    block = Direction(**RICH, context=FULL).render()
+    block = Direction(**RICH, context=DetailLevel.FULL).render()
     assert "The long form of what that means." in block
     assert "Say the hard number first" in block
     assert "Before any softening story." in block
 
 
 def test_given_no_context_asked_when_reading_a_direction_then_it_carries_the_compact_form():
-    assert Direction(**RICH).context == COMPACT
+    assert Direction(**RICH).context is DetailLevel.COMPACT
     assert "Before any softening story." not in Direction(**RICH).render()
 
 
+def test_given_a_context_string_when_building_a_direction_then_it_becomes_the_matching_type():
+    assert Direction(**RICH, context="full").context is DetailLevel.FULL
+
+
+def test_given_a_typed_context_when_serializing_a_direction_then_a_plain_string_is_returned():
+    payload = Direction(**RICH, context=DetailLevel.FULL).to_dict()
+
+    assert payload["context"] == "full"
+    assert type(payload["context"]) is str
+
+
 def test_given_a_full_block_when_reading_then_each_description_sits_under_its_title():
-    lines = Direction(**RICH, context=FULL).render().splitlines()
+    lines = Direction(**RICH, context=DetailLevel.FULL).render().splitlines()
     title_at = lines.index("- Say the hard number first")
     assert lines[title_at + 1].strip() == "Before any softening story."
 

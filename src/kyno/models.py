@@ -6,7 +6,7 @@ from enum import StrEnum
 
 from kyno.wire.errors import UnknownPrincipleError
 from kyno.wire.models import (
-    FULL,
+    DetailLevel,
     HoldsPrinciples,
     Principle,
     check_detail,
@@ -60,9 +60,9 @@ class ConstitutionVersion(HoldsPrinciples):
                 return principle
         raise UnknownPrincipleError(f"no principle titled '{title}' in version {self.version}")
 
-    def to_dict(self, detail: str = FULL) -> dict:
+    def to_dict(self, detail: str | DetailLevel = DetailLevel.FULL) -> dict:
         payload = {"version": self.version, "mission": self.mission}
-        if check_detail(detail) == FULL:
+        if check_detail(detail) is DetailLevel.FULL:
             payload["declaration"] = self.declaration
         payload["principles"] = [p.to_dict(detail) for p in self.principles]
         payload["change_note"] = self.change_note

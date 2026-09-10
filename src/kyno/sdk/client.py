@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
 from kyno.sdk.errors import KynoRefusedError, KynoUnavailableError
-from kyno.wire.models import COMPACT, ChangesSince
+from kyno.wire.models import ChangesSince, DetailLevel, check_detail
 
 # The resource Kyno announces version changes on. The server sends a `resources/updated`
 # notification here every time a version is appended, and any client can subscribe. Defined in
@@ -31,7 +31,10 @@ class KynoBinding:
 @runtime_checkable
 class DirectionSource(Protocol):
     def changes_since(
-        self, known_version: int, constitution: str, detail: str = COMPACT
+        self,
+        known_version: int,
+        constitution: str,
+        detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> ChangesSince: ...
 
 
@@ -54,7 +57,10 @@ class LocalDirectionSource:
         self._control_plane = control_plane
 
     def changes_since(
-        self, known_version: int, constitution: str, detail: str = COMPACT
+        self,
+        known_version: int,
+        constitution: str,
+        detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> ChangesSince:
         # `detail` exists to save bytes on the wire, and there is no wire here: the control
         # plane returns the whole version either way.
@@ -316,12 +322,16 @@ class McpDirectionSource:
         self._runner = runner
 
     def changes_since(
-        self, known_version: int, constitution: str, detail: str = COMPACT
+        self,
+        known_version: int,
+        constitution: str,
+        detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> ChangesSince:
         """Every way this can fail arrives as KynoUnavailableError, because
         that is what the binder's policy degrades on. A reply we cannot read
         is the control plane being unreachable as far as the next step is
         concerned, and it must cost freshness rather than the step itself."""
+        detail = check_detail(detail)
 
         async def call(session):
             return await session.call_tool(
@@ -329,7 +339,7 @@ class McpDirectionSource:
                 {
                     "known_version": known_version,
                     "constitution": constitution,
-                    "detail": detail,
+                    "detail": detail.value,
                 },
             )
 

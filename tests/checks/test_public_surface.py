@@ -6,6 +6,8 @@ import kyno.sdk.client as client
 import kyno.sdk.policy as policy
 import kyno.sdk.telemetry as telemetry
 import kyno.sdk.trace as trace
+import kyno.wire as wire
+import kyno.wire.models as wire_models
 from tests.paths import REPO_ROOT
 
 EXPECTED = {
@@ -13,6 +15,7 @@ EXPECTED = {
     "DirectionCell",
     "DIRECTION_MARKER",
     "DirectionSource",
+    "DetailLevel",
     "LocalDirectionSource",
     "DirectionBinder",
     "Verdict",
@@ -84,6 +87,16 @@ def test_given_telemetry_helpers_when_importing_then_only_the_telemetry_module_e
     assert helpers.isdisjoint(vars(core))
     assert telemetry_types.isdisjoint(vars(policy))
     assert all(hasattr(telemetry, name) for name in telemetry_types)
+
+
+def test_given_detail_levels_when_importing_public_modules_then_legacy_constants_are_absent():
+    legacy = {"COMPACT", "FULL", "DETAIL_LEVELS"}
+
+    assert legacy.isdisjoint(core.__all__)
+    assert legacy.isdisjoint(vars(core))
+    assert legacy.isdisjoint(wire.__all__)
+    assert legacy.isdisjoint(vars(wire))
+    assert legacy.isdisjoint(vars(wire_models))
 
 
 def test_given_any_adapter_when_looking_for_writes_then_none_can_write_direction():

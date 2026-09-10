@@ -201,8 +201,21 @@ def test_given_the_two_read_tools_when_inspecting_schemas_then_both_advertise_de
     read_tools = {n: by_name[n] for n in ("get_constitution", "get_changes_since")}
     for name, tool in read_tools.items():
         assert "detail" in tool.inputSchema["properties"], name
-        assert tool.inputSchema["properties"]["detail"]["enum"] == ["compact", "full"], name
+        values = tool.inputSchema["properties"]["detail"]["enum"]
+        assert values == ["compact", "full"], name
+        assert all(type(value) is str for value in values), name
         assert "full" in tool.description, name
+
+
+def test_given_any_detail_schema_when_reading_its_values_then_they_are_plain_strings():
+    schemas = [
+        tool.inputSchema["properties"]["detail"]
+        for tool in mcp_tools.TOOLS
+        if "detail" in tool.inputSchema["properties"]
+    ]
+
+    assert schemas
+    assert all(type(value) is str for schema in schemas for value in schema["enum"])
 
 
 def test_given_a_declaration_when_calling_get_declaration_then_it_comes_with_its_version(cp):

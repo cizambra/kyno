@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 from __future__ import annotations
 
-from kyno.sdk.cell import COMPACT, Direction, DirectionCell, check_context
+from kyno.sdk.cell import Direction, DirectionCell, check_context
 from kyno.sdk.client import DirectionSource
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.policy import PullPolicy
@@ -12,6 +12,7 @@ from kyno.sdk.telemetry import (
     TelemetrySink,
 )
 from kyno.wire.errors import CoherenceError
+from kyno.wire.models import DetailLevel
 
 
 class DirectionBinder:
@@ -28,7 +29,7 @@ class DirectionBinder:
         cell: DirectionCell | None = None,
         policy: PullPolicy | None = None,
         telemetry: TelemetrySink | None = None,
-        context: str = COMPACT,
+        context: str | DetailLevel = DetailLevel.COMPACT,
     ) -> None:
         self._source = source
         self.cell = cell if cell is not None else DirectionCell()

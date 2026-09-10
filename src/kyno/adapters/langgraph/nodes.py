@@ -8,9 +8,10 @@ from typing import Any, TypedDict
 from langgraph.types import interrupt
 
 from kyno.sdk.binder import DirectionBinder
-from kyno.sdk.cell import COMPACT, Direction
+from kyno.sdk.cell import Direction
 from kyno.sdk.gate import Action, RealignmentGate
 from kyno.sdk.trace import RunTrace
+from kyno.wire.models import DetailLevel
 
 
 class KynoState(TypedDict, total=False):
@@ -24,7 +25,7 @@ class KynoState(TypedDict, total=False):
     kyno_version: int
     kyno_mission: str
     kyno_principles: list[dict]
-    kyno_context: str
+    kyno_context: DetailLevel
     kyno_direction: str
     kyno_verdict: str
     kyno_checked: bool
@@ -50,7 +51,7 @@ def direction_from_state(state: dict) -> Direction:
         version=state.get("kyno_version", 0),
         mission=state.get("kyno_mission", ""),
         principles=state.get("kyno_principles", ()),
-        context=state.get("kyno_context", COMPACT),
+        context=state.get("kyno_context", DetailLevel.COMPACT),
     )
 
 

@@ -12,7 +12,7 @@ from kyno.sdk.client import LocalDirectionSource
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 from kyno.transports import build_http_app
-from kyno.wire.models import FULL
+from kyno.wire.models import DetailLevel
 from tests.workspaces import cli_workspace
 
 runner = CliRunner()
@@ -90,5 +90,5 @@ def test_given_a_rich_constitution_when_published_and_bound_then_a_crew_serves_i
     assert DESCRIPTION not in compact
 
     # Unless this binding would rather spend the tokens.
-    full = DirectionBinder(source, context=FULL).bind("acme").render()
+    full = DirectionBinder(source, context=DetailLevel.FULL).bind("acme").render()
     assert PARAGRAPH in full and DESCRIPTION in full

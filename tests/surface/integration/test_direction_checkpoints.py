@@ -270,9 +270,9 @@ def test_given_the_same_version_when_read_succeeds_then_new_step_status_is_saved
     assert source.changes_since.call_count == len(replies)
 
 
-@pytest.mark.parametrize("wrapper", [False, True], ids=["direction-node", "pull-before"])
+@pytest.mark.parametrize("use_pull_before", [False, True], ids=["direction-node", "pull-before"])
 def test_given_rich_direction_when_fields_are_removed_then_only_new_receipts_clear_them(
-    source, wrapper
+    source, use_pull_before
 ):
     initial = replace(
         source.changes_since.return_value,
@@ -289,7 +289,7 @@ def test_given_rich_direction_when_fields_are_removed_then_only_new_receipts_cle
     source.changes_since.side_effect = [initial, revised]
     binder = DirectionBinder(source, context=DetailLevel.FULL)
     graph = StateGraph(ReceiptState)
-    if wrapper:
+    if use_pull_before:
         graph.add_node("work", pull_before(binder, "support")(receipt)).add_edge(START, "work")
     else:
         graph.add_node("pull", direction_node(binder, "support")).add_node("work", receipt)

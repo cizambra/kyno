@@ -85,8 +85,7 @@ model followed it. See the [shared status reference](adapters.md#inspecting-deli
 
 ### Optional: LangGraph checkpoints
 
-Checkpointing is a LangGraph feature, not a Kyno feature. A checkpoint is
-a saved snapshot of a workflow's state that LangGraph can use to resume
+A checkpoint is a saved snapshot of a workflow's state that LangGraph can use to resume
 the workflow later. A checkpointer is the component that saves and loads
 those snapshots. See [LangGraph's persistence documentation](https://docs.langchain.com/oss/python/langgraph/persistence).
 

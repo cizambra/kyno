@@ -3,37 +3,14 @@
 import threading
 
 import pytest
-import uvicorn
 
 from kyno.adapters.crewai.hooks import CrewAiKyno
 from kyno.sdk import connect
-from kyno.service import ControlPlane
-from kyno.transports import build_http_app
-from tests.mcp_requests import mint, token_store
-from tests.servers import free_port, wait_until
 
 
 class FakeCtx:
     def __init__(self):
         self.messages = [{"role": "user", "content": "continue"}]
-
-
-@pytest.fixture
-def live_server():
-    store = token_store()
-    control_plane = ControlPlane(store)
-    token = mint(store, scope="read")
-    app = build_http_app(control_plane, token_store=store)
-    port = free_port()
-    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error"))
-    thread = threading.Thread(target=server.run, daemon=True)
-    thread.start()
-    try:
-        wait_until(lambda: server.started, "uvicorn did not come up")
-        yield control_plane, f"http://127.0.0.1:{port}/mcp", token
-    finally:
-        server.should_exit = True
-        thread.join(timeout=5)
 
 
 @pytest.fixture

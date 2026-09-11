@@ -113,9 +113,14 @@ enum when you load that checkpoint; no manual conversion is needed.
 Kyno does not configure checkpoint storage for you. You do not need
 checkpointing just to give your agents direction.
 
-To save the state of the support answer above, compile that graph with a
-LangGraph checkpointer. Running this snippet calls your configured model once
-and may incur provider charges:
+Continue the [support-answer example](#required-integration) by adding this
+code after the `answer` function. It uses the `State` class and decorated
+`answer` node already defined there, with the same open connection, binder,
+and model. You do not need another direction node: `answer` already pulls
+through `@pull_before`.
+
+This builds a one-node graph and adds checkpoint storage. Running it calls
+your configured model once and may incur provider charges:
 
 ```python
 from langgraph.checkpoint.memory import InMemorySaver

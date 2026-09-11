@@ -110,12 +110,13 @@ direction in place. Its return value is ignored: it is not an approval
 gate. This is best-effort observation, not mandatory durable auditing.
 The callback runs synchronously, so slow recording delays the model call.
 
-For output records, the application must keep the corresponding input
-and output together using its own framework or model instrumentation.
-The observer alone cannot identify that pair. When your application has
-the correct pair, it can use `RunTrace.record_step` from `kyno.sdk.trace`
-to record the output with its supplied `Direction`. Trace types remain
-outside the stable top-level SDK API.
+To record which direction accompanied a model output, your application
+must capture that call's input messages and output together. `on_direction`
+cannot do this by itself: it runs before the call and receives neither
+the output nor an ID identifying the call. Once your application has
+matched an output to its supplied `Direction`, it can record them with
+`RunTrace.record_step` from `kyno.sdk.trace`. This API is available in its
+own module, but is not part of the stable top-level SDK API.
 
 Neither tracing nor separate receipt storage is required to run the
 adapter. Keep any retained prompts, direction, and outputs in storage
@@ -123,41 +124,63 @@ appropriate for potentially sensitive content.
 
 ## Optional verification
 
-Your application calls a verifier, such as Canon, and decides whether to
-accept, retry, escalate, or stop work. Kyno supplies direction; CrewAI
-callbacks and execution decisions belong to your application.
+You can use Kyno without a verifier. If you also want to check the crew's
+finished answer, your application calls a verifier such as Canon. Your
+application decides whether to accept the answer, retry the work, or ask
+a person to review it. Kyno does not make that decision.
 
-To assess the final crew output against a deliberately chosen direction
-snapshot, select it before the `crew.kickoff()` call in the required
-integration above:
+For example, suppose you want to review the final answer against the
+direction you read before starting the crew. Save that `Direction` object,
+run the crew, then pass the answer and saved direction to your verifier.
+
+Here is the required integration with that optional review added. As
+before, `crew` is your configured CrewAI crew. Two functions below belong
+to your application; neither is provided by Kyno or Canon:
+
+- `assess_output` calls your chosen verifier with the output and direction.
+- `handle_assessment` reads its result and decides what to do next.
+
+You must implement those functions to run this example. Neither is
+required for the direction injection shown earlier.
 
 ```python
-assessment_direction = binder.bind("customer-support")
+with kyno.connect() as connection:
+    binder = connection.binder()
+    assessment_direction = binder.bind("customer-support")
+    adapter = CrewAiKyno(binder, constitution="customer-support")
+    adapter.register()
+    try:
+        result = crew.kickoff()
+    finally:
+        adapter.unregister()
+
+    assessment = assess_output(
+        output=result.raw,
+        direction=assessment_direction,
+    )
+    handle_assessment(result, assessment)
 ```
 
-After that call returns `result` and the hook is unregistered, assess the
-output against the selected snapshot:
+`result.raw` is the final answer's text. Review runs after the crew
+finishes, not after every model call. If you keep review records, save
+the answer, `assessment_direction`, and the assessment together.
 
-```python
-assessment = assess_output(
-    output=result.raw,
-    direction=assessment_direction,
-)
-handle_assessment(result, assessment)
-```
+The saved direction does not change when the adapter pulls again. If you
+save version 1 and an operator publishes version 2 while the crew runs,
+later model calls can receive version 2. This example still reviews the
+final answer against version 1. It does not claim every call used that
+version. Your application can instead choose to review against a newer
+version, but should record which version it chose.
 
-`assess_output` and `handle_assessment` are functions your application
-implements, not Kyno or Canon APIs. The first calls your chosen verifier;
-the second interprets its result and chooses what happens next. Keep the
-assessment direction with the output and verifier result in your own
-records. Apply your required availability policy when selecting it.
+The initial `binder.bind()` uses the same failure policy as other reads.
+By default, a failed read returns cached direction, or empty version-0
+direction if nothing was cached. If your review requires a successful
+read, configure the binder as shown in [Failure behavior](#failure-behavior).
+Also reject version 0 if your application requires a written constitution.
 
-This assesses the final output against the snapshot selected before the
-crew ran. It does not claim that every contributing model call received
-that version: direction can change during a task. To assess an individual
-call against what it actually received, capture that call's injected
-messages and output together under an application-owned call identity.
-Parallel calls need separate records; observer order or the binder's
-latest cached value cannot establish that association. Assessing against
-a newer version is also an application choice and should be recorded as
-such. Verification is optional and requires no Kyno wrapper.
+To review individual model calls instead, record each call's input and
+output under the same ID in your application. Do not match outputs to
+`on_direction` callbacks by their order: when two calls run at the same
+time, the second can finish first. Reading the binder's cache afterward
+does not identify a call's direction either; another call may already
+have replaced it with a newer version.

@@ -225,22 +225,91 @@ model call or evidence that the model followed it.
 
 ## Optional verification
 
-Kyno does not judge model output. If you supply an external judge, add a
-gate node after your work node:
+Your application chooses the verifier, its result format, and what to do next.
+Kyno supplies direction; it does not call a verifier or decide whether the
+graph should continue.
+
+To extend the support-answer example, replace its `State` and `answer`
+definitions with these. Keep the same binder, `SCENARIO`, and model. Capture
+the direction before the model call and keep it with that call's output:
 
 ```python
-from kyno.adapters.langgraph import gate_node
-from kyno.sdk import RealignmentGate
+from typing import TypedDict
 
-review = gate_node(RealignmentGate(source=your_judge, can_pause=True))
+from kyno.adapters.langgraph import direction_from_state
+from kyno.sdk import Direction
+
+
+class AnswerRecord(TypedDict):
+    direction: Direction
+    supplied_message: str
+    output: str
+
+
+class State(KynoState, total=False):
+    output: str
+    answer_record: AnswerRecord
+    needs_review: bool
+
+
+@pull_before(binder, constitution="customer-support")
+def answer(state):
+    if state["kyno_version"] == 0 or state["kyno_delivery_status"] != DeliveryStatus.CURRENT:
+        raise ValueError("A current, written constitution is required before calling the model")
+    direction = direction_from_state(state)
+    supplied_message = state["kyno_direction"]
+    messages = [
+        {"role": "system", "content": supplied_message},
+        {"role": "user", "content": SCENARIO},
+    ]
+    output = model.invoke(messages).content
+    return {
+        "output": output,
+        "answer_record": {
+            "direction": direction,
+            "supplied_message": supplied_message,
+            "output": output,
+        },
+    }
+
+
+def review_answer(state):
+    record = state["answer_record"]
+    needs_review = "refund has been issued" in record["output"].lower()
+    return {"needs_review": needs_review}
 ```
 
-Here `your_judge` implements `VerdictSource`; `review` is the node you add
-to your graph. A pause decision uses LangGraph's interrupt mechanism.
-Your application configures checkpointing and handles resume. Other halt
-decisions are returned in `kyno_blocked`; route on that value if downstream
-work must stop. A gate node does not choose your graph's next edge.
+`AnswerRecord`, `answer_record`, `needs_review`, and `review_answer` are
+application code defined here, not Kyno APIs. The local phrase check illustrates
+a review step without calling another service. It can miss equivalent wording
+and does not establish whether the answer follows the direction. Replace it
+with checks appropriate to your application. A verifier can read
+`record["direction"]`, `record["supplied_message"]`, and `record["output"]`
+from the same call.
 
-See [the shared gate reference](adapters.md#the-realignment-gate) for
-verdict and failure policies. Neither a gate nor a judge is required to
-consume direction.
+Build the graph after defining those nodes:
+
+```python
+from langgraph.graph import END, START, StateGraph
+
+graph = (
+    StateGraph(State)
+    .add_node("answer", answer)
+    .add_node("review_answer", review_answer)
+    .add_edge(START, "answer")
+    .add_edge("answer", "review_answer")
+    .add_edge("review_answer", END)
+    .compile()
+)
+```
+
+This example stores a review flag. Your application decides how to use it,
+such as routing to a person before sending the answer. The review itself
+runs locally; invoking the graph still calls your configured model in
+`answer` and may incur provider charges.
+
+If another node pulls newer direction before review, keep `answer_record`
+unchanged. Review the captured pair rather than reconstructing direction from
+the graph's latest `kyno_` fields. For parallel calls, keep a separate record
+per call and collect them with a LangGraph reducer; one shared
+`answer_record` field would not preserve every branch's pair.

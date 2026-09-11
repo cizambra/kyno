@@ -1,3 +1,5 @@
+"""Direction reaches graph consumers and survives state serialization."""
+
 import json
 
 import pytest
@@ -6,21 +8,18 @@ pytest.importorskip("langgraph")
 
 from langgraph.checkpoint.memory import InMemorySaver  # noqa: E402
 from langgraph.graph import END, START, StateGraph  # noqa: E402
-from langgraph.types import Command  # noqa: E402
 
 from kyno.adapters.langgraph.nodes import (  # noqa: E402
     KynoState,
     direction_from_state,
     direction_node,
     direction_update,
-    gate_node,
     pull_before,
 )
 from kyno.sdk.binder import DirectionBinder  # noqa: E402
+from kyno.sdk.binding import DeliveryStatus  # noqa: E402
 from kyno.sdk.cell import DIRECTION_MARKER, Direction  # noqa: E402
 from kyno.sdk.client import LocalDirectionSource  # noqa: E402
-from kyno.sdk.gate import RealignmentGate, Verdict  # noqa: E402
-from kyno.sdk.trace import RunTrace  # noqa: E402
 from kyno.wire.models import DetailLevel  # noqa: E402
 
 
@@ -29,19 +28,28 @@ class GraphState(KynoState, total=False):
     draft: str
 
 
-class StubVerdictSource:
-    def __init__(self, verdict):
-        self.verdict = verdict
-
-    def assess(self, *, output, mission, principles, change_notes):
-        self.change_notes = change_notes
-        return self.verdict
-
-
 @pytest.fixture
 def binder(control_plane):
     control_plane.set_direction(mission="M1", principles=("Be honest",), change_note="init")
     return DirectionBinder(LocalDirectionSource(control_plane)), control_plane
+
+
+def _capture_graph(bind, captured, schema=GraphState):
+    def capture(state):
+        captured.append(direction_from_state(state))
+        return {}
+
+    return (
+        StateGraph(schema)
+        .add_node("pull", direction_node(bind))
+        .add_node("work", lambda state: {"output": "a draft"})
+        .add_node("capture", capture)
+        .add_edge(START, "pull")
+        .add_edge("pull", "work")
+        .add_edge("work", "capture")
+        .add_edge("capture", END)
+        .compile(checkpointer=InMemorySaver())
+    )
 
 
 def test_given_a_wrapped_node_when_it_runs_then_the_direction_is_pulled_into_state(binder):
@@ -94,140 +102,6 @@ def test_given_a_direction_change_when_the_graph_reaches_the_next_node_then_it_b
 
     assert first["output"] == "work on M1"
     assert second["output"] == "work on M2"
-
-
-def _gated_graph(bind, gate, **kwargs):
-    return (
-        StateGraph(GraphState)
-        .add_node("pull", direction_node(bind))
-        .add_node("work", lambda state: {"output": "a draft"})
-        .add_node("gate", gate_node(gate, **kwargs))
-        .add_edge(START, "pull")
-        .add_edge("pull", "work")
-        .add_edge("work", "gate")
-        .add_edge("gate", END)
-        .compile(checkpointer=InMemorySaver())
-    )
-
-
-def test_given_an_aligned_output_when_the_gate_node_runs_then_it_passes(binder):
-    bind, _cp = binder
-    graph = _gated_graph(bind, RealignmentGate(StubVerdictSource(Verdict.ALIGNED), can_pause=True))
-
-    result = graph.invoke({}, {"configurable": {"thread_id": "t1"}})
-
-    assert result["kyno_verdict"] == "aligned" and result["kyno_checked"] is True
-    assert "__interrupt__" not in result
-
-
-def test_given_change_notes_when_a_checkpointed_graph_verifies_output_then_the_judge_receives_them(
-    binder,
-):
-    bind, _ = binder
-    source = StubVerdictSource(Verdict.ALIGNED)
-    graph = _gated_graph(bind, RealignmentGate(source))
-    graph.invoke({}, {"configurable": {"thread_id": "notes"}})
-    assert source.change_notes == ("init",)
-
-
-def test_given_drift_when_the_resume_accepts_then_the_run_proceeds(binder):
-    bind, _cp = binder
-    graph = _gated_graph(bind, RealignmentGate(StubVerdictSource(Verdict.DRIFTED), can_pause=True))
-    config = {"configurable": {"thread_id": "t2"}}
-
-    paused = graph.invoke({}, config)
-    assert paused["__interrupt__"]
-    payload = paused["__interrupt__"][0].value
-    assert payload["verdict"] == "drifted" and payload["version"] == 1
-
-    resumed = graph.invoke(Command(resume={"accept": True}), config)
-
-    assert resumed["kyno_blocked"] is False and resumed["kyno_verdict"] == "drifted"
-
-
-def test_given_drift_when_the_resume_rejects_then_the_run_blocks(binder):
-    bind, _cp = binder
-    graph = _gated_graph(bind, RealignmentGate(StubVerdictSource(Verdict.DRIFTED), can_pause=True))
-    config = {"configurable": {"thread_id": "t3"}}
-
-    graph.invoke({}, config)
-    resumed = graph.invoke(Command(resume={"accept": False}), config)
-
-    assert resumed["kyno_blocked"] is True
-
-
-def test_given_an_unjudged_output_when_the_gate_node_runs_then_it_passes_marked_unchecked(binder):
-    bind, _cp = binder
-    graph = _gated_graph(bind, RealignmentGate(can_pause=True))
-
-    result = graph.invoke({}, {"configurable": {"thread_id": "t4"}})
-
-    assert result["kyno_checked"] is False and result["kyno_blocked"] is False
-
-
-def test_given_a_resume_that_does_not_say_accept_when_resuming_then_it_blocks(binder):
-    """Anything but an explicit accept is a refusal; silence is not consent."""
-    bind, _cp = binder
-    graph = _gated_graph(bind, RealignmentGate(StubVerdictSource(Verdict.DRIFTED), can_pause=True))
-    config = {"configurable": {"thread_id": "t5"}}
-
-    graph.invoke({}, config)
-    resumed = graph.invoke(Command(resume="looks fine"), config)
-
-    assert resumed["kyno_blocked"] is True
-
-
-def test_given_a_gate_that_cannot_pause_when_drift_is_found_then_it_blocks_without_interrupting(
-    binder,
-):
-    bind, _cp = binder
-    graph = _gated_graph(bind, RealignmentGate(StubVerdictSource(Verdict.DRIFTED), can_pause=False))
-
-    result = graph.invoke({}, {"configurable": {"thread_id": "t6"}})
-
-    assert result["kyno_blocked"] is True and "__interrupt__" not in result
-
-
-def test_given_an_intervening_node_when_the_gate_runs_then_the_direction_still_reaches_it(binder):
-    """The state schema must declare the kyno keys or they are dropped."""
-    bind, _cp = binder
-    graph = _gated_graph(bind, RealignmentGate(StubVerdictSource(Verdict.ALIGNED), can_pause=True))
-
-    result = graph.invoke({}, {"configurable": {"thread_id": "t7"}})
-
-    assert result["kyno_version"] == 1 and result["kyno_mission"] == "M1"
-
-
-def test_given_a_schema_missing_the_kyno_keys_when_running_then_the_direction_is_lost(binder):
-    """Pins why KynoState exists: without it the gate judges against v0."""
-    bind, _cp = binder
-    graph = (
-        StateGraph(dict)
-        .add_node("pull", direction_node(bind))
-        .add_node("work", lambda state: {"output": "a draft"})
-        .add_node("gate", gate_node(RealignmentGate(can_pause=True)))
-        .add_edge(START, "pull")
-        .add_edge("pull", "work")
-        .add_edge("work", "gate")
-        .add_edge("gate", END)
-        .compile()
-    )
-
-    assert "kyno_version" not in graph.invoke({})
-
-
-def test_given_an_output_key_when_the_gate_reads_then_it_uses_the_key_it_was_given():
-    seen = []
-
-    class Recorder:
-        def assess(self, *, output, mission, principles, change_notes):
-            seen.append(output)
-            return Verdict.ALIGNED
-
-    node = gate_node(RealignmentGate(Recorder(), can_pause=True), output_key="draft")
-    node({"draft": "the draft", "output": "ignored"})
-
-    assert seen == ["the draft"]
 
 
 def test_given_a_wrapped_node_when_state_moves_then_the_rendered_block_travels_in_it(binder):
@@ -283,22 +157,7 @@ def test_given_the_wrapper_wrote_state_when_the_node_writes_too_then_the_node_wi
     assert node({})["kyno_mission"] == "as the node saw it"
 
 
-def test_given_the_gate_node_when_it_judges_a_step_then_the_step_is_recorded(binder):
-    bind, _cp = binder
-    trace = RunTrace(run_id="r1")
-    gate = RealignmentGate(StubVerdictSource(Verdict.ALIGNED), can_pause=True)
-    state = {**direction_node(bind)({}), "output": "a draft"}
-
-    gate_node(gate, trace=trace)(state)
-
-    record = trace.steps[-1]
-    assert record.output == "a draft" and record.verdict == "aligned"
-    assert record.agent == "graph" and record.version == 1
-
-
 def test_given_a_described_principle_when_checkpoint_round_tripping_then_it_survives():
-    # State is persisted and re-read, so a description dropped here would
-    # reach the gate node as a principle that means something else.
     from kyno.wire.models import Principle
 
     original = Direction(
@@ -377,3 +236,112 @@ def test_given_unknown_delivery_status_when_building_direction_state_then_it_is_
     original = Direction.empty("support")
     with pytest.raises(ValueError, match="unknown-status"):
         direction_update(original, status="unknown-status")
+
+
+def test_given_change_notes_when_a_checkpointed_graph_reaches_a_consumer_then_it_receives_them(
+    binder,
+):
+    bind, _ = binder
+    captured = []
+    graph = _capture_graph(bind, captured)
+    graph.invoke({}, {"configurable": {"thread_id": "notes"}})
+    assert captured[0].change_notes == ("init",)
+
+
+def test_given_an_intervening_node_when_a_consumer_runs_then_direction_reaches_it(binder):
+    bind, _ = binder
+    captured = []
+    graph = _capture_graph(bind, captured)
+    graph.invoke({}, {"configurable": {"thread_id": "direction"}})
+    assert captured[0].version == 1
+    assert captured[0].mission == "M1"
+
+
+def test_given_a_schema_without_direction_fields_when_work_runs_then_direction_is_lost(binder):
+    from typing import TypedDict
+
+    class OutputState(TypedDict, total=False):
+        output: str
+
+    bind, _ = binder
+    captured = []
+    graph = _capture_graph(bind, captured, OutputState)
+    result = graph.invoke({}, {"configurable": {"thread_id": "missing"}})
+    assert "kyno_version" not in result
+    assert captured == [Direction.empty("default")]
+
+
+@pytest.mark.parametrize("context", [DetailLevel.COMPACT, DetailLevel.FULL])
+def test_given_a_captured_answer_when_review_resumes_then_it_keeps_its_original_input(
+    binder,
+    context,
+):
+    class ReviewState(KynoState, total=False):
+        answer_record: dict
+        needs_review: bool
+
+    bind, control_plane = binder
+    bind = DirectionBinder(LocalDirectionSource(control_plane), context=context)
+    bind.bind()
+    control_plane.set_direction(
+        declaration="Explain the support decision.",
+        principles=("Be honest", "Explain the decision"),
+        change_note="Add explanation",
+    )
+    reviewed = []
+
+    @pull_before(bind)
+    def answer(state):
+        direction = direction_from_state(state)
+        supplied_message = state["kyno_direction"]
+        output = f"Answer for {direction.mission}"
+        return {
+            "answer_record": {
+                "direction": direction,
+                "supplied_message": supplied_message,
+                "delivery_status": state["kyno_delivery_status"],
+                "output": output,
+            }
+        }
+
+    def refresh(state):
+        control_plane.set_direction(mission="M2", change_note="pivot")
+        return direction_node(bind)(state)
+
+    def review(state):
+        reviewed.append(state["answer_record"])
+        return {
+            "needs_review": "refund has been issued" in state["answer_record"]["output"].lower()
+        }
+
+    graph = (
+        StateGraph(ReviewState)
+        .add_node("answer", answer)
+        .add_node("refresh", refresh)
+        .add_node("review", review)
+        .add_edge(START, "answer")
+        .add_edge("answer", "refresh")
+        .add_edge("refresh", "review")
+        .add_edge("review", END)
+        .compile(checkpointer=InMemorySaver(), interrupt_before=["review"])
+    )
+
+    config = {"configurable": {"thread_id": f"review-{context.value}"}}
+    graph.invoke({}, config)
+    saved = graph.get_state(config).values
+    original = saved["answer_record"]
+    assert reviewed == []
+    result = graph.invoke(None, config)
+
+    assert result["kyno_version"] == 3
+    assert reviewed[0] == original
+    assert reviewed[0]["direction"].version == 2
+    assert reviewed[0]["direction"].mission == "M1"
+    assert reviewed[0]["direction"].declaration == "Explain the support decision."
+    assert tuple(reviewed[0]["direction"].change_notes) == ("Add explanation",)
+    assert reviewed[0]["direction"].delta
+    assert reviewed[0]["direction"].context == context
+    assert reviewed[0]["supplied_message"] == reviewed[0]["direction"].render()
+    assert reviewed[0]["output"] == "Answer for M1"
+    assert reviewed[0]["delivery_status"] is DeliveryStatus.CURRENT
+    assert result["needs_review"] is False

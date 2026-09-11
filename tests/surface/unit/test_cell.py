@@ -1,4 +1,5 @@
 import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -185,3 +186,49 @@ def test_given_a_full_block_when_reading_then_each_description_sits_under_its_ti
 def test_given_an_unknown_context_when_setting_it_then_it_is_refused():
     with pytest.raises(ValueError, match="verbose"):
         Direction(**RICH, context="verbose")
+
+
+@pytest.mark.parametrize("context", list(DetailLevel))
+def test_given_cached_direction_when_another_context_is_written_then_the_cache_is_unchanged(
+    context,
+):
+    cell = DirectionCell()
+    original = cell.update(Direction(**RICH, context=context))
+    other_context = DetailLevel.FULL if context is DetailLevel.COMPACT else DetailLevel.COMPACT
+
+    with pytest.raises(ValueError, match="separate cell"):
+        cell.update(Direction(**RICH, context=other_context))
+
+    assert cell.get("eu") is original
+
+
+def test_given_an_invalid_cell_context_when_rejected_then_a_valid_context_can_still_be_selected():
+    cell = DirectionCell()
+
+    with pytest.raises(ValueError, match="verbose"):
+        cell.require_context("verbose")
+    cell.require_context("full")
+    direction = Direction(**RICH, context=DetailLevel.FULL)
+
+    assert cell.update(direction) is direction
+
+
+def test_given_competing_contexts_when_claiming_one_cell_then_only_one_context_is_accepted():
+    cell = DirectionCell()
+    start = threading.Barrier(2)
+
+    def select(context):
+        start.wait(timeout=10)
+        try:
+            cell.require_context(context)
+        except ValueError:
+            return None
+        return context
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        selected = list(executor.map(select, list(DetailLevel)))
+
+    accepted = [context for context in selected if context is not None]
+    assert len(accepted) == 1
+    direction = Direction(**RICH, context=accepted[0])
+    assert cell.update(direction) is direction

@@ -337,3 +337,58 @@ def test_given_overlapping_pulls_when_the_older_reply_finishes_last_then_it_retu
     assert retained.status is DeliveryStatus.CACHED
     assert retained.direction is current.direction
     assert retained.direction.version == cell.known_version("sales") == 5
+
+
+@pytest.mark.parametrize("first_context", list(DetailLevel))
+@pytest.mark.parametrize("populated", [False, True], ids=["empty-cell", "cached-direction"])
+def test_given_a_shared_cell_when_a_binder_requests_another_context_then_setup_is_rejected(
+    scripted_source, first_context, populated
+):
+    cell = DirectionCell()
+    scripted_source.set("default", 2, "M2")
+    first = DirectionBinder(scripted_source, cell=cell, context=first_context)
+    if populated:
+        first.bind()
+    other_context = (
+        DetailLevel.FULL if first_context is DetailLevel.COMPACT else DetailLevel.COMPACT
+    )
+    calls_before = list(scripted_source.calls)
+
+    with pytest.raises(ValueError, match="separate cell"):
+        DirectionBinder(scripted_source, cell=cell, context=other_context)
+
+    assert scripted_source.calls == calls_before
+    assert cell.known_version("default") == (2 if populated else 0)
+
+
+@pytest.mark.parametrize("context", list(DetailLevel))
+def test_given_same_context_binders_when_a_shared_cache_is_used_after_failure_then_context_is_kept(
+    scripted_source, context
+):
+    cell = DirectionCell()
+    first = DirectionBinder(scripted_source, cell=cell, context=context)
+    second = DirectionBinder(scripted_source, cell=cell, context=context.value)
+    scripted_source.set("default", 2, "M2")
+    original = first.bind()
+    scripted_source.failure = OSError("offline")
+
+    fallback = second.bind_with_status()
+
+    assert fallback.status is DeliveryStatus.CACHED
+    assert fallback.direction is original
+    assert fallback.direction.context is context
+
+
+@pytest.mark.parametrize("context", list(DetailLevel))
+def test_given_a_preloaded_cell_when_a_binder_requests_another_context_then_setup_is_rejected(
+    scripted_source, context
+):
+    cell = DirectionCell()
+    original = cell.update(Direction("default", 2, "M2", (), context=context))
+    other_context = DetailLevel.FULL if context is DetailLevel.COMPACT else DetailLevel.COMPACT
+
+    with pytest.raises(ValueError, match="separate cell"):
+        DirectionBinder(scripted_source, cell=cell, context=other_context)
+
+    assert cell.get("default") is original
+    assert scripted_source.calls == []

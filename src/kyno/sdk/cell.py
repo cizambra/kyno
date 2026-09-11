@@ -121,12 +121,25 @@ class DirectionCell:
     """The process-local latest-known direction, one entry per constitution.
 
     Updates are monotonic so overlapping pulls can finish out of order
-    without an older response replacing a newer direction.
+    without an older response replacing a newer direction. A cell uses one
+    context level, selected by its first binder or direction update.
     """
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._held: dict[str, Direction] = {}
+        self._context: DetailLevel | None = None
+
+    def require_context(self, context: str | DetailLevel) -> None:
+        """Select the cell's context, or reject a different level once selected."""
+        context = check_context(context)
+        with self._lock:
+            if self._context is not None and self._context is not context:
+                raise ValueError(
+                    f"DirectionCell uses '{self._context.value}' context; "
+                    f"use a separate cell for '{context.value}' context."
+                )
+            self._context = context
 
     def get(self, constitution: str) -> Direction | None:
         with self._lock:
@@ -137,6 +150,7 @@ class DirectionCell:
         return held.version if held else 0
 
     def update(self, direction: Direction) -> Direction:
+        self.require_context(direction.context)
         with self._lock:
             held = self._held.get(direction.constitution)
             if held is not None and held.version > direction.version:

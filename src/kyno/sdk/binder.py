@@ -39,6 +39,7 @@ class DirectionBinder:
         # Checked here rather than at the first step, so a typo fails while the integration is
         # being set up instead of once it is running.
         self.context = check_context(context)
+        self.cell.require_context(self.context)
 
     def bind(self, constitution: str = "default") -> Direction:
         """Pull direction, applying the configured failure policy."""

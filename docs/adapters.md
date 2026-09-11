@@ -29,7 +29,11 @@ an adapter is expected to do falls out of these four behaviors.
   the last direction the binder holds, and an event goes to the telemetry
   sink -- by default, a warning line in your logs naming the constitution
   and the version it fell back to. `PullPolicy(fail_closed=True)` makes
-  the step raise instead.
+  the step raise instead. Binders may share a `DirectionCell` only when
+  they use the same context level. The first binder or direct cell update
+  selects that level; a different level raises `ValueError`. Use separate
+  cells for compact and full context so fallback cannot return the wrong
+  amount of direction.
 - **What changed.** A pull includes the operator's change note and a
   computed delta: which principle moved, whether the mission moved, what
   was added or dropped. That's what makes a small change visible.

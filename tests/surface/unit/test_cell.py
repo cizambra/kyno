@@ -202,6 +202,23 @@ def test_given_cached_direction_when_another_context_is_written_then_the_cache_i
     assert cell.get("eu") is original
 
 
+@pytest.mark.parametrize("context", list(DetailLevel))
+def test_given_one_constitution_when_another_uses_a_different_cell_context_then_it_is_not_added(
+    context,
+):
+    cell = DirectionCell()
+    original = cell.update(Direction(**RICH, context=context))
+    other_context = DetailLevel.FULL if context is DetailLevel.COMPACT else DetailLevel.COMPACT
+    other = Direction("other", 1, "Other mission", (), context=other_context)
+
+    with pytest.raises(ValueError, match="separate cell"):
+        cell.update(other)
+
+    assert cell.get("eu") is original
+    assert cell.get("other") is None
+    assert cell.names() == ("eu",)
+
+
 def test_given_an_invalid_cell_context_when_rejected_then_a_valid_context_can_still_be_selected():
     cell = DirectionCell()
 

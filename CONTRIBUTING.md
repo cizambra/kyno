@@ -96,6 +96,9 @@ write it in that place.
   behavior and no more. If it does more than one thing, split it.
 - A PR description covers three things: what it does, how to verify it,
   and where to look first.
+- In "What changed?", describe the previous behavior, then the new
+  behavior and why the change matters. Keep it product-focused and clear
+  to a reviewer with no prior context.
 - Follow the boy scout rule: leave the code better than you found it,
   tests included. If your change sits on top of something that needs
   cleaning up, like a helper that already exists elsewhere or a name that

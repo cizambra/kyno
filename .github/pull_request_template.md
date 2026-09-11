@@ -4,7 +4,9 @@
 
 # What changed?
 
-<!-- At a product level; the code can tell the story. Diagrams or wireframes welcome. -->
+<!-- Describe the previous behavior, then the new behavior and why the change matters.
+Keep it product-focused so a reviewer with no prior context can understand it.
+The code explains the implementation. Diagrams or wireframes welcome. -->
 
 # Relevant Links
 

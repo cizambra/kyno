@@ -285,4 +285,6 @@ def test_given_checkpoint_example_when_run_then_saved_status_is_typed_without_an
     assert source.changes_since.call_count == 1
     assert namespace["saved"]["kyno_delivery_status"] is DeliveryStatus.CURRENT
     assert namespace["saved"]["kyno_version"] == 2
-    assert capsys.readouterr().out == "2\ncurrent\n"
+    assert capsys.readouterr().out == (
+        "Saved direction version: 2\nDelivery status at that step: current\n"
+    )

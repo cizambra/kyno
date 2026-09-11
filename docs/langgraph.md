@@ -115,17 +115,25 @@ graph = (
 config = {"configurable": {"thread_id": "support-example"}}
 graph.invoke({}, config)
 
-saved = graph.get_state(config).values
-print(saved["kyno_version"])
-print(saved["kyno_delivery_status"].value)
+checkpoint = graph.get_state(config)
+saved = checkpoint.values
+print("Saved direction version:", saved["kyno_version"])
+print("Delivery status at that step:", saved["kyno_delivery_status"].value)
 ```
 
-`thread_id` tells LangGraph which workflow history to save and read.
-`get_state` reads the saved snapshot; it does not pull direction again.
-The saved status is still a `DeliveryStatus` enum; `.value` prints its text,
-such as `current` or `cached`. `InMemorySaver` keeps checkpoints only in this
-Python process. To retain them after a restart, configure persistent storage
-through LangGraph.
+`graph.invoke` runs the direction-reading node. LangGraph saves its state
+under the `support-example` thread ID. `graph.get_state(config)` retrieves
+that thread's latest checkpoint; `checkpoint.values` is the dictionary of
+saved state fields.
+
+The first printed line identifies the direction version supplied to that
+step. The second says how it was obtained: for example, `current` means the
+read succeeded at that step. `.value` gets this text from the saved
+`DeliveryStatus` enum. Reading the checkpoint does not contact Kyno, so it
+cannot tell you whether a newer direction version has since been applied.
+
+`InMemorySaver` keeps checkpoints only in this Python process. To retain
+them after a restart, configure persistent storage through LangGraph.
 
 A direction node before a fan-out supplies the same snapshot to its branches.
 Later pulls do not change earlier receipts. Resuming a checkpoint without

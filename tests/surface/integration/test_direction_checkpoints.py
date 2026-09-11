@@ -15,6 +15,7 @@ from langgraph.graph import END, START, StateGraph  # noqa: E402
 
 from kyno.adapters.langgraph import (  # noqa: E402
     KynoState,
+    direction_from_state,
     direction_node,
     direction_update,
     pull_before,
@@ -88,6 +89,8 @@ def test_given_a_binding_when_work_is_checkpointed_then_its_exact_direction_and_
     else:
         expected = Direction.from_changes(source.changes_since.return_value, "support", context)
     assert restored["kyno_direction"] == expected.render()
+    assert direction_from_state(restored) == expected
+    assert direction_from_state(restored["receipts"][0]) == expected
 
 
 def test_given_checkpointed_direction_when_resuming_without_a_pull_then_its_status_is_unchanged(
@@ -246,6 +249,8 @@ def test_given_the_same_version_when_read_succeeds_then_new_step_status_is_saved
     assert saved["kyno_version"] == 2
     assert saved["kyno_delivery_status"] == "current"
     assert saved["kyno_direction"] == Direction.from_changes(unchanged, "default").render()
+    assert direction_from_state(saved) == Direction.from_changes(unchanged, "default")
+    assert direction_from_state(saved["receipts"][0]) == Direction.from_changes(initial, "default")
     assert saved["receipts"][0]["kyno_direction"] == first_block
     assert saved["receipts"][0]["kyno_delivery_status"] == "current"
     assert saved["receipts"][-1]["kyno_direction"] == saved["kyno_direction"]

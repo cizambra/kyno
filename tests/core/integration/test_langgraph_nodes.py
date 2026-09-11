@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 pytest.importorskip("langgraph")
@@ -350,4 +352,22 @@ def test_given_complete_direction_when_round_tripping_through_state_then_all_fie
     update = direction_update(original)
 
     assert update["kyno_context"] is DetailLevel.FULL
-    assert direction_from_state(update) == original
+    assert direction_from_state(json.loads(json.dumps(update))) == original
+
+
+def test_given_checkpoint_without_optional_direction_fields_when_reading_then_defaults_are_empty():
+    state = {
+        "kyno_constitution": "support",
+        "kyno_version": 3,
+        "kyno_mission": "Resolve issues",
+        "kyno_principles": [{"title": "Be honest", "description": "Explain the outcome"}],
+        "kyno_context": "full",
+    }
+
+    assert direction_from_state(state) == Direction(
+        constitution="support",
+        version=3,
+        mission="Resolve issues",
+        principles=({"title": "Be honest", "description": "Explain the outcome"},),
+        context=DetailLevel.FULL,
+    )

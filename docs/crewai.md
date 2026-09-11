@@ -125,7 +125,7 @@ appropriate for potentially sensitive content.
 ## Optional verification
 
 You can use Kyno without a verifier. If you also want to check the crew's
-finished answer, your application calls a verifier such as Canon. Your
+finished answer, your application calls a verifier of your choice. Your
 application decides whether to accept the answer, retry the work, or ask
 a person to review it. Kyno does not make that decision.
 
@@ -135,7 +135,7 @@ run the crew, then pass the answer and saved direction to your verifier.
 
 Here is the required integration with that optional review added. As
 before, `crew` is your configured CrewAI crew. Two functions below belong
-to your application; neither is provided by Kyno or Canon:
+to your application; neither is provided by Kyno:
 
 - `assess_output` calls your chosen verifier with the output and direction.
 - `handle_assessment` reads its result and decides what to do next.

@@ -706,41 +706,66 @@ def current(
 ) -> None:
     """The version in force. JSON by default; --yaml prints it as a
     constitution file, ready to redirect, commit, and re-apply."""
+    get_version("latest", constitution, as_yaml, remote, profile, credentials, token_env)
+
+
+@app.command("get-version")
+def get_version(
+    version: str = typer.Argument(..., help="A positive version number, or 'latest'."),
+    constitution: str = _CONSTITUTION_OPTION,
+    as_yaml: bool = typer.Option(
+        False, "--yaml", help="Print direction in the file format `kyno apply` reads."
+    ),
+    remote: bool = typer.Option(False, "--remote", help=_REMOTE_HELP),
+    profile: str = typer.Option("default", "--profile", help="Which remote profile to use."),
+    credentials: str | None = typer.Option(
+        None, "--credentials", help="Take the token from this credentials profile, this run."
+    ),
+    token_env: str | None = typer.Option(
+        None, "--token-env", help="Take the token from this variable, this run."
+    ),
+) -> None:
+    """Read a historical version or the version in force, without changing direction.
+    JSON includes version metadata; --yaml contains the complete authored content."""
+    number = None
+    if version != "latest":
+        try:
+            number = int(version)
+        except ValueError:
+            raise typer.BadParameter("must be a positive integer or 'latest'") from None
+        if number < 1:
+            raise typer.BadParameter("must be a positive integer or 'latest'")
     _remote_options_guard(remote, profile, credentials, token_env)
-    if remote:
-        with _clean_errors():
+    with _clean_errors():
+        if number is not None:
+            if remote:
+                rows = _fetch_remote_rows(
+                    profile, credentials, token_env, constitution, version=number
+                )
+            else:
+                rows = _store().export_versions(
+                    constitution, from_version=number, to_version=number
+                )
+            if not rows:
+                raise CoherenceError(f"nothing to read: '{constitution}' has no version {number}")
+            payload = rows[0]
+        elif remote:
             client = dial(profile, credentials_profile=credentials, token_env=token_env)
             try:
                 payload = _fetch_remote_head(client, constitution)
             finally:
                 client.close()
-            head = version_from_payload(payload)
-            if head is None:
-                if as_yaml:
-                    typer.echo(
-                        f"error: nothing to read: '{constitution}' has no versions", err=True
-                    )
-                    raise typer.Exit(code=1)
-                typer.echo("no constitution set (version 0)")
-            elif as_yaml:
-                typer.echo(render_constitution_yaml(head, constitution), nl=False)
-            else:
-                typer.echo(json.dumps(payload, indent=2))
-        return
-    try:
-        v = _control_plane().current(constitution)
-        if v.version == 0:
+        else:
+            payload = _control_plane().current(constitution).to_dict()
+        head = version_from_payload(payload)
+        if head is None:
             if as_yaml:
-                typer.echo(f"error: nothing to read: '{constitution}' has no versions", err=True)
-                raise typer.Exit(code=1)
+                raise CoherenceError(f"nothing to read: '{constitution}' has no versions")
             typer.echo("no constitution set (version 0)")
         elif as_yaml:
-            typer.echo(render_constitution_yaml(v, constitution), nl=False)
+            typer.echo(render_constitution_yaml(head, constitution), nl=False)
         else:
-            typer.echo(json.dumps(v.to_dict(), indent=2))
-    except (CoherenceError, SQLAlchemyError) as exc:
-        typer.echo(f"error: {exc}", err=True)
-        raise typer.Exit(code=1) from None
+            typer.echo(json.dumps(payload, indent=2))
 
 
 @app.command()
@@ -971,10 +996,15 @@ def _fetch_remote_rows(
     credentials: str | None,
     token_env: str | None,
     constitution: str,
+    *,
+    version: int | None = None,
 ) -> list[dict]:
+    arguments = {"constitution": constitution}
+    if version is not None:
+        arguments.update(from_version=version, to_version=version)
     client = dial(profile, credentials_profile=credentials, token_env=token_env)
     try:
-        return client.call_tool("export_versions", {"constitution": constitution})
+        return client.call_tool("export_versions", arguments)
     finally:
         client.close()
 

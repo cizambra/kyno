@@ -9,6 +9,7 @@ On this page:
 
 - [The file](#the-file)
 - [Multiple constitutions](#multiple-constitutions)
+- [Reading a version](#reading-a-version)
 - [Exporting and restoring history](#exporting-and-restoring-history)
 
 
@@ -107,6 +108,30 @@ file. Each name has its own version sequence: bumping `eu` to v2 leaves
 reads as the same version-0 empty state an untouched store does. The
 subscribable resource is the default constitution's; agents on another
 one pull it by name with `get_changes_since`.
+
+## Reading a version
+
+`kyno current` is shorthand for `kyno get-version latest`. Both read the
+direction currently in force. A number selects an earlier version without
+changing the current direction:
+
+```bash
+kyno current --constitution eu
+kyno get-version latest --constitution eu
+kyno get-version 2 --constitution eu
+kyno get-version 2 --constitution eu --yaml > reviewed-v2.yaml
+```
+
+Both commands accept `--remote`, `--profile`, `--credentials`, and
+`--token-env` with the same meaning. Remote reads need only a read-scoped
+token. A version number must be positive; a missing version exits with an
+error and no direction on stdout.
+
+JSON is the default output and includes version metadata. `--yaml` prints
+only the constitution name, mission, declaration, and full principles,
+including empty fields. Review that file before using `kyno apply`: applying
+it restores its content as a new version, not by moving history backward.
+Reading a version does not apply it or replace any existing history.
 
 ## Exporting and restoring history
 

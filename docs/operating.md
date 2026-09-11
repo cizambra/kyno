@@ -329,6 +329,7 @@ One flag, on the commands you already use:
 
 ```bash
 kyno current --remote
+kyno get-version 2 --remote --yaml
 kyno apply constitution.yaml --note "sharpen the mission" --remote
 kyno check constitution.yaml --remote
 kyno history --remote

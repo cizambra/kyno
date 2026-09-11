@@ -37,10 +37,114 @@ def apply_yaml(
     return runner.invoke(app, args)
 
 
-@pytest.mark.parametrize("command", ["apply", "history"])
+@pytest.mark.parametrize("command", ["apply", "history", "get-version"])
 def test_given_a_direction_command_when_requesting_help_then_it_is_available(command):
     result = runner.invoke(app, [command, "--help"])
     assert result.exit_code == 0
+
+
+@pytest.mark.parametrize("constitution", ["default", "support"])
+@pytest.mark.parametrize("version", [1, 2, 3])
+def test_given_three_versions_when_reading_a_numbered_version_then_only_that_version_is_returned(
+    tmp_path, monkeypatch, constitution, version
+):
+    cli_workspace(monkeypatch, tmp_path)
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    for number in (1, 2, 3):
+        assert (
+            apply_yaml(
+                tmp_path,
+                mission=f"Mission {number}",
+                constitution=constitution,
+                note=f"Change {number}",
+                by="alice",
+            ).exit_code
+            == 0
+        )
+    before = runner.invoke(app, ["export", "--constitution", constitution])
+
+    result = runner.invoke(app, ["get-version", str(version), "--constitution", constitution])
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout) == json.loads(before.stdout)[version - 1]
+    assert runner.invoke(app, ["export", "--constitution", constitution]).stdout == before.stdout
+
+
+@pytest.mark.parametrize("written", [False, True])
+@pytest.mark.parametrize("options", [[], ["--yaml"]])
+def test_given_latest_direction_when_reading_current_or_latest_then_output_and_exit_status_match(
+    tmp_path, monkeypatch, written, options
+):
+    cli_workspace(monkeypatch, tmp_path)
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    if written:
+        assert (
+            apply_yaml(tmp_path, mission="First", constitution="support", note="first").exit_code
+            == 0
+        )
+        assert (
+            apply_yaml(tmp_path, mission="Second", constitution="support", note="second").exit_code
+            == 0
+        )
+    options = ["--constitution", "support", *options]
+
+    current = runner.invoke(app, ["current", *options])
+    latest = runner.invoke(app, ["get-version", "latest", *options])
+
+    assert latest.exit_code == current.exit_code
+    assert latest.stdout == current.stdout
+    assert latest.stderr == current.stderr
+
+
+@pytest.mark.parametrize("version", ["0", "-1", "1.5", "LATEST", "wrong"])
+def test_given_an_invalid_version_selector_when_reading_then_it_is_rejected_before_opening_a_store(
+    version,
+):
+    result = runner.invoke(app, ["get-version", "--", version])
+    assert result.exit_code == 2
+    assert "positive integer or 'latest'" in result.output
+
+
+@pytest.mark.parametrize("constitution", ["default", "unknown"])
+@pytest.mark.parametrize("options", [[], ["--yaml"]])
+def test_given_a_missing_numbered_version_when_reading_then_no_direction_is_printed(
+    tmp_path, monkeypatch, constitution, options
+):
+    cli_workspace(monkeypatch, tmp_path)
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    assert apply_yaml(tmp_path, mission="First", note="first").exit_code == 0
+
+    result = runner.invoke(app, ["get-version", "2", "--constitution", constitution, *options])
+
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert f"'{constitution}' has no version 2" in result.stderr
+
+
+@pytest.mark.parametrize("command", [["current"], ["get-version", "latest"], ["get-version", "1"]])
+@pytest.mark.parametrize("empty_field", ["mission", "declaration", "principles"])
+def test_given_an_empty_direction_field_when_reading_yaml_then_the_field_is_explicitly_empty(
+    tmp_path, monkeypatch, command, empty_field
+):
+    import yaml
+
+    cli_workspace(monkeypatch, tmp_path)
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    content = {
+        "constitution": "support",
+        "mission": "Help",
+        "declaration": "Explain.\nFully.",
+        "principles": [{"title": "Trust", "description": "Be honest."}],
+    }
+    content[empty_field] = [] if empty_field == "principles" else ""
+    path = tmp_path / "direction.json"
+    path.write_text(json.dumps(content))
+    assert runner.invoke(app, ["apply", str(path), "--note", "first"]).exit_code == 0
+
+    result = runner.invoke(app, [*command, "--constitution", "support", "--yaml"])
+
+    assert result.exit_code == 0, result.output
+    assert yaml.safe_load(result.stdout) == content
 
 
 @pytest.mark.parametrize("command", ["set", "log"])
@@ -48,6 +152,33 @@ def test_given_an_unknown_command_when_invoked_then_it_is_rejected(command):
     result = runner.invoke(app, [command])
     assert result.exit_code == 2
     assert "No such command" in result.output
+
+
+def test_given_no_version_selector_when_reading_a_version_then_the_required_argument_is_reported():
+    result = runner.invoke(app, ["get-version"])
+    assert result.exit_code == 2
+    assert "Missing argument" in result.output
+
+
+def test_given_an_uninitialized_database_when_reading_a_numbered_version_then_the_error_is_clean(
+    tmp_path, monkeypatch
+):
+    cli_workspace(monkeypatch, tmp_path)
+    result = runner.invoke(app, ["get-version", "1"])
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert "error:" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "options", [["--profile", "ops"], ["--credentials", "ops"], ["--token-env", "APP_TOKEN"]]
+)
+def test_given_remote_options_when_reading_a_local_version_then_the_options_are_rejected(
+    options,
+):
+    result = runner.invoke(app, ["get-version", "1", *options])
+    assert result.exit_code == 2
+    assert "--remote" in result.stderr
 
 
 def test_given_an_applied_file_when_reading_current_then_that_content_is_served(

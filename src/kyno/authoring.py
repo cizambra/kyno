@@ -69,18 +69,17 @@ def check_constitution_file(path: str) -> FileReport:
 
 
 def render_constitution_yaml(version: ConstitutionVersion, constitution: str) -> str:
-    """The current version in the file format `kyno apply --file` reads back.
-    Applying it unchanged is a no-op edit."""
-    document: dict = {"constitution": constitution}
-    if version.mission:
-        document["mission"] = version.mission
-    if version.declaration:
-        document["declaration"] = version.declaration
-    if version.principles:
-        document["principles"] = [
+    """A version's complete content in the file format `kyno apply` reads.
+    Empty fields are explicit so reapplying restores them instead of keeping newer values."""
+    document = {
+        "constitution": constitution,
+        "mission": version.mission,
+        "declaration": version.declaration,
+        "principles": [
             p.title if not p.description else {"title": p.title, "description": p.description}
             for p in version.principles
-        ]
+        ],
+    }
     return _dump(document)
 
 

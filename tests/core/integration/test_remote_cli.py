@@ -100,6 +100,95 @@ def _three_versions(remote_cp):
     remote_cp.set_direction(mission="M3", change_note="v3")
 
 
+@pytest.mark.parametrize("version", [1, 2, 3])
+def test_given_remote_history_when_reading_a_numbered_version_then_only_that_version_is_requested(
+    fake_dial, remote_cp, monkeypatch, version
+):
+    for number in (1, 2, 3):
+        remote_cp.set_direction(
+            mission=f"Mission {number}", change_note=f"Change {number}", constitution="support"
+        )
+    calls = []
+    original = fake_dial.call_tool
+
+    def record(name, arguments):
+        calls.append((name, arguments))
+        return original(name, arguments)
+
+    monkeypatch.setattr(fake_dial, "call_tool", record)
+    result = runner.invoke(
+        app,
+        [
+            "get-version",
+            str(version),
+            "--constitution",
+            "support",
+            "--remote",
+            "--profile",
+            "oncall",
+            "--credentials",
+            "ops",
+            "--token-env",
+            "APP_TOKEN",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout) == remote_cp.export_versions("support")[version - 1]
+    assert calls == [
+        (
+            "export_versions",
+            {"constitution": "support", "from_version": version, "to_version": version},
+        )
+    ]
+    assert fake_dial.dialed == {"profile": "oncall", "credentials": "ops", "token_env": "APP_TOKEN"}
+    assert fake_dial.closed
+
+
+@pytest.mark.parametrize("written", [False, True])
+@pytest.mark.parametrize("options", [[], ["--yaml"]])
+def test_given_remote_direction_when_reading_current_or_latest_then_output_and_exit_status_match(
+    fake_dial, remote_cp, written, options
+):
+    if written:
+        remote_cp.set_direction(mission="First", change_note="first", constitution="support")
+        remote_cp.set_direction(mission="Second", change_note="second", constitution="support")
+    options = ["--remote", "--constitution", "support", *options]
+    current = runner.invoke(app, ["current", *options])
+    latest = runner.invoke(app, ["get-version", "latest", *options])
+    assert (latest.exit_code, latest.stdout, latest.stderr) == (
+        current.exit_code,
+        current.stdout,
+        current.stderr,
+    )
+    assert fake_dial.closed
+
+
+@pytest.mark.parametrize("options", [[], ["--yaml"]])
+def test_given_a_missing_remote_version_when_reading_then_output_is_empty_and_connection_closes(
+    fake_dial, options
+):
+    result = runner.invoke(app, ["get-version", "2", "--remote", *options])
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert "'default' has no version 2" in result.stderr
+    assert fake_dial.closed
+
+
+def test_given_a_remote_history_failure_when_reading_then_the_error_is_clean_and_connection_closes(
+    fake_dial, monkeypatch
+):
+    def fail(name, arguments):
+        raise RemoteError("history unavailable")
+
+    monkeypatch.setattr(fake_dial, "call_tool", fail)
+    result = runner.invoke(app, ["get-version", "1", "--remote"])
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert "error: history unavailable" in result.stderr
+    assert fake_dial.closed
+
+
 def test_given_a_remote_head_when_reading_current_remotely_then_it_prints(fake_dial, remote_cp):
     remote_cp.set_direction(mission="M-remote", change_note="init")
     r = runner.invoke(app, ["current", "--remote"])

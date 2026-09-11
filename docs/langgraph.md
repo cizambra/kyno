@@ -71,26 +71,49 @@ receipt storage, run IDs, or step IDs for this integration to work.
 
 ## What Kyno provides
 
-`direction_node` and `pull_before` write `kyno_delivery_status` alongside
-the existing constitution, version, and rendered `kyno_direction` block.
-The status is a `DeliveryStatus` enum in live state and checkpoints restored
-with LangGraph's default serializer. See the [shared status reference](adapters.md#inspecting-delivery-status).
-JSON exports encode it as `current`, `cached`, or `empty`. When importing
-plain JSON yourself, pass the stored status to `direction_update(direction, status=value)`
-to restore the enum. A missing key or `None` means unknown, not `current`.
-Calling `direction_update(direction)` without binding status writes `None`
-so it cannot preserve a status from an earlier binding.
+Before your work node runs, `direction_node` or `pull_before` supplies the
+direction and sets `state["kyno_delivery_status"]` automatically. Your application
+does not need to set or convert this value. It is one of three named values
+from `DeliveryStatus`, imported from `kyno.sdk`:
+
+- `DeliveryStatus.CURRENT`: the read succeeded at this step's direction boundary.
+- `DeliveryStatus.CACHED`: the read failed, so Kyno supplied previously read direction.
+- `DeliveryStatus.EMPTY`: the read failed and no cached direction was available.
+
+The status describes how this step received its direction, not whether the
+model followed it. See the [shared status reference](adapters.md#inspecting-delivery-status).
+
+### Optional: saving and resuming graph state
 
 A checkpoint is a saved snapshot of graph state. If you configure a
 LangGraph checkpointer, the direction keys are saved with the graph's
-other state. Kyno does not configure checkpoint
-storage for you. Checkpointing is optional for consuming direction.
+other state. LangGraph's default serializer restores the `DeliveryStatus`
+enum when you load that checkpoint; no manual conversion is needed.
+Kyno does not configure checkpoint storage for you. You do not need
+checkpointing just to give your agents direction.
 
 A direction node before a fan-out supplies the same snapshot to its branches.
 Later pulls do not change earlier receipts. Resuming a checkpoint without
 another pull preserves the original delivery status; it does not establish
 that the saved version is still current. Work nodes should leave the
 `kyno_` direction keys unchanged so the checkpoint describes their input.
+
+### Only if you write your own JSON import
+
+Exporting state with `json.dumps` writes the status as `"current"`, `"cached"`,
+or `"empty"`. Reading that JSON with `json.loads` returns a plain string,
+not a `DeliveryStatus` enum. This is separate from normal LangGraph checkpointing.
+
+If your application rebuilds direction state from that JSON, pass the saved
+status to `direction_update(direction, status=saved_status)`. This converts it
+back to the enum and rejects unrecognized values. Here, `direction` is the
+`Direction` you reconstructed and `saved_status` is the JSON's
+`kyno_delivery_status` value.
+
+A missing status or `None` means unknown, not a successful read. Calling
+`direction_update(direction)` without a status writes `None`, clearing any
+status left from an earlier binding. You do not need this manual helper when
+using `direction_node` or `pull_before` normally.
 
 ## Failure behavior
 

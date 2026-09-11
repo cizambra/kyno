@@ -355,6 +355,8 @@ Who stood behind an apply is recorded on the version it writes as `authorized_by
 
 Two behaviors worth knowing. A remote `apply` fetches the server's head and shows you the same delta a local apply shows, before it applies; a duplicate apply is the same clean no-op. And a server you can't reach is a plain one-line error — except under `check`, which still prints its field-by-field report and ends with a comparison line saying the store was not compared, and why.
 
+`check` exits 0 only when the file matches the current direction. It exits 1 when direction differs, the constitution has no versions, or the comparison fails, including an unreachable local store or remote server. The field report still prints when the comparison fails.
+
 ### Checking your wiring
 
 A profile is a pointer to a pointer: the remote points at credentials, the credentials point at a variable, the variable holds the token. `kyno remote show` walks the whole chain so you never have to:

@@ -797,7 +797,8 @@ def check(
 ) -> None:
     """Report the file fields and compare proposed direction with current direction.
     The field report never blocks anything. The comparison exits 1 when
-    proposed direction differs or the constitution has no versions."""
+    proposed direction differs, the constitution has no versions, or the
+    comparison cannot be completed."""
     _remote_options_guard(remote, profile, credentials, token_env)
     try:
         report = check_constitution_file(file)
@@ -817,7 +818,8 @@ def check(
 def _compare_with_store(fields: ConstitutionFile, path: str) -> None:
     """Say whether the store's head is what the file says. Head and delta
     come from one read, so the version named and the changes listed belong
-    to the same moment. Exits 1 when they differ or nothing is there yet."""
+    to the same moment. Exits 1 when they differ, nothing is there yet,
+    or the comparison cannot be completed."""
     try:
         target = _constitution_name(fields, path)
     except AuthoringError as exc:
@@ -829,7 +831,7 @@ def _compare_with_store(fields: ConstitutionFile, path: str) -> None:
         # The cause is the first line. A database error then quotes its SQL, which tells the
         # operator nothing about the file.
         typer.echo(f"direction: not compared ({str(exc).splitlines()[0]})")
-        return
+        raise typer.Exit(code=1) from None
     _render_comparison(target, head, delta)
 
 
@@ -842,7 +844,7 @@ def _compare_with_remote(
 ) -> None:
     """The same comparison, against a remote head. An endpoint that cannot
     be reached reads like an unreachable store: the report stands, the
-    comparison says why it did not run."""
+    comparison says why it did not run and exits 1."""
     try:
         target = _constitution_name(fields, path)
     except AuthoringError as exc:
@@ -857,7 +859,7 @@ def _compare_with_remote(
         delta = edit_delta(head, target, **_content_of(fields))
     except CoherenceError as exc:
         typer.echo(f"direction: not compared ({str(exc).splitlines()[0]})")
-        return
+        raise typer.Exit(code=1) from None
     _render_comparison(target, head, delta)
 
 

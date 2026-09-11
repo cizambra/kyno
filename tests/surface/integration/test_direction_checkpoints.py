@@ -296,18 +296,20 @@ def test_given_rich_direction_when_fields_are_removed_then_only_new_receipts_cle
         graph.add_edge(START, "pull").add_edge("pull", "work")
     app = graph.add_edge("work", END).compile(checkpointer=InMemorySaver())
     config = {"configurable": {"thread_id": "removed-fields"}}
-    first = app.invoke({}, config)
+    first_run_state = app.invoke({}, config)
 
     app.invoke({}, config)
 
-    saved = app.get_state(config).values
+    saved_state_after_second_run = app.get_state(config).values
     original_direction = Direction.from_changes(initial, "support", DetailLevel.FULL)
     revised_direction = Direction.from_changes(revised, "support", DetailLevel.FULL)
-    assert len(saved["receipts"]) == 2
-    assert saved["receipts"][0] == first["receipts"][0]
-    assert direction_from_state(saved["receipts"][0]) == original_direction
-    assert direction_from_state(saved) == revised_direction
-    assert direction_from_state(saved["receipts"][1]) == revised_direction
-    assert saved["receipts"][1]["kyno_direction"] == revised_direction.render()
-    assert saved["kyno_delivery_status"] == "current"
+    assert len(saved_state_after_second_run["receipts"]) == 2
+    assert saved_state_after_second_run["receipts"][0] == first_run_state["receipts"][0]
+    assert direction_from_state(saved_state_after_second_run["receipts"][0]) == original_direction
+    assert direction_from_state(saved_state_after_second_run) == revised_direction
+    assert direction_from_state(saved_state_after_second_run["receipts"][1]) == revised_direction
+    assert (
+        saved_state_after_second_run["receipts"][1]["kyno_direction"] == revised_direction.render()
+    )
+    assert saved_state_after_second_run["kyno_delivery_status"] == "current"
     assert source.changes_since.call_count == 2

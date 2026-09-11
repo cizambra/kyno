@@ -96,6 +96,37 @@ enum when you load that checkpoint; no manual conversion is needed.
 Kyno does not configure checkpoint storage for you. You do not need
 checkpointing just to give your agents direction.
 
+Using the `binder` created above, this small graph reads direction and lets
+LangGraph save the result. It does not call a model:
+
+```python
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.graph import END, START, StateGraph
+
+from kyno.adapters.langgraph import KynoState, direction_node
+
+graph = (
+    StateGraph(KynoState)
+    .add_node("read_direction", direction_node(binder, "customer-support"))
+    .add_edge(START, "read_direction")
+    .add_edge("read_direction", END)
+    .compile(checkpointer=InMemorySaver())
+)
+config = {"configurable": {"thread_id": "support-example"}}
+graph.invoke({}, config)
+
+saved = graph.get_state(config).values
+print(saved["kyno_version"])
+print(saved["kyno_delivery_status"].value)
+```
+
+`thread_id` tells LangGraph which workflow history to save and read.
+`get_state` reads the saved snapshot; it does not pull direction again.
+The saved status is still a `DeliveryStatus` enum; `.value` prints its text,
+such as `current` or `cached`. `InMemorySaver` keeps checkpoints only in this
+Python process. To retain them after a restart, configure persistent storage
+through LangGraph.
+
 A direction node before a fan-out supplies the same snapshot to its branches.
 Later pulls do not change earlier receipts. Resuming a checkpoint without
 another pull preserves the original delivery status; it does not establish

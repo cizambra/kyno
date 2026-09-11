@@ -9,6 +9,8 @@ from unittest.mock import Mock
 
 import pytest
 
+from tests.paths import REPO_ROOT
+
 pytest.importorskip("langgraph")
 
 from langgraph.checkpoint.memory import InMemorySaver  # noqa: E402
@@ -268,3 +270,19 @@ def test_given_the_same_version_when_read_succeeds_then_new_step_status_is_saved
         assert fallback["kyno_delivery_status"] == "cached"
     assert len(saved["receipts"]) == len(replies)
     assert source.changes_since.call_count == len(replies)
+
+
+def test_given_checkpoint_example_when_run_then_saved_status_is_typed_without_another_pull(
+    source, capsys
+):
+    guide = (REPO_ROOT / "docs/langgraph.md").read_text()
+    section = guide.split("### Optional: LangGraph checkpoints", 1)[1]
+    example = section.split("```python\n", 1)[1].split("```", 1)[0]
+    namespace = {"binder": DirectionBinder(source)}
+
+    exec(compile(example, "docs/langgraph.md", "exec"), namespace)
+
+    assert source.changes_since.call_count == 1
+    assert namespace["saved"]["kyno_delivery_status"] is DeliveryStatus.CURRENT
+    assert namespace["saved"]["kyno_version"] == 2
+    assert capsys.readouterr().out == "2\ncurrent\n"

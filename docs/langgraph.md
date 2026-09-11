@@ -30,8 +30,8 @@ This uses your default remote profile. See [connection configuration](adapters.m
 for named profiles and explicit credentials. Keep the connection open
 while the graph runs, then call `connection.close()`.
 
-Like the runnable customer-support example, this guide requests full direction
-and stops if a read fails. These are example settings, not the SDK defaults.
+This guide requests full direction and stops if a read fails.
+These are example settings, not the SDK defaults.
 
 ## Required integration
 
@@ -46,9 +46,8 @@ the graph and the node that calls your model.
 3. Include `state["kyno_direction"]` in the model's input. The adapter
    populates graph state; it does not modify your model's messages for you.
 
-This is a shortened version of the runnable customer-support example: one
-answer to the same complaint, without its operator pause or recording hooks.
-It uses the binder above and your configured chat model:
+This node drafts a response to a delivery complaint using the binder above
+and your configured chat model:
 
 ```python
 from kyno.adapters.langgraph import KynoState, pull_before
@@ -183,7 +182,7 @@ using `direction_node` or `pull_before` normally.
 
 The SDK's default policy uses cached direction after a failed read, or empty
 version-0 direction if no value was cached. The binder in this guide instead
-uses `PullPolicy(fail_closed=True)`, matching the runnable support example:
+uses `PullPolicy(fail_closed=True)`:
 a failed read stops the graph before the model call. The `answer` node also
 rejects version 0, because a successful read can return an unwritten constitution.
 See the [shared failure and status reference](adapters.md#inspecting-delivery-status).

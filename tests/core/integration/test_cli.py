@@ -4,6 +4,7 @@ import pytest
 from typer.testing import CliRunner
 
 from kyno.cli import app
+from tests.remote_cli import plain
 from tests.workspaces import cli_workspace
 
 runner = CliRunner()
@@ -178,7 +179,7 @@ def test_given_remote_options_when_reading_a_local_version_then_the_options_are_
 ):
     result = runner.invoke(app, ["get-version", "1", *options])
     assert result.exit_code == 2
-    assert "--remote" in result.stderr
+    assert "--remote" in plain(result.stderr)
 
 
 def test_given_an_applied_file_when_reading_current_then_that_content_is_served(

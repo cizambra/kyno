@@ -173,6 +173,21 @@ version-0 direction if no value was cached. The binder in this guide instead
 uses `PullPolicy(fail_closed=True)`:
 a failed read stops the graph before the model call. The `answer` node also
 rejects version 0, because a successful read can return an unwritten constitution.
+
+Configure this policy when creating the binder, before decorating `answer`
+or building the graph:
+
+```python
+from kyno.sdk import DetailLevel, PullPolicy
+
+binder = connection.binder(
+    context=DetailLevel.FULL,
+    policy=PullPolicy(fail_closed=True),
+)
+```
+
+This is the binder configuration used in the setup section; you do not need
+to create it a second time.
 See the [shared failure and status reference](adapters.md#inspecting-delivery-status).
 
 ## Optional recording

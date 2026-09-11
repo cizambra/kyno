@@ -32,6 +32,7 @@ class StubVerdictSource:
         self.verdict = verdict
 
     def assess(self, *, output, mission, principles, change_notes):
+        self.change_notes = change_notes
         return self.verdict
 
 
@@ -115,6 +116,16 @@ def test_given_an_aligned_output_when_the_gate_node_runs_then_it_passes(binder):
 
     assert result["kyno_verdict"] == "aligned" and result["kyno_checked"] is True
     assert "__interrupt__" not in result
+
+
+def test_given_change_notes_when_a_checkpointed_graph_verifies_output_then_the_judge_receives_them(
+    binder,
+):
+    bind, _ = binder
+    source = StubVerdictSource(Verdict.ALIGNED)
+    graph = _gated_graph(bind, RealignmentGate(source))
+    graph.invoke({}, {"configurable": {"thread_id": "notes"}})
+    assert source.change_notes == ("init",)
 
 
 def test_given_drift_when_the_resume_accepts_then_the_run_proceeds(binder):
@@ -325,12 +336,15 @@ def test_given_no_context_asked_when_state_carries_the_block_then_it_stays_compa
     assert update["kyno_context"] == DetailLevel.COMPACT
 
 
-def test_given_a_context_when_round_tripping_through_state_then_it_survives():
+def test_given_complete_direction_when_round_tripping_through_state_then_all_fields_survive():
     original = Direction(
         constitution="eu",
         version=4,
         mission="M",
         principles=("P",),
+        declaration="Long form",
+        change_notes=("Changed support priority",),
+        delta=("Mission changed.",),
         context=DetailLevel.FULL,
     )
     update = direction_update(original)

@@ -221,3 +221,60 @@ def test_given_a_failed_second_pull_when_the_graph_continues_then_no_second_mode
         )
     assert len(model.calls) == 1
     assert [event["event"] for event in events] == ["direction_supplied", "model_output"]
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("failure", ["write", "flush"])
+def test_given_failed_receipt_storage_when_starting_then_the_model_is_not_called(
+    example, live_server, model, failure
+):
+    control_plane, url, token = live_server
+    control_plane.set_direction(mission="Help", change_note="initial")
+
+    class Recording:
+        def write(self, text):
+            if failure == "write":
+                raise OSError("recording unavailable")
+
+        def flush(self):
+            if failure == "flush":
+                raise OSError("recording unavailable")
+
+    recording = Recording()
+    with (
+        connect(url=url, token=token) as connection,
+        pytest.raises(OSError, match="recording unavailable"),
+    ):
+        example.run_example(
+            model,
+            connection.binder(),
+            constitution="default",
+            model_name="fake",
+            wait_for_operator=lambda: None,
+            emit=lambda event: example.report(event, recording),
+        )
+    assert model.calls == []
+
+
+@pytest.mark.e2e
+def test_given_operator_cancellation_when_paused_then_only_the_first_call_is_recorded(
+    example, live_server, model
+):
+    control_plane, url, token = live_server
+    control_plane.set_direction(mission="Help", change_note="initial")
+    events = []
+
+    def cancel():
+        raise EOFError("operator terminal closed")
+
+    with connect(url=url, token=token) as connection, pytest.raises(EOFError):
+        example.run_example(
+            model,
+            connection.binder(),
+            constitution="default",
+            model_name="fake",
+            wait_for_operator=cancel,
+            emit=events.append,
+        )
+    assert len(model.calls) == 1
+    assert [event["event"] for event in events] == ["direction_supplied", "model_output"]

@@ -21,8 +21,9 @@ def test_given_no_model_consent_when_starting_then_no_connection_is_opened(examp
 
 @pytest.mark.parametrize("record", [False, True])
 @pytest.mark.parametrize("failure", [False, True])
+@pytest.mark.parametrize("token_env", ["KYNO_READ_TOKEN", "SUPPORT_READ_TOKEN"])
 def test_given_explicit_consent_when_running_then_recording_is_opt_in_and_connections_close(
-    example, monkeypatch, tmp_path, record, failure, capsys
+    example, monkeypatch, tmp_path, record, failure, token_env, capsys
 ):
     events = [
         {
@@ -65,7 +66,8 @@ def test_given_explicit_consent_when_running_then_recording_is_opt_in_and_connec
                 raise RuntimeError("model-secret")
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("KYNO_READ_TOKEN", "read-secret")
+    monkeypatch.setenv("KYNO_READ_TOKEN", "unused-default")
+    monkeypatch.setenv(token_env, "read-secret")
     monkeypatch.setenv("OPENAI_API_KEY", "model-secret")
     monkeypatch.setitem(sys.modules, "langchain_openai", SimpleNamespace(ChatOpenAI=create_model))
     monkeypatch.setattr(example.kyno, "connect", connect_to_server)
@@ -78,6 +80,8 @@ def test_given_explicit_consent_when_running_then_recording_is_opt_in_and_connec
             "--model",
             "operator-selected",
             "--allow-model-calls",
+            "--token-env",
+            token_env,
             *options,
         ]
     ) == (1 if failure else 0)

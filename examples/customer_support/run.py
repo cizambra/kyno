@@ -28,65 +28,80 @@ class State(KynoState):
     run_id: str
 
 
-def run_example(model, binder, *, constitution, model_name, wait_for_operator, emit):
-    """Run one graph with two calls, waiting for the operator between them.
-    Emit supplied-direction events before inference and response events only after success."""
+def prepare_messages(state):
+    """Build model input from current, written direction; refuse empty or fallback state."""
+    if state["kyno_version"] == 0 or state["kyno_delivery_status"] != DeliveryStatus.CURRENT:
+        raise ValueError("A current, written constitution is required before calling the model")
+    return [
+        {"role": "system", "content": state["kyno_direction"]},
+        {"role": "user", "content": SCENARIO},
+    ]
 
-    def answer(step_id):
-        @pull_before(binder, constitution=constitution)
-        def node(state):
-            if (
-                state["kyno_version"] == 0
-                or state["kyno_delivery_status"] != DeliveryStatus.CURRENT
-            ):
-                raise ValueError(
-                    "A current, written constitution is required before calling the model"
-                )
-            messages = [
-                {"role": "system", "content": state["kyno_direction"]},
-                {"role": "user", "content": SCENARIO},
-            ]
-            identity = {
-                "run_id": state["run_id"],
-                "step_id": step_id,
-                "call_id": f"{state['run_id']}:{step_id}",
-                "model": model_name,
+
+def supplied_direction_event(state, identity, messages):
+    """Describe the direction and scenario in the prepared model input."""
+    return {
+        **identity,
+        "event": "direction_supplied",
+        "captured_at": datetime.now(UTC).isoformat(),
+        "boundary": "before_model_call",
+        "constitution": state["kyno_constitution"],
+        "version": state["kyno_version"],
+        "status": state["kyno_delivery_status"],
+        "context": state["kyno_context"],
+        "direction": messages[0]["content"],
+        "scenario": messages[1]["content"],
+    }
+
+
+def answer_node(model, binder, *, constitution, model_name, step_id, emit):
+    """Create a model node with a fresh pull and separate supplied/output events."""
+
+    @pull_before(binder, constitution=constitution)
+    def node(state):
+        messages = prepare_messages(state)
+        identity = {
+            "run_id": state["run_id"],
+            "step_id": step_id,
+            "call_id": f"{state['run_id']}:{step_id}",
+            "model": model_name,
+        }
+        emit(supplied_direction_event(state, identity, messages))
+        response = model.invoke(messages)
+        emit(
+            {
+                **identity,
+                "event": "model_output",
+                "captured_at": datetime.now(UTC).isoformat(),
+                "response": response.model_dump(mode="json"),
             }
-            emit(
-                {
-                    **identity,
-                    "event": "direction_supplied",
-                    "captured_at": datetime.now(UTC).isoformat(),
-                    "boundary": "before_model_call",
-                    "constitution": state["kyno_constitution"],
-                    "version": state["kyno_version"],
-                    "status": state["kyno_delivery_status"],
-                    "context": state["kyno_context"],
-                    "direction": messages[0]["content"],
-                    "scenario": SCENARIO,
-                }
-            )
-            response = model.invoke(messages)
-            emit(
-                {
-                    **identity,
-                    "event": "model_output",
-                    "captured_at": datetime.now(UTC).isoformat(),
-                    "response": response.model_dump(mode="json"),
-                }
-            )
-            return {}
+        )
+        return {}
 
-        return node
+    return node
+
+
+def run_example(model, binder, *, constitution, model_name, wait_for_operator, emit):
+    """Run one graph with two answers and an operator pause between them."""
 
     def operator_pause(state):
         wait_for_operator()
         return {}
 
     graph = StateGraph(State)
-    graph.add_node("first_answer", answer("first_answer"))
+    for step_id in ("first_answer", "second_answer"):
+        graph.add_node(
+            step_id,
+            answer_node(
+                model,
+                binder,
+                constitution=constitution,
+                model_name=model_name,
+                step_id=step_id,
+                emit=emit,
+            ),
+        )
     graph.add_node("operator_pause", operator_pause)
-    graph.add_node("second_answer", answer("second_answer"))
     graph.add_edge(START, "first_answer")
     graph.add_edge("first_answer", "operator_pause")
     graph.add_edge("operator_pause", "second_answer")
@@ -110,7 +125,8 @@ def report(event, recording=None):
         print(json.dumps(event["response"]["content"], ensure_ascii=False, indent=2), flush=True)
 
 
-def main(argv=None):
+def parse_arguments(argv):
+    """Validate command options and required credentials before opening external resources."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", required=True, help="Kyno HTTP URL.")
     parser.add_argument(
@@ -134,35 +150,38 @@ def main(argv=None):
         parser.error("set OPENAI_API_KEY in the agent terminal")
     if not args.model.strip():
         parser.error("--model must name a model")
+    return args, token
 
+
+def wait_for_operator():
+    input("Apply the revised direction in the operator terminal, then press Enter here: ")
+
+
+def run_live(args, token):
+    """Open the selected resources, run the example, and close them on success or failure."""
+    from langchain_openai import ChatOpenAI
+
+    with ExitStack() as stack:
+        recording = (
+            stack.enter_context(args.record.open("x", encoding="utf-8")) if args.record else None
+        )
+        model = ChatOpenAI(model=args.model, max_retries=0, timeout=60)
+        connection = stack.enter_context(kyno.connect(url=args.url, token=token))
+        binder = connection.binder(context=DetailLevel.FULL, policy=PullPolicy(fail_closed=True))
+        run_example(
+            model,
+            binder,
+            constitution=args.constitution,
+            model_name=args.model,
+            wait_for_operator=wait_for_operator,
+            emit=lambda event: report(event, recording),
+        )
+
+
+def main(argv=None):
+    args, token = parse_arguments(argv)
     try:
-        from langchain_openai import ChatOpenAI
-
-        with ExitStack() as stack:
-            recording = (
-                stack.enter_context(args.record.open("x", encoding="utf-8"))
-                if args.record
-                else None
-            )
-            model = ChatOpenAI(model=args.model, max_retries=0, timeout=60)
-            connection = stack.enter_context(kyno.connect(url=args.url, token=token))
-            binder = connection.binder(
-                context=DetailLevel.FULL, policy=PullPolicy(fail_closed=True)
-            )
-
-            def wait_for_operator():
-                input(
-                    "Apply the revised direction in the operator terminal, then press Enter here: "
-                )
-
-            run_example(
-                model,
-                binder,
-                constitution=args.constitution,
-                model_name=args.model,
-                wait_for_operator=wait_for_operator,
-                emit=lambda event: report(event, recording),
-            )
+        run_live(args, token)
     except ImportError:
         print(
             'Install the example dependencies: pip install "kyno[langgraph]" langchain-openai',

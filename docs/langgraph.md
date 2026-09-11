@@ -241,6 +241,13 @@ Your application configures checkpointing and handles resume. Other halt
 decisions are returned in `kyno_blocked`; route on that value if downstream
 work must stop. A gate node does not choose your graph's next edge.
 
+When a gate pauses, its completed review and optional trace recording are
+saved as a LangGraph task result. Resuming with the same checkpoint reuses
+the original verdict without calling the judge or emitting the review's
+telemetry and trace record again. Only `{"accept": True}` allows the paused
+step to proceed; other resume values block it. This protects normal
+pause/resume, not a crash during a review before its task result is saved.
+
 See [the shared gate reference](adapters.md#the-realignment-gate) for
 verdict and failure policies. Neither a gate nor a judge is required to
 consume direction.

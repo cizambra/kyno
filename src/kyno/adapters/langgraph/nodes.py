@@ -5,6 +5,8 @@ import functools
 from collections.abc import Callable
 from typing import Any, TypedDict
 
+from langchain_core.runnables import RunnableConfig
+from langgraph.func import task
 from langgraph.types import interrupt
 
 from kyno.sdk.binder import DirectionBinder
@@ -99,12 +101,12 @@ def gate_node(
     output_key: str = "output",
     trace: RunTrace | None = None,
 ) -> Callable:
-    """The gate as a node. It judges against the direction already in state --
-    binding is direction_node's job. On PAUSE it interrupts; LangGraph re-runs the
-    node from its start on resume, so everything before the interrupt here
-    is idempotent (a review and a record)."""
+    """Judge against direction in state and interrupt on a pause decision.
+    A checkpointed task preserves the review and recording across resume.
+    Direct calls without graph configuration review synchronously.
+    """
 
-    def node(state: dict) -> dict:
+    def review_and_record(state: dict) -> dict:
         direction = direction_from_state(state)
         output = str(state.get(output_key, ""))
         decision = gate.review(output=output, direction=direction)
@@ -116,21 +118,29 @@ def gate_node(
                 direction=direction,
                 decision=decision,
             )
-        blocked = decision.halts(can_pause=True)
-        if decision.action is Action.PAUSE:
+        return decision.to_dict()
+
+    checkpointed_review = task(review_and_record)
+
+    def node(state: dict, config: RunnableConfig = None) -> dict:
+        decision = (
+            checkpointed_review(state).result() if config is not None else review_and_record(state)
+        )
+        blocked = decision["action"] == Action.BLOCK.value
+        if decision["action"] == Action.PAUSE.value:
             answer = interrupt(
                 {
-                    "reason": decision.reason,
-                    "verdict": decision.verdict.value,
-                    "constitution": decision.constitution,
-                    "version": decision.version,
-                    "output": output,
+                    "reason": decision["reason"],
+                    "verdict": decision["verdict"],
+                    "constitution": decision["constitution"],
+                    "version": decision["version"],
+                    "output": str(state.get(output_key, "")),
                 }
             )
             blocked = not (isinstance(answer, dict) and answer.get("accept") is True)
         return {
-            "kyno_verdict": decision.verdict.value,
-            "kyno_checked": decision.checked,
+            "kyno_verdict": decision["verdict"],
+            "kyno_checked": decision["checked"],
             "kyno_blocked": blocked,
         }
 

@@ -1,3 +1,5 @@
+"""LangGraph nodes carry direction and preserve gate decisions across checkpoints."""
+
 import json
 
 import pytest
@@ -20,6 +22,7 @@ from kyno.sdk.binder import DirectionBinder  # noqa: E402
 from kyno.sdk.cell import DIRECTION_MARKER, Direction  # noqa: E402
 from kyno.sdk.client import LocalDirectionSource  # noqa: E402
 from kyno.sdk.gate import RealignmentGate, Verdict  # noqa: E402
+from kyno.sdk.telemetry import EventType, RecordingSink  # noqa: E402
 from kyno.sdk.trace import RunTrace  # noqa: E402
 from kyno.wire.models import DetailLevel  # noqa: E402
 
@@ -32,8 +35,10 @@ class GraphState(KynoState, total=False):
 class StubVerdictSource:
     def __init__(self, verdict):
         self.verdict = verdict
+        self.calls = 0
 
     def assess(self, *, output, mission, principles, change_notes):
+        self.calls += 1
         self.change_notes = change_notes
         return self.verdict
 
@@ -96,7 +101,7 @@ def test_given_a_direction_change_when_the_graph_reaches_the_next_node_then_it_b
     assert second["output"] == "work on M2"
 
 
-def _gated_graph(bind, gate, **kwargs):
+def _gated_graph(bind, gate, *, checkpointer=None, **kwargs):
     return (
         StateGraph(GraphState)
         .add_node("pull", direction_node(bind))
@@ -106,7 +111,7 @@ def _gated_graph(bind, gate, **kwargs):
         .add_edge("pull", "work")
         .add_edge("work", "gate")
         .add_edge("gate", END)
-        .compile(checkpointer=InMemorySaver())
+        .compile(checkpointer=checkpointer or InMemorySaver())
     )
 
 
@@ -154,6 +159,96 @@ def test_given_drift_when_the_resume_rejects_then_the_run_blocks(binder):
     resumed = graph.invoke(Command(resume={"accept": False}), config)
 
     assert resumed["kyno_blocked"] is True
+
+
+@pytest.mark.parametrize("accept", [True, False])
+@pytest.mark.parametrize("rebuild", [False, True])
+def test_given_a_paused_gate_when_resumed_then_review_and_records_are_not_repeated(
+    binder, accept, rebuild
+):
+    bind, _ = binder
+    source = StubVerdictSource(Verdict.DRIFTED)
+    telemetry = RecordingSink()
+    trace = RunTrace(run_id="resume")
+    gate = RealignmentGate(source, can_pause=True, telemetry=telemetry)
+    checkpointer = InMemorySaver()
+    graph = _gated_graph(bind, gate, trace=trace, checkpointer=checkpointer)
+    config = {"configurable": {"thread_id": "resume"}}
+
+    paused = graph.invoke({}, config)
+    assert paused["__interrupt__"][0].value["verdict"] == "drifted"
+    original_steps = trace.steps
+    original_events = list(telemetry.events)
+    assert len(original_steps) == 1
+    assert [event.kind for event in original_events] == [EventType.DRIFT_PAUSED]
+
+    if rebuild:
+        graph = _gated_graph(bind, gate, trace=trace, checkpointer=checkpointer)
+    resumed = graph.invoke(Command(resume={"accept": accept}), config)
+
+    assert resumed["kyno_blocked"] is not accept
+    assert resumed["kyno_verdict"] == "drifted"
+    assert source.calls == 1
+    assert trace.steps == original_steps
+    assert telemetry.events == original_events
+
+
+def test_given_a_judge_that_changes_its_verdict_when_resume_rejects_then_original_drift_blocks(
+    binder,
+):
+    bind, _ = binder
+    calls = []
+
+    class ChangingSource:
+        def assess(self, **kwargs):
+            calls.append(kwargs)
+            return Verdict.DRIFTED if len(calls) == 1 else Verdict.ALIGNED
+
+    graph = _gated_graph(bind, RealignmentGate(ChangingSource(), can_pause=True))
+    config = {"configurable": {"thread_id": "changing-judge"}}
+
+    graph.invoke({}, config)
+    resumed = graph.invoke(Command(resume={"accept": False}), config)
+
+    assert len(calls) == 1
+    assert resumed["kyno_verdict"] == "drifted"
+    assert resumed["kyno_blocked"] is True
+
+
+@pytest.mark.parametrize("checkpointed", [True, False])
+@pytest.mark.parametrize("verdict", [Verdict.ALIGNED, Verdict.DRIFTED, Verdict.UNKNOWN])
+def test_given_a_nonpausing_gate_when_graph_runs_then_one_review_and_record_are_produced(
+    binder, checkpointed, verdict
+):
+    bind, _ = binder
+    source = StubVerdictSource(verdict)
+    telemetry = RecordingSink()
+    trace = RunTrace(run_id="nonpausing")
+    graph = (
+        StateGraph(GraphState)
+        .add_node("gate", gate_node(RealignmentGate(source, telemetry=telemetry), trace=trace))
+        .add_edge(START, "gate")
+        .add_edge("gate", END)
+        .compile(checkpointer=InMemorySaver() if checkpointed else None)
+    )
+
+    result = graph.invoke(
+        {**direction_node(bind)({}), "output": "a draft"},
+        {"configurable": {"thread_id": "nonpausing"}},
+    )
+
+    assert "__interrupt__" not in result
+    assert result["kyno_verdict"] == verdict.value
+    assert result["kyno_checked"] is (verdict is not Verdict.UNKNOWN)
+    assert result["kyno_blocked"] is (verdict is Verdict.DRIFTED)
+    assert source.calls == 1
+    assert len(trace.steps) == 1
+    expected_events = {
+        Verdict.ALIGNED: [],
+        Verdict.DRIFTED: [EventType.DRIFT_BLOCKED, EventType.PAUSE_UNSUPPORTED],
+        Verdict.UNKNOWN: [EventType.UNCHECKED],
+    }
+    assert [event.kind for event in telemetry.events] == expected_events[verdict]
 
 
 def test_given_an_unjudged_output_when_the_gate_node_runs_then_it_passes_marked_unchecked(binder):

@@ -73,9 +73,11 @@ watch. Promotion is applying the same reviewed file to the real name.
 
 ## Revert, don't roll back
 
-Want v3 back? Apply v3's content again and you get, say, v10 with v3's
-content. History keeps everything, including the mistake. Recovery is
-never retyping: `kyno current --yaml` reads any head back out as a file.
+Want v3 back? Apply v3's complete content again and you get, say, v10 with
+v3's content. History keeps everything, including the mistake. Follow
+[Recovering earlier direction](recovery.md) to read a reviewed version
+with `kyno get-version`, preserve empty fields, and verify the corrective write.
+`kyno current --yaml` reads only the current head, not a historical version.
 
 ## When the repo and the store disagree
 

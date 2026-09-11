@@ -25,6 +25,9 @@ class KynoState(TypedDict, total=False):
     kyno_constitution: str
     kyno_version: int
     kyno_mission: str
+    kyno_declaration: str
+    kyno_change_notes: list[str]
+    kyno_delta: list[str]
     kyno_principles: list[dict]
     kyno_context: DetailLevel
     kyno_direction: str
@@ -34,7 +37,7 @@ class KynoState(TypedDict, total=False):
     kyno_blocked: bool
 
 
-def direction_update(direction: Direction, *, status: DeliveryStatus | None = None) -> dict:
+def direction_update(direction: Direction, *, status: DeliveryStatus | str | None = None) -> dict:
     """Direction travels in graph state so a persisted checkpoint says which
     constitution and version a step served, without any other context.
     Status is unknown when no binding metadata is supplied.
@@ -43,10 +46,13 @@ def direction_update(direction: Direction, *, status: DeliveryStatus | None = No
         "kyno_constitution": direction.constitution,
         "kyno_version": direction.version,
         "kyno_mission": direction.mission,
+        "kyno_declaration": direction.declaration,
+        "kyno_change_notes": list(direction.change_notes),
+        "kyno_delta": list(direction.delta),
         "kyno_principles": [p.to_dict() for p in direction.principles],
         "kyno_direction": direction.render(),
         "kyno_context": direction.context,
-        "kyno_delivery_status": DeliveryStatus(status).value if status is not None else None,
+        "kyno_delivery_status": DeliveryStatus(status) if status is not None else None,
     }
 
 
@@ -55,6 +61,9 @@ def direction_from_state(state: dict) -> Direction:
         constitution=state.get("kyno_constitution", "default"),
         version=state.get("kyno_version", 0),
         mission=state.get("kyno_mission", ""),
+        declaration=state.get("kyno_declaration", ""),
+        change_notes=tuple(state.get("kyno_change_notes", ())),
+        delta=tuple(state.get("kyno_delta", ())),
         principles=state.get("kyno_principles", ()),
         context=state.get("kyno_context", DetailLevel.COMPACT),
     )

@@ -11,8 +11,9 @@ from kyno.wire.models import DetailLevel
 
 
 @pytest.mark.parametrize("opens_after_cancellation", [False, True])
+@pytest.mark.parametrize("cleanup_fails", [False, True])
 def test_given_pending_connection_when_start_times_out_then_cleanup_runs_and_thread_exits(
-    monkeypatch, opens_after_cancellation
+    monkeypatch, opens_after_cancellation, cleanup_fails
 ):
     entered = threading.Event()
     cleaned = threading.Event()
@@ -29,6 +30,8 @@ def test_given_pending_connection_when_start_times_out_then_cleanup_runs_and_thr
             yield object()
         finally:
             cleaned.set()
+            if cleanup_fails:
+                raise OSError("connection cleanup failed")
 
     runner = SessionRunner(connect, timeout=5)
 
@@ -44,12 +47,51 @@ def test_given_pending_connection_when_start_times_out_then_cleanup_runs_and_thr
         runner._thread.join(5)
         assert not runner._thread.is_alive()
         assert runner._session is None
+        if cleanup_fails:
+            assert isinstance(runner._error, OSError)
     finally:
         if runner._thread.is_alive():
             runner._loop.call_soon_threadsafe(
                 lambda: [task.cancel() for task in asyncio.all_tasks(runner._loop)]
             )
             runner.close()
+
+
+@pytest.mark.parametrize("connection_fails", [False, True], ids=["ready-session", "closed-loop"])
+def test_given_completed_startup_when_timeout_is_reported_then_the_session_thread_is_stopped(
+    monkeypatch, connection_fails
+):
+    cleaned = threading.Event()
+
+    @asynccontextmanager
+    async def connect(message_handler=None):
+        try:
+            if connection_fails:
+                raise OSError("connection failed")
+            yield object()
+        finally:
+            cleaned.set()
+
+    runner = SessionRunner(connect, timeout=5)
+    wait_for_ready = runner._ready.wait
+
+    def timeout_after_startup_finishes(timeout):
+        assert wait_for_ready(5), "startup did not complete"
+        if connection_fails:
+            runner._thread.join(5)
+            assert runner._loop.is_closed()
+        return False
+
+    monkeypatch.setattr(runner._ready, "wait", timeout_after_startup_finishes)
+    try:
+        with pytest.raises(KynoUnavailableError, match="timed out opening"):
+            runner.start()
+        runner._thread.join(5)
+        assert not runner._thread.is_alive()
+        assert cleaned.is_set()
+        assert runner._session is None
+    finally:
+        runner.close()
 
 
 def test_given_thread_not_scheduled_when_startup_times_out_then_connection_is_never_opened(

@@ -6,7 +6,7 @@ import concurrent.futures
 import json
 import threading
 from collections.abc import Callable, Sequence
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
@@ -145,6 +145,8 @@ class SessionRunner:
         self._finished = threading.Event()
         self._error: BaseException | None = None
         self._stop: asyncio.Event | None = None
+        self._startup_cancelled = threading.Event()
+        self._task: asyncio.Task | None = None
         self._message_handler: Callable[[Any], Any] | None = None
 
     def set_message_handler(self, handler: Callable[[Any], Any]) -> None:
@@ -158,6 +160,11 @@ class SessionRunner:
         self._thread = threading.Thread(target=self._run, name="kyno-mcp", daemon=True)
         self._thread.start()
         if not self._ready.wait(self._timeout):
+            self._startup_cancelled.set()
+            if self._loop is not None:
+                with suppress(RuntimeError):
+                    self._loop.call_soon_threadsafe(self._cancel_startup)
+            self._thread.join(timeout=self._timeout)
             raise KynoUnavailableError("timed out opening the kyno MCP session")
         if self._error is not None:
             refusal = _refusal_text(self._error)
@@ -168,14 +175,26 @@ class SessionRunner:
     def _run(self) -> None:
         asyncio.run(self._main())
 
+    def _cancel_startup(self) -> None:
+        if self._stop is not None:
+            self._stop.set()
+        if self._task is not None:
+            self._task.cancel()
+
     async def _main(self) -> None:
         self._loop = asyncio.get_running_loop()
         self._stop = asyncio.Event()
+        self._task = asyncio.current_task()
         try:
+            if self._startup_cancelled.is_set():
+                return
             async with self._connect(message_handler=self._message_handler) as session:
                 self._session = session
                 self._ready.set()
                 await self._stop.wait()
+        except asyncio.CancelledError:
+            if not self._startup_cancelled.is_set():
+                raise
         except Exception as exc:
             # Reported through start()/call() as KynoUnavailableError. A thread that died
             # silently would look like a control plane that never answers.

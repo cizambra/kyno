@@ -893,6 +893,23 @@ def test_given_an_unreachable_store_when_checking_then_it_fails_and_the_report_s
     assert "[SQL:" not in r.stdout and r.stdout.count("direction:") == 1
 
 
+def test_given_an_invalid_database_adapter_when_checking_then_it_fails_with_a_field_report(
+    tmp_path, monkeypatch
+):
+    root = cli_workspace(monkeypatch, tmp_path)
+    (root / "config" / "server").write_text("[database]\nadapter = unknown\n", encoding="utf-8")
+    target = tmp_path / "constitution.yaml"
+    target.write_text("constitution: default\nmission: Help customers\n", encoding="utf-8")
+
+    result = runner.invoke(app, ["check", str(target)])
+
+    assert result.exit_code == 1
+    assert "kyno fields present: constitution, mission" in result.stdout
+    assert "direction: not compared (unknown adapter 'unknown':" in result.stdout
+    assert result.stdout.count("direction:") == 1
+    assert result.stderr == ""
+
+
 def test_given_a_file_without_a_constitution_key_when_checking_then_the_store_is_not_compared(
     tmp_path, monkeypatch
 ):

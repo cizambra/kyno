@@ -280,10 +280,13 @@ def review_answer(state):
 ```
 
 `AnswerRecord`, `answer_record`, `needs_review`, and `review_answer` are
-application code defined here, not Kyno APIs. The local phrase check illustrates
-a review step without calling another service. It can miss equivalent wording
-and does not establish whether the answer follows the direction. Replace it
-with checks appropriate to your application. A verifier can read
+application code defined here, not Kyno APIs. `review_answer` sets `needs_review`
+to `True` if the answer contains "refund has been issued", ignoring capitalization.
+This is a Python string check; it does not call a model or an external verifier.
+It does not understand the sentence: "No refund has been issued" would also match.
+The example shows where your application can check an answer, not how to assess
+whether it follows the direction. Use checks appropriate to your application.
+A verifier can read
 `record["direction"]`, `record["supplied_message"]`, and `record["output"]`
 from the same call.
 

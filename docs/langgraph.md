@@ -17,14 +17,21 @@ pip install "kyno[langgraph]"
 
 ```python
 import kyno
+from kyno.sdk import DetailLevel, PullPolicy
 
 connection = kyno.connect()
-binder = connection.binder()
+binder = connection.binder(
+    context=DetailLevel.FULL,
+    policy=PullPolicy(fail_closed=True),
+)
 ```
 
 This uses your default remote profile. See [connection configuration](adapters.md#the-integration)
 for named profiles and explicit credentials. Keep the connection open
 while the graph runs, then call `connection.close()`.
+
+Like the runnable customer-support example, this guide requests full direction
+and stops if a read fails. These are example settings, not the SDK defaults.
 
 ## Required integration
 
@@ -39,23 +46,34 @@ the graph and the node that calls your model.
 3. Include `state["kyno_direction"]` in the model's input. The adapter
    populates graph state; it does not modify your model's messages for you.
 
-With a binder from `connection.binder()` and your configured chat model,
-the node can look like this:
+This is a shortened version of the runnable customer-support example: one
+answer to the same complaint, without its operator pause or recording hooks.
+It uses the binder above and your configured chat model:
 
 ```python
 from kyno.adapters.langgraph import KynoState, pull_before
+from kyno.sdk import DeliveryStatus
+
+SCENARIO = (
+    "A customer paid $40 for express delivery. The package arrived two days late. "
+    "They ask for the delivery fee back and an explanation. Tracking confirms the delay. "
+    "You may draft a reply, propose a refund of up to $40, or propose escalation to a person. "
+    "Do not execute any action or claim a refund has already been issued. "
+    "Choose a response and explain the tradeoff using the supplied mission and principles."
+)
 
 
 class State(KynoState, total=False):
-    messages: list[dict]
     output: str
 
 
 @pull_before(binder, constitution="customer-support")
 def answer(state):
+    if state["kyno_version"] == 0 or state["kyno_delivery_status"] != DeliveryStatus.CURRENT:
+        raise ValueError("A current, written constitution is required before calling the model")
     messages = [
         {"role": "system", "content": state["kyno_direction"]},
-        *state["messages"],
+        {"role": "user", "content": SCENARIO},
     ]
     return {"output": model.invoke(messages).content}
 ```
@@ -96,20 +114,19 @@ enum when you load that checkpoint; no manual conversion is needed.
 Kyno does not configure checkpoint storage for you. You do not need
 checkpointing just to give your agents direction.
 
-Using the `binder` created above, this small graph reads direction and lets
-LangGraph save the result. It does not call a model:
+To save the state of the support answer above, compile that graph with a
+LangGraph checkpointer. Running this snippet calls your configured model once
+and may incur provider charges:
 
 ```python
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
-from kyno.adapters.langgraph import KynoState, direction_node
-
 graph = (
-    StateGraph(KynoState)
-    .add_node("read_direction", direction_node(binder, "customer-support"))
-    .add_edge(START, "read_direction")
-    .add_edge("read_direction", END)
+    StateGraph(State)
+    .add_node("answer", answer)
+    .add_edge(START, "answer")
+    .add_edge("answer", END)
     .compile(checkpointer=InMemorySaver())
 )
 config = {"configurable": {"thread_id": "support-example"}}
@@ -119,9 +136,11 @@ checkpoint = graph.get_state(config)
 saved = checkpoint.values
 print("Saved direction version:", saved["kyno_version"])
 print("Delivery status at that step:", saved["kyno_delivery_status"].value)
+print("Saved answer:", saved["output"])
 ```
 
-`graph.invoke` runs the direction-reading node. LangGraph saves its state
+`graph.invoke` runs `answer`: its decorator pulls direction, then the node
+sends that direction and the complaint to your model. LangGraph saves the state
 under the `support-example` thread ID. `graph.get_state(config)` retrieves
 that thread's latest checkpoint; `checkpoint.values` is the dictionary of
 saved state fields.
@@ -133,7 +152,9 @@ read succeeded at that step. `.value` gets this text from the saved
 cannot tell you whether a newer direction version has since been applied.
 
 `InMemorySaver` keeps checkpoints only in this Python process. To retain
-them after a restart, configure persistent storage through LangGraph.
+them after a restart, configure persistent storage through LangGraph. The
+runnable customer-support script does not enable checkpointing; its optional
+JSONL recording is a separate feature.
 
 A direction node before a fan-out supplies the same snapshot to its branches.
 Later pulls do not change earlier receipts. Resuming a checkpoint without
@@ -160,17 +181,11 @@ using `direction_node` or `pull_before` normally.
 
 ## Failure behavior
 
-By default, a failed pull uses cached direction, or empty version-0
-direction if no value was cached. The status in state identifies the
-fallback. To stop before the wrapped work node runs instead:
-
-```python
-from kyno.sdk import PullPolicy
-
-binder = connection.binder(policy=PullPolicy(fail_closed=True))
-```
-
-Create this binder before wiring your direction boundary.
+The SDK's default policy uses cached direction after a failed read, or empty
+version-0 direction if no value was cached. The binder in this guide instead
+uses `PullPolicy(fail_closed=True)`, matching the runnable support example:
+a failed read stops the graph before the model call. The `answer` node also
+rejects version 0, because a successful read can return an unwritten constitution.
 See the [shared failure and status reference](adapters.md#inspecting-delivery-status).
 
 ## Optional recording

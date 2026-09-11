@@ -51,6 +51,11 @@ def test_given_three_versions_when_reading_a_numbered_version_then_only_that_ver
 ):
     cli_workspace(monkeypatch, tmp_path)
     assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    other = "support" if constitution == "default" else "default"
+    assert (
+        apply_yaml(tmp_path, mission="Other direction", constitution=other, note="other").exit_code
+        == 0
+    )
     for number in (1, 2, 3):
         assert (
             apply_yaml(
@@ -123,7 +128,7 @@ def test_given_a_missing_numbered_version_when_reading_then_no_direction_is_prin
 
 
 @pytest.mark.parametrize("command", [["current"], ["get-version", "latest"], ["get-version", "1"]])
-@pytest.mark.parametrize("empty_field", ["mission", "declaration", "principles"])
+@pytest.mark.parametrize("empty_field", ["mission", "declaration", "principles", "all"])
 def test_given_an_empty_direction_field_when_reading_yaml_then_the_field_is_explicitly_empty(
     tmp_path, monkeypatch, command, empty_field
 ):
@@ -137,10 +142,33 @@ def test_given_an_empty_direction_field_when_reading_yaml_then_the_field_is_expl
         "declaration": "Explain.\nFully.",
         "principles": [{"title": "Trust", "description": "Be honest."}],
     }
-    content[empty_field] = [] if empty_field == "principles" else ""
+    if empty_field == "all":
+        content.update(mission="", declaration="", principles=[])
+    else:
+        content[empty_field] = [] if empty_field == "principles" else ""
     path = tmp_path / "direction.json"
+    if empty_field == "all":
+        assert (
+            apply_yaml(
+                tmp_path, mission="Initial direction", constitution="support", note="initial"
+            ).exit_code
+            == 0
+        )
     path.write_text(json.dumps(content))
     assert runner.invoke(app, ["apply", str(path), "--note", "first"]).exit_code == 0
+    if command == ["get-version", "1"]:
+        command = ["get-version", "2" if empty_field == "all" else "1"]
+        path.write_text(
+            json.dumps(
+                {
+                    "constitution": "support",
+                    "mission": "New mission",
+                    "declaration": "New declaration",
+                    "principles": ["New principle"],
+                }
+            )
+        )
+        assert runner.invoke(app, ["apply", str(path), "--note", "newer"]).exit_code == 0
 
     result = runner.invoke(app, [*command, "--constitution", "support", "--yaml"])
 

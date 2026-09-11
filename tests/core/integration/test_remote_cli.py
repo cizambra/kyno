@@ -104,6 +104,7 @@ def _three_versions(remote_cp):
 def test_given_remote_history_when_reading_a_numbered_version_then_only_that_version_is_requested(
     fake_dial, remote_cp, monkeypatch, version
 ):
+    remote_cp.set_direction(mission="Other direction", change_note="other", constitution="default")
     for number in (1, 2, 3):
         remote_cp.set_direction(
             mission=f"Mission {number}", change_note=f"Change {number}", constitution="support"
@@ -175,18 +176,29 @@ def test_given_a_missing_remote_version_when_reading_then_output_is_empty_and_co
     assert fake_dial.closed
 
 
-def test_given_a_remote_history_failure_when_reading_then_the_error_is_clean_and_connection_closes(
-    fake_dial, monkeypatch
+@pytest.mark.parametrize("command", [["current"], ["get-version", "latest"], ["get-version", "1"]])
+def test_given_a_remote_read_failure_when_reading_then_the_error_is_clean_and_connection_closes(
+    fake_dial, monkeypatch, command
 ):
     def fail(name, arguments):
-        raise RemoteError("history unavailable")
+        raise RemoteError("direction unavailable")
 
     monkeypatch.setattr(fake_dial, "call_tool", fail)
-    result = runner.invoke(app, ["get-version", "1", "--remote"])
+    result = runner.invoke(app, [*command, "--remote"])
     assert result.exit_code == 1
     assert result.stdout == ""
-    assert "error: history unavailable" in result.stderr
+    assert "error: direction unavailable" in result.stderr
     assert fake_dial.closed
+
+
+@pytest.mark.parametrize("version", ["0", "-1", "invalid"])
+def test_given_an_invalid_remote_version_when_reading_then_no_connection_is_opened(
+    fake_dial, version
+):
+    result = runner.invoke(app, ["get-version", "--remote", "--", version])
+    assert result.exit_code == 2
+    assert "positive integer or 'latest'" in plain(result.stderr)
+    assert fake_dial.dialed == {}
 
 
 def test_given_a_remote_head_when_reading_current_remotely_then_it_prints(fake_dial, remote_cp):

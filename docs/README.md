@@ -20,7 +20,7 @@ but each one stands alone.
    and testing.
 7. [Best practices](best-practices.md). The operating sequence once real
    agents depend on the store: review, CI, rehearsal, and repair.
-8. [Recovering earlier direction](recovery.md). Extract reviewed content,
+8. [Recovering earlier direction](recovery.md). Read reviewed content,
    apply it as a new version, and assess work done under incorrect direction.
 
 ## 💬 Questions?

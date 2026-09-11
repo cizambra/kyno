@@ -4,7 +4,7 @@ Restore reviewed content by applying it as a **new version**. If version 1
 was correct and version 2 was a mistake, recovery creates version 3 with
 version 1's content. Versions 1 and 2 remain in history.
 
-This procedure uses existing export and apply commands. It does not reset
+This procedure uses `get-version`, `export`, and `apply`. It does not reset
 version numbers, replace history, or undo actions agents already took.
 
 ## 1. Contain the incorrect changes
@@ -41,48 +41,43 @@ Check that export succeeded before continuing. Choose a new filename for
 each incident so you do not overwrite earlier evidence. The export
 contains full content and version metadata for **one constitution**, not
 a backup of the whole server. Its rows do not contain the constitution
-name: keep the target name with the file and confirm it when extracting.
+name: keep the target name with the file and confirm it when reading direction.
 Retain relevant request logs and any application direction receipts too.
 
 Select a version you have reviewed, rather than assuming the oldest or
-most recent one is correct. `kyno current --yaml` reads the current head;
-it cannot retrieve an arbitrary historical version.
+most recent one is correct. `kyno current` is shorthand for
+`kyno get-version latest`; use a number to read an earlier version.
 
-## 3. Extract complete content for review
+## 3. Read complete content for review
 
-Download [extract_direction.py](../examples/extract_direction.py) into your
-operator environment. This is a standalone example, not an installed
-`kyno extract` command. It uses only Python's standard library, reads the
-export, and writes an authored JSON file accepted by `kyno apply`. It
-neither connects to Kyno nor changes live direction.
-
-The tests execute that same file. There is no separate copy of its code
-in this guide or in the tests.
-
-To extract version 1:
+Read the reviewed version directly from the same constitution and server.
+`--yaml` produces a file accepted by `kyno apply`; it does not change live
+direction. For version 1:
 
 ```bash
-python extract_direction.py support-history.json 1 support recovery.json
+(set -C; kyno get-version 1 --remote --profile ops --constitution support --yaml > recovery.yaml)
 ```
 
-The output file must not already exist. Inspect it before applying.
-The recipe copies only constitution content, not the old version number,
+`set -C` makes the shell refuse to overwrite an existing file. Continue
+only if the read succeeds; a failed read can leave an empty output file.
+Inspect the file before applying. The output contains the constitution
+name and content, not the old version number,
 timestamps, author, approval method, or token identity. The corrective
 write gets its own metadata.
 
-Empty fields are intentional. `"declaration": ""` and `"principles": []`
+Empty fields are intentional. `declaration: ''` and `principles: []`
 clear those fields. Omitting them or using `null` would instead keep the
-current values, which could leave unwanted content in place. The recipe
+current values, which could leave unwanted content in place. The command
 also preserves principle descriptions and an explicitly empty mission.
 
 ## 4. Review and apply as a new version
 
 ```bash
-kyno apply recovery.json --remote --profile ops --dry-run
-kyno apply recovery.json --remote --profile ops --note "Restore reviewed content from v1"
+kyno apply recovery.yaml --remote --profile ops --dry-run
+kyno apply recovery.yaml --remote --profile ops --note "Restore reviewed content from v1"
 ```
 
-The constitution name comes from `recovery.json`. Check the target,
+The constitution name comes from `recovery.yaml`. Check the target,
 mission, declaration, principles, and delta, including fields being
 cleared. The real apply asks for consent and can ask you to confirm that
 returning to an older version's content is deliberate. Do not bypass

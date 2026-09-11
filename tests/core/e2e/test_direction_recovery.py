@@ -1,34 +1,15 @@
 """The documented recovery recipe reapplies historical content without replacing version history."""
 
 import json
-import subprocess
-import sys
-from pathlib import Path
 
 import pytest
+import yaml
 from typer.testing import CliRunner
 
 from kyno.cli import app
 from tests.workspaces import cli_workspace
 
-RECOVERY_EXAMPLE = Path(__file__).resolve().parents[3] / "examples" / "extract_direction.py"
 runner = CliRunner()
-
-
-def run_recovery_example(history, version, constitution, output):
-    return subprocess.run(
-        [
-            sys.executable,
-            str(RECOVERY_EXAMPLE),
-            str(history),
-            str(version),
-            constitution,
-            str(output),
-        ],
-        capture_output=True,
-        text=True,
-        timeout=10,
-    )
 
 
 @pytest.mark.parametrize("constitution", ["default", "support"])
@@ -65,14 +46,13 @@ def test_given_an_earlier_version_when_reapplied_then_its_full_content_returns_a
     assert second.exit_code == 0, second.output
     exported = runner.invoke(app, ["export", "--constitution", constitution])
     assert exported.exit_code == 0, exported.output
-    history = tmp_path / "history.json"
-    history.write_text(exported.stdout, encoding="utf-8")
-    recovery = tmp_path / "recovery.json"
+    recovery = tmp_path / "recovery.yaml"
 
-    extracted = run_recovery_example(history, 1, constitution, recovery)
+    historical = runner.invoke(app, ["get-version", "1", "--constitution", constitution, "--yaml"])
 
-    assert extracted.returncode == 0, extracted.stderr
-    assert json.loads(recovery.read_text()) == good
+    assert historical.exit_code == 0, historical.output
+    assert yaml.safe_load(historical.stdout) == good
+    recovery.write_text(historical.stdout, encoding="utf-8")
     preview = runner.invoke(app, ["apply", str(recovery), "--dry-run"])
     assert preview.exit_code == 0, preview.output
     unchanged = runner.invoke(app, ["export", "--constitution", constitution])
@@ -94,69 +74,3 @@ def test_given_an_earlier_version_when_reapplied_then_its_full_content_returns_a
         other = runner.invoke(app, ["export", "--constitution", "default"])
         assert other.exit_code == 1
         assert "'default' has no versions" in other.output
-
-
-def test_given_a_missing_version_when_extracting_then_no_recovery_file_is_created(tmp_path):
-    history = tmp_path / "history.json"
-    history.write_text("[]", encoding="utf-8")
-    output = tmp_path / "recovery.json"
-
-    result = run_recovery_example(history, 8, "support", output)
-
-    assert result.returncode != 0
-    assert "Expected exactly one version 8" in result.stderr
-    assert not output.exists()
-
-
-def test_given_an_existing_recovery_file_when_extracting_then_it_is_not_overwritten(tmp_path):
-    history = tmp_path / "history.json"
-    history.write_text(
-        json.dumps([{"version": 1, "mission": "Help", "declaration": "", "principles": []}]),
-        encoding="utf-8",
-    )
-    output = tmp_path / "recovery.json"
-    output.write_text("reviewed file", encoding="utf-8")
-
-    result = run_recovery_example(history, 1, "support", output)
-
-    assert result.returncode != 0
-    assert output.read_text() == "reviewed file"
-
-
-def test_given_three_versions_when_extracting_v2_then_only_v2_content_is_written(tmp_path):
-    history = tmp_path / "history.json"
-    rows = [
-        {
-            "version": version,
-            "mission": f"Mission {version}",
-            "declaration": f"Declaration {version}",
-            "principles": [{"title": f"Principle {version}", "description": "Full detail"}],
-            "created_by": "previous author",
-        }
-        for version in (1, 2, 3)
-    ]
-    history.write_text(json.dumps(rows), encoding="utf-8")
-    output = tmp_path / "recovery.json"
-
-    result = run_recovery_example(history, 2, "support", output)
-
-    assert result.returncode == 0, result.stderr
-    assert json.loads(output.read_text()) == {
-        "constitution": "support",
-        "mission": "Mission 2",
-        "declaration": "Declaration 2",
-        "principles": [{"title": "Principle 2", "description": "Full detail"}],
-    }
-
-
-def test_given_duplicate_versions_when_extracting_then_no_recovery_file_is_created(tmp_path):
-    history = tmp_path / "history.json"
-    row = {"version": 2, "mission": "Help", "declaration": "", "principles": []}
-    history.write_text(json.dumps([row, {**row, "mission": "Different content"}]), encoding="utf-8")
-    output = tmp_path / "recovery.json"
-
-    result = run_recovery_example(history, 2, "support", output)
-
-    assert result.returncode != 0
-    assert "Expected exactly one version 2; found 2" in result.stderr
-    assert not output.exists()

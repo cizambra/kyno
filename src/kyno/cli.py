@@ -727,36 +727,12 @@ def get_version(
 ) -> None:
     """Read a historical version or the version in force, without changing direction.
     JSON includes version metadata; --yaml contains the complete authored content."""
-    number = None
-    if version != "latest":
-        try:
-            number = int(version)
-        except ValueError:
-            raise typer.BadParameter("must be a positive integer or 'latest'") from None
-        if number < 1:
-            raise typer.BadParameter("must be a positive integer or 'latest'")
+    number = _parse_version_selector(version)
     _remote_options_guard(remote, profile, credentials, token_env)
     with _clean_errors():
-        if number is not None:
-            if remote:
-                rows = _fetch_remote_rows(
-                    profile, credentials, token_env, constitution, version=number
-                )
-            else:
-                rows = _store().export_versions(
-                    constitution, from_version=number, to_version=number
-                )
-            if not rows:
-                raise CoherenceError(f"nothing to read: '{constitution}' has no version {number}")
-            payload = rows[0]
-        elif remote:
-            client = dial(profile, credentials_profile=credentials, token_env=token_env)
-            try:
-                payload = _fetch_remote_head(client, constitution)
-            finally:
-                client.close()
-        else:
-            payload = _control_plane().current(constitution).to_dict()
+        payload = _read_direction_version(
+            number, constitution, remote, profile, credentials, token_env
+        )
         head = version_from_payload(payload)
         if head is None:
             if as_yaml:
@@ -766,6 +742,45 @@ def get_version(
             typer.echo(render_constitution_yaml(head, constitution), nl=False)
         else:
             typer.echo(json.dumps(payload, indent=2))
+
+
+def _parse_version_selector(version: str) -> int | None:
+    """Return a positive version number, or None for 'latest'."""
+    if version == "latest":
+        return None
+    try:
+        number = int(version)
+    except ValueError:
+        raise typer.BadParameter("must be a positive integer or 'latest'") from None
+    if number < 1:
+        raise typer.BadParameter("must be a positive integer or 'latest'")
+    return number
+
+
+def _read_direction_version(
+    number: int | None,
+    constitution: str,
+    remote: bool,
+    profile: str,
+    credentials: str | None,
+    token_env: str | None,
+) -> dict:
+    """Read a numbered version or the current head from the selected local or remote instance."""
+    if number is not None:
+        if remote:
+            rows = _fetch_remote_rows(profile, credentials, token_env, constitution, version=number)
+        else:
+            rows = _store().export_versions(constitution, from_version=number, to_version=number)
+        if not rows:
+            raise CoherenceError(f"nothing to read: '{constitution}' has no version {number}")
+        return rows[0]
+    if not remote:
+        return _control_plane().current(constitution).to_dict()
+    client = dial(profile, credentials_profile=credentials, token_env=token_env)
+    try:
+        return _fetch_remote_head(client, constitution)
+    finally:
+        client.close()
 
 
 @app.command()

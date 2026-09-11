@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import functools
 from collections.abc import Callable
-from typing import Any, Literal, TypedDict
+from typing import Any, TypedDict
 
 from langgraph.types import interrupt
 
@@ -31,13 +31,13 @@ class KynoState(TypedDict, total=False):
     kyno_principles: list[dict]
     kyno_context: DetailLevel
     kyno_direction: str
-    kyno_delivery_status: Literal["current", "cached", "empty"] | None
+    kyno_delivery_status: DeliveryStatus | None
     kyno_verdict: str
     kyno_checked: bool
     kyno_blocked: bool
 
 
-def direction_update(direction: Direction, *, status: DeliveryStatus | None = None) -> dict:
+def direction_update(direction: Direction, *, status: DeliveryStatus | str | None = None) -> dict:
     """Direction travels in graph state so a persisted checkpoint says which
     constitution and version a step served, without any other context.
     Status is unknown when no binding metadata is supplied.
@@ -52,7 +52,7 @@ def direction_update(direction: Direction, *, status: DeliveryStatus | None = No
         "kyno_principles": [p.to_dict() for p in direction.principles],
         "kyno_direction": direction.render(),
         "kyno_context": direction.context,
-        "kyno_delivery_status": DeliveryStatus(status).value if status is not None else None,
+        "kyno_delivery_status": DeliveryStatus(status) if status is not None else None,
     }
 
 

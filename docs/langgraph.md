@@ -73,10 +73,11 @@ receipt storage, run IDs, or step IDs for this integration to work.
 
 `direction_node` and `pull_before` write `kyno_delivery_status` alongside
 the existing constitution, version, and rendered `kyno_direction` block.
-The status is a lowercase string in state and checkpoints: `current`,
-`cached`, or `empty`, as described in the [shared status reference](adapters.md#inspecting-delivery-status). Compare it with
-`DeliveryStatus` values, or convert it with `DeliveryStatus(value)` when
-you need an enum. A missing key or `None` means unknown, not `current`.
+The status is a `DeliveryStatus` enum in live state and checkpoints restored
+with LangGraph's default serializer. See the [shared status reference](adapters.md#inspecting-delivery-status).
+JSON exports encode it as `current`, `cached`, or `empty`. When importing
+plain JSON yourself, pass the stored status to `direction_update(direction, status=value)`
+to restore the enum. A missing key or `None` means unknown, not `current`.
 Calling `direction_update(direction)` without binding status writes `None`
 so it cannot preserve a status from an earlier binding.
 

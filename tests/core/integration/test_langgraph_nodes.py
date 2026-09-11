@@ -371,3 +371,9 @@ def test_given_checkpoint_without_optional_direction_fields_when_reading_then_de
         principles=({"title": "Be honest", "description": "Explain the outcome"},),
         context=DetailLevel.FULL,
     )
+
+
+def test_given_unknown_delivery_status_when_building_direction_state_then_it_is_rejected():
+    original = Direction.empty("support")
+    with pytest.raises(ValueError, match="unknown-status"):
+        direction_update(original, status="unknown-status")

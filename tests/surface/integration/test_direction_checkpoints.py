@@ -1,5 +1,6 @@
 """LangGraph preserves the direction and delivery status supplied to each work node."""
 
+import json
 from dataclasses import replace
 from operator import add
 from types import SimpleNamespace
@@ -79,9 +80,11 @@ def test_given_a_binding_when_work_is_checkpointed_then_its_exact_direction_and_
 
     assert source.changes_since.call_count == 1
     assert restored == result
-    assert restored["kyno_delivery_status"] == status.value
-    assert type(restored["kyno_delivery_status"]) is str
-    assert restored["receipts"][0]["kyno_delivery_status"] == status.value
+    assert restored["kyno_delivery_status"] is status
+    assert restored["receipts"][0]["kyno_delivery_status"] is status
+    serialized = json.loads(json.dumps(restored))
+    assert serialized["kyno_delivery_status"] == status.value
+    assert type(serialized["kyno_delivery_status"]) is str
     assert restored["receipts"][0]["kyno_direction"] == restored["kyno_direction"]
     assert restored["kyno_constitution"] == "support"
     if status is DeliveryStatus.EMPTY:
@@ -91,6 +94,10 @@ def test_given_a_binding_when_work_is_checkpointed_then_its_exact_direction_and_
     assert restored["kyno_direction"] == expected.render()
     assert direction_from_state(restored) == expected
     assert direction_from_state(restored["receipts"][0]) == expected
+    normalized = direction_update(
+        direction_from_state(serialized), status=serialized["kyno_delivery_status"]
+    )
+    assert normalized["kyno_delivery_status"] is status
 
 
 def test_given_checkpointed_direction_when_resuming_without_a_pull_then_its_status_is_unchanged(
@@ -113,7 +120,7 @@ def test_given_checkpointed_direction_when_resuming_without_a_pull_then_its_stat
     resumed = app.invoke(None, config)
 
     assert source.changes_since.call_count == 1
-    assert resumed["receipts"][0]["kyno_delivery_status"] == "current"
+    assert resumed["receipts"][0]["kyno_delivery_status"] is DeliveryStatus.CURRENT
     assert resumed["receipts"][0]["kyno_direction"] == paused["kyno_direction"]
 
 

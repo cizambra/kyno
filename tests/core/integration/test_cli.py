@@ -683,6 +683,8 @@ def test_given_typos_and_custom_keys_when_checking_then_the_report_lists_them_wi
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    assert apply_yaml(tmp_path, mission="M", note="init").exit_code == 0
     target = tmp_path / "constitution.yaml"
     target.write_text(
         "constitution: default\nmission: M\nprincipals:\n  - p1\nnote: n\n", encoding="utf-8"
@@ -878,15 +880,14 @@ def test_given_an_empty_store_when_checking_then_it_fails(tmp_path, monkeypatch)
     assert "direction: 'default' has no versions; applying this file creates version 1" in r.stdout
 
 
-def test_given_an_unreachable_store_when_checking_then_the_report_still_prints(
+def test_given_an_unreachable_store_when_checking_then_it_fails_and_the_report_still_prints(
     tmp_path, monkeypatch
 ):
-    # No db init: the field report stands, the comparison says why it didn't run.
     cli_workspace(monkeypatch, tmp_path, tmp_path / "never.sqlite3")
     target = tmp_path / "c.yaml"
     target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(target)])
-    assert r.exit_code == 0
+    assert r.exit_code == 1
     assert "kyno fields present: constitution, mission" in r.stdout
     assert "direction: not compared" in r.stdout
     assert "[SQL:" not in r.stdout and r.stdout.count("direction:") == 1

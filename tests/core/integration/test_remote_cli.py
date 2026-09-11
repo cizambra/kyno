@@ -306,7 +306,7 @@ def test_given_unwritten_direction_when_checking_remotely_then_it_reports_versio
     assert remote_cp.current(constitution).version == 0
 
 
-def test_given_an_unreachable_endpoint_when_checking_remotely_then_not_compared_exit_0(
+def test_given_an_unreachable_endpoint_when_checking_remotely_then_it_fails_with_a_report(
     monkeypatch, tmp_path
 ):
     def dial(profile, **_):
@@ -315,9 +315,24 @@ def test_given_an_unreachable_endpoint_when_checking_remotely_then_not_compared_
     monkeypatch.setattr(cli, "dial", dial)
     path = write_file(tmp_path, mission="M1")
     r = runner.invoke(app, ["check", path, "--remote"])
-    assert r.exit_code == 0
+    assert r.exit_code == 1
     assert "kyno fields present: constitution, mission" in r.output
     assert "direction: not compared (cannot reach 'default'" in r.output
+
+
+def test_given_a_failed_remote_read_when_checking_then_it_fails_and_closes_the_connection(
+    fake_dial, monkeypatch, tmp_path
+):
+    def call_tool(name, arguments):
+        raise RemoteError("read refused")
+
+    monkeypatch.setattr(fake_dial, "call_tool", call_tool)
+    path = write_file(tmp_path, mission="M1")
+    result = runner.invoke(app, ["check", path, "--remote"])
+    assert result.exit_code == 1
+    assert "kyno fields present: constitution, mission" in result.output
+    assert "direction: not compared (read refused)" in result.output
+    assert fake_dial.closed
 
 
 def test_given_remote_history_when_reading_history_remotely_then_the_lines_print(

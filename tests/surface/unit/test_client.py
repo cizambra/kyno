@@ -1,13 +1,48 @@
 import asyncio
 import json
 import threading
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 import pytest
 
 from kyno.sdk.client import KynoBinding, McpDirectionSource, SessionRunner
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.wire.models import DetailLevel
+
+
+@pytest.mark.parametrize("session_open", [False, True], ids=["connecting", "connected"])
+async def test_given_no_startup_timeout_when_session_task_is_cancelled_then_cancellation_propagates(
+    session_open,
+):
+    entered = asyncio.Event()
+    cleaned = asyncio.Event()
+
+    @asynccontextmanager
+    async def connect(message_handler=None):
+        try:
+            entered.set()
+            if not session_open:
+                await asyncio.Event().wait()
+            yield object()
+        finally:
+            await asyncio.sleep(0)
+            cleaned.set()
+
+    runner = SessionRunner(connect)
+    task = asyncio.create_task(runner._main())
+    try:
+        async with asyncio.timeout(5):
+            await entered.wait()
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+        assert cleaned.is_set()
+        assert runner._session is None
+        assert runner._finished.is_set()
+    finally:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
 
 
 @pytest.mark.parametrize("opens_after_cancellation", [False, True])

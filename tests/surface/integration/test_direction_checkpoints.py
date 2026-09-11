@@ -268,3 +268,48 @@ def test_given_the_same_version_when_read_succeeds_then_new_step_status_is_saved
         assert fallback["kyno_delivery_status"] == "cached"
     assert len(saved["receipts"]) == len(replies)
     assert source.changes_since.call_count == len(replies)
+
+
+@pytest.mark.parametrize("use_pull_before", [False, True], ids=["direction-node", "pull-before"])
+def test_given_rich_direction_when_fields_are_removed_then_only_new_receipts_clear_them(
+    source, use_pull_before
+):
+    initial = replace(
+        source.changes_since.return_value,
+        principles=({"title": "Be honest", "description": "Explain what remains uncertain."},),
+    )
+    revised = replace(
+        initial,
+        current_version=3,
+        principles=(),
+        declaration="",
+        change_notes=(),
+        delta=(),
+    )
+    source.changes_since.side_effect = [initial, revised]
+    binder = DirectionBinder(source, context=DetailLevel.FULL)
+    graph = StateGraph(ReceiptState)
+    if use_pull_before:
+        graph.add_node("work", pull_before(binder, "support")(receipt)).add_edge(START, "work")
+    else:
+        graph.add_node("pull", direction_node(binder, "support")).add_node("work", receipt)
+        graph.add_edge(START, "pull").add_edge("pull", "work")
+    app = graph.add_edge("work", END).compile(checkpointer=InMemorySaver())
+    config = {"configurable": {"thread_id": "removed-fields"}}
+    first_run_state = app.invoke({}, config)
+
+    app.invoke({}, config)
+
+    saved_state_after_second_run = app.get_state(config).values
+    original_direction = Direction.from_changes(initial, "support", DetailLevel.FULL)
+    revised_direction = Direction.from_changes(revised, "support", DetailLevel.FULL)
+    assert len(saved_state_after_second_run["receipts"]) == 2
+    assert saved_state_after_second_run["receipts"][0] == first_run_state["receipts"][0]
+    assert direction_from_state(saved_state_after_second_run["receipts"][0]) == original_direction
+    assert direction_from_state(saved_state_after_second_run) == revised_direction
+    assert direction_from_state(saved_state_after_second_run["receipts"][1]) == revised_direction
+    assert (
+        saved_state_after_second_run["receipts"][1]["kyno_direction"] == revised_direction.render()
+    )
+    assert saved_state_after_second_run["kyno_delivery_status"] == "current"
+    assert source.changes_since.call_count == 2

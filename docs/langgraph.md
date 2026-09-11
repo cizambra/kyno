@@ -83,11 +83,16 @@ from `DeliveryStatus`, imported from `kyno.sdk`:
 The status describes how this step received its direction, not whether the
 model followed it. See the [shared status reference](adapters.md#inspecting-delivery-status).
 
-### Optional: saving and resuming graph state
+### Optional: LangGraph checkpoints
 
-A checkpoint is a saved snapshot of graph state. If you configure a
-LangGraph checkpointer, the direction keys are saved with the graph's
-other state. LangGraph's default serializer restores the `DeliveryStatus`
+Checkpointing is a LangGraph feature, not a Kyno feature. A checkpoint is
+a saved snapshot of a workflow's state that LangGraph can use to resume
+the workflow later. A checkpointer is the component that saves and loads
+those snapshots. See [LangGraph's persistence documentation](https://docs.langchain.com/oss/python/langgraph/persistence).
+
+Kyno adds direction and delivery status to graph state. If your graph uses
+a LangGraph checkpointer, it saves those fields alongside the rest of the
+workflow's state. LangGraph's default serializer restores the `DeliveryStatus`
 enum when you load that checkpoint; no manual conversion is needed.
 Kyno does not configure checkpoint storage for you. You do not need
 checkpointing just to give your agents direction.

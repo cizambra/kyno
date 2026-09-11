@@ -110,12 +110,12 @@ direction in place. Its return value is ignored: it is not an approval
 gate. This is best-effort observation, not mandatory durable auditing.
 The callback runs synchronously, so slow recording delays the model call.
 
-The adapter accepts an optional `trace` and provides `task_callback` and
-`step_callback` methods for application-configured tracing. These read
-the binder's latest cached direction when the callback runs. A task can
-contain multiple model calls, so a task record is not an exact record of
-the direction supplied to every call. Trace types remain outside the
-stable top-level SDK API.
+For output records, the application must keep the corresponding input
+and output together using its own framework or model instrumentation.
+The observer alone cannot identify that pair. When your application has
+the correct pair, it can use `RunTrace.record_step` from `kyno.sdk.trace`
+to record the output with its supplied `Direction`. Trace types remain
+outside the stable top-level SDK API.
 
 Neither tracing nor separate receipt storage is required to run the
 adapter. Keep any retained prompts, direction, and outputs in storage
@@ -123,31 +123,41 @@ appropriate for potentially sensitive content.
 
 ## Optional verification
 
-Kyno does not judge model output. To review finished tasks, supply an
-external judge and attach the adapter's task callback when constructing
-your crew:
+Your application calls a verifier, such as Canon, and decides whether to
+accept, retry, escalate, or stop work. Kyno supplies direction; CrewAI
+callbacks and execution decisions belong to your application.
+
+To assess the final crew output against a deliberately chosen direction
+snapshot, select it before the `crew.kickoff()` call in the required
+integration above:
 
 ```python
-from crewai import Crew
-from kyno.sdk import RealignmentGate
-
-adapter = CrewAiKyno(
-    binder,
-    constitution="customer-support",
-    gate=RealignmentGate(source=your_judge),
-)
-crew = Crew(agents=agents, tasks=tasks, task_callback=adapter.task_callback)
+assessment_direction = binder.bind("customer-support")
 ```
 
-`your_judge` implements `VerdictSource`; `agents` and `tasks` are your
-application's CrewAI configuration. Register and unregister this adapter
-around execution as shown in the required integration. `register()` does
-not attach the task callback for you. If you already use a task callback,
-compose the two in your own callback.
+After that call returns `result` and the hook is unregistered, assess the
+output against the selected snapshot:
 
-A halt decision raises `TaskBlockedByKyno`. CrewAI cannot resume a paused
-task through this adapter, so a pause decision also blocks. Review uses
-the direction cached at task completion, not a reconstruction of every
-model call's input. See [the shared gate reference](adapters.md#the-realignment-gate)
-for verdict and failure policies. Neither a gate nor a judge is required
-to consume direction.
+```python
+assessment = assess_output(
+    output=result.raw,
+    direction=assessment_direction,
+)
+handle_assessment(result, assessment)
+```
+
+`assess_output` and `handle_assessment` are functions your application
+implements, not Kyno or Canon APIs. The first calls your chosen verifier;
+the second interprets its result and chooses what happens next. Keep the
+assessment direction with the output and verifier result in your own
+records. Apply your required availability policy when selecting it.
+
+This assesses the final output against the snapshot selected before the
+crew ran. It does not claim that every contributing model call received
+that version: direction can change during a task. To assess an individual
+call against what it actually received, capture that call's injected
+messages and output together under an application-owned call identity.
+Parallel calls need separate records; observer order or the binder's
+latest cached value cannot establish that association. Assessing against
+a newer version is also an application choice and should be recorded as
+such. Verification is optional and requires no Kyno wrapper.

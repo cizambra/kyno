@@ -5,14 +5,12 @@ import pytest
 
 pytest.importorskip("crewai")
 
-from kyno.adapters.crewai.hooks import CrewAiKyno, TaskBlockedByKyno  # noqa: E402
+from kyno.adapters.crewai.hooks import CrewAiKyno  # noqa: E402
 from kyno.sdk.binder import DirectionBinder  # noqa: E402
 from kyno.sdk.binding import DeliveryStatus  # noqa: E402
 from kyno.sdk.cell import DIRECTION_MARKER  # noqa: E402
 from kyno.sdk.errors import KynoUnavailableError  # noqa: E402
-from kyno.sdk.gate import RealignmentGate, Verdict  # noqa: E402
 from kyno.sdk.policy import PullPolicy  # noqa: E402
-from kyno.sdk.trace import RunTrace  # noqa: E402
 from kyno.wire.models import DetailLevel  # noqa: E402
 
 
@@ -26,95 +24,28 @@ class FakeCtx:
         self.task = task
 
 
-class FakeTaskOutput:
-    """A stand-in for CrewAI's TaskOutput: task_callback only touches raw,
-    agent (already a plain string on TaskOutput, unlike
-    LLMCallHookContext.agent), and description."""
-
-    def __init__(self, raw="", agent="researcher", description="Find lenders"):
-        self.raw = raw
-        self.agent = agent
-        self.description = description
-
-
-class StubVerdictSource:
-    def __init__(self, verdict):
-        self.verdict = verdict
-
-    def assess(self, *, output, mission, principles, change_notes):
-        return self.verdict
-
-
 @pytest.fixture
 def unit_kyno(scripted_source):
     scripted_source.set("default", 1, "M1", "Be honest")
     binder = DirectionBinder(scripted_source)
     binder.bind()
-    adapter = CrewAiKyno(binder, trace=RunTrace(run_id="r1"))
+    adapter = CrewAiKyno(binder)
     return adapter, scripted_source
 
 
-def test_given_any_gate_when_before_llm_call_runs_then_it_never_blocks(unit_kyno):
-    # Gating lives in task_callback alone; before_llm_call only injects direction and must
-    # inject even when the gate would drift-block, or a drifted task would
-    # never get a chance to run and produce the output the gate reviews.
-    adapter, _cp = unit_kyno
-    adapter.gate = RealignmentGate(StubVerdictSource(Verdict.DRIFTED))
-    ctx = FakeCtx(messages=[{"role": "user", "content": "go"}])
-
-    adapter.before_llm_call(ctx)
-
-    assert ctx.messages[0]["content"].startswith(DIRECTION_MARKER)
+@pytest.mark.parametrize("option", ["gate", "trace"])
+def test_given_gate_or_trace_configuration_when_constructing_the_crewai_adapter_then_it_is_rejected(
+    scripted_source, option
+):
+    with pytest.raises(TypeError, match=f"unexpected keyword argument '{option}'"):
+        CrewAiKyno(DirectionBinder(scripted_source), **{option: object()})
 
 
-def test_given_an_aligned_task_output_when_gating_then_it_is_not_blocked(unit_kyno):
-    adapter, _cp = unit_kyno
-    adapter.gate = RealignmentGate(StubVerdictSource(Verdict.ALIGNED))
-    output = FakeTaskOutput(raw="on mission")
-
-    adapter.task_callback(output)  # does not raise
-
-    assert adapter.trace.steps[-1].verdict == "aligned" and adapter.trace.steps[-1].checked
-
-
-def test_given_a_drifted_task_output_when_gating_then_it_is_blocked(unit_kyno):
-    adapter, _cp = unit_kyno
-    adapter.gate = RealignmentGate(StubVerdictSource(Verdict.DRIFTED))
-    output = FakeTaskOutput(raw="off mission")
-
-    with pytest.raises(TaskBlockedByKyno):
-        adapter.task_callback(output)
-    assert adapter.trace.steps[-1].verdict == "drifted"
-
-
-def test_given_a_pause_capable_gate_when_gating_here_then_it_still_blocks(unit_kyno):
-    """One gate may be shared with LangGraph; CrewAI cannot resume, so a
-    pause must degrade to a block instead of passing drifted work through."""
-    adapter, _cp = unit_kyno
-    adapter.gate = RealignmentGate(StubVerdictSource(Verdict.DRIFTED), can_pause=True)
-
-    with pytest.raises(TaskBlockedByKyno):
-        adapter.task_callback(FakeTaskOutput(raw="off mission"))
-    assert adapter.trace.steps[-1].verdict == "drifted"
-
-
-def test_given_an_unjudged_task_output_when_gating_then_it_ships_marked_unchecked(unit_kyno):
-    adapter, _cp = unit_kyno
-    output = FakeTaskOutput(raw="whatever")
-
-    adapter.task_callback(output)  # does not raise
-
-    record = adapter.trace.steps[-1]
-    assert record.checked is False and record.verdict == "unknown"
-    assert record.constitution == "default" and record.version == 1
-
-
-def test_given_the_adapter_when_inspecting_hooks_then_there_is_no_after_llm_call(unit_kyno):
-    # Decided: gating is task_callback's job alone. An after_llm_call hook
-    # would invite gating to creep back to per-call, so the surface simply
-    # does not carry one.
-    adapter, _cp = unit_kyno
-    assert not hasattr(adapter, "after_llm_call")
+def test_given_a_second_positional_argument_when_constructing_then_it_cannot_be_a_constitution(
+    scripted_source,
+):
+    with pytest.raises(TypeError, match="positional"):
+        CrewAiKyno(DirectionBinder(scripted_source), object())
 
 
 def test_given_a_registration_when_installing_and_clearing_then_both_are_clean(unit_kyno):
@@ -152,20 +83,6 @@ def test_given_the_message_list_when_injecting_then_it_is_edited_in_place(unit_k
     assert messages[0]["content"].startswith(DIRECTION_MARKER)
 
 
-def test_given_a_judged_block_when_reading_then_it_carries_the_direction_it_was_judged_against(
-    unit_kyno,
-):
-    adapter, _cp = unit_kyno
-    adapter.gate = RealignmentGate(StubVerdictSource(Verdict.DRIFTED))
-
-    with pytest.raises(TaskBlockedByKyno) as raised:
-        adapter.task_callback(FakeTaskOutput(raw="off mission"))
-
-    assert raised.value.direction.version == 1
-    assert raised.value.reason == "drifted"
-    assert "constitution=default" in str(raised.value)
-
-
 def test_given_a_non_system_message_with_the_marker_when_refreshing_then_it_is_not_deleted(
     unit_kyno,
 ):
@@ -199,52 +116,6 @@ def test_given_messages_the_shim_does_not_understand_when_injecting_then_they_ar
 
     assert ctx.messages[1] is other
     assert ctx.messages[0]["content"].startswith(DIRECTION_MARKER)
-
-
-def test_given_the_tap_when_a_step_runs_then_it_is_recorded_without_judgment(unit_kyno):
-    adapter, _cp = unit_kyno
-
-    adapter.step_callback(FakeTaskOutput(raw="thinking", description="Find lenders"))
-
-    record = adapter.trace.steps[-1]
-    assert record.checked is False and record.verdict == "unknown"
-    assert record.version == 1
-
-
-def test_given_an_output_with_nothing_to_read_when_tapping_then_it_is_still_recorded(unit_kyno):
-    adapter, _cp = unit_kyno
-
-    adapter.task_callback(FakeTaskOutput(raw=""))
-
-    assert adapter.trace.steps[-1].output == ""
-
-
-def test_given_a_trace_when_reading_it_then_the_agent_and_the_goal_are_named(unit_kyno):
-    adapter, _cp = unit_kyno
-
-    adapter.task_callback(FakeTaskOutput(raw="a list", agent="researcher", description="Find them"))
-
-    record = adapter.trace.steps[-1]
-    assert record.agent == "researcher" and record.goal == "Find them"
-    assert record.output == "a list"
-
-
-def test_given_no_gate_when_building_the_adapter_then_it_has_none(unit_kyno):
-    """Carrying direction is the whole product; checking the work against it is
-    a separate thing an operator opts into, with a judge Kyno does not ship. An
-    inert gate that always answers 'unchecked' is a worse story than no gate."""
-    adapter, _plane = unit_kyno
-    assert adapter.gate is None
-
-
-def test_given_a_gateless_adapter_when_a_step_runs_then_it_is_still_recorded(unit_kyno):
-    adapter, _plane = unit_kyno
-
-    adapter.task_callback(FakeTaskOutput(raw="anything at all"))
-
-    assert len(adapter.trace.steps) == 1
-    assert adapter.trace.steps[0].verdict == Verdict.UNKNOWN.value
-    assert adapter.trace.steps[0].checked is False
 
 
 @pytest.mark.parametrize("status", list(DeliveryStatus))
@@ -425,3 +296,15 @@ def test_given_observer_failed_once_when_the_next_call_starts_then_recording_is_
     assert second.direction.render() == ctx.messages[0]["content"]
     assert second.status is DeliveryStatus.CURRENT
     assert sum("direction observer failed" in record.message for record in caplog.records) == 1
+
+
+def test_given_a_model_call_when_direction_is_injected_then_the_hook_returns_no_control_signal(
+    unit_kyno,
+):
+    adapter, _source = unit_kyno
+    ctx = FakeCtx(messages=[{"role": "user", "content": "go"}])
+
+    assert adapter.before_llm_call(ctx) is None
+
+    assert ctx.messages[0]["content"].startswith(DIRECTION_MARKER)
+    assert ctx.messages[-1] == {"role": "user", "content": "go"}

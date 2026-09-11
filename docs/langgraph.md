@@ -5,6 +5,10 @@
 Kyno puts direction in graph state. Your model-calling node puts that
 direction into the model's input.
 
+For a complete run with an operator changing direction between model calls,
+see the [customer-support example](../examples/customer_support/README.md).
+It includes optional recording; that recording code is not required by the adapter.
+
 ## Install and connect
 
 ```bash

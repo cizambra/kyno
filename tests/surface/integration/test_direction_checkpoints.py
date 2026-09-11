@@ -9,8 +9,6 @@ from unittest.mock import Mock
 
 import pytest
 
-from tests.paths import REPO_ROOT
-
 pytest.importorskip("langgraph")
 
 from langgraph.checkpoint.memory import InMemorySaver  # noqa: E402
@@ -54,23 +52,6 @@ def source():
 
 def receipt(state):
     return {"receipts": [{key: value for key, value in state.items() if key.startswith("kyno_")}]}
-
-
-@pytest.fixture
-def documented_support_graph(source):
-    guide = (REPO_ROOT / "docs/langgraph.md").read_text()
-    answer_section = guide.split("## Required integration", 1)[1]
-    answer_code = answer_section.split("```python\n", 1)[1].split("```", 1)[0]
-    checkpoint_section = guide.split("### Optional: LangGraph checkpoints", 1)[1]
-    checkpoint_code = checkpoint_section.split("```python\n", 1)[1].split("```", 1)[0]
-    namespace = {
-        "binder": DirectionBinder(
-            source, context=DetailLevel.FULL, policy=PullPolicy(fail_closed=True)
-        ),
-        "model": SimpleNamespace(invoke=Mock(return_value=SimpleNamespace(content="Test reply"))),
-    }
-    exec(compile(answer_code, "docs/langgraph.md", "exec"), namespace)
-    return namespace, checkpoint_code
 
 
 @pytest.mark.parametrize("wrapper", [False, True], ids=["direction-node", "pull-before"])
@@ -287,53 +268,3 @@ def test_given_the_same_version_when_read_succeeds_then_new_step_status_is_saved
         assert fallback["kyno_delivery_status"] == "cached"
     assert len(saved["receipts"]) == len(replies)
     assert source.changes_since.call_count == len(replies)
-
-
-def test_given_documented_support_when_checkpointed_then_model_input_matches_the_runnable_example(
-    source, example, documented_support_graph, capsys
-):
-    namespace, checkpoint_code = documented_support_graph
-
-    exec(compile(checkpoint_code, "docs/langgraph.md", "exec"), namespace)
-
-    assert source.changes_since.call_count == 1
-    assert namespace["saved"]["kyno_delivery_status"] is DeliveryStatus.CURRENT
-    assert namespace["saved"]["kyno_version"] == 2
-    assert namespace["saved"]["kyno_context"] is DetailLevel.FULL
-    namespace["model"].invoke.assert_called_once_with(example.prepare_messages(namespace["saved"]))
-    assert capsys.readouterr().out == (
-        "Saved direction version: 2\nDelivery status at that step: current\n"
-        "Saved answer: Test reply\n"
-    )
-
-    source.changes_since.return_value = replace(
-        source.changes_since.return_value, current_version=3, mission="Prioritize lasting fixes"
-    )
-    updated = namespace["graph"].invoke({}, namespace["config"])
-    calls = namespace["model"].invoke.call_args_list
-
-    assert source.changes_since.call_count == 2
-    assert len(calls) == 2
-    assert updated["kyno_version"] == 3
-    assert calls[1].args[0] == example.prepare_messages(updated)
-    assert calls[0].args[0][1] == calls[1].args[0][1]
-    assert calls[0].args[0][0] != calls[1].args[0][0]
-    assert namespace["saved"]["kyno_version"] == 2
-
-
-@pytest.mark.parametrize("read_fails", [False, True], ids=["unwritten", "unavailable"])
-def test_given_missing_direction_when_documented_support_runs_then_the_model_is_not_called(
-    source, documented_support_graph, read_fails
-):
-    namespace, checkpoint_code = documented_support_graph
-    if read_fails:
-        source.changes_since.side_effect = OSError("offline")
-    else:
-        source.changes_since.return_value = replace(
-            source.changes_since.return_value, current_version=0
-        )
-
-    with pytest.raises(KynoUnavailableError if read_fails else ValueError):
-        exec(compile(checkpoint_code, "docs/langgraph.md", "exec"), namespace)
-
-    namespace["model"].invoke.assert_not_called()

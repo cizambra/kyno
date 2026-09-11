@@ -186,7 +186,7 @@ binder = connection.binder(
 )
 ```
 
-This is the binder configuration used in the setup section; you do not need
+This is the same binder configuration used in the setup section; you do not need
 to create it a second time.
 See the [shared failure and status reference](adapters.md#inspecting-delivery-status).
 

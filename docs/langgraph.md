@@ -197,8 +197,8 @@ supplied to each model call. It is not required by the adapter.
 
 Record the state received by the work node, not the binder's latest cached
 value. Use `kyno_direction` directly: it contains the exact rendered block,
-including any change notes and delta. Rebuilding it with
-`direction_from_state()` loses that change context.
+including any change notes and delta. Use `direction_from_state()` when you
+need the structured `Direction` fields rather than the rendered text.
 
 For example, insert this inside your node after constructing the model's
 messages and before calling the model:

@@ -7,11 +7,13 @@ import mcp.types as types
 from mcp.server import Server
 from pydantic import AnyUrl
 
-from kyno.mcp_tools import PRINCIPLES_DETAIL_LEVELS, TITLES, TOOLS
+from kyno.delivery import RecordingPolicy, delivery_context, recording_failure
+from kyno.mcp_tools import DIRECTION_READS, PRINCIPLES_DETAIL_LEVELS, TITLES, TOOLS
 from kyno.models import Token
 from kyno.service import ControlPlane
 from kyno.tokens import hash_value
 from kyno.wire import RESOURCE_URI
+from kyno.wire.delivery import RecordingStatus, recording_result
 from kyno.wire.errors import CoherenceError
 from kyno.wire.models import DetailLevel, check_detail
 
@@ -190,6 +192,7 @@ def build_server(control_plane: ControlPlane, token_store=None) -> Server:
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
+        context = delivery_context(arguments) if name in DIRECTION_READS else None
         match name:
             case "get_constitution":
                 result = handle_get_constitution(
@@ -244,9 +247,60 @@ def build_server(control_plane: ControlPlane, token_store=None) -> Server:
                 )
             case "whoami":
                 result = handle_whoami(_request_token(server, token_store))
+            case "get_delivery" | "list_deliveries":
+                history = control_plane.delivery_history
+                if history is None:
+                    raise ValueError("delivery history is not configured on this Core instance")
+                if name == "get_delivery":
+                    _require(arguments, "delivery_id")
+                    result = history.get(arguments["delivery_id"])
+                else:
+                    result = history.list(
+                        **{
+                            key: arguments[key]
+                            for key in (
+                                "session_id",
+                                "constitution",
+                                "since",
+                                "until",
+                                "after",
+                                "limit",
+                            )
+                            if key in arguments
+                        }
+                    )
             case _:
                 raise ValueError(f"unknown tool: {name}")
+        if context is not None:
+            record_response(result, name, arguments, context)
         return [types.TextContent(type="text", text=json.dumps(result))]
+
+    def record_response(result: dict, operation: str, arguments: dict, context: dict) -> None:
+        history = control_plane.delivery_history
+        if history is None or history.policy is RecordingPolicy.NEVER:
+            result["recording"] = recording_result(RecordingStatus.DISABLED)
+            return
+        parameters = {"constitution": arguments.get("constitution")}
+        if operation in ("get_constitution", "get_changes_since", "read_resource"):
+            parameters["detail"] = arguments.get("detail", DetailLevel.COMPACT)
+        elif operation == "get_principles":
+            parameters["detail"] = arguments.get("detail", TITLES)
+        if operation == "get_changes_since":
+            parameters["known_version"] = int(arguments["known_version"])
+        elif operation == "get_principle":
+            parameters["title"] = arguments["title"]
+        try:
+            token = _request_token(server, token_store)
+        except Exception as exc:
+            result["recording"] = recording_failure(exc)
+            return
+        result["recording"] = control_plane.record_delivery(
+            result,
+            operation=operation,
+            arguments=parameters,
+            context=context,
+            requester=handle_whoami(token) if token else None,
+        )
 
     @server.list_resources()
     async def list_resources() -> list[types.Resource]:
@@ -263,7 +317,9 @@ def build_server(control_plane: ControlPlane, token_store=None) -> Server:
     async def read_resource(uri: AnyUrl) -> str:
         if str(uri) != RESOURCE_URI:
             raise ValueError(f"unknown resource: {uri}")
-        return json.dumps(handle_get_constitution(control_plane))
+        result = handle_get_constitution(control_plane)
+        record_response(result, "read_resource", {}, delivery_context({}))
+        return json.dumps(result)
 
     @server.subscribe_resource()
     async def subscribe_resource(uri: AnyUrl) -> None:

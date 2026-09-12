@@ -29,7 +29,7 @@ from kyno.errors import AuthoringError, NoFieldChangedError
 from kyno.models import AuthorizationType, TokenScope
 from kyno.public_page import PACKAGED_TEMPLATES, packaged_template
 from kyno.remote import RemoteError, dial, version_from_payload
-from kyno.server_config import Settings, store_from_settings
+from kyno.server_config import Settings, control_plane_from_settings, store_from_settings
 from kyno.service import ControlPlane, edit_delta, effective_content
 from kyno.tokens import age, generate_value, hash_value, parse_ttl
 from kyno.wire.errors import CoherenceError
@@ -1046,7 +1046,7 @@ def serve(transport: str = typer.Option("stdio", "--transport")) -> None:
     try:
         settings = Settings.load()
         store = store_from_settings(settings)
-        cp = ControlPlane(store)
+        cp = control_plane_from_settings(settings, store)
         if transport == "stdio":
             from kyno.serving import serve_stdio
 

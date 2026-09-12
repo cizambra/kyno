@@ -5,6 +5,7 @@ import re
 from collections.abc import Callable
 from datetime import UTC, datetime
 
+from kyno.delivery import DeliveryHistory
 from kyno.errors import (
     AuthoringError,
     EmptyChangeError,
@@ -237,10 +238,39 @@ def edit_delta(
 
 
 class ControlPlane:
-    def __init__(self, store: ConstitutionStore, constitution: str = "default") -> None:
+    def __init__(
+        self,
+        store: ConstitutionStore,
+        constitution: str = "default",
+        *,
+        delivery_history: DeliveryHistory | None = None,
+    ) -> None:
         self._store = store
         self._constitution = constitution
         self._subscribers: list[Callable[[ConstitutionVersion], None]] = []
+        self.delivery_history = delivery_history
+
+    def record_delivery(
+        self,
+        direction: dict,
+        *,
+        operation: str,
+        arguments: dict,
+        context: dict,
+        requester: dict | None = None,
+    ) -> dict:
+        from kyno.wire.delivery import RecordingStatus, recording_result
+
+        if self.delivery_history is None:
+            return recording_result(RecordingStatus.DISABLED)
+        return self.delivery_history.record(
+            direction,
+            operation=operation,
+            constitution=self._name(arguments.get("constitution")),
+            arguments=arguments,
+            context=context,
+            requester=requester,
+        )
 
     def _name(self, constitution: str | None) -> str:
         """Resolve which constitution a call is about.

@@ -24,6 +24,35 @@ def test_given_a_new_workspace_when_listing_it_then_the_four_files_are_there(tmp
     assert files == [".gitignore", "README.md", "config/server", "db/.keep"]
 
 
+@pytest.mark.parametrize("policy", ["never", "always"])
+def test_given_a_server_recording_policy_when_loading_settings_then_core_receives_the_policy(
+    tmp_path, monkeypatch, policy
+):
+    from kyno.server_config import Settings
+
+    root = make(tmp_path)
+    write_config(root, f"[server]\nrecording_policy = {policy}\n")
+    monkeypatch.chdir(root)
+    assert Settings.load().recording_policy.value == policy
+
+
+def test_given_no_recording_configuration_when_loading_settings_then_recording_defaults_to_never(
+    tmp_path, monkeypatch
+):
+    from kyno.server_config import Settings
+
+    root = make(tmp_path)
+    monkeypatch.chdir(root)
+    assert Settings.load().recording_policy.value == "never"
+
+
+def test_given_an_unknown_recording_policy_when_loading_settings_then_startup_is_refused(tmp_path):
+    root = make(tmp_path)
+    write_config(root, "[server]\nrecording_policy = sometimes\n")
+    with pytest.raises(ConfigError, match="recording_policy"):
+        read_config(root)
+
+
 def test_given_a_new_workspace_when_reading_its_config_then_sqlite_lives_under_db(tmp_path):
     root = make(tmp_path)
     config = read_config(root)

@@ -5,7 +5,7 @@ from typer.testing import CliRunner
 
 from tests.workspaces import cli_workspace
 
-TABLES = {"kyno_constitutions", "kyno_constitution_versions", "kyno_tokens"}
+TABLES = {"kyno_constitutions", "kyno_constitution_versions", "kyno_tokens", "kyno_deliveries"}
 
 
 def _colmap(insp, table):
@@ -32,6 +32,35 @@ def test_given_a_fresh_database_when_alembic_upgrades_then_the_expected_tables_e
     insp = inspect(create_engine(f"sqlite:///{db}"))
     tables = set(insp.get_table_names())
     assert tables >= TABLES
+
+
+def test_given_existing_versions_when_upgrading_delivery_schema_then_history_is_preserved(tmp_path):
+    from kyno.service import ControlPlane
+    from kyno.store.sql import SqlConstitutionStore
+
+    database_url = f"sqlite:///{tmp_path / 'upgrade.sqlite3'}"
+    config = Config("alembic.ini")
+    config.set_main_option("sqlalchemy.url", database_url)
+    command.upgrade(config, "0006")
+    store = SqlConstitutionStore(url=database_url)
+    plane = ControlPlane(store)
+    plane.set_direction(mission="Original direction", change_note="initial")
+    command.upgrade(config, "head")
+    assert plane.current().mission == "Original direction"
+    inspector = inspect(store.engine)
+    assert any(
+        constraint["column_names"] == ["delivery_id"]
+        for constraint in inspector.get_unique_constraints("kyno_deliveries")
+    )
+    assert {tuple(index["column_names"]) for index in inspector.get_indexes("kyno_deliveries")} == {
+        ("session_id", "sequence"),
+        ("requested_constitution", "sequence"),
+        ("recorded_at",),
+    }
+    command.downgrade(config, "0006")
+    assert plane.current().mission == "Original direction"
+    assert "kyno_deliveries" not in inspect(store.engine).get_table_names()
+    store.engine.dispose()
 
 
 def test_given_an_upgraded_database_when_downgrading_and_upgrading_then_the_schema_round_trips(

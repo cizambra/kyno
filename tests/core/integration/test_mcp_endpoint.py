@@ -157,7 +157,11 @@ def test_given_a_read_token_when_calling_a_read_tool_then_it_answers():
 
     assert response.status_code == 200
     payload = json.loads(sse_json(response.text)["result"]["content"][0]["text"])
-    assert payload == {"version": 0, "mission": ""}
+    assert payload == {
+        "version": 0,
+        "mission": "",
+        "recording": {"status": "disabled", "delivery_id": None},
+    }
 
 
 def test_given_a_batched_body_when_posting_then_the_scope_check_reads_it_and_the_sdk_rejects_it():

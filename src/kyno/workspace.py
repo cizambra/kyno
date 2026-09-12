@@ -17,6 +17,7 @@ from urllib.parse import quote
 
 from kyno.coerce import to_bool as _bool
 from kyno.coerce import to_int as _int
+from kyno.delivery import RecordingPolicy
 from kyno.envref import resolve as _resolve_ref
 from kyno.errors import ConfigError
 
@@ -25,7 +26,7 @@ CONFIG_RELPATH = Path("config") / "server"
 # adapter key -> the SQLAlchemy dialect (and driver) it stands for
 _ADAPTERS = {"sqlite3": "sqlite", "postgresql": "postgresql+psycopg", "mysql": "mysql+pymysql"}
 
-_SERVER_KEYS = ("host", "port", "allow_insecure")
+_SERVER_KEYS = ("host", "port", "allow_insecure", "recording_policy")
 _DATABASE_KEYS = ("url", "adapter", "host", "port", "database", "username", "password")
 _PAGE_KEYS = (
     "accent",
@@ -84,6 +85,7 @@ class WorkspaceConfig:
     port: int
     allow_insecure: bool
     page: dict[str, str]
+    recording_policy: RecordingPolicy = RecordingPolicy.NEVER
 
 
 def find_workspace(start: Path | None = None) -> Path | None:
@@ -126,6 +128,7 @@ def read_config(root: Path) -> WorkspaceConfig:
         port=port,
         allow_insecure=allow_insecure,
         page=_page_values(parser),
+        recording_policy=_recording_policy(parser),
     )
 
 
@@ -160,6 +163,15 @@ def _server_values(parser: configparser.ConfigParser) -> tuple[str, int, bool]:
         owner="server.allow_insecure",
     )
     return host, port, allow_insecure
+
+
+def _recording_policy(parser: configparser.ConfigParser) -> RecordingPolicy:
+    server = parser["server"] if parser.has_section("server") else {}
+    value = _resolve_ref(server.get("recording_policy", "never"), owner="server.recording_policy")
+    try:
+        return RecordingPolicy(value)
+    except ValueError:
+        raise ConfigError("server.recording_policy must be never or always") from None
 
 
 def _page_values(parser: configparser.ConfigParser) -> dict[str, str]:

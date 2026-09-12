@@ -218,5 +218,76 @@ DECLARATIONS = [
     ),
 ]
 
+DIRECTION_READS = frozenset(
+    {
+        "get_constitution",
+        "get_changes_since",
+        "get_mission",
+        "get_declaration",
+        "get_principles",
+        "get_principle",
+    }
+)
+
+for tool, _scope in DECLARATIONS:
+    if tool.name in DIRECTION_READS:
+        tool.inputSchema["properties"].update(
+            {
+                "session_id": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "description": "Application-defined session label; not authenticated identity.",
+                },
+                "metadata": {
+                    "type": "object",
+                    "description": "Non-secret JSON correlation data; at most 16384 encoded bytes.",
+                },
+            }
+        )
+
+DECLARATIONS.extend(
+    [
+        (
+            types.Tool(
+                name="get_delivery",
+                description="Return the direction response recorded under a delivery ID.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {"delivery_id": {"type": "string"}},
+                    "required": ["delivery_id"],
+                },
+            ),
+            TokenScope.READ,
+        ),
+        (
+            types.Tool(
+                name="list_deliveries",
+                description=(
+                    "Return recorded direction responses oldest first. Use next_cursor as after "
+                    "for the next page. Reading history does not record another delivery."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "session_id": {"type": "string"},
+                        "constitution": _CONSTITUTION_ARG,
+                        "since": {
+                            "type": "string",
+                            "description": "Inclusive ISO timestamp with timezone.",
+                        },
+                        "until": {
+                            "type": "string",
+                            "description": "Inclusive ISO timestamp with timezone.",
+                        },
+                        "after": {"type": "integer", "minimum": 0},
+                        "limit": {"type": "integer", "minimum": 1, "maximum": 100},
+                    },
+                },
+            ),
+            TokenScope.READ,
+        ),
+    ]
+)
+
 TOOLS = [tool for tool, _ in DECLARATIONS]
 TOOL_SCOPES = {tool.name: scope for tool, scope in DECLARATIONS}

@@ -4,8 +4,10 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from kyno.delivery import DeliveryHistory, RecordingPolicy
 from kyno.errors import ConfigError
 from kyno.public_page import PageConfig, PageTheme
+from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 from kyno.workspace import find_workspace, read_config
 
@@ -50,6 +52,7 @@ class Settings:
     port: int
     page: PageConfig
     allow_insecure: bool = False
+    recording_policy: RecordingPolicy = RecordingPolicy.NEVER
 
     @classmethod
     def load(cls) -> Settings:
@@ -68,8 +71,15 @@ class Settings:
             port=ws.port,
             page=_page_from_workspace(ws.page, ws.root),
             allow_insecure=ws.allow_insecure,
+            recording_policy=ws.recording_policy,
         )
 
 
 def store_from_settings(settings: Settings) -> SqlConstitutionStore:
     return SqlConstitutionStore(url=settings.database_url)
+
+
+def control_plane_from_settings(settings: Settings, store: SqlConstitutionStore) -> ControlPlane:
+    return ControlPlane(
+        store, delivery_history=DeliveryHistory(store.engine, policy=settings.recording_policy)
+    )

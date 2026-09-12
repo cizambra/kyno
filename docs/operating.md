@@ -100,6 +100,77 @@ Reads never fail on an empty store. Before any direction is set, consumers
 get a version-0 empty state, so integrating Kyno ahead of adopting it costs
 nothing.
 
+## Recording direction served over MCP
+
+Delivery history lets an application retrieve the direction associated with earlier
+work, even after the current constitution changes. The application can pass that
+snapshot and its own output to a verifier. Kyno does not call the verifier or decide
+what to do with its assessment.
+
+Recording is off by default. To enable it, add this setting under the existing
+`[server]` section in `config/server`, run `kyno db upgrade`, and restart the server:
+
+```ini
+[server]
+recording_policy = always
+```
+
+The choices are `always` and `never`. Core controls this setting; adapters and MCP
+requests cannot override it. `always` attempts to record each successful runtime
+direction response, including repeated reads of the same version. `never` stops
+new recording without deleting existing records or disabling operational and
+security logging. Earlier unrecorded requests cannot be reconstructed.
+
+The covered operations are `get_constitution`, `get_changes_since`, `get_mission`,
+`get_declaration`, `get_principles`, `get_principle`, and the current-constitution
+MCP resource. Exports, public pages, and delivery-history queries are not recorded
+as runtime deliveries. Direct embedded reads are not covered by this MCP integration.
+
+Runtime tool calls accept an optional `session_id` and JSON `metadata` object.
+The application decides what the session represents. Metadata can hold experiment
+or application request IDs; it must not contain credentials, prompts, or outputs.
+Session labels are limited to 255 characters and encoded metadata to 16,384 bytes.
+Authenticated identity comes from the token, not these caller-supplied fields.
+
+The direction response includes a separate `recording` object:
+
+| Status | Delivery ID | Meaning |
+| --- | --- | --- |
+| `recorded` | Present | Core confirmed that the response was saved. |
+| `disabled` | `null` | Recording is off; no history write was attempted. |
+| `failed` | `null` | Direction was returned, but persistence was not confirmed. |
+
+`disabled` and `failed` describe the response; they do not create placeholder
+database records. Recording failures generate an operational warning without
+including the direction payload or database error message.
+
+Use the returned ID with the MCP tool `get_delivery`, passing
+`{"delivery_id": "the-returned-id"}`. The result contains the exact directional
+payload, version, operation, timestamp, session context, and authenticated requester.
+A targeted principle read records only that principle; it does not claim a full
+constitution was served. `get_changes_since` retains its notes and delta.
+
+`list_deliveries` accepts `session_id`, `constitution`, inclusive `since`/`until`
+timezone-aware ISO timestamps, `limit` (1–100, default 50), and `after` (a cursor).
+Results are in insertion order. Pass `next_cursor` as `after` with the same filters
+to fetch another page; `null` means there is no further page at that moment. Pages
+are live queries, not a frozen snapshot across concurrent writers.
+
+Both history tools use the existing `read` scope. As with other MCP reads, that
+scope applies across the instance: readers can see session metadata for all its
+constitutions. A delivery ID alone grants no access. History has no public-page
+representation or client update/delete operation.
+
+Keep the delivery ID with the application's output so a later review retrieves
+the right direction instead of the latest version. When recording is disabled or
+fails, the application needs its own direction snapshot if it wants that evidence.
+A server record does not confirm prompt injection, model obedience, or even client
+receipt after a network interruption. Cache-only work creates no new server record.
+
+There is no automatic expiration or pruning in this version. Enabling recording
+grows database storage. Recording currently uses synchronous database operations;
+database connection and lock timeouts therefore matter to request latency.
+
 ## Running Kyno embedded
 
 When your orchestrator is itself a Python app, you can run the control

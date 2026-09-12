@@ -397,7 +397,11 @@ async def test_given_the_whole_read_family_when_dispatching_for_real_then_it_wor
         titles = await call(client, "get_principles", {"constitution": "eu"})
         explained = await call(client, "get_principles", {"constitution": "eu", "detail": "full"})
 
-    assert mission == {"version": 1, "mission": "Ship trustworthy lending"}
+    assert mission == {
+        "version": 1,
+        "mission": "Ship trustworthy lending",
+        "recording": {"status": "disabled", "delivery_id": None},
+    }
     assert titles["principles"] == [{"title": "Be honest"}]
     assert explained["principles"][0]["description"] == "Say the hard number first."
 

@@ -5,6 +5,9 @@ import logging
 
 import pytest
 
+from kyno.delivery import DeliveryHistory
+from kyno.service import ControlPlane
+from kyno.transports import build_http_app
 from tests.mcp_requests import bearer, call_tool, drive_session, gated_http_app, mint, sse_json
 
 
@@ -28,6 +31,60 @@ def test_given_a_write_token_when_driving_an_http_session_then_the_written_missi
     # The version records which token authenticated the write, resolved by
     # the server from the request itself.
     assert store.head("default").token_id == store.tokens()[0].id
+
+
+@pytest.mark.e2e
+def test_given_a_read_token_when_fetching_delivery_history_then_server_identity_is_preserved():
+    from starlette.testclient import TestClient
+
+    store, writer, _ = gated_http_app()
+    reader = mint(store, scope="read", name="agents")
+    history = DeliveryHistory(store.engine, policy="always")
+    plane = ControlPlane(store, delivery_history=history)
+    plane.set_direction(mission="Support customers", change_note="initial")
+    app = build_http_app(plane, token_store=store)
+    with TestClient(app) as client:
+        headers = drive_session(client, bearer(reader))
+        response = call_tool(
+            client,
+            headers,
+            2,
+            "get_mission",
+            {
+                "session_id": "application-session",
+                "metadata": {"requester": "forged", "id": 999},
+                "recording_policy": "never",
+            },
+        )
+        direction = json.loads(sse_json(response.text)["result"]["content"][0]["text"])
+        identifier = direction["recording"]["delivery_id"]
+        fetched = call_tool(client, headers, 3, "get_delivery", {"delivery_id": identifier})
+        record = json.loads(sse_json(fetched.text)["result"]["content"][0]["text"])
+        assert record["requester"] == {
+            "id": store.tokens()[1].id,
+            "name": "agents",
+            "scope": "read",
+        }
+        assert record["metadata"] == {"requester": "forged", "id": 999}
+        assert record["direction"] == {"version": 1, "mission": "Support customers"}
+        assert reader not in fetched.text and writer not in fetched.text
+        listed = call_tool(
+            client, headers, 4, "list_deliveries", {"session_id": "application-session"}
+        )
+        assert len(json.loads(sse_json(listed.text)["result"]["content"][0]["text"])["items"]) == 1
+        refused = call_tool(
+            client, headers, 5, "set_direction", {"mission": "No", "change_note": "No"}
+        )
+        assert refused.status_code == 403
+        missing_auth = call_tool(
+            client,
+            {key: value for key, value in headers.items() if key != "Authorization"},
+            6,
+            "get_delivery",
+            {"delivery_id": identifier},
+        )
+        assert missing_auth.status_code == 401
+    assert len(history.list()["items"]) == 1
 
 
 @pytest.mark.e2e

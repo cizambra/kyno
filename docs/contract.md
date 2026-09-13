@@ -22,6 +22,13 @@ This is everything an agent or client can ask Kyno, over MCP or Python.
 - `whoami`: the id, name and scope of the token this request authenticated
   with. Every field is null when the server checked no token, which is the
   case over stdio and on a server running with `allow_insecure`.
+- `list_delivery_records(session_id?, constitution?, since?, until?, after?, limit?)`:
+  recorded direction snapshots in insertion order. Requires a configured
+  delivery store and a `read` token on HTTP. Omitted filters include all
+  sessions and constitutions. Time bounds are inclusive ISO timestamps
+  with a timezone. Pages default to 50 items, with a maximum of 100;
+  pass `next_cursor` as `after` with the same filters to continue, until
+  `next_cursor` is null. Listing history does not record another delivery.
 
 Every tool declares the scope it needs. The reads above need `read`;
 `set_direction` needs `write`; a tool the server does not declare is

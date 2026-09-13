@@ -65,23 +65,23 @@ def history():
 def test_given_history_when_filtering_then_matching_records_are_oldest_first(
     history, filters, expected
 ):
-    assert [record["record_id"] for record in history.list(**filters)] == expected
+    assert [record["record_id"] for record in history.list(**filters)["items"]] == expected
 
 
 def test_given_stored_json_when_listing_then_values_are_decoded_without_sequence(history):
-    record = history.list(limit=1)[0]
+    record = history.list(limit=1)["items"][0]
     assert record["delta"] is None
     assert record["selection"] == {"title": "Example"}
     assert record["requester"] is None
     assert record["metadata"] == {"nested": [1]}
     assert "sequence" not in record
     record["metadata"]["nested"].append(2)
-    assert history.list(limit=1)[0]["metadata"] == {"nested": [1]}
+    assert history.list(limit=1)["items"][0]["metadata"] == {"nested": [1]}
 
 
 @pytest.mark.parametrize("limit", [1, 2, 100])
 def test_given_valid_limit_when_listing_then_results_are_bounded(history, limit):
-    assert len(history.list(limit=limit)) == min(limit, 4)
+    assert len(history.list(limit=limit)["items"]) == min(limit, 4)
 
 
 @pytest.mark.parametrize("limit", [0, -1, 101, True, 1.5, "2", None])
@@ -116,7 +116,7 @@ def test_given_more_than_one_hundred_records_when_listing_then_the_page_limit_is
             arguments={},
             context={"correlation_id": None, "metadata": {}},
         )
-    assert len(history.list(**arguments)) == expected_count
+    assert len(history.list(**arguments)["items"]) == expected_count
 
 
 def test_given_timestamps_out_of_insertion_order_when_listing_then_insertion_order_is_preserved(
@@ -128,4 +128,51 @@ def test_given_timestamps_out_of_insertion_order_when_listing_then_insertion_ord
             .where(history._table.c.record_id == "1")
             .values(recorded_at="2026-01-02T00:00:00.000000+00:00")
         )
-    assert [record["record_id"] for record in history.list()] == ["1", "2", "3", "4"]
+    assert [record["record_id"] for record in history.list()["items"]] == ["1", "2", "3", "4"]
+
+
+def test_given_multiple_pages_when_following_cursor_then_every_record_appears_once(history):
+    first = history.list(limit=2)
+    assert [record["record_id"] for record in first["items"]] == ["1", "2"]
+    assert first["next_cursor"] == 2
+    last = history.list(after=first["next_cursor"], limit=2)
+    assert [record["record_id"] for record in last["items"]] == ["3", "4"]
+    assert last["next_cursor"] is None
+
+
+def test_given_filtered_sequence_gaps_when_paging_then_cursor_tracks_the_last_matching_record(
+    history,
+):
+    first = history.list(session_id="one", limit=1)
+    assert [record["record_id"] for record in first["items"]] == ["1"]
+    assert first["next_cursor"] == 1
+    last = history.list(session_id="one", after=first["next_cursor"], limit=1)
+    assert [record["record_id"] for record in last["items"]] == ["3"]
+    assert last["next_cursor"] is None
+
+
+@pytest.mark.parametrize("filters", [{"after": 4}, {"after": 500}, {"constitution": "absent"}])
+def test_given_no_remaining_matches_when_paging_then_empty_page_has_no_cursor(history, filters):
+    assert history.list(**filters) == {"items": [], "next_cursor": None}
+
+
+@pytest.mark.parametrize("after", [-1, True, 1.5, "2", None])
+def test_given_invalid_cursor_when_paging_then_it_is_rejected(history, after):
+    with pytest.raises(ValueError, match="after must be a nonnegative integer"):
+        history.list(after=after)
+
+
+def test_given_new_append_between_pages_when_continuing_then_existing_records_do_not_repeat(
+    history,
+):
+    first = history.list(limit=2)
+    identifier = history.append(
+        {"version": 0},
+        operation="get_direction",
+        constitution="new",
+        arguments={},
+        context={"session_id": None, "metadata": {}},
+    )
+    remaining = history.list(after=first["next_cursor"])
+    assert [record["record_id"] for record in remaining["items"]] == ["3", "4", identifier]
+    assert remaining["next_cursor"] is None

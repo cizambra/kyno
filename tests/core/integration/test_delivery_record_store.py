@@ -1,0 +1,217 @@
+"""Recordings preserve delivered direction independently of constitution history."""
+
+import json
+from copy import deepcopy
+from datetime import UTC, datetime
+from uuid import UUID
+
+import pytest
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import event, func, inspect, select
+from sqlalchemy.dialects import mysql
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.schema import CreateTable
+
+from kyno.service import ControlPlane
+from kyno.store.delivery_record import SqlDeliveryRecordStore
+from kyno.store.sql import SqlConstitutionStore
+
+
+@pytest.fixture
+def store():
+    store = SqlConstitutionStore(url="sqlite://")
+    store.create_all()
+    return store
+
+
+def append(store, direction, **kwargs):
+    return SqlDeliveryRecordStore(store.engine).append(
+        direction,
+        operation=kwargs.pop("operation", "get_direction"),
+        constitution=kwargs.pop("constitution", "missing"),
+        arguments=kwargs.pop("arguments", {}),
+        context=kwargs.pop("context", {"session_id": None, "metadata": {}}),
+        **kwargs,
+    )
+
+
+def rows(store):
+    with store.engine.connect() as connection:
+        return (
+            connection.execute(select(store.metadata.tables["kyno_delivery_records"]))
+            .mappings()
+            .all()
+        )
+
+
+def test_given_unknown_constitution_when_appending_twice_then_distinct_snapshots_keep_version_zero(
+    store,
+):
+    first = append(store, {"version": 0, "principles": []})
+    second = append(store, {"version": 0, "principles": []})
+    assert UUID(first) != UUID(second)
+    records = rows(store)
+    assert [record["record_id"] for record in records] == [first, second]
+    assert [record["served_version"] for record in records] == [0, 0]
+    assert all(record["constitution_id"] is None for record in records)
+    assert all(datetime.fromisoformat(record["recorded_at"]).tzinfo == UTC for record in records)
+    assert json.loads(records[0]["requester"]) is None
+    with store.engine.connect() as connection:
+        assert connection.execute(select(store.metadata.tables["kyno_constitutions"])).all() == []
+
+
+def test_given_mutable_payloads_when_appending_then_snapshot_captures_original_values(store):
+    direction = {"version": 3, "principles": [{"title": "Before"}]}
+    context = {"session_id": "session", "metadata": {"nested": [1]}}
+    requester = {"token_id": 2}
+    arguments = {"known_version": 2, "detail": "full", "title": "Before"}
+    expected_direction = deepcopy(direction)
+    expected_context = deepcopy(context)
+    expected_requester = deepcopy(requester)
+    expected_selection = {"title": arguments["title"]}
+    append(
+        store,
+        direction,
+        context=context,
+        requester=requester,
+        arguments=arguments,
+    )
+    direction["principles"][0]["title"] = "After"
+    context["metadata"]["nested"].append(2)
+    requester["token_id"] = 4
+    record = rows(store)[0]
+    assert json.loads(record["direction"]) == expected_direction
+    assert json.loads(record["metadata"]) == expected_context["metadata"]
+    assert json.loads(record["requester"]) == expected_requester
+    assert json.loads(record["selection"]) == expected_selection
+    assert (record["known_version"], record["detail_level"], record["session_id"]) == (
+        arguments["known_version"],
+        arguments["detail"],
+        expected_context["session_id"],
+    )
+
+
+def test_given_get_changes_since_when_recording_then_current_version_becomes_served_version(
+    store,
+):
+    append(store, {"current_version": 7}, operation="get_changes_since")
+    assert rows(store)[0]["served_version"] == 7
+
+
+def test_given_absent_table_when_appending_then_database_error_propagates(store):
+    store.metadata.tables["kyno_delivery_records"].drop(store.engine)
+    with pytest.raises(OperationalError):
+        append(store, {"version": 0})
+
+
+def test_given_non_json_direction_when_appending_then_no_partial_record_is_written(store):
+    with pytest.raises(ValueError):
+        append(store, {"version": 1, "invalid": float("nan")})
+    assert rows(store) == []
+
+
+def test_given_custom_prefix_when_appending_then_only_prefixed_tables_are_used():
+    store = SqlConstitutionStore(url="sqlite://", prefix="custom_")
+    store.create_all()
+    identifier = SqlDeliveryRecordStore(store.engine, prefix="custom_").append(
+        {"version": 0},
+        operation="get_direction",
+        constitution="missing",
+        arguments={},
+        context={"session_id": None, "metadata": {}},
+    )
+    with store.engine.connect() as connection:
+        assert (
+            connection.scalar(select(store.metadata.tables["custom_delivery_records"].c.record_id))
+            == identifier
+        )
+    assert all(name.startswith("custom_") for name in inspect(store.engine).get_table_names())
+
+
+def test_given_mysql_schema_when_compiling_then_direction_supports_large_documents(store):
+    statement = str(
+        CreateTable(store.metadata.tables["kyno_delivery_records"]).compile(dialect=mysql.dialect())
+    )
+    assert "direction LONGTEXT NOT NULL" in statement
+
+
+def test_given_version_one_when_recording_its_delivery_then_constitution_history_is_unchanged(
+    store,
+):
+    plane = ControlPlane(store)
+    plane.set_direction(constitution="missing", mission="Original", change_note="initial")
+    with store.engine.connect() as connection:
+        before = connection.execute(
+            select(store.metadata.tables["kyno_constitution_versions"])
+        ).all()
+        constitution_id = connection.scalar(
+            select(store.metadata.tables["kyno_constitutions"].c.id)
+        )
+    append(store, {"version": 1, "mission": "Original"})
+    assert rows(store)[0]["constitution_id"] == constitution_id
+    with store.engine.connect() as connection:
+        assert (
+            connection.execute(select(store.metadata.tables["kyno_constitution_versions"])).all()
+            == before
+        )
+
+
+def test_given_two_constitutions_when_recording_the_second_then_it_links_to_the_second(store):
+    plane = ControlPlane(store)
+    plane.set_direction(constitution="sales", mission="Grow revenue", change_note="initial")
+    plane.set_direction(constitution="support", mission="Resolve issues", change_note="initial")
+    constitutions = store.metadata.tables["kyno_constitutions"]
+    with store.engine.connect() as connection:
+        support_id = connection.scalar(
+            select(constitutions.c.id).where(constitutions.c.name == "support")
+        )
+
+    append(store, {"version": 1, "mission": "Resolve issues"}, constitution="support")
+
+    record = rows(store)[0]
+    assert record["requested_constitution"] == "support"
+    assert record["constitution_id"] == support_id
+
+
+def test_given_migrated_database_when_reopened_then_committed_recording_is_preserved(tmp_path):
+    url = f"sqlite:///{tmp_path / 'recordings.sqlite3'}"
+    config = Config("alembic.ini")
+    config.set_main_option("sqlalchemy.url", url)
+    command.upgrade(config, "head")
+    store = SqlConstitutionStore(url=url)
+    direction = {"version": 0, "mission": "", "principles": []}
+    try:
+        identifier = append(store, direction)
+    finally:
+        store.engine.dispose()
+
+    reopened = SqlConstitutionStore(url=url)
+    try:
+        records = rows(reopened)
+        assert len(records) == 1
+        assert records[0]["record_id"] == identifier
+        assert json.loads(records[0]["direction"]) == direction
+    finally:
+        reopened.engine.dispose()
+
+
+def test_given_commit_failure_when_recording_then_insert_rolls_back_and_prior_record_is_unchanged(
+    store,
+):
+    append(store, {"version": 0, "mission": "Earlier response"})
+    previous_records = rows(store)
+    recordings = store.metadata.tables["kyno_delivery_records"]
+
+    def fail_before_commit(connection):
+        assert connection.scalar(select(func.count()).select_from(recordings)) == 2
+        raise RuntimeError("recording commit failed")
+
+    event.listen(store.engine, "commit", fail_before_commit)
+    try:
+        with pytest.raises(RuntimeError, match="^recording commit failed$"):
+            append(store, {"version": 0, "mission": "Uncommitted response"})
+    finally:
+        event.remove(store.engine, "commit", fail_before_commit)
+
+    assert rows(store) == previous_records

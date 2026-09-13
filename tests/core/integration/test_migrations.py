@@ -5,7 +5,12 @@ from typer.testing import CliRunner
 
 from tests.workspaces import cli_workspace
 
-TABLES = {"kyno_constitutions", "kyno_constitution_versions", "kyno_tokens"}
+TABLES = {
+    "kyno_constitutions",
+    "kyno_constitution_versions",
+    "kyno_tokens",
+    "kyno_delivery_records",
+}
 
 
 def _colmap(insp, table):
@@ -549,3 +554,61 @@ def test_given_an_existing_database_when_upgrading_then_its_versions_have_no_tok
     head = ControlPlane(SqlConstitutionStore(url=url)).current("legacy")
     assert head.mission == "Old mission"
     assert head.token_id is None
+
+
+def test_given_delivery_record_schemas_when_inspected_then_indexes_and_unique_ids_match(tmp_path):
+    from kyno.store.sql import SqlConstitutionStore
+
+    url = f"sqlite:///{tmp_path / 'delivery_record_schema.sqlite3'}"
+    cfg = Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", url)
+    command.upgrade(cfg, "head")
+    store = SqlConstitutionStore(url="sqlite://")
+    store.create_all()
+    for engine in (create_engine(url), store.engine):
+        inspector = inspect(engine)
+        assert {
+            item["name"]: item["column_names"]
+            for item in inspector.get_indexes("kyno_delivery_records")
+        } == {
+            "kyno_ix_delivery_record_session": ["session_id", "sequence"],
+            "kyno_ix_delivery_record_constitution": ["requested_constitution", "sequence"],
+            "kyno_ix_delivery_record_time": ["recorded_at"],
+        }
+        assert any(
+            item["column_names"] == ["record_id"]
+            for item in inspector.get_unique_constraints("kyno_delivery_records")
+        )
+
+
+def test_given_versions_when_delivery_records_migrate_then_upgrade_and_downgrade_preserve_history(
+    tmp_path,
+):
+    url = f"sqlite:///{tmp_path / 'delivery_record_upgrade.sqlite3'}"
+    cfg = Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", url)
+    command.upgrade(cfg, "0006")
+    engine = create_engine(url)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "INSERT INTO kyno_constitutions (name, current_version, created_at) "
+            "VALUES ('legacy', 1, '2026-01-01 00:00:00')"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO kyno_constitution_versions (constitution_id, version, mission, "
+            "principles, change_note, changed_mission, changed_principles, created_at) "
+            "VALUES (1, 1, 'Old mission', '[]', 'init', 1, 1, '2026-01-01 00:00:00')"
+        )
+        before = connection.exec_driver_sql("SELECT * FROM kyno_constitution_versions").all()
+    command.upgrade(cfg, "head")
+    assert "kyno_delivery_records" in inspect(engine).get_table_names()
+    with engine.connect() as connection:
+        assert (
+            connection.exec_driver_sql("SELECT * FROM kyno_constitution_versions").all() == before
+        )
+    command.downgrade(cfg, "0006")
+    assert "kyno_delivery_records" not in inspect(engine).get_table_names()
+    with engine.connect() as connection:
+        assert (
+            connection.exec_driver_sql("SELECT * FROM kyno_constitution_versions").all() == before
+        )

@@ -5,6 +5,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     MetaData,
     String,
@@ -13,6 +14,7 @@ from sqlalchemy import (
     UniqueConstraint,
     false,
 )
+from sqlalchemy.dialects.mysql import LONGTEXT
 
 
 def build_metadata(prefix: str = "kyno_") -> tuple[MetaData, Table, Table, Table]:
@@ -69,4 +71,29 @@ def build_metadata(prefix: str = "kyno_") -> tuple[MetaData, Table, Table, Table
         # token ids, and those must resolve forever.
         Column("revoked_at", DateTime(timezone=True), nullable=True),
     )
+    build_delivery_record_table(metadata, prefix)
     return metadata, constitutions, versions, tokens
+
+
+def build_delivery_record_table(metadata: MetaData, prefix: str = "kyno_") -> Table:
+    return Table(
+        f"{prefix}delivery_records",
+        metadata,
+        Column("sequence", Integer, primary_key=True, autoincrement=True),
+        Column("record_id", String(36), nullable=False, unique=True),
+        Column("recorded_at", String(40), nullable=False),
+        Column("constitution_id", Integer, ForeignKey(f"{prefix}constitutions.id"), nullable=True),
+        Column("requested_constitution", String(255), nullable=False),
+        Column("served_version", Integer, nullable=False),
+        Column("operation", String(64), nullable=False),
+        Column("known_version", Integer, nullable=True),
+        Column("detail_level", String(16), nullable=True),
+        Column("selection", Text, nullable=False),
+        Column("direction", Text().with_variant(LONGTEXT(), "mysql"), nullable=False),
+        Column("requester", Text, nullable=False),
+        Column("session_id", String(255), nullable=True),
+        Column("metadata", Text, nullable=False),
+        Index(f"{prefix}ix_delivery_record_session", "session_id", "sequence"),
+        Index(f"{prefix}ix_delivery_record_constitution", "requested_constitution", "sequence"),
+        Index(f"{prefix}ix_delivery_record_time", "recorded_at"),
+    )

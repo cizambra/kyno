@@ -106,6 +106,9 @@ def test_given_the_module_when_looking_up_run_stdio_then_it_is_a_coroutine_funct
 
 def test_given_the_tool_schemas_when_inspecting_then_constitution_is_an_optional_argument():
     for tool in mcp_tools.TOOLS:
+        if tool.name == "get_delivery_record":
+            assert "constitution" not in tool.inputSchema["properties"]
+            continue
         if tool.name == "whoami":
             # whoami answers about the request's token, not a constitution.
             assert tool.inputSchema["properties"] == {}
@@ -413,6 +416,7 @@ def test_given_the_read_family_when_answering_then_each_carries_its_source_versi
 def test_given_the_server_when_listing_tools_then_all_of_them_read_as_one_family():
     names = [t.name for t in mcp_tools.TOOLS]
     assert names == [
+        "get_delivery_record",
         "get_constitution",
         "get_changes_since",
         "get_mission",
@@ -427,7 +431,7 @@ def test_given_the_server_when_listing_tools_then_all_of_them_read_as_one_family
         description = tool.description
         assert description.startswith("Return ") or description.startswith("Append "), tool.name
         assert description.endswith("."), tool.name
-        if tool.name.startswith("get_"):
+        if tool.name.startswith("get_") and tool.name != "get_delivery_record":
             assert "constitution" in tool.inputSchema["properties"], tool.name
 
 

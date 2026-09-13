@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import mcp.types as types
 
+from kyno.delivery_context import MAX_METADATA_BYTES, MAX_SESSION_CHARS
 from kyno.models import AuthorizationType, TokenScope
 from kyno.wire.models import DetailLevel
 
@@ -217,6 +218,36 @@ DECLARATIONS = [
         TokenScope.READ,
     ),
 ]
+
+DIRECTION_READS = frozenset(
+    {
+        "get_constitution",
+        "get_changes_since",
+        "get_mission",
+        "get_declaration",
+        "get_principles",
+        "get_principle",
+    }
+)
+
+for tool, _scope in DECLARATIONS:
+    if tool.name in DIRECTION_READS:
+        tool.inputSchema["properties"].update(
+            {
+                "session_id": {
+                    "type": "string",
+                    "maxLength": MAX_SESSION_CHARS,
+                    "description": "Application-defined session label; not authenticated identity.",
+                },
+                "metadata": {
+                    "type": "object",
+                    "description": (
+                        "Non-secret JSON correlation data; "
+                        f"at most {MAX_METADATA_BYTES} encoded bytes."
+                    ),
+                },
+            }
+        )
 
 TOOLS = [tool for tool, _ in DECLARATIONS]
 TOOL_SCOPES = {tool.name: scope for tool, scope in DECLARATIONS}

@@ -18,7 +18,7 @@ def recording_failure(exc: Exception) -> dict:
 
 def _recording_arguments(operation: str, arguments: dict) -> dict:
     selection = {}
-    if operation in ("get_constitution", "get_changes_since"):
+    if operation in ("get_constitution", "get_changes_since", "read_resource"):
         selection["detail"] = arguments.get("detail", "compact")
     if operation == "get_changes_since" or "known_version" in arguments:
         selection["known_version"] = arguments["known_version"]

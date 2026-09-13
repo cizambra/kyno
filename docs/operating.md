@@ -68,9 +68,10 @@ recording_timeout_seconds = 1
 ```
 
 Omitting the section or its policy defaults to `never`. Unknown keys and
-other policy values fail configuration loading. The policy is parsed into
-`settings.delivery.recording_policy` only; it is not yet connected to runtime
-recording, so selecting `always` does not record direction responses.
+other policy values fail configuration loading. Core reads the policy through
+`settings.delivery.recording_policy`. See
+[Recording direction served over MCP](#recording-direction-served-over-mcp)
+for the recording boundary and response status.
 
 `recording_timeout_seconds` defaults to `1` second. It accepts a positive,
 finite number, including fractional seconds, or a `${VAR}` reference. Invalid
@@ -120,6 +121,51 @@ duplicated.
 Reads never fail on an empty store. Before any direction is set, consumers
 get a version-0 empty state, so integrating Kyno ahead of adopting it costs
 nothing.
+
+## Recording direction served over MCP
+
+Recording is off by default. To enable it, set `recording_policy = always`
+under `[delivery]` in `config/server`, run `kyno db upgrade`,
+and restart the server. The choices are `always` and `never`; requests cannot
+override the server setting.
+
+`always` attempts to save each successful runtime direction response, including
+repeated reads of the same version. `never` stops new recording without deleting
+existing snapshots or disabling operational and security logging. Earlier
+unrecorded requests cannot be reconstructed.
+
+The covered operations are `get_constitution`, `get_changes_since`, `get_mission`,
+`get_declaration`, `get_principles`, `get_principle`, and the current-constitution
+MCP resource. Exports, public pages, and direct embedded reads do not record
+runtime deliveries.
+
+Runtime tool calls accept an optional `session_id` and JSON `metadata` object.
+The application decides what the session represents. Session labels are limited
+to 255 characters and metadata to 16,384 bytes under Python's default JSON
+encoding. Metadata should hold non-secret correlation data, not credentials,
+prompts, or outputs. Authenticated requester identity comes from the token and
+is stored separately from these caller-supplied fields. Resource reads have no
+caller-supplied session label or metadata.
+
+The response includes a separate `recording` object:
+
+| Status | Record ID | Meaning |
+| --- | --- | --- |
+| `recorded` | Present | Core confirmed that the direction response was saved. |
+| `disabled` | `null` | Recording is off; no write was attempted. |
+| `failed` | `null` | Direction was returned, but persistence was not confirmed. |
+
+The saved snapshot contains the directional payload before the `recording`
+object is attached. Targeted reads save only the requested piece, and changes
+responses retain their notes and delta. `disabled` and `failed` create no
+placeholder records. Failures produce an operational warning with the error
+class, excluding direction contents and database error messages.
+
+A server record does not confirm prompt injection, model obedience, or client
+receipt after a network interruption. Cache-only work creates no server record.
+There is no automatic expiration or pruning. Recording uses synchronous
+database operations with no independent deadline, so connection or lock delays
+can delay the direction response.
 
 ## Running Kyno embedded
 

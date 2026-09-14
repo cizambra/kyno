@@ -24,7 +24,7 @@ def configured():
     for session, constitution in [("one", "alpha"), ("two", "beta"), ("one", "alpha")]:
         identifiers.append(
             history.append(
-                {"version": 0, "mission": "snapshot"},
+                {"version": 0, "mission": "Not copied", "delta": ["Saved comparison"]},
                 operation="get_constitution",
                 constitution=constitution,
                 arguments={},
@@ -56,10 +56,13 @@ async def test_given_filtered_history_when_listing_over_mcp_then_cursor_continue
     assert not first.isError
     page = json.loads(first.content[0].text)
     assert [item["record_id"] for item in page["items"]] == identifiers[:1]
+    assert all("direction" not in item and "delta" not in item for item in page["items"])
+    assert control_plane.delivery_record_store.get(identifiers[0])["delta"] == ["Saved comparison"]
     assert page["next_cursor"] is not None
     last = await invoke(control_plane, {**filters, "after": page["next_cursor"]})
     final_page = json.loads(last.content[0].text)
     assert [item["record_id"] for item in final_page["items"]] == identifiers[2:]
+    assert all("direction" not in item and "delta" not in item for item in final_page["items"])
     assert final_page["next_cursor"] is None
     assert len(control_plane.delivery_record_store.list()["items"]) == 3
 
@@ -120,7 +123,7 @@ async def test_given_database_failure_when_listing_then_error_hides_database_det
 
 
 @pytest.mark.parametrize("scope", ["read", "write"])
-def test_given_authorized_token_when_listing_history_over_http_then_snapshots_are_returned(
+def test_given_authorized_token_when_listing_history_over_http_then_summaries_are_returned(
     configured, scope
 ):
     store, control_plane, identifiers = configured

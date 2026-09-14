@@ -277,7 +277,9 @@ DECLARATIONS.append(
         types.Tool(
             name="list_delivery_records",
             description=(
-                "Return recorded direction responses in insertion order. Use next_cursor as "
+                "Return delivery summaries without direction content or deltas. "
+                "Results are in insertion order. "
+                "Use next_cursor as "
                 "after with the same filters for the next page. Reading history does not "
                 "record another delivery."
             ),

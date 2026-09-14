@@ -11,6 +11,18 @@ from kyno.store.schema import build_metadata
 from kyno.wire.delivery_record import DeliveryRecord
 
 
+def _timestamp(value: str | None) -> str | None:
+    if value is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        raise ValueError("history timestamps must be ISO timestamps with a timezone") from None
+    if parsed.tzinfo is None:
+        raise ValueError("history timestamps must include a timezone")
+    return parsed.astimezone(UTC).isoformat(timespec="microseconds")
+
+
 class SqlDeliveryRecordStore:
     def __init__(self, engine: Engine, prefix: str = "kyno_") -> None:
         self._engine = engine
@@ -78,3 +90,37 @@ class SqlDeliveryRecordStore:
         if row is None:
             raise ValueError("delivery record not found")
         return self._decode(row)
+
+    def list(
+        self,
+        *,
+        correlation_id: str | None = None,
+        constitution: str | None = None,
+        since: str | None = None,
+        until: str | None = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        """Return up to limit snapshots in insertion order, with inclusive time bounds."""
+        if type(limit) is not int or not 1 <= limit <= 100:
+            raise ValueError("limit must be an integer from 1 to 100")
+        since, until = _timestamp(since), _timestamp(until)
+        if since and until and since > until:
+            raise ValueError("since must not be later than until")
+        query = select(self._table)
+        for column, value in (
+            (self._table.c.correlation_id, correlation_id),
+            (self._table.c.requested_constitution, constitution),
+        ):
+            if value is not None:
+                query = query.where(column == value)
+        if since:
+            query = query.where(self._table.c.recorded_at >= since)
+        if until:
+            query = query.where(self._table.c.recorded_at <= until)
+        with self._engine.connect() as connection:
+            rows = (
+                connection.execute(query.order_by(self._table.c.sequence).limit(limit))
+                .mappings()
+                .all()
+            )
+        return [self._decode(row) for row in rows]

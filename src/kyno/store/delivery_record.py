@@ -42,7 +42,7 @@ class SqlDeliveryRecordStore:
             ),
             "direction": json.dumps(direction, allow_nan=False),
             "requester": json.dumps(requester, allow_nan=False),
-            "session_id": context["session_id"],
+            "correlation_id": context["correlation_id"],
             "metadata": json.dumps(context["metadata"], allow_nan=False),
         }
         with self._engine.begin() as connection:

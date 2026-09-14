@@ -571,7 +571,7 @@ def test_given_delivery_record_schemas_when_inspected_then_indexes_and_unique_id
             item["name"]: item["column_names"]
             for item in inspector.get_indexes("kyno_delivery_records")
         } == {
-            "kyno_ix_delivery_record_session": ["session_id", "sequence"],
+            "kyno_ix_delivery_record_correlation": ["correlation_id", "sequence"],
             "kyno_ix_delivery_record_constitution": ["requested_constitution", "sequence"],
             "kyno_ix_delivery_record_time": ["recorded_at"],
         }

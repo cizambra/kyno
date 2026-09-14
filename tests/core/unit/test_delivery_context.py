@@ -2,23 +2,25 @@ import json
 
 import pytest
 
-from kyno.delivery_context import MAX_METADATA_BYTES, MAX_SESSION_CHARS, delivery_context
+from kyno.delivery_context import MAX_CORRELATION_CHARS, MAX_METADATA_BYTES, delivery_context
 
 
 def test_given_no_context_when_validating_then_defaults_are_returned():
-    assert delivery_context({"other": "ignored"}) == {"session_id": None, "metadata": {}}
+    assert delivery_context({"other": "ignored"}) == {"correlation_id": None, "metadata": {}}
 
 
-@pytest.mark.parametrize("session_id", [None, "", "session-1", "é" * 255])
-def test_given_valid_session_when_validating_then_it_is_preserved(session_id):
-    assert MAX_SESSION_CHARS == 255
-    assert delivery_context({"session_id": session_id})["session_id"] == session_id
+@pytest.mark.parametrize("correlation_id", [None, "", "session-1", "é" * 255])
+def test_given_valid_correlation_id_when_validating_then_it_is_preserved(correlation_id):
+    assert MAX_CORRELATION_CHARS == 255
+    assert delivery_context({"correlation_id": correlation_id})["correlation_id"] == correlation_id
 
 
-@pytest.mark.parametrize("session_id", [True, 123, [], {}, "a" * 256])
-def test_given_invalid_session_when_validating_then_it_is_rejected(session_id):
-    with pytest.raises(ValueError, match="session_id must be a string of at most 255 characters"):
-        delivery_context({"session_id": session_id})
+@pytest.mark.parametrize("correlation_id", [True, 123, [], {}, "a" * 256])
+def test_given_invalid_correlation_id_when_validating_then_it_is_rejected(correlation_id):
+    with pytest.raises(
+        ValueError, match="correlation_id must be a string of at most 255 characters"
+    ):
+        delivery_context({"correlation_id": correlation_id})
 
 
 def test_given_json_metadata_when_validating_then_all_json_types_are_preserved():

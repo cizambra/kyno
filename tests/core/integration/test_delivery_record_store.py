@@ -31,7 +31,7 @@ def append(store, direction, **kwargs):
         operation=kwargs.pop("operation", "get_direction"),
         constitution=kwargs.pop("constitution", "missing"),
         arguments=kwargs.pop("arguments", {}),
-        context=kwargs.pop("context", {"session_id": None, "metadata": {}}),
+        context=kwargs.pop("context", {"correlation_id": None, "metadata": {}}),
         **kwargs,
     )
 
@@ -63,7 +63,7 @@ def test_given_unknown_constitution_when_appending_twice_then_distinct_snapshots
 
 def test_given_mutable_payloads_when_appending_then_snapshot_captures_original_values(store):
     direction = {"version": 3, "principles": [{"title": "Before"}]}
-    context = {"session_id": "session", "metadata": {"nested": [1]}}
+    context = {"correlation_id": "session", "metadata": {"nested": [1]}}
     requester = {"token_id": 2}
     arguments = {"known_version": 2, "detail": "full", "title": "Before"}
     expected_direction = deepcopy(direction)
@@ -85,10 +85,10 @@ def test_given_mutable_payloads_when_appending_then_snapshot_captures_original_v
     assert json.loads(record["metadata"]) == expected_context["metadata"]
     assert json.loads(record["requester"]) == expected_requester
     assert json.loads(record["selection"]) == expected_selection
-    assert (record["known_version"], record["detail_level"], record["session_id"]) == (
+    assert (record["known_version"], record["detail_level"], record["correlation_id"]) == (
         arguments["known_version"],
         arguments["detail"],
-        expected_context["session_id"],
+        expected_context["correlation_id"],
     )
 
 
@@ -119,7 +119,7 @@ def test_given_custom_prefix_when_appending_then_only_prefixed_tables_are_used()
         operation="get_direction",
         constitution="missing",
         arguments={},
-        context={"session_id": None, "metadata": {}},
+        context={"correlation_id": None, "metadata": {}},
     )
     with store.engine.connect() as connection:
         assert (
@@ -174,7 +174,10 @@ def test_given_two_constitutions_when_recording_the_second_then_it_links_to_the_
     assert record["constitution_id"] == support_id
 
 
-def test_given_migrated_database_when_reopened_then_committed_recording_is_preserved(tmp_path):
+@pytest.mark.parametrize("correlation_id", [None, "", "workflow-42/research"])
+def test_given_migrated_database_when_reopened_then_committed_recording_is_preserved(
+    tmp_path, correlation_id
+):
     url = f"sqlite:///{tmp_path / 'recordings.sqlite3'}"
     config = Config("alembic.ini")
     config.set_main_option("sqlalchemy.url", url)
@@ -182,7 +185,9 @@ def test_given_migrated_database_when_reopened_then_committed_recording_is_prese
     store = SqlConstitutionStore(url=url)
     direction = {"version": 0, "mission": "", "principles": []}
     try:
-        identifier = append(store, direction)
+        identifier = append(
+            store, direction, context={"correlation_id": correlation_id, "metadata": {}}
+        )
     finally:
         store.engine.dispose()
 
@@ -191,6 +196,7 @@ def test_given_migrated_database_when_reopened_then_committed_recording_is_prese
         records = rows(reopened)
         assert len(records) == 1
         assert records[0]["record_id"] == identifier
+        assert records[0]["correlation_id"] == correlation_id
         assert json.loads(records[0]["direction"]) == direction
     finally:
         reopened.engine.dispose()
@@ -215,3 +221,28 @@ def test_given_commit_failure_when_recording_then_insert_rolls_back_and_prior_re
         event.remove(store.engine, "commit", fail_before_commit)
 
     assert rows(store) == previous_records
+
+
+def test_given_responses_sharing_a_correlation_id_when_recording_then_each_keeps_its_own_metadata(
+    store,
+):
+    direction = {"version": 0, "mission": ""}
+    identifiers = [
+        append(
+            store,
+            direction,
+            context={"correlation_id": "workflow-42", "metadata": {"step": step}},
+        )
+        for step in ("first", "second")
+    ]
+
+    records = rows(store)
+    assert len(records) == 2
+    assert identifiers[0] != identifiers[1]
+    assert [record["record_id"] for record in records] == identifiers
+    assert [record["correlation_id"] for record in records] == ["workflow-42", "workflow-42"]
+    assert [json.loads(record["metadata"]) for record in records] == [
+        {"step": "first"},
+        {"step": "second"},
+    ]
+    assert all(json.loads(record["direction"]) == direction for record in records)

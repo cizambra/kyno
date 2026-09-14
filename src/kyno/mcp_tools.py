@@ -66,7 +66,10 @@ DECLARATIONS = [
     (
         types.Tool(
             name="get_delivery_record",
-            description="Return a persisted delivery snapshot by its record ID.",
+            description=(
+                "Return a delivery's version reference, request context, "
+                "and saved delta by record ID."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {"record_id": {"type": "string"}},

@@ -94,7 +94,7 @@ class SqlDeliveryRecordStore:
     def list(
         self,
         *,
-        session_id: str | None = None,
+        correlation_id: str | None = None,
         constitution: str | None = None,
         since: str | None = None,
         until: str | None = None,
@@ -108,7 +108,7 @@ class SqlDeliveryRecordStore:
             raise ValueError("since must not be later than until")
         query = select(self._table)
         for column, value in (
-            (self._table.c.session_id, session_id),
+            (self._table.c.correlation_id, correlation_id),
             (self._table.c.requested_constitution, constitution),
         ):
             if value is not None:

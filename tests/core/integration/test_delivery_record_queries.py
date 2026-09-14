@@ -3,7 +3,7 @@
 import json
 
 import pytest
-from sqlalchemy import insert, update
+from sqlalchemy import event, insert, update
 
 from kyno.store.delivery_record import SqlDeliveryRecordStore
 from kyno.store.sql import SqlConstitutionStore
@@ -70,7 +70,7 @@ def test_given_history_when_filtering_then_matching_records_are_oldest_first(
 
 def test_given_stored_json_when_listing_then_values_are_decoded_without_sequence(history):
     record = history.list(limit=1)["items"][0]
-    assert record["delta"] is None
+    assert "delta" not in record
     assert record["selection"] == {"title": "Example"}
     assert record["requester"] is None
     assert record["metadata"] == {"nested": [1]}
@@ -129,6 +129,41 @@ def test_given_timestamps_out_of_insertion_order_when_listing_then_insertion_ord
             .values(recorded_at="2026-01-02T00:00:00.000000+00:00")
         )
     assert [record["record_id"] for record in history.list()["items"]] == ["1", "2", "3", "4"]
+
+
+def test_given_saved_deltas_when_listing_then_summaries_omit_them_and_lookup_preserves_them(
+    history,
+):
+    identifier = history.append(
+        {"current_version": 0, "delta": ["Mission changed."]},
+        operation="get_changes_since",
+        constitution="extra",
+        arguments={"known_version": 0},
+        context={"correlation_id": "run", "metadata": {"step": "first"}},
+    )
+    summary = history.list(correlation_id="run")["items"][0]
+    assert "delta" not in summary
+    assert "direction" not in summary
+    assert summary["record_id"] == identifier
+    assert summary["metadata"] == {"step": "first"}
+    assert history.get(identifier) == {**summary, "delta": ["Mission changed."]}
+
+
+def test_given_large_delta_when_listing_then_database_query_does_not_select_delta(history):
+    statements = []
+
+    def capture(connection, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    with history._engine.begin() as connection:
+        connection.execute(update(history._table).values(delta=json.dumps(["change" * 10000])))
+    event.listen(history._engine, "before_cursor_execute", capture)
+    try:
+        assert len(history.list(limit=1)["items"]) == 1
+    finally:
+        event.remove(history._engine, "before_cursor_execute", capture)
+    assert len(statements) == 1
+    assert "delta" not in statements[0]
 
 
 def test_given_multiple_pages_when_following_cursor_then_every_record_appears_once(history):

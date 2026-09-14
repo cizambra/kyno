@@ -8,7 +8,7 @@ from uuid import uuid4
 from sqlalchemy import Engine, insert, select
 
 from kyno.store.schema import build_metadata
-from kyno.wire.delivery_record import DeliveryRecord
+from kyno.wire.delivery_record import DeliveryRecord, DeliverySummary
 
 
 def _timestamp(value: str | None) -> str | None:
@@ -77,12 +77,12 @@ class SqlDeliveryRecordStore:
             )
         return identifier
 
-    def _decode(self, row) -> DeliveryRecord:
+    def _decode(self, row) -> DeliverySummary:
         record = dict(row)
         record.pop("sequence")
-        for key in ("delta", "requester", "metadata", "selection"):
+        for key in ("requester", "metadata", "selection"):
             record[key] = json.loads(record[key])
-        return cast(DeliveryRecord, record)
+        return cast(DeliverySummary, record)
 
     def get(self, record_id: str) -> DeliveryRecord:
         """Return the version reference and saved delta, or raise for an unknown ID."""
@@ -94,7 +94,7 @@ class SqlDeliveryRecordStore:
             )
         if row is None:
             raise ValueError("delivery record not found")
-        return self._decode(row)
+        return {**self._decode(row), "delta": json.loads(row["delta"])}
 
     def list(
         self,
@@ -106,7 +106,7 @@ class SqlDeliveryRecordStore:
         after: int = 0,
         limit: int = 50,
     ) -> dict:
-        """Return an insertion-ordered page and its next cursor, or None at the end.
+        """Return summaries without deltas and a cursor, or None at the end.
 
         Time bounds are inclusive. Continue with the same filters and the returned
         cursor as after; records appended between pages can appear on later pages.
@@ -118,7 +118,8 @@ class SqlDeliveryRecordStore:
         since, until = _timestamp(since), _timestamp(until)
         if since and until and since > until:
             raise ValueError("since must not be later than until")
-        query = select(self._table).where(self._table.c.sequence > after)
+        columns = [column for column in self._table.c if column.name != "delta"]
+        query = select(*columns).where(self._table.c.sequence > after)
         for column, value in (
             (self._table.c.correlation_id, correlation_id),
             (self._table.c.requested_constitution, constitution),

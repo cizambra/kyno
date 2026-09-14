@@ -223,7 +223,7 @@ def test_given_commit_failure_when_recording_then_insert_rolls_back_and_prior_re
     assert rows(store) == previous_records
 
 
-def test_given_agents_sharing_a_correlation_id_when_recording_then_each_response_has_its_own_record(
+def test_given_responses_sharing_a_correlation_id_when_recording_then_each_keeps_its_own_metadata(
     store,
 ):
     direction = {"version": 0, "mission": ""}
@@ -231,9 +231,9 @@ def test_given_agents_sharing_a_correlation_id_when_recording_then_each_response
         append(
             store,
             direction,
-            context={"correlation_id": "workflow-42", "metadata": {"agent_id": agent_id}},
+            context={"correlation_id": "workflow-42", "metadata": {"step": step}},
         )
-        for agent_id in ("A", "B")
+        for step in ("first", "second")
     ]
 
     records = rows(store)
@@ -242,7 +242,7 @@ def test_given_agents_sharing_a_correlation_id_when_recording_then_each_response
     assert [record["record_id"] for record in records] == identifiers
     assert [record["correlation_id"] for record in records] == ["workflow-42", "workflow-42"]
     assert [json.loads(record["metadata"]) for record in records] == [
-        {"agent_id": "A"},
-        {"agent_id": "B"},
+        {"step": "first"},
+        {"step": "second"},
     ]
     assert all(json.loads(record["direction"]) == direction for record in records)

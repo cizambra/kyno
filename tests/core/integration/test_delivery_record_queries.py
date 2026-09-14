@@ -3,7 +3,7 @@
 import json
 
 import pytest
-from sqlalchemy import insert
+from sqlalchemy import insert, update
 
 from kyno.store.delivery_record import SqlDeliveryRecordStore
 from kyno.store.sql import SqlConstitutionStore
@@ -44,6 +44,10 @@ def history():
         ({"correlation_id": "one", "constitution": "beta"}, ["3"]),
         ({"correlation_id": ""}, ["4"]),
         ({"constitution": "absent"}, []),
+        ({"correlation_id": "absent"}, []),
+        ({"correlation_id": "one", "constitution": "beta", "limit": 1}, ["3"]),
+        ({"since": "2026-01-01T03:00:00Z", "limit": 1}, ["3"]),
+        ({"correlation_id": "one", "until": "2026-01-01T02:00:00Z"}, ["1"]),
         ({"since": "2026-01-01T02:00:00Z"}, ["2", "3", "4"]),
         ({"until": "2026-01-01T02:00:00Z"}, ["1", "2"]),
         ({"since": "2026-01-01T03:00:00+01:00", "until": "2025-12-31T21:00:00-05:00"}, ["2"]),
@@ -98,8 +102,13 @@ def test_given_reversed_time_bounds_when_listing_then_the_range_is_rejected(hist
         history.list(since="2026-01-01T05:00:00Z", until="2026-01-01T04:00:00Z")
 
 
-def test_given_more_than_fifty_records_when_listing_then_default_limit_is_fifty(history):
-    for _index in range(51):
+@pytest.mark.parametrize(
+    "arguments, expected_count", [({}, 50), ({"limit": 1}, 1), ({"limit": 100}, 100)]
+)
+def test_given_more_than_one_hundred_records_when_listing_then_the_page_limit_is_applied(
+    history, arguments, expected_count
+):
+    for _index in range(101):
         history.append(
             {"version": 0},
             operation="get_direction",
@@ -107,4 +116,16 @@ def test_given_more_than_fifty_records_when_listing_then_default_limit_is_fifty(
             arguments={},
             context={"correlation_id": None, "metadata": {}},
         )
-    assert len(history.list()) == 50
+    assert len(history.list(**arguments)) == expected_count
+
+
+def test_given_timestamps_out_of_insertion_order_when_listing_then_insertion_order_is_preserved(
+    history,
+):
+    with history._engine.begin() as connection:
+        connection.execute(
+            update(history._table)
+            .where(history._table.c.record_id == "1")
+            .values(recorded_at="2026-01-02T00:00:00.000000+00:00")
+        )
+    assert [record["record_id"] for record in history.list()] == ["1", "2", "3", "4"]

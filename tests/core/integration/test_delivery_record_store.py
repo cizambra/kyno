@@ -174,7 +174,10 @@ def test_given_two_constitutions_when_recording_the_second_then_it_links_to_the_
     assert record["constitution_id"] == support_id
 
 
-def test_given_migrated_database_when_reopened_then_committed_recording_is_preserved(tmp_path):
+@pytest.mark.parametrize("correlation_id", [None, "", "workflow-42/research"])
+def test_given_migrated_database_when_reopened_then_committed_recording_is_preserved(
+    tmp_path, correlation_id
+):
     url = f"sqlite:///{tmp_path / 'recordings.sqlite3'}"
     config = Config("alembic.ini")
     config.set_main_option("sqlalchemy.url", url)
@@ -182,7 +185,9 @@ def test_given_migrated_database_when_reopened_then_committed_recording_is_prese
     store = SqlConstitutionStore(url=url)
     direction = {"version": 0, "mission": "", "principles": []}
     try:
-        identifier = append(store, direction)
+        identifier = append(
+            store, direction, context={"correlation_id": correlation_id, "metadata": {}}
+        )
     finally:
         store.engine.dispose()
 
@@ -191,6 +196,7 @@ def test_given_migrated_database_when_reopened_then_committed_recording_is_prese
         records = rows(reopened)
         assert len(records) == 1
         assert records[0]["record_id"] == identifier
+        assert records[0]["correlation_id"] == correlation_id
         assert json.loads(records[0]["direction"]) == direction
     finally:
         reopened.engine.dispose()
@@ -215,3 +221,28 @@ def test_given_commit_failure_when_recording_then_insert_rolls_back_and_prior_re
         event.remove(store.engine, "commit", fail_before_commit)
 
     assert rows(store) == previous_records
+
+
+def test_given_agents_sharing_a_correlation_id_when_recording_then_each_response_has_its_own_record(
+    store,
+):
+    direction = {"version": 0, "mission": ""}
+    identifiers = [
+        append(
+            store,
+            direction,
+            context={"correlation_id": "workflow-42", "metadata": {"agent_id": agent_id}},
+        )
+        for agent_id in ("A", "B")
+    ]
+
+    records = rows(store)
+    assert len(records) == 2
+    assert identifiers[0] != identifiers[1]
+    assert [record["record_id"] for record in records] == identifiers
+    assert [record["correlation_id"] for record in records] == ["workflow-42", "workflow-42"]
+    assert [json.loads(record["metadata"]) for record in records] == [
+        {"agent_id": "A"},
+        {"agent_id": "B"},
+    ]
+    assert all(json.loads(record["direction"]) == direction for record in records)

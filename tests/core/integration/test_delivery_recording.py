@@ -1,4 +1,4 @@
-"""Recording policy coordinates validated caller context with persisted delivery snapshots."""
+"""Recording policy coordinates validated caller context with persisted delivery references."""
 
 import json
 
@@ -18,7 +18,7 @@ def store():
 
 
 @pytest.mark.parametrize("policy, status", [("never", "disabled"), ("always", "recorded")])
-def test_given_recording_policy_when_recording_then_only_always_persists_a_snapshot(
+def test_given_recording_policy_when_recording_then_only_always_persists_a_record(
     store, policy, status
 ):
     direction = {"version": 0, "mission": "Original"}
@@ -49,7 +49,9 @@ def test_given_recording_policy_when_recording_then_only_always_persists_a_snaps
         assert len(records) == 1
         record = records[0]
         assert record["record_id"] == result["record_id"]
-        assert json.loads(record["direction"]) == {"version": 0, "mission": "Original"}
+        assert record["served_version"] == 0
+        assert json.loads(record["delta"]) is None
+        assert "direction" not in record
         assert json.loads(record["requester"]) == {"id": 3}
         assert json.loads(record["metadata"]) == {"nested": [1]}
         assert record["correlation_id"] == "session"

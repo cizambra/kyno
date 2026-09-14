@@ -1,4 +1,4 @@
-"""Recording policy and best-effort persistence of direction snapshots."""
+"""Recording policy and best-effort persistence of delivery references."""
 
 import logging
 

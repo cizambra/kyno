@@ -27,11 +27,13 @@ def upgrade() -> None:
         sa.Column("selection", sa.Text, nullable=False),
         sa.Column("direction", sa.Text().with_variant(LONGTEXT(), "mysql"), nullable=False),
         sa.Column("requester", sa.Text, nullable=False),
-        sa.Column("session_id", sa.String(255), nullable=True),
+        sa.Column("correlation_id", sa.String(255), nullable=True),
         sa.Column("metadata", sa.Text, nullable=False),
     )
     op.create_index(
-        "kyno_ix_delivery_record_session", "kyno_delivery_records", ["session_id", "sequence"]
+        "kyno_ix_delivery_record_correlation",
+        "kyno_delivery_records",
+        ["correlation_id", "sequence"],
     )
     op.create_index(
         "kyno_ix_delivery_record_constitution",

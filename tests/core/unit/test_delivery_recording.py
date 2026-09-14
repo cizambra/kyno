@@ -23,12 +23,12 @@ def test_given_default_policy_when_recording_then_append_is_disabled(store):
 
 @pytest.mark.parametrize("policy", list(RecordingPolicy))
 def test_given_invalid_context_when_recording_then_validation_propagates(store, policy):
-    with pytest.raises(ValueError, match="session_id"):
+    with pytest.raises(ValueError, match="correlation_id"):
         DeliveryRecorder(store, policy).record(
             {"version": 1},
             operation="get_constitution",
             constitution="team",
-            arguments={"session_id": 3},
+            arguments={"correlation_id": 3},
         )
     store.append.assert_not_called()
 
@@ -54,7 +54,7 @@ def test_given_invalid_context_when_recording_then_validation_propagates(store, 
 def test_given_read_arguments_when_recording_then_only_effective_arguments_are_appended(
     store, operation, supplied, expected
 ):
-    arguments = {"session_id": "session", "metadata": {"nested": [1]}, "extra": object()}
+    arguments = {"correlation_id": "session", "metadata": {"nested": [1]}, "extra": object()}
     arguments.update(supplied)
     direction = {"version": 2, "current_version": 2, "principles": [{"title": "Care"}]}
     original = deepcopy(direction)
@@ -72,7 +72,7 @@ def test_given_read_arguments_when_recording_then_only_effective_arguments_are_a
         operation=operation,
         constitution="team",
         arguments=expected,
-        context={"session_id": "session", "metadata": {"nested": [1]}},
+        context={"correlation_id": "session", "metadata": {"nested": [1]}},
         requester=requester,
     )
     assert direction == original

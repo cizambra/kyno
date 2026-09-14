@@ -27,7 +27,7 @@ def test_given_recording_policy_when_recording_then_only_always_persists_a_snaps
         operation="get_mission",
         constitution="missing",
         arguments={
-            "session_id": "session",
+            "correlation_id": "session",
             "metadata": {"nested": [1]},
             "known_version": object(),
             "detail": object(),
@@ -52,7 +52,7 @@ def test_given_recording_policy_when_recording_then_only_always_persists_a_snaps
         assert json.loads(record["direction"]) == {"version": 0, "mission": "Original"}
         assert json.loads(record["requester"]) == {"id": 3}
         assert json.loads(record["metadata"]) == {"nested": [1]}
-        assert record["session_id"] == "session"
+        assert record["correlation_id"] == "session"
         assert record["known_version"] is None
         assert record["detail_level"] is None
         assert json.loads(record["selection"]) == {}

@@ -143,10 +143,10 @@ def test_given_multiple_pages_when_following_cursor_then_every_record_appears_on
 def test_given_filtered_sequence_gaps_when_paging_then_cursor_tracks_the_last_matching_record(
     history,
 ):
-    first = history.list(session_id="one", limit=1)
+    first = history.list(correlation_id="one", limit=1)
     assert [record["record_id"] for record in first["items"]] == ["1"]
     assert first["next_cursor"] == 1
-    last = history.list(session_id="one", after=first["next_cursor"], limit=1)
+    last = history.list(correlation_id="one", after=first["next_cursor"], limit=1)
     assert [record["record_id"] for record in last["items"]] == ["3"]
     assert last["next_cursor"] is None
 
@@ -171,7 +171,7 @@ def test_given_new_append_between_pages_when_continuing_then_existing_records_do
         operation="get_direction",
         constitution="new",
         arguments={},
-        context={"session_id": None, "metadata": {}},
+        context={"correlation_id": None, "metadata": {}},
     )
     remaining = history.list(after=first["next_cursor"])
     assert [record["record_id"] for record in remaining["items"]] == ["3", "4", identifier]

@@ -272,7 +272,7 @@ def build_server(control_plane: ControlPlane, token_store=None) -> Server:
                         **{
                             key: arguments[key]
                             for key in (
-                                "session_id",
+                                "correlation_id",
                                 "constitution",
                                 "since",
                                 "until",

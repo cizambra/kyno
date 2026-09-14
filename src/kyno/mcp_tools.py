@@ -284,7 +284,7 @@ DECLARATIONS.append(
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "session_id": {"type": "string"},
+                    "correlation_id": {"type": "string"},
                     "constitution": {
                         "type": "string",
                         "description": "Filter by named constitution; omitted means all.",

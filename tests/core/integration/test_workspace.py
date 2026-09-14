@@ -4,9 +4,9 @@ import pytest
 from typer.testing import CliRunner
 
 from kyno.cli import app
+from kyno.delivery import DeliverySettings, RecordingPolicy
 from kyno.errors import ConfigError
 from kyno.public_page import PageConfig
-from kyno.recording import RecordingPolicy, RecordingsSettings
 from kyno.server_config import Settings
 from kyno.workspace import create_workspace, find_workspace, read_config
 
@@ -27,26 +27,26 @@ def test_given_a_new_workspace_when_listing_it_then_the_four_files_are_there(tmp
     assert files == [".gitignore", "README.md", "config/server", "db/.keep"]
 
 
-@pytest.mark.parametrize("body", ["", "[server]\nhost = localhost\n", "[recordings]\n"])
+@pytest.mark.parametrize("body", ["", "[server]\nhost = localhost\n", "[delivery]\n"])
 def test_given_no_recording_policy_when_reading_then_it_defaults_to_never(tmp_path, body):
     root = make(tmp_path)
     write_config(root, body)
-    assert read_config(root).recordings.policy == "never"
+    assert read_config(root).delivery.recording_policy == "never"
 
 
 @pytest.mark.parametrize("policy", ["never", "always"])
 def test_given_a_recording_policy_when_reading_then_it_returns_the_enum(tmp_path, policy):
     root = make(tmp_path)
-    write_config(root, f"[recordings]\npolicy = {policy}\n")
+    write_config(root, f"[delivery]\nrecording_policy = {policy}\n")
     config = read_config(root)
-    assert config.recordings.policy is RecordingPolicy(policy)
+    assert config.delivery.recording_policy is RecordingPolicy(policy)
 
 
 @pytest.mark.parametrize("policy", ["sometimes", "ALWAYS", "true", ""])
 def test_given_an_invalid_recording_policy_when_reading_then_it_names_the_choices(tmp_path, policy):
     root = make(tmp_path)
-    write_config(root, f"[recordings]\npolicy = {policy}\n")
-    with pytest.raises(ConfigError, match="recordings.policy must be never or always"):
+    write_config(root, f"[delivery]\nrecording_policy = {policy}\n")
+    with pytest.raises(ConfigError, match="delivery.recording_policy must be never or always"):
         read_config(root)
 
 
@@ -55,18 +55,18 @@ def test_given_a_recording_policy_reference_when_reading_then_it_resolves(
     tmp_path, monkeypatch, policy
 ):
     root = make(tmp_path)
-    write_config(root, "[recordings]\npolicy = ${ACME_RECORDING_POLICY}\n")
+    write_config(root, "[delivery]\nrecording_policy = ${ACME_RECORDING_POLICY}\n")
     monkeypatch.setenv("ACME_RECORDING_POLICY", policy)
-    assert read_config(root).recordings.policy == policy
+    assert read_config(root).delivery.recording_policy == policy
 
 
 def test_given_an_invalid_recording_policy_reference_when_reading_then_it_is_refused(
     tmp_path, monkeypatch
 ):
     root = make(tmp_path)
-    write_config(root, "[recordings]\npolicy = ${ACME_RECORDING_POLICY}\n")
+    write_config(root, "[delivery]\nrecording_policy = ${ACME_RECORDING_POLICY}\n")
     monkeypatch.setenv("ACME_RECORDING_POLICY", "sometimes")
-    with pytest.raises(ConfigError, match="recordings.policy must be never or always"):
+    with pytest.raises(ConfigError, match="delivery.recording_policy must be never or always"):
         read_config(root)
 
 
@@ -74,11 +74,11 @@ def test_given_an_unset_recording_policy_reference_when_reading_then_it_names_th
     tmp_path, monkeypatch
 ):
     root = make(tmp_path)
-    write_config(root, "[recordings]\npolicy = ${ACME_RECORDING_POLICY}\n")
+    write_config(root, "[delivery]\nrecording_policy = ${ACME_RECORDING_POLICY}\n")
     monkeypatch.delenv("ACME_RECORDING_POLICY", raising=False)
     with pytest.raises(
         ConfigError,
-        match=r"recordings.policy reads \$\{ACME_RECORDING_POLICY\}, which is not set",
+        match=r"delivery.recording_policy reads \$\{ACME_RECORDING_POLICY\}, which is not set",
     ):
         read_config(root)
 
@@ -89,39 +89,41 @@ def test_given_a_workspace_recording_policy_when_loading_settings_then_it_is_pre
 ):
     root = make(tmp_path)
     if policy is not None:
-        write_config(root, f"[recordings]\npolicy = {policy}\n")
+        write_config(root, f"[delivery]\nrecording_policy = {policy}\n")
     monkeypatch.chdir(root)
-    assert Settings.load().recordings.policy == (policy or "never")
+    assert Settings.load().delivery.recording_policy == (policy or "never")
 
 
-@pytest.mark.parametrize("key", ["retention", "recording_policy", "polcy"])
-def test_given_unknown_recordings_key_when_reading_then_the_key_is_rejected(tmp_path, key):
+@pytest.mark.parametrize("key", ["retention", "policy", "recording_polcy"])
+def test_given_unknown_delivery_key_when_reading_then_the_key_is_rejected(tmp_path, key):
     root = make(tmp_path)
-    write_config(root, f"[recordings]\n{key} = never\n")
-    with pytest.raises(ConfigError, match=rf"unknown key '{key}' in \[recordings\]"):
+    write_config(root, f"[delivery]\n{key} = never\n")
+    with pytest.raises(ConfigError, match=rf"unknown key '{key}' in \[delivery\]"):
         read_config(root)
 
 
-def test_given_blank_policy_reference_when_reading_then_the_error_names_recordings(
+def test_given_blank_policy_reference_when_reading_then_the_error_names_delivery(
     tmp_path, monkeypatch
 ):
     root = make(tmp_path)
-    write_config(root, "[recordings]\npolicy = ${ACME_RECORDING_POLICY}\n")
+    write_config(root, "[delivery]\nrecording_policy = ${ACME_RECORDING_POLICY}\n")
     monkeypatch.setenv("ACME_RECORDING_POLICY", " ")
     with pytest.raises(
         ConfigError,
-        match=r"recordings.policy reads \$\{ACME_RECORDING_POLICY\}, which is set but blank",
+        match=(
+            r"delivery.recording_policy reads \$\{ACME_RECORDING_POLICY\}, which is set but blank"
+        ),
     ):
         read_config(root)
 
 
-def test_given_explicit_recordings_settings_when_constructing_then_other_defaults_stay_never():
+def test_given_explicit_delivery_settings_when_constructing_then_other_defaults_stay_never():
     enabled = Settings(
-        "sqlite://", "localhost", 2256, PageConfig(), recordings=RecordingsSettings("always")
+        "sqlite://", "localhost", 2256, PageConfig(), delivery=DeliverySettings("always")
     )
     default = Settings("sqlite://", "localhost", 2256, PageConfig())
-    assert enabled.recordings.policy is RecordingPolicy.ALWAYS
-    assert default.recordings.policy is RecordingPolicy.NEVER
+    assert enabled.delivery.recording_policy is RecordingPolicy.ALWAYS
+    assert default.delivery.recording_policy is RecordingPolicy.NEVER
 
 
 def test_given_a_new_workspace_when_reading_its_config_then_sqlite_lives_under_db(tmp_path):
@@ -180,10 +182,11 @@ def test_given_an_unknown_key_with_a_typo_when_reading_then_it_is_refused(tmp_pa
         read_config(root)
 
 
-def test_given_an_unknown_section_when_reading_then_it_is_refused(tmp_path):
+@pytest.mark.parametrize("section", ["serverr", "recordings"])
+def test_given_an_unknown_section_when_reading_then_it_is_refused(tmp_path, section):
     root = make(tmp_path)
-    write_config(root, "[serverr]\nhost = x\n")
-    with pytest.raises(ConfigError, match=r"unknown section \[serverr\]"):
+    write_config(root, f"[{section}]\npolicy = always\n")
+    with pytest.raises(ConfigError, match=rf"unknown section \[{section}\]"):
         read_config(root)
 
 

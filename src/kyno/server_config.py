@@ -4,9 +4,9 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from kyno.delivery import DeliverySettings
 from kyno.errors import ConfigError
 from kyno.public_page import PageConfig, PageTheme
-from kyno.recording import RecordingsSettings
 from kyno.store.sql import SqlConstitutionStore
 from kyno.workspace import find_workspace, read_config
 
@@ -51,7 +51,7 @@ class Settings:
     port: int
     page: PageConfig
     allow_insecure: bool = False
-    recordings: RecordingsSettings = field(default_factory=RecordingsSettings)
+    delivery: DeliverySettings = field(default_factory=DeliverySettings)
 
     @classmethod
     def load(cls) -> Settings:
@@ -70,7 +70,7 @@ class Settings:
             port=ws.port,
             page=_page_from_workspace(ws.page, ws.root),
             allow_insecure=ws.allow_insecure,
-            recordings=ws.recordings,
+            delivery=ws.delivery,
         )
 
 

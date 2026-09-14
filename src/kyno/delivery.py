@@ -8,8 +8,8 @@ class RecordingPolicy(StrEnum):
 
 
 @dataclass(frozen=True)
-class RecordingsSettings:
-    policy: RecordingPolicy = RecordingPolicy.NEVER
+class DeliverySettings:
+    recording_policy: RecordingPolicy = RecordingPolicy.NEVER
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "policy", RecordingPolicy(self.policy))
+        object.__setattr__(self, "recording_policy", RecordingPolicy(self.recording_policy))

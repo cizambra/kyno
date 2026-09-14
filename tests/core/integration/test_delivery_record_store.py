@@ -134,6 +134,9 @@ def test_given_custom_prefix_when_appending_then_only_prefixed_tables_are_used()
             == identifier
         )
     assert all(name.startswith("custom_") for name in inspect(store.engine).get_table_names())
+    record = SqlDeliveryRecordStore(store.engine, prefix="custom_").get(identifier)
+    assert record["record_id"] == identifier
+    assert record["direction"] == {"version": 0}
 
 
 def test_given_mysql_schema_when_compiling_then_direction_supports_large_documents(store):
@@ -144,14 +147,19 @@ def test_given_mysql_schema_when_compiling_then_direction_supports_large_documen
 
 
 def test_given_unknown_record_id_when_getting_then_lookup_raises(store):
+    append(store, {"version": 0})
     with pytest.raises(ValueError, match="^delivery record not found$"):
         SqlDeliveryRecordStore(store.engine).get("unknown")
 
 
+@pytest.mark.parametrize("target_first", [True, False])
 def test_given_multiple_deliveries_when_getting_by_id_then_exact_decoded_snapshot_is_returned(
     store,
+    target_first,
 ):
     direction = {"version": 0, "principles": [{"title": "Original"}]}
+    if not target_first:
+        append(store, {"version": 0, "principles": []})
     identifier = append(
         store,
         direction,
@@ -159,8 +167,9 @@ def test_given_multiple_deliveries_when_getting_by_id_then_exact_decoded_snapsho
         context={"correlation_id": "session", "metadata": {"nested": [1]}},
         arguments={"title": "Original"},
     )
-    append(store, {"version": 0, "principles": []})
-    raw = rows(store)[0]
+    if target_first:
+        append(store, {"version": 0, "principles": []})
+    raw = next(record for record in rows(store) if record["record_id"] == identifier)
     expected = dict(raw)
     expected.pop("sequence")
     expected.update(
@@ -172,7 +181,7 @@ def test_given_multiple_deliveries_when_getting_by_id_then_exact_decoded_snapsho
     assert SqlDeliveryRecordStore(store.engine).get(identifier) == expected
 
 
-def test_given_mutations_and_new_versions_when_store_reopens_then_snapshot_is_unchanged(
+def test_given_mutations_and_new_versions_when_getting_saved_record_then_snapshot_is_unchanged(
     store,
 ):
     plane = ControlPlane(store)
@@ -272,6 +281,10 @@ def test_given_migrated_database_when_reopened_then_committed_recording_is_prese
         assert records[0]["record_id"] == identifier
         assert records[0]["correlation_id"] == correlation_id
         assert json.loads(records[0]["direction"]) == direction
+        saved = SqlDeliveryRecordStore(reopened.engine).get(identifier)
+        assert saved["record_id"] == identifier
+        assert saved["correlation_id"] == correlation_id
+        assert saved["direction"] == direction
     finally:
         reopened.engine.dispose()
 

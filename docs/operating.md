@@ -58,17 +58,17 @@ The rules for the `config/server` file:
   [Best practices](best-practices.md#secrets-stay-references).
 - An unknown key or section fails startup and names the typo.
 
-The `[recordings]` section accepts `policy = never` (the default) or
-`policy = always`, including a `${VAR}` reference to either value:
+The `[delivery]` section accepts `recording_policy = never` (the default) or
+`recording_policy = always`, including a `${VAR}` reference to either value:
 
 ```ini
-[recordings]
-policy = never
+[delivery]
+recording_policy = never
 ```
 
 Omitting the section or its policy defaults to `never`. Unknown keys and
 other policy values fail configuration loading. The policy is parsed into
-`settings.recordings.policy` only; it is not yet connected to runtime
+`settings.delivery.recording_policy` only; it is not yet connected to runtime
 recording, so selecting `always` does not record direction responses.
 
 The `[database]` section describes the database with split keys, like

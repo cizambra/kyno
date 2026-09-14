@@ -17,9 +17,9 @@ from urllib.parse import quote
 
 from kyno.coerce import to_bool as _bool
 from kyno.coerce import to_int as _int
+from kyno.delivery import DeliverySettings
 from kyno.envref import resolve as _resolve_ref
 from kyno.errors import ConfigError
-from kyno.recording import RecordingsSettings
 
 CONFIG_RELPATH = Path("config") / "server"
 
@@ -27,7 +27,7 @@ CONFIG_RELPATH = Path("config") / "server"
 _ADAPTERS = {"sqlite3": "sqlite", "postgresql": "postgresql+psycopg", "mysql": "mysql+pymysql"}
 
 _SERVER_KEYS = ("host", "port", "allow_insecure")
-_RECORDINGS_KEYS = ("policy",)
+_DELIVERY_KEYS = ("recording_policy",)
 _DATABASE_KEYS = ("url", "adapter", "host", "port", "database", "username", "password")
 _PAGE_KEYS = (
     "accent",
@@ -86,7 +86,7 @@ class WorkspaceConfig:
     port: int
     allow_insecure: bool
     page: dict[str, str]
-    recordings: RecordingsSettings = field(default_factory=RecordingsSettings)
+    delivery: DeliverySettings = field(default_factory=DeliverySettings)
 
 
 def find_workspace(start: Path | None = None) -> Path | None:
@@ -129,7 +129,7 @@ def read_config(root: Path) -> WorkspaceConfig:
         port=port,
         allow_insecure=allow_insecure,
         page=_page_values(parser),
-        recordings=_recordings_values(parser),
+        delivery=_delivery_values(parser),
     )
 
 
@@ -144,15 +144,15 @@ def _parse(config_path: Path) -> configparser.ConfigParser:
     except configparser.Error as exc:
         raise ConfigError(f"{config_path} is not valid INI: {exc}") from None
     for section in parser.sections():
-        if section not in ("server", "database", "page", "recordings"):
+        if section not in ("server", "database", "page", "delivery"):
             raise ConfigError(
                 f"unknown section [{section}] in {config_path}; "
-                "the sections are [server], [database], [page] and [recordings]"
+                "the sections are [server], [database], [page] and [delivery]"
             )
     _check_keys(parser, "server", _SERVER_KEYS, config_path)
     _check_keys(parser, "database", _DATABASE_KEYS, config_path)
     _check_keys(parser, "page", _PAGE_KEYS, config_path)
-    _check_keys(parser, "recordings", _RECORDINGS_KEYS, config_path)
+    _check_keys(parser, "delivery", _DELIVERY_KEYS, config_path)
     return parser
 
 
@@ -167,13 +167,15 @@ def _server_values(parser: configparser.ConfigParser) -> tuple[str, int, bool]:
     return host, port, allow_insecure
 
 
-def _recordings_values(parser: configparser.ConfigParser) -> RecordingsSettings:
-    recordings = parser["recordings"] if parser.has_section("recordings") else {}
-    value = _resolve_ref(recordings.get("policy", "never"), owner="recordings.policy")
+def _delivery_values(parser: configparser.ConfigParser) -> DeliverySettings:
+    delivery = parser["delivery"] if parser.has_section("delivery") else {}
+    value = _resolve_ref(
+        delivery.get("recording_policy", "never"), owner="delivery.recording_policy"
+    )
     try:
-        return RecordingsSettings(policy=value)
+        return DeliverySettings(recording_policy=value)
     except ValueError:
-        raise ConfigError("recordings.policy must be never or always") from None
+        raise ConfigError("delivery.recording_policy must be never or always") from None
 
 
 def _page_values(parser: configparser.ConfigParser) -> dict[str, str]:

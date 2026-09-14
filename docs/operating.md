@@ -205,7 +205,7 @@ in a successful recording result. Read and write tokens can both retrieve
 snapshots; an unknown ID returns an error.
 
 The result includes the saved `direction`, operation, requested constitution,
-served version, UTC recording time, requester, session label, metadata, and
+served version, UTC recording time, requester, correlation label, metadata, and
 request selection. It returns the original payload even after constitution
 updates or a server restart. A targeted read contains only its requested piece.
 The internal storage sequence is not included.

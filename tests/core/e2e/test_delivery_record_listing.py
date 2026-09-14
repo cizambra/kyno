@@ -28,7 +28,7 @@ def configured():
                 operation="get_constitution",
                 constitution=constitution,
                 arguments={},
-                context={"session_id": session, "metadata": {}},
+                context={"correlation_id": session, "metadata": {}},
             )
         )
     yield store, control_plane, identifiers
@@ -46,7 +46,7 @@ async def test_given_filtered_history_when_listing_over_mcp_then_cursor_continue
 ):
     _store, control_plane, identifiers = configured
     filters = {
-        "session_id": "one",
+        "correlation_id": "one",
         "constitution": "alpha",
         "since": "2000-01-01T00:00:00Z",
         "until": "9998-01-01T00:00:00Z",

@@ -156,7 +156,7 @@ def test_given_multiple_deliveries_when_getting_by_id_then_exact_decoded_snapsho
         store,
         direction,
         requester={"token_id": 8},
-        context={"session_id": "session", "metadata": {"nested": [1]}},
+        context={"correlation_id": "session", "metadata": {"nested": [1]}},
         arguments={"title": "Original"},
     )
     append(store, {"version": 0, "principles": []})
@@ -178,7 +178,9 @@ def test_given_mutations_and_new_versions_when_store_reopens_then_snapshot_is_un
     plane = ControlPlane(store)
     plane.set_direction(constitution="missing", mission="Original", change_note="initial")
     direction = {"version": 1, "mission": "Original", "principles": [{"title": "First"}]}
-    identifier = append(store, direction, context={"session_id": None, "metadata": {"nested": [1]}})
+    identifier = append(
+        store, direction, context={"correlation_id": None, "metadata": {"nested": [1]}}
+    )
     first = SqlDeliveryRecordStore(store.engine).get(identifier)
     first["direction"]["principles"][0]["title"] = "Mutated"
     first["metadata"]["nested"].append(2)

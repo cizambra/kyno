@@ -16,5 +16,5 @@ class DeliveryRecord(TypedDict):
     selection: dict[str, JsonValue]
     direction: dict[str, JsonValue]
     requester: dict[str, JsonValue] | None
-    session_id: str | None
+    correlation_id: str | None
     metadata: dict[str, JsonValue]

@@ -202,13 +202,16 @@ Kyno does not retry the write or keep a background recording worker running.
 
 Call the authenticated MCP tool `get_delivery_record` with the `record_id` returned
 in a successful recording result. Read and write tokens can both retrieve
-snapshots; an unknown ID returns an error.
+records; an unknown ID returns an error.
 
-The result includes the saved `direction`, operation, requested constitution,
-served version, UTC recording time, requester, correlation label, metadata, and
-request selection. It returns the original payload even after constitution
-updates or a server restart. A targeted read contains only its requested piece.
-The internal storage sequence is not included.
+The result includes the constitution ID, served version, operation, requested
+constitution name, UTC recording time, requester, correlation label, metadata,
+request selection, and saved delta. Direction content is not duplicated here.
+Retrieve the referenced version from constitution history to review the mission
+and principles that were in force, even after later updates or a restart.
+Respect the recorded selection: a mission-only read does not mean the whole
+constitution was served. The saved delta preserves the generated comparison
+returned for that request. The internal storage sequence is not included.
 
 Lookup remains available when `[delivery]` has `recording_policy = never`. Looking up history
 does not create another delivery, including when recording is `always`.

@@ -1,4 +1,4 @@
-"""Authorized MCP clients retrieve persisted delivery snapshots safely."""
+"""Authorized MCP clients retrieve persisted delivery references safely."""
 
 import json
 
@@ -36,7 +36,7 @@ def delivery_setup():
 
 
 @pytest.mark.parametrize("scope", ["read", "write"])
-def test_given_authorized_token_when_getting_delivery_then_snapshot_returns(delivery_setup, scope):
+def test_given_authorized_token_when_getting_delivery_then_record_returns(delivery_setup, scope):
     store, deliveries, identifier = delivery_setup
     app = build_http_app(ControlPlane(store, delivery_record_store=deliveries), token_store=store)
     value = mint(store, scope=scope)
@@ -171,13 +171,40 @@ async def test_given_recorded_direction_when_updated_and_restarted_then_lookup_k
     async with create_connected_server_and_client_session(build_server(restarted)) as client:
         result = await client.call_tool("get_delivery_record", {"record_id": identifier})
     assert not result.isError
-    snapshot = json.loads(result.content[0].text)
-    assert snapshot["direction"] == original
-    assert snapshot["served_version"] == 1
-    assert snapshot["correlation_id"] == "run-1"
-    assert snapshot["metadata"] == {"step": ["first"]}
+    record = json.loads(result.content[0].text)
+    assert "direction" not in record
+    assert record["delta"] is None
+    assert record["served_version"] == original["version"] == 1
+    historical = restarted_store.get(record["requested_constitution"], record["served_version"])
+    assert historical.mission == original["mission"]
+    assert historical.declaration == original["declaration"]
+    assert historical.principles[0].title == "Honesty"
+    assert historical.principles[0].description == "State the facts."
+    assert record["correlation_id"] == "run-1"
+    assert record["metadata"] == {"step": ["first"]}
     assert restarted.current().version == 2
     restarted_store.engine.dispose()
+
+
+async def test_given_a_saved_delta_when_getting_delivery_over_mcp_then_delta_is_returned(
+    delivery_setup,
+):
+    store, deliveries, _ = delivery_setup
+    identifier = deliveries.append(
+        {"current_version": 0, "delta": ["The mission changed."]},
+        operation="get_changes_since",
+        constitution="default",
+        arguments={"known_version": 0},
+        context={"correlation_id": None, "metadata": {}},
+    )
+    async with create_connected_server_and_client_session(
+        build_server(ControlPlane(store, delivery_record_store=deliveries))
+    ) as client:
+        result = await client.call_tool("get_delivery_record", {"record_id": identifier})
+    assert not result.isError
+    record = json.loads(result.content[0].text)
+    assert record["delta"] == ["The mission changed."]
+    assert "direction" not in record
 
 
 async def test_given_always_recording_when_getting_delivery_then_history_read_is_not_recorded(

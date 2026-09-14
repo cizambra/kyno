@@ -45,6 +45,13 @@ def rows(store):
         )
 
 
+def capture_statements(statements):
+    def capture(connection, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    return capture
+
+
 def test_given_unknown_constitution_when_appending_twice_then_distinct_snapshots_keep_version_zero(
     store,
 ):
@@ -127,6 +134,9 @@ def test_given_custom_prefix_when_appending_then_only_prefixed_tables_are_used()
             == identifier
         )
     assert all(name.startswith("custom_") for name in inspect(store.engine).get_table_names())
+    record = SqlDeliveryRecordStore(store.engine, prefix="custom_").get(identifier)
+    assert record["record_id"] == identifier
+    assert record["direction"] == {"version": 0}
 
 
 def test_given_mysql_schema_when_compiling_then_direction_supports_large_documents(store):
@@ -134,6 +144,79 @@ def test_given_mysql_schema_when_compiling_then_direction_supports_large_documen
         CreateTable(store.metadata.tables["kyno_delivery_records"]).compile(dialect=mysql.dialect())
     )
     assert "direction LONGTEXT NOT NULL" in statement
+
+
+def test_given_unknown_record_id_when_getting_then_lookup_raises(store):
+    append(store, {"version": 0})
+    with pytest.raises(ValueError, match="^delivery record not found$"):
+        SqlDeliveryRecordStore(store.engine).get("unknown")
+
+
+@pytest.mark.parametrize("target_first", [True, False])
+def test_given_multiple_deliveries_when_getting_by_id_then_exact_decoded_snapshot_is_returned(
+    store,
+    target_first,
+):
+    direction = {"version": 0, "principles": [{"title": "Original"}]}
+    if not target_first:
+        append(store, {"version": 0, "principles": []})
+    identifier = append(
+        store,
+        direction,
+        requester={"token_id": 8},
+        context={"correlation_id": "session", "metadata": {"nested": [1]}},
+        arguments={"title": "Original"},
+    )
+    if target_first:
+        append(store, {"version": 0, "principles": []})
+    raw = next(record for record in rows(store) if record["record_id"] == identifier)
+    expected = dict(raw)
+    expected.pop("sequence")
+    expected.update(
+        direction=direction,
+        requester={"token_id": 8},
+        metadata={"nested": [1]},
+        selection={"title": "Original"},
+    )
+    assert SqlDeliveryRecordStore(store.engine).get(identifier) == expected
+
+
+def test_given_mutations_and_new_versions_when_getting_saved_record_then_snapshot_is_unchanged(
+    store,
+):
+    plane = ControlPlane(store)
+    plane.set_direction(constitution="missing", mission="Original", change_note="initial")
+    direction = {"version": 1, "mission": "Original", "principles": [{"title": "First"}]}
+    identifier = append(
+        store, direction, context={"correlation_id": None, "metadata": {"nested": [1]}}
+    )
+    first = SqlDeliveryRecordStore(store.engine).get(identifier)
+    first["direction"]["principles"][0]["title"] = "Mutated"
+    first["metadata"]["nested"].append(2)
+    direction["mission"] = "Caller mutation"
+    plane.set_direction(constitution="missing", mission="New mission", change_note="updated")
+    restored = SqlDeliveryRecordStore(store.engine).get(identifier)
+    assert restored["direction"] == {
+        "version": 1,
+        "mission": "Original",
+        "principles": [{"title": "First"}],
+    }
+    assert restored["metadata"] == {"nested": [1]}
+    assert restored["requester"] is None
+    assert restored["served_version"] == 1
+
+
+def test_given_persisted_delivery_when_getting_then_only_select_is_executed(store):
+    identifier = append(store, {"version": 0})
+    statements = []
+    capture = capture_statements(statements)
+    event.listen(store.engine, "before_cursor_execute", capture)
+    try:
+        SqlDeliveryRecordStore(store.engine).get(identifier)
+    finally:
+        event.remove(store.engine, "before_cursor_execute", capture)
+    assert len(statements) == 1
+    assert statements[0].startswith("SELECT ")
 
 
 def test_given_version_one_when_recording_its_delivery_then_constitution_history_is_unchanged(
@@ -198,6 +281,10 @@ def test_given_migrated_database_when_reopened_then_committed_recording_is_prese
         assert records[0]["record_id"] == identifier
         assert records[0]["correlation_id"] == correlation_id
         assert json.loads(records[0]["direction"]) == direction
+        saved = SqlDeliveryRecordStore(reopened.engine).get(identifier)
+        assert saved["record_id"] == identifier
+        assert saved["correlation_id"] == correlation_id
+        assert saved["direction"] == direction
     finally:
         reopened.engine.dispose()
 

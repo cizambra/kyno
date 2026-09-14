@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from typing import cast
 from uuid import uuid4
 
 from sqlalchemy import Engine, insert, select
 
 from kyno.store.schema import build_metadata
+from kyno.wire.delivery_record import DeliveryRecord
 
 
 class SqlDeliveryRecordStore:
@@ -57,3 +59,22 @@ class SqlDeliveryRecordStore:
                 insert(self._table).values(constitution_id=constitution_id, **values)
             )
         return identifier
+
+    def _decode(self, row) -> DeliveryRecord:
+        record = dict(row)
+        record.pop("sequence")
+        for key in ("direction", "requester", "metadata", "selection"):
+            record[key] = json.loads(record[key])
+        return cast(DeliveryRecord, record)
+
+    def get(self, record_id: str) -> DeliveryRecord:
+        """Return the decoded snapshot, or raise ValueError when its ID is unknown."""
+        with self._engine.connect() as connection:
+            row = (
+                connection.execute(select(self._table).where(self._table.c.record_id == record_id))
+                .mappings()
+                .first()
+            )
+        if row is None:
+            raise ValueError("delivery record not found")
+        return self._decode(row)

@@ -27,7 +27,7 @@ def delivery_setup():
         operation="get_mission",
         constitution="default",
         arguments={},
-        context={"session_id": None, "metadata": {}},
+        context={"correlation_id": None, "metadata": {}},
     )
     try:
         yield store, deliveries, identifier
@@ -149,7 +149,7 @@ async def test_given_recorded_direction_when_updated_and_restarted_then_lookup_k
             "get_constitution",
             {
                 "detail": "full",
-                "session_id": "run-1",
+                "correlation_id": "run-1",
                 "metadata": {"step": ["first"]},
             },
         )
@@ -174,7 +174,7 @@ async def test_given_recorded_direction_when_updated_and_restarted_then_lookup_k
     snapshot = json.loads(result.content[0].text)
     assert snapshot["direction"] == original
     assert snapshot["served_version"] == 1
-    assert snapshot["session_id"] == "run-1"
+    assert snapshot["correlation_id"] == "run-1"
     assert snapshot["metadata"] == {"step": ["first"]}
     assert restarted.current().version == 2
     restarted_store.engine.dispose()

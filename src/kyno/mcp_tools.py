@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import mcp.types as types
 
-from kyno.delivery_context import MAX_METADATA_BYTES, MAX_SESSION_CHARS
+from kyno.delivery_context import MAX_CORRELATION_CHARS, MAX_METADATA_BYTES
 from kyno.models import AuthorizationType, TokenScope
 from kyno.wire.models import DetailLevel
 
@@ -234,10 +234,10 @@ for tool, _scope in DECLARATIONS:
     if tool.name in DIRECTION_READS:
         tool.inputSchema["properties"].update(
             {
-                "session_id": {
+                "correlation_id": {
                     "type": "string",
-                    "maxLength": MAX_SESSION_CHARS,
-                    "description": "Application-defined session label; not authenticated identity.",
+                    "maxLength": MAX_CORRELATION_CHARS,
+                    "description": "Application-provided grouping ID; not authenticated identity.",
                 },
                 "metadata": {
                     "type": "object",

@@ -26,7 +26,7 @@ def test_given_a_read_token_when_reading_then_only_server_identity_is_attributed
             2,
             "get_mission",
             {
-                "session_id": "application-session",
+                "correlation_id": "application-session",
                 "metadata": {"requester": "forged", "id": 999},
                 "recording_policy": "never",
             },

@@ -139,13 +139,13 @@ The covered operations are `get_constitution`, `get_changes_since`, `get_mission
 MCP resource. Exports, public pages, and direct embedded reads do not record
 runtime deliveries.
 
-Runtime tool calls accept an optional `session_id` and JSON `metadata` object.
-The application decides what the session represents. Session labels are limited
+Runtime tool calls accept an optional `correlation_id` and JSON `metadata` object.
+The application chooses which requests share a correlation ID. Correlation labels are limited
 to 255 characters and metadata to 16,384 bytes under Python's default JSON
 encoding. Metadata should hold non-secret correlation data, not credentials,
 prompts, or outputs. Authenticated requester identity comes from the token and
 is stored separately from these caller-supplied fields. Resource reads have no
-caller-supplied session label or metadata.
+caller-supplied correlation label or metadata.
 
 The response includes a separate `recording` object:
 

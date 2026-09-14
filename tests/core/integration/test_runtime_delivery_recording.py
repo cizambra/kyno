@@ -100,7 +100,7 @@ async def test_given_recording_enabled_when_reading_then_history_matches_the_exa
         operation,
         {
             **arguments,
-            "session_id": "agent-session",
+            "correlation_id": "agent-session",
             "metadata": {"app": {"trial": [1, 2]}},
         },
     )
@@ -110,7 +110,7 @@ async def test_given_recording_enabled_when_reading_then_history_matches_the_exa
     assert record["direction"] == result
     assert record["served_version"] == 1
     assert record["operation"] == operation
-    assert record["session_id"] == "agent-session"
+    assert record["correlation_id"] == "agent-session"
     assert record["metadata"] == {"app": {"trial": [1, 2]}}
     assert record["requester"] is None
     assert record["constitution_id"] is not None
@@ -169,7 +169,7 @@ async def test_given_recording_enabled_when_reading_the_mcp_resource_then_the_re
     assert record["requested_constitution"] == "support"
     assert record["operation"] == "read_resource"
     assert record["detail_level"] == "compact"
-    assert record["session_id"] is None
+    assert record["correlation_id"] is None
     assert record["metadata"] == {}
 
 
@@ -223,7 +223,7 @@ async def test_given_history_when_recording_is_disabled_then_old_records_remain_
         ("get_constitution", {"metadata": []}),
         ("get_constitution", {"metadata": {"large": "x" * 16384}}),
         ("get_constitution", {"metadata": {"number": float("nan")}}),
-        ("get_constitution", {"session_id": "x" * 256}),
+        ("get_constitution", {"correlation_id": "x" * 256}),
     ],
 )
 async def test_given_an_invalid_read_when_calling_core_then_no_delivery_is_recorded(

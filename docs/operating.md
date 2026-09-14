@@ -131,7 +131,7 @@ override the server setting.
 
 `always` attempts to save each successful runtime direction response, including
 repeated reads of the same version. `never` stops new recording without deleting
-existing snapshots or disabling operational and security logging. Earlier
+existing records or disabling operational and security logging. Earlier
 unrecorded requests cannot be reconstructed.
 
 The covered operations are `get_constitution`, `get_changes_since`, `get_mission`,
@@ -151,13 +151,17 @@ The response includes a separate `recording` object:
 
 | Status | Record ID | Meaning |
 | --- | --- | --- |
-| `recorded` | Present | Core confirmed that the direction response was saved. |
+| `recorded` | Present | Core confirmed that the delivery event was saved. |
 | `disabled` | `null` | Recording is off; no write was attempted. |
 | `failed` | `null` | Direction was returned, but persistence was not confirmed. |
 
-The saved snapshot contains the directional payload before the `recording`
-object is attached. Targeted reads save only the requested piece, and changes
-responses retain their notes and delta. `disabled` and `failed` create no
+The event references the immutable constitution ID and served version rather
+than copying mission, declaration, principles, or change notes. It keeps the
+request's known version, detail level, and selection, plus the generated delta
+as returned. A missing delta is null; a returned empty delta is an empty array.
+Version-zero reads retain the requested name without creating a constitution.
+Retrieve the referenced historical version, not current direction, when
+reviewing earlier work. This is not a byte-for-byte response archive. `disabled` and `failed` create no
 placeholder records. Failures produce an operational warning with the error
 class, excluding direction contents and database error messages.
 

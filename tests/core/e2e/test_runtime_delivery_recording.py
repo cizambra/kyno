@@ -60,5 +60,8 @@ def test_given_a_read_token_when_reading_then_only_server_identity_is_attributed
         "scope": "read",
     }
     assert json.loads(record["metadata"]) == {"requester": "forged", "id": 999}
-    assert json.loads(record["direction"]) == {"version": 1, "mission": "Support customers"}
+    assert record["served_version"] == 1
+    assert json.loads(record["delta"]) is None
+    assert "direction" not in record
+    assert store.get("default", record["served_version"]).mission == "Support customers"
     assert reader not in str(record) and writer not in str(record)

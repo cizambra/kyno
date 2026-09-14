@@ -1,4 +1,4 @@
-"""Runtime MCP reads persist direction snapshots with caller context and recording status."""
+"""Runtime MCP reads persist version references with caller context and recording status."""
 
 import json
 
@@ -60,11 +60,8 @@ def records(store):
         )
 
 
-def snapshot(store, identifier):
-    record = dict(next(row for row in records(store) if row["record_id"] == identifier))
-    for key in ("direction", "metadata", "requester", "selection"):
-        record[key] = json.loads(record[key])
-    return record
+def saved_record(store, identifier):
+    return SqlDeliveryRecordStore(store.engine).get(identifier)
 
 
 @pytest.mark.asyncio
@@ -89,7 +86,7 @@ async def test_given_default_recording_when_reading_direction_then_no_history_is
         ("get_principle", {"title": "Be clear"}),
     ],
 )
-async def test_given_recording_enabled_when_reading_then_history_matches_the_exact_response(
+async def test_given_recording_enabled_when_reading_then_history_keeps_the_served_version_and_delta(
     history_store,
     operation,
     arguments,
@@ -106,8 +103,9 @@ async def test_given_recording_enabled_when_reading_then_history_matches_the_exa
     )
     recording = result.pop("recording")
     assert recording["status"] == "recorded"
-    record = snapshot(history_store, recording["record_id"])
-    assert record["direction"] == result
+    record = saved_record(history_store, recording["record_id"])
+    assert "direction" not in record
+    assert record["delta"] == result.get("delta")
     assert record["served_version"] == 1
     assert record["operation"] == operation
     assert record["correlation_id"] == "agent-session"
@@ -129,15 +127,35 @@ async def test_given_unchanged_direction_when_pulling_twice_then_each_response_h
 
 
 @pytest.mark.asyncio
-async def test_given_a_saved_response_when_direction_changes_then_its_content_stays_unchanged(
+async def test_given_later_direction_when_getting_delivery_then_original_version_remains_available(
     history_store,
 ):
     server, history, plane = server_with_history(history_store)
     response = await invoke(server, "get_constitution")
     plane.set_direction(mission="Resolve complaints", change_note="new priority")
-    record = snapshot(history_store, response["recording"]["record_id"])
-    assert record["direction"]["mission"] == "Help customers"
+    record = saved_record(history_store, response["recording"]["record_id"])
+    assert history_store.get("default", record["served_version"]).mission == "Help customers"
+    assert "direction" not in record
     assert record["served_version"] == 1
+
+
+@pytest.mark.asyncio
+async def test_given_a_known_version_when_recording_changes_then_the_returned_delta_is_preserved(
+    history_store,
+):
+    server, history, plane = server_with_history(history_store)
+    plane.set_direction(mission="Resolve complaints", change_note="new priority")
+    response = await invoke(server, "get_changes_since", {"known_version": 1, "detail": "full"})
+    record_id = response["recording"]["record_id"]
+    assert response["delta"]
+    plane.set_direction(mission="Prevent complaints", change_note="next priority")
+    record = history.get(record_id)
+    assert record["known_version"] == 1
+    assert record["served_version"] == 2
+    assert record["delta"] == response["delta"]
+    assert "direction" not in record
+    assert "change_notes" not in record
+    assert history_store.get("default", 2).mission == "Resolve complaints"
 
 
 @pytest.mark.asyncio
@@ -146,7 +164,7 @@ async def test_given_an_unknown_name_when_reading_then_the_record_has_no_constit
 ):
     server, history, _ = server_with_history(history_store)
     result = await invoke(server, "get_constitution", {"constitution": "missing"})
-    record = snapshot(history_store, result["recording"]["record_id"])
+    record = saved_record(history_store, result["recording"]["record_id"])
     assert record["constitution_id"] is None
     assert record["requested_constitution"] == "missing"
     assert record["served_version"] == 0
@@ -165,7 +183,7 @@ async def test_given_recording_enabled_when_reading_the_mcp_resource_then_the_re
         )
     )
     payload = json.loads(result.root.contents[0].text)
-    record = snapshot(history_store, payload["recording"]["record_id"])
+    record = saved_record(history_store, payload["recording"]["record_id"])
     assert record["requested_constitution"] == "support"
     assert record["operation"] == "read_resource"
     assert record["detail_level"] == "compact"
@@ -210,7 +228,7 @@ async def test_given_history_when_recording_is_disabled_then_old_records_remain_
     plane.delivery_recorder = DeliveryRecorder(SqlDeliveryRecordStore(history_store.engine))
     result = await invoke(server, "get_constitution")
     assert result["recording"]["status"] == "disabled"
-    assert snapshot(history_store, recorded["recording"]["record_id"])
+    assert saved_record(history_store, recorded["recording"]["record_id"])
     assert len(records(history_store)) == 1
 
 
@@ -299,7 +317,7 @@ async def test_given_irrelevant_arguments_when_reading_mission_then_they_cannot_
         },
     )
     assert response["recording"]["status"] == "recorded"
-    record = snapshot(history_store, response["recording"]["record_id"])
+    record = saved_record(history_store, response["recording"]["record_id"])
     assert record["known_version"] is None
     assert record["detail_level"] is None
     assert record["selection"] == {}

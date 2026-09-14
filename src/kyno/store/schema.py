@@ -91,9 +91,9 @@ def build_delivery_record_table(metadata: MetaData, prefix: str = "kyno_") -> Ta
         Column("selection", Text, nullable=False),
         Column("direction", Text().with_variant(LONGTEXT(), "mysql"), nullable=False),
         Column("requester", Text, nullable=False),
-        Column("session_id", String(255), nullable=True),
+        Column("correlation_id", String(255), nullable=True),
         Column("metadata", Text, nullable=False),
-        Index(f"{prefix}ix_delivery_record_session", "session_id", "sequence"),
+        Index(f"{prefix}ix_delivery_record_correlation", "correlation_id", "sequence"),
         Index(f"{prefix}ix_delivery_record_constitution", "requested_constitution", "sequence"),
         Index(f"{prefix}ix_delivery_record_time", "recorded_at"),
     )

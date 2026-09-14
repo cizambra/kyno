@@ -31,7 +31,7 @@ def append(store, direction, **kwargs):
         operation=kwargs.pop("operation", "get_direction"),
         constitution=kwargs.pop("constitution", "missing"),
         arguments=kwargs.pop("arguments", {}),
-        context=kwargs.pop("context", {"session_id": None, "metadata": {}}),
+        context=kwargs.pop("context", {"correlation_id": None, "metadata": {}}),
         **kwargs,
     )
 
@@ -63,7 +63,7 @@ def test_given_unknown_constitution_when_appending_twice_then_distinct_snapshots
 
 def test_given_mutable_payloads_when_appending_then_snapshot_captures_original_values(store):
     direction = {"version": 3, "principles": [{"title": "Before"}]}
-    context = {"session_id": "session", "metadata": {"nested": [1]}}
+    context = {"correlation_id": "session", "metadata": {"nested": [1]}}
     requester = {"token_id": 2}
     arguments = {"known_version": 2, "detail": "full", "title": "Before"}
     expected_direction = deepcopy(direction)
@@ -85,10 +85,10 @@ def test_given_mutable_payloads_when_appending_then_snapshot_captures_original_v
     assert json.loads(record["metadata"]) == expected_context["metadata"]
     assert json.loads(record["requester"]) == expected_requester
     assert json.loads(record["selection"]) == expected_selection
-    assert (record["known_version"], record["detail_level"], record["session_id"]) == (
+    assert (record["known_version"], record["detail_level"], record["correlation_id"]) == (
         arguments["known_version"],
         arguments["detail"],
-        expected_context["session_id"],
+        expected_context["correlation_id"],
     )
 
 
@@ -119,7 +119,7 @@ def test_given_custom_prefix_when_appending_then_only_prefixed_tables_are_used()
         operation="get_direction",
         constitution="missing",
         arguments={},
-        context={"session_id": None, "metadata": {}},
+        context={"correlation_id": None, "metadata": {}},
     )
     with store.engine.connect() as connection:
         assert (

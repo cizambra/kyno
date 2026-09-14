@@ -1,6 +1,7 @@
+import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import MetaData, Table, create_engine, insert, inspect, select
 from typer.testing import CliRunner
 
 from tests.workspaces import cli_workspace
@@ -571,7 +572,7 @@ def test_given_delivery_record_schemas_when_inspected_then_indexes_and_unique_id
             item["name"]: item["column_names"]
             for item in inspector.get_indexes("kyno_delivery_records")
         } == {
-            "kyno_ix_delivery_record_session": ["session_id", "sequence"],
+            "kyno_ix_delivery_record_correlation": ["correlation_id", "sequence"],
             "kyno_ix_delivery_record_constitution": ["requested_constitution", "sequence"],
             "kyno_ix_delivery_record_time": ["recorded_at"],
         }
@@ -612,3 +613,52 @@ def test_given_versions_when_delivery_records_migrate_then_upgrade_and_downgrade
         assert (
             connection.exec_driver_sql("SELECT * FROM kyno_constitution_versions").all() == before
         )
+
+
+@pytest.mark.parametrize("grouping_id", [None, "", "workflow-42/research"])
+def test_given_saved_delivery_when_renaming_grouping_and_downgrading_then_all_values_survive(
+    tmp_path, grouping_id
+):
+    url = f"sqlite:///{tmp_path / 'correlation_upgrade.sqlite3'}"
+    config = Config("alembic.ini")
+    config.set_main_option("sqlalchemy.url", url)
+    command.upgrade(config, "0007")
+    engine = create_engine(url)
+    try:
+        table = Table("kyno_delivery_records", MetaData(), autoload_with=engine)
+        with engine.begin() as connection:
+            connection.execute(
+                insert(table).values(
+                    record_id="original-record",
+                    recorded_at="2026-09-14T00:00:00+00:00",
+                    requested_constitution="default",
+                    served_version=0,
+                    operation="get_mission",
+                    selection="{}",
+                    direction='{"version": 0, "mission": ""}',
+                    requester="null",
+                    session_id=grouping_id,
+                    metadata='{"agent_id": "A"}',
+                )
+            )
+            original = dict(connection.execute(select(table)).mappings().one())
+
+        command.upgrade(config, "head")
+        table = Table("kyno_delivery_records", MetaData(), autoload_with=engine)
+        expected = {**original}
+        expected["correlation_id"] = expected.pop("session_id")
+        with engine.connect() as connection:
+            assert dict(connection.execute(select(table)).mappings().one()) == expected
+
+        command.downgrade(config, "0007")
+        table = Table("kyno_delivery_records", MetaData(), autoload_with=engine)
+        with engine.connect() as connection:
+            assert dict(connection.execute(select(table)).mappings().one()) == original
+        indexes = {
+            item["name"]: item["column_names"]
+            for item in inspect(engine).get_indexes("kyno_delivery_records")
+        }
+        assert indexes["kyno_ix_delivery_record_session"] == ["session_id", "sequence"]
+        assert "kyno_ix_delivery_record_correlation" not in indexes
+    finally:
+        engine.dispose()

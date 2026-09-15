@@ -103,15 +103,22 @@ class SqlDeliveryRecordStore:
         constitution: str | None = None,
         since: str | None = None,
         until: str | None = None,
+        after: int = 0,
         limit: int = 50,
-    ) -> list[dict]:
-        """Return up to limit delivery records in insertion order, with inclusive time bounds."""
+    ) -> dict:
+        """Return an insertion-ordered page and its next cursor, or None at the end.
+
+        Time bounds are inclusive. Continue with the same filters and the returned
+        cursor as after; records appended between pages can appear on later pages.
+        """
         if type(limit) is not int or not 1 <= limit <= 100:
             raise ValueError("limit must be an integer from 1 to 100")
+        if type(after) is not int or after < 0:
+            raise ValueError("after must be a nonnegative integer")
         since, until = _timestamp(since), _timestamp(until)
         if since and until and since > until:
             raise ValueError("since must not be later than until")
-        query = select(self._table)
+        query = select(self._table).where(self._table.c.sequence > after)
         for column, value in (
             (self._table.c.correlation_id, correlation_id),
             (self._table.c.requested_constitution, constitution),
@@ -124,8 +131,11 @@ class SqlDeliveryRecordStore:
             query = query.where(self._table.c.recorded_at <= until)
         with self._engine.connect() as connection:
             rows = (
-                connection.execute(query.order_by(self._table.c.sequence).limit(limit))
+                connection.execute(query.order_by(self._table.c.sequence).limit(limit + 1))
                 .mappings()
                 .all()
             )
-        return [self._decode(row) for row in rows]
+        return {
+            "items": [self._decode(row) for row in rows[:limit]],
+            "next_cursor": rows[limit - 1]["sequence"] if len(rows) > limit else None,
+        }

@@ -49,7 +49,7 @@ def test_given_sqlite_connection_when_recording_finishes_then_original_busy_time
         engine.dispose()
 
 
-def test_given_full_direction_pool_when_recording_then_it_uses_an_independent_connection(
+def test_given_pool_has_no_free_connections_when_recording_then_query_uses_a_separate_connection(
     tmp_path,
 ):
     engine = create_engine(

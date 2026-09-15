@@ -217,6 +217,25 @@ Lookup remains available when `[delivery]` has `recording_policy = never`. Looki
 does not create another delivery, including when recording is `always`.
 Database failures return an availability error without database details.
 
+## Browsing delivery history
+
+Call `list_delivery_records` to browse delivery summaries. Each summary includes
+the recorded version reference, timestamp, request context, requester,
+correlation ID, and application metadata. It includes neither direction content
+nor the saved delta. Use `get_delivery_record` for the delta of an individual
+delivery, then retrieve its historical constitution version if needed.
+
+Pages default to 50 records and accept a `limit` from 1 through 100. This is an
+initial operating limit for small reference-based records, not a latency
+guarantee. Metadata can still increase response size.
+
+Optional `correlation_id`, `constitution`, `since`, and `until` filters select
+matching events before the page limit is applied. Time bounds are inclusive.
+For the next page, pass `next_cursor` as `after` with the same filters; a null
+cursor means the current results are exhausted. Events are ordered by insertion,
+and new events can appear between pages. Read and write tokens may browse history.
+Listing never creates another delivery record.
+
 ## Running Kyno embedded
 
 When your orchestrator is itself a Python app, you can run the control

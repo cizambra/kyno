@@ -265,6 +265,24 @@ def build_server(control_plane: ControlPlane, token_store=None) -> Server:
                 )
             case "whoami":
                 result = handle_whoami(_request_token(server, token_store))
+            case "list_delivery_records":
+                result = _delivery_query(
+                    control_plane,
+                    lambda store: store.list(
+                        **{
+                            key: arguments[key]
+                            for key in (
+                                "correlation_id",
+                                "constitution",
+                                "since",
+                                "until",
+                                "after",
+                                "limit",
+                            )
+                            if key in arguments
+                        }
+                    ),
+                )
             case _:
                 raise ValueError(f"unknown tool: {name}")
         if name in DIRECTION_READS:

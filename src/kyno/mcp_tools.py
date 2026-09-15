@@ -272,5 +272,41 @@ for tool, _scope in DECLARATIONS:
             }
         )
 
+DECLARATIONS.append(
+    (
+        types.Tool(
+            name="list_delivery_records",
+            description=(
+                "Return delivery summaries without direction content or deltas. "
+                "Results are in insertion order. "
+                "Use next_cursor as "
+                "after with the same filters for the next page. Reading history does not "
+                "record another delivery."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "correlation_id": {"type": "string"},
+                    "constitution": {
+                        "type": "string",
+                        "description": "Filter by named constitution; omitted means all.",
+                    },
+                    "since": {
+                        "type": "string",
+                        "description": "Inclusive ISO timestamp with timezone.",
+                    },
+                    "until": {
+                        "type": "string",
+                        "description": "Inclusive ISO timestamp with timezone.",
+                    },
+                    "after": {"type": "integer", "minimum": 0, "default": 0},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 50},
+                },
+            },
+        ),
+        TokenScope.READ,
+    )
+)
+
 TOOLS = [tool for tool, _ in DECLARATIONS]
 TOOL_SCOPES = {tool.name: scope for tool, scope in DECLARATIONS}

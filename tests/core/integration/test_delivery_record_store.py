@@ -125,6 +125,22 @@ def test_given_non_json_delta_when_appending_then_no_partial_record_is_written(s
     assert rows(store) == []
 
 
+def test_given_new_version_before_recording_when_saving_delivery_then_served_version_is_kept(
+    store,
+):
+    plane = ControlPlane(store, "missing")
+    plane.set_direction(mission="Original mission", change_note="initial")
+    response = {"version": 1, "mission": "Original mission"}
+    plane.set_direction(mission="New mission", change_note="updated")
+
+    identifier = append(store, response)
+
+    record = SqlDeliveryRecordStore(store.engine).get(identifier)
+    assert record["served_version"] == 1
+    assert store.get("missing", record["served_version"]).mission == "Original mission"
+    assert plane.current().version == 2
+
+
 def test_given_custom_prefix_when_appending_then_only_prefixed_tables_are_used():
     store = SqlConstitutionStore(url="sqlite://", prefix="custom_")
     store.create_all()
@@ -272,18 +288,25 @@ def test_given_two_constitutions_when_recording_the_second_then_it_links_to_the_
 
 
 @pytest.mark.parametrize("correlation_id", [None, "", "workflow-42/research"])
+@pytest.mark.parametrize("served_version", [0, 2], ids=["unwritten", "stored-version-with-delta"])
 def test_given_migrated_database_when_reopened_then_committed_recording_is_preserved(
-    tmp_path, correlation_id
+    tmp_path, correlation_id, served_version
 ):
     url = f"sqlite:///{tmp_path / 'recordings.sqlite3'}"
     config = Config("alembic.ini")
     config.set_main_option("sqlalchemy.url", url)
     command.upgrade(config, "head")
     store = SqlConstitutionStore(url=url)
-    direction = {"version": 0, "mission": "", "principles": []}
+    expected_delta = ["Mission changed."] if served_version else None
     try:
+        if served_version:
+            plane = ControlPlane(store, "missing")
+            plane.set_direction(mission="Initial mission", change_note="initial")
+            plane.set_direction(mission="Recorded mission", change_note="updated")
         identifier = append(
-            store, direction, context={"correlation_id": correlation_id, "metadata": {}}
+            store,
+            {"version": served_version, "delta": expected_delta},
+            context={"correlation_id": correlation_id, "metadata": {}},
         )
     finally:
         store.engine.dispose()
@@ -294,12 +317,17 @@ def test_given_migrated_database_when_reopened_then_committed_recording_is_prese
         assert len(records) == 1
         assert records[0]["record_id"] == identifier
         assert records[0]["correlation_id"] == correlation_id
-        assert json.loads(records[0]["delta"]) is None
+        assert json.loads(records[0]["delta"]) == expected_delta
         saved = SqlDeliveryRecordStore(reopened.engine).get(identifier)
         assert saved["record_id"] == identifier
         assert saved["correlation_id"] == correlation_id
-        assert saved["delta"] is None
-        assert saved["served_version"] == 0
+        assert saved["delta"] == expected_delta
+        assert saved["served_version"] == served_version
+        if served_version:
+            assert saved["constitution_id"] is not None
+            assert reopened.get("missing", served_version).mission == "Recorded mission"
+        else:
+            assert saved["constitution_id"] is None
     finally:
         reopened.engine.dispose()
 
@@ -353,8 +381,9 @@ def test_given_responses_sharing_a_correlation_id_when_recording_then_each_keeps
 @pytest.mark.parametrize(
     "payload, expected",
     [({}, None), ({"delta": []}, []), ({"delta": ["Mission changed."]}, ["Mission changed."])],
+    ids=["missing-delta", "empty-delta", "populated-delta"],
 )
-def test_given_optional_response_delta_when_recording_then_absent_and_empty_remain_distinct(
+def test_given_a_response_when_recording_then_missing_delta_is_null_and_present_delta_is_kept(
     store, payload, expected
 ):
     identifier = append(store, {"version": 0, **payload})

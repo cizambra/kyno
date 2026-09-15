@@ -74,6 +74,7 @@ def test_given_read_arguments_when_recording_then_only_effective_arguments_are_a
         arguments=expected,
         context={"correlation_id": "session", "metadata": {"nested": [1]}},
         requester=requester,
+        timeout_seconds=1.0,
     )
     assert direction == original
 
@@ -111,3 +112,16 @@ def test_given_append_failure_when_recording_then_failure_is_reported_without_se
 def test_given_invalid_policy_when_constructing_then_it_is_rejected(store):
     with pytest.raises(ValueError):
         DeliveryRecorder(store, "sometimes")
+
+
+def test_given_custom_recording_timeout_when_recording_then_the_store_uses_that_limit(store):
+    DeliveryRecorder(store, "always", timeout_seconds=0.25).record(
+        {"version": 0}, operation="get_mission", constitution="missing", arguments={}
+    )
+    assert store.append.call_args.kwargs["timeout_seconds"] == 0.25
+
+
+@pytest.mark.parametrize("timeout", [0, -1, float("nan"), float("inf"), True])
+def test_given_invalid_recording_timeout_when_building_recorder_then_it_is_rejected(store, timeout):
+    with pytest.raises(ValueError, match="positive finite"):
+        DeliveryRecorder(store, "always", timeout_seconds=timeout)

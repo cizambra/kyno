@@ -66,3 +66,32 @@ def test_given_missing_delivery_table_when_recording_then_database_failure_retur
         {"version": 0}, operation="get_constitution", constitution="missing", arguments={}
     )
     assert result == {"status": "failed", "record_id": None}
+
+
+def test_given_locked_sqlite_when_recording_then_it_fails_without_a_record_and_recovers_on_unlock(
+    tmp_path,
+):
+    store = SqlConstitutionStore(url=f"sqlite:///{tmp_path / 'recording.db'}")
+    store.create_all()
+    records = SqlDeliveryRecordStore(store.engine)
+    recorder = DeliveryRecorder(records, "always", timeout_seconds=0.01)
+    direction = {"version": 0, "mission": "Available direction"}
+    try:
+        with store.engine.connect() as lock:
+            lock.exec_driver_sql("BEGIN IMMEDIATE")
+            try:
+                result = recorder.record(
+                    direction, operation="get_mission", constitution="missing", arguments={}
+                )
+                assert result == {"status": "failed", "record_id": None}
+                assert records.list()["items"] == []
+                assert direction == {"version": 0, "mission": "Available direction"}
+            finally:
+                lock.rollback()
+        result = recorder.record(
+            direction, operation="get_mission", constitution="missing", arguments={}
+        )
+        assert result["status"] == "recorded"
+        assert [record["record_id"] for record in records.list()["items"]] == [result["record_id"]]
+    finally:
+        store.engine.dispose()

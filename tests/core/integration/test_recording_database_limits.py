@@ -1,0 +1,135 @@
+"""Recording database waits use their own limits without changing ordinary connections."""
+
+import pytest
+from sqlalchemy import create_engine, delete
+
+from kyno.delivery_recording import DeliveryRecorder
+from kyno.service import ControlPlane
+from kyno.store.delivery_record import SqlDeliveryRecordStore
+from kyno.store.recording_connection import recording_transaction
+
+
+@pytest.fixture
+def delivery_table(store):
+    return next(
+        table for table in store.metadata.tables.values() if table.name.endswith("delivery_records")
+    )
+
+
+@pytest.fixture
+def records(store, delivery_table):
+    return SqlDeliveryRecordStore(
+        store.engine, prefix=delivery_table.name.removesuffix("delivery_records")
+    )
+
+
+@pytest.mark.parametrize("in_memory", [False, True])
+@pytest.mark.parametrize("fail", [False, True])
+def test_given_sqlite_connection_when_recording_finishes_then_original_busy_timeout_is_preserved(
+    tmp_path, in_memory, fail
+):
+    engine = create_engine("sqlite://" if in_memory else f"sqlite:///{tmp_path / 'recording.db'}")
+    try:
+        with engine.connect() as connection:
+            original = connection.exec_driver_sql("PRAGMA busy_timeout").scalar_one()
+        try:
+            with recording_transaction(engine, 0.025) as connection:
+                assert connection.exec_driver_sql("PRAGMA busy_timeout").scalar_one() == 25
+                if fail:
+                    raise ValueError("rollback")
+        except ValueError:
+            assert fail
+        with engine.connect() as connection:
+            assert connection.exec_driver_sql("PRAGMA busy_timeout").scalar_one() == original
+    finally:
+        engine.dispose()
+
+
+def test_given_full_direction_pool_when_recording_then_it_uses_an_independent_connection(
+    tmp_path,
+):
+    engine = create_engine(
+        f"sqlite:///{tmp_path / 'recording.db'}", pool_size=1, max_overflow=0, pool_timeout=0
+    )
+    try:
+        with engine.connect(), recording_transaction(engine, 0.025) as connection:
+            assert connection.exec_driver_sql("SELECT 1").scalar_one() == 1
+    finally:
+        engine.dispose()
+
+
+def test_given_database_when_opening_recording_transaction_then_native_wait_limit_is_applied(store):
+    statements = {
+        "sqlite": ("PRAGMA busy_timeout", 25),
+        "postgresql": ("SHOW statement_timeout", "25ms"),
+        "mysql": ("SELECT @@session.innodb_lock_wait_timeout", 1),
+    }
+    statement, expected = statements[store.engine.dialect.name]
+    with store.engine.connect() as connection:
+        original = connection.exec_driver_sql(statement).scalar_one()
+    with recording_transaction(store.engine, 0.025) as connection:
+        assert connection.exec_driver_sql(statement).scalar_one() == expected
+    with store.engine.connect() as connection:
+        assert connection.exec_driver_sql(statement).scalar_one() == original
+
+
+def test_given_locked_postgres_table_when_recording_then_it_fails_and_recovers_after_unlock(
+    store, delivery_table
+):
+    if store.engine.dialect.name != "postgresql":
+        pytest.skip("PostgreSQL table-lock behavior")
+    engine = create_engine(
+        store.engine.url.update_query_dict({"options": "-c statement_timeout=5000"})
+    )
+    records = SqlDeliveryRecordStore(
+        engine, prefix=delivery_table.name.removesuffix("delivery_records")
+    )
+    recorder = DeliveryRecorder(records, "always", timeout_seconds=0.025)
+    try:
+        with store.engine.begin() as lock:
+            lock.exec_driver_sql(f'LOCK TABLE "{delivery_table.name}" IN ACCESS EXCLUSIVE MODE')
+            result = recorder.record(
+                {"version": 0}, operation="get_mission", constitution="missing", arguments={}
+            )
+            assert result == {"status": "failed", "record_id": None}
+        assert records.list()["items"] == []
+        result = recorder.record(
+            {"version": 0}, operation="get_mission", constitution="missing", arguments={}
+        )
+        assert result["status"] == "recorded"
+        assert records.get(result["record_id"])["served_version"] == 0
+    finally:
+        engine.dispose()
+
+
+def test_given_served_version_when_recording_with_wait_limits_then_reference_and_delta_are_saved(
+    store, records
+):
+    plane = ControlPlane(store)
+    plane.set_direction(constitution="team", mission="Help customers", change_note="initial")
+    result = DeliveryRecorder(records, "always", timeout_seconds=1).record(
+        {"version": 1, "delta": ["Mission changed."]},
+        operation="get_constitution",
+        constitution="team",
+        arguments={},
+    )
+    assert result["status"] == "recorded"
+    record = records.get(result["record_id"])
+    assert record["served_version"] == 1
+    assert record["constitution_id"] is not None
+    assert record["delta"] == ["Mission changed."]
+
+
+def test_given_recording_transaction_failure_when_rolling_back_then_existing_records_remain(
+    store, records, delivery_table
+):
+    result = DeliveryRecorder(records, "always").record(
+        {"version": 0}, operation="get_mission", constitution="missing", arguments={}
+    )
+    with (
+        pytest.raises(ValueError, match="abort"),
+        recording_transaction(store.engine, 1) as connection,
+    ):
+        connection.execute(delete(delivery_table))
+        raise ValueError("abort")
+    assert records.get(result["record_id"])["served_version"] == 0

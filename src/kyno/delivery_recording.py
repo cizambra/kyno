@@ -2,7 +2,7 @@
 
 import logging
 
-from kyno.delivery import RecordingPolicy
+from kyno.delivery import DeliverySettings, RecordingPolicy
 from kyno.delivery_context import delivery_context
 from kyno.store.delivery_record import SqlDeliveryRecordStore
 from kyno.wire.delivery import RecordingStatus, recording_result
@@ -31,10 +31,16 @@ def _recording_arguments(operation: str, arguments: dict) -> dict:
 
 class DeliveryRecorder:
     def __init__(
-        self, store: SqlDeliveryRecordStore, policy: RecordingPolicy = RecordingPolicy.NEVER
+        self,
+        store: SqlDeliveryRecordStore,
+        policy: RecordingPolicy = RecordingPolicy.NEVER,
+        *,
+        timeout_seconds: float = 1.0,
     ) -> None:
         self._store = store
-        self.policy = RecordingPolicy(policy)
+        settings = DeliverySettings(policy, recording_timeout_seconds=timeout_seconds)
+        self.policy = settings.recording_policy
+        self._timeout_seconds = settings.recording_timeout_seconds
 
     def record(
         self,
@@ -48,7 +54,8 @@ class DeliveryRecorder:
         """Validate context and return disabled, recorded, or failed persistence status.
 
         Invalid context raises ValueError even when recording is disabled. Enabled
-        persistence is synchronous and has no independent recording deadline.
+        persistence uses recording-specific database wait limits. A failed write
+        does not invalidate the supplied direction.
         """
         context = delivery_context(arguments)
         if self.policy is RecordingPolicy.NEVER:
@@ -61,6 +68,7 @@ class DeliveryRecorder:
                 arguments=_recording_arguments(operation, arguments),
                 context=context,
                 requester=requester,
+                timeout_seconds=self._timeout_seconds,
             )
         except Exception as exc:
             return recording_failure(exc)

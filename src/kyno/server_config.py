@@ -83,7 +83,9 @@ def store_from_settings(settings: Settings) -> SqlConstitutionStore:
 
 def control_plane_from_settings(settings: Settings, store: SqlConstitutionStore) -> ControlPlane:
     """Compose the control plane and delivery recorder using the workspace policy."""
-    delivery_record_store = SqlDeliveryRecordStore(store.engine)
+    delivery_record_store = SqlDeliveryRecordStore(
+        store.engine, recording_url=settings.database_url
+    )
     return ControlPlane(
         store,
         delivery_record_store=delivery_record_store,

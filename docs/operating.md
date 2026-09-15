@@ -182,10 +182,16 @@ capped at native limits. Separate operations can each wait, so this is not an
 exact total response-time deadline or protection against every OS/network stall.
 
 File/server databases use a separate, short-lived connection built from the
-database URL. Recording does not wait for the direction connection pool or
+workspace database URL. Recording does not wait for the direction connection pool or
 change its timeout settings. This adds connection overhead when recording is
 enabled. In-memory SQLite reuses its existing connection to retain the database.
-Custom engine connection hooks are not copied to the recording connection.
+Programmatic Core integrations using file/server databases must supply an
+explicit `recording_url` when constructing `SqlDeliveryRecordStore`. It must
+match the direction engine URL. Custom creators, connection arguments, and
+hooks are not copied; the supplied URL must carry the intended connection
+configuration. Without an explicit URL, recording fails rather than guessing
+where an injected engine actually connects. Workspace-based setup supplies
+the URL automatically.
 
 A timeout returns the direction with `recording.status = "failed"` and no
 record ID. This means saving was not confirmed, not proof that no row exists:

@@ -24,7 +24,7 @@ def history_store():
 
 
 def server_with_history(store, policy="always", constitution="default"):
-    history = SqlDeliveryRecordStore(store.engine)
+    history = SqlDeliveryRecordStore(store.engine, recording_url=store.engine.url)
     plane = ControlPlane(
         store,
         constitution,

@@ -27,6 +27,56 @@ def test_given_a_new_workspace_when_listing_it_then_the_four_files_are_there(tmp
     assert files == [".gitignore", "README.md", "config/server", "db/.keep"]
 
 
+@pytest.mark.parametrize("body", ["", "[delivery]\nrecording_policy = always\n"])
+def test_given_no_recording_timeout_when_loading_settings_then_it_defaults_to_one_second(
+    tmp_path, monkeypatch, body
+):
+    root = make(tmp_path)
+    write_config(root, body)
+    monkeypatch.chdir(root)
+    assert Settings.load().delivery.recording_timeout_seconds == 1.0
+
+
+@pytest.mark.parametrize("value", ["0.25", "2", "${ACME_RECORDING_TIMEOUT}"])
+def test_given_recording_timeout_when_loading_settings_then_it_preserves_configured_seconds(
+    tmp_path, monkeypatch, value
+):
+    root = make(tmp_path)
+    monkeypatch.setenv("ACME_RECORDING_TIMEOUT", "0.25")
+    write_config(root, f"[delivery]\nrecording_timeout_seconds = {value}\n")
+    monkeypatch.chdir(root)
+    assert Settings.load().delivery.recording_timeout_seconds == (2 if value == "2" else 0.25)
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "nan", "inf", "-inf", "1e999", "true", "", "secret"])
+@pytest.mark.parametrize("policy", ["never", "always"])
+def test_given_invalid_recording_timeout_when_reading_config_then_it_names_the_setting(
+    tmp_path, value, policy
+):
+    root = make(tmp_path)
+    write_config(
+        root, f"[delivery]\nrecording_policy = {policy}\nrecording_timeout_seconds = {value}\n"
+    )
+    with pytest.raises(
+        ConfigError, match="delivery.recording_timeout_seconds must be a positive finite number"
+    ):
+        read_config(root)
+
+
+@pytest.mark.parametrize("value", [None, "", "nan"])
+def test_given_invalid_timeout_reference_when_reading_config_then_configuration_is_rejected(
+    tmp_path, monkeypatch, value
+):
+    root = make(tmp_path)
+    write_config(root, "[delivery]\nrecording_timeout_seconds = ${ACME_RECORDING_TIMEOUT}\n")
+    if value is None:
+        monkeypatch.delenv("ACME_RECORDING_TIMEOUT", raising=False)
+    else:
+        monkeypatch.setenv("ACME_RECORDING_TIMEOUT", value)
+    with pytest.raises(ConfigError, match="delivery.recording_timeout_seconds"):
+        read_config(root)
+
+
 @pytest.mark.parametrize("body", ["", "[server]\nhost = localhost\n", "[delivery]\n"])
 def test_given_no_recording_policy_when_reading_then_it_defaults_to_never(tmp_path, body):
     root = make(tmp_path)

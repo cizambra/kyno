@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from typing import cast
 from uuid import uuid4
 
-from sqlalchemy import Engine, insert, select
+from sqlalchemy import URL, Engine, insert, select
 
 from kyno.store.recording_connection import recording_transaction
 from kyno.store.schema import build_metadata
@@ -25,8 +25,11 @@ def _timestamp(value: str | None) -> str | None:
 
 
 class SqlDeliveryRecordStore:
-    def __init__(self, engine: Engine, prefix: str = "kyno_") -> None:
+    def __init__(
+        self, engine: Engine, prefix: str = "kyno_", *, recording_url: str | URL | None = None
+    ) -> None:
         self._engine = engine
+        self._recording_url = recording_url
         metadata, self._constitutions, self._versions, _ = build_metadata(prefix)
         self._table = metadata.tables[f"{prefix}delivery_records"]
 
@@ -64,7 +67,9 @@ class SqlDeliveryRecordStore:
         transaction = (
             self._engine.begin()
             if timeout_seconds is None
-            else recording_transaction(self._engine, timeout_seconds)
+            else recording_transaction(
+                self._engine, timeout_seconds, database_url=self._recording_url
+            )
         )
         with transaction as connection:
             constitution_id = None

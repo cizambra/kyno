@@ -73,7 +73,7 @@ def test_given_locked_sqlite_when_recording_then_it_fails_without_a_record_and_r
 ):
     store = SqlConstitutionStore(url=f"sqlite:///{tmp_path / 'recording.db'}")
     store.create_all()
-    records = SqlDeliveryRecordStore(store.engine)
+    records = SqlDeliveryRecordStore(store.engine, recording_url=store.engine.url)
     recorder = DeliveryRecorder(records, "always", timeout_seconds=0.01)
     direction = {"version": 0, "mission": "Available direction"}
     try:

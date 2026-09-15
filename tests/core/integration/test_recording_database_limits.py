@@ -1,5 +1,7 @@
 """Recording database waits use their own limits without changing ordinary connections."""
 
+import sqlite3
+
 import pytest
 from sqlalchemy import create_engine, delete
 
@@ -19,7 +21,9 @@ def delivery_table(store):
 @pytest.fixture
 def records(store, delivery_table):
     return SqlDeliveryRecordStore(
-        store.engine, prefix=delivery_table.name.removesuffix("delivery_records")
+        store.engine,
+        prefix=delivery_table.name.removesuffix("delivery_records"),
+        recording_url=store.engine.url,
     )
 
 
@@ -33,7 +37,7 @@ def test_given_sqlite_connection_when_recording_finishes_then_original_busy_time
         with engine.connect() as connection:
             original = connection.exec_driver_sql("PRAGMA busy_timeout").scalar_one()
         try:
-            with recording_transaction(engine, 0.025) as connection:
+            with recording_transaction(engine, 0.025, database_url=engine.url) as connection:
                 assert connection.exec_driver_sql("PRAGMA busy_timeout").scalar_one() == 25
                 if fail:
                     raise ValueError("rollback")
@@ -52,7 +56,10 @@ def test_given_full_direction_pool_when_recording_then_it_uses_an_independent_co
         f"sqlite:///{tmp_path / 'recording.db'}", pool_size=1, max_overflow=0, pool_timeout=0
     )
     try:
-        with engine.connect(), recording_transaction(engine, 0.025) as connection:
+        with (
+            engine.connect(),
+            recording_transaction(engine, 0.025, database_url=engine.url) as connection,
+        ):
             assert connection.exec_driver_sql("SELECT 1").scalar_one() == 1
     finally:
         engine.dispose()
@@ -67,7 +74,7 @@ def test_given_database_when_opening_recording_transaction_then_native_wait_limi
     statement, expected = statements[store.engine.dialect.name]
     with store.engine.connect() as connection:
         original = connection.exec_driver_sql(statement).scalar_one()
-    with recording_transaction(store.engine, 0.025) as connection:
+    with recording_transaction(store.engine, 0.025, database_url=store.engine.url) as connection:
         assert connection.exec_driver_sql(statement).scalar_one() == expected
     with store.engine.connect() as connection:
         assert connection.exec_driver_sql(statement).scalar_one() == original
@@ -82,7 +89,9 @@ def test_given_locked_postgres_table_when_recording_then_it_fails_and_recovers_a
         store.engine.url.update_query_dict({"options": "-c statement_timeout=5000"})
     )
     records = SqlDeliveryRecordStore(
-        engine, prefix=delivery_table.name.removesuffix("delivery_records")
+        engine,
+        prefix=delivery_table.name.removesuffix("delivery_records"),
+        recording_url=engine.url,
     )
     recorder = DeliveryRecorder(records, "always", timeout_seconds=0.025)
     try:
@@ -128,8 +137,76 @@ def test_given_recording_transaction_failure_when_rolling_back_then_existing_rec
     )
     with (
         pytest.raises(ValueError, match="abort"),
-        recording_transaction(store.engine, 1) as connection,
+        recording_transaction(store.engine, 1, database_url=store.engine.url) as connection,
     ):
         connection.execute(delete(delivery_table))
         raise ValueError("abort")
     assert records.get(result["record_id"])["served_version"] == 0
+
+
+def test_given_injected_connection_creator_when_recording_without_a_url_then_it_is_rejected(
+    tmp_path,
+):
+    actual_database = tmp_path / "actual.db"
+    url_database = tmp_path / "url.db"
+    engine = create_engine(
+        f"sqlite:///{url_database}", creator=lambda: sqlite3.connect(actual_database)
+    )
+    try:
+        with engine.connect() as connection:
+            assert connection.exec_driver_sql("SELECT 1").scalar_one() == 1
+        with (
+            pytest.raises(ValueError, match="explicit recording database URL"),
+            recording_transaction(engine, 1),
+        ):
+            pass
+        assert not url_database.exists()
+    finally:
+        engine.dispose()
+
+
+def test_given_different_recording_url_when_opening_transaction_then_it_is_rejected(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'direction.db'}")
+    try:
+        with (
+            pytest.raises(ValueError, match="must match the direction engine URL"),
+            recording_transaction(engine, 1, database_url=f"sqlite:///{tmp_path / 'other.db'}"),
+        ):
+            pass
+        assert not (tmp_path / "other.db").exists()
+    finally:
+        engine.dispose()
+
+
+def test_given_locked_mysql_table_when_recording_then_it_fails_and_recovers_after_unlock(
+    store, delivery_table
+):
+    if store.engine.dialect.name != "mysql":
+        pytest.skip("MySQL table-lock behavior")
+    engine = create_engine(
+        store.engine.url.update_query_dict({"read_timeout": "5", "write_timeout": "5"})
+    )
+    records = SqlDeliveryRecordStore(
+        engine,
+        prefix=delivery_table.name.removesuffix("delivery_records"),
+        recording_url=engine.url,
+    )
+    recorder = DeliveryRecorder(records, "always", timeout_seconds=1)
+    try:
+        with store.engine.connect() as lock:
+            lock.exec_driver_sql(f"LOCK TABLES `{delivery_table.name}` WRITE")
+            try:
+                result = recorder.record(
+                    {"version": 0}, operation="get_mission", constitution="missing", arguments={}
+                )
+                assert result == {"status": "failed", "record_id": None}
+            finally:
+                lock.exec_driver_sql("UNLOCK TABLES")
+        assert records.list()["items"] == []
+        result = recorder.record(
+            {"version": 0}, operation="get_mission", constitution="missing", arguments={}
+        )
+        assert result["status"] == "recorded"
+        assert records.get(result["record_id"])["served_version"] == 0
+    finally:
+        engine.dispose()

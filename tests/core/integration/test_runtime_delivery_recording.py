@@ -180,10 +180,19 @@ async def test_given_an_unknown_name_when_reading_then_the_record_has_no_constit
 
 
 @pytest.mark.asyncio
-async def test_given_recording_enabled_when_reading_the_mcp_resource_then_the_response_is_recorded(
+@pytest.mark.parametrize("status", ["recorded", "disabled", "failed"])
+async def test_given_recording_outcome_when_reading_resource_then_direction_and_status_are_returned(
     history_store,
+    monkeypatch,
+    status,
 ):
-    server, history, _ = server_with_history(history_store, constitution="support")
+    server, history, _ = server_with_history(
+        history_store, policy="never" if status == "disabled" else "always", constitution="support"
+    )
+    append = Mock(wraps=history.append)
+    if status == "failed":
+        append.side_effect = RuntimeError("database unavailable")
+    monkeypatch.setattr(history, "append", append)
     result = await server.request_handlers[types.ReadResourceRequest](
         types.ReadResourceRequest(
             method="resources/read",
@@ -191,6 +200,14 @@ async def test_given_recording_enabled_when_reading_the_mcp_resource_then_the_re
         )
     )
     payload = json.loads(result.root.contents[0].text)
+    assert payload["mission"] == "Help customers"
+    assert payload["version"] == 1
+    assert payload["recording"]["status"] == status
+    assert append.call_count == (0 if status == "disabled" else 1)
+    if status != "recorded":
+        assert payload["recording"]["record_id"] is None
+        assert records(history_store) == []
+        return
     record = saved_record(history_store, payload["recording"]["record_id"])
     assert record["requested_constitution"] == "support"
     assert record["operation"] == "read_resource"

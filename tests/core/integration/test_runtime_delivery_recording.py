@@ -318,7 +318,7 @@ async def test_given_failed_attribution_when_reading_then_direction_returns_with
     history_store,
     monkeypatch,
 ):
-    import kyno.mcp_server as module
+    import kyno.mcp_request_context as module
 
     server, history, _ = server_with_history(history_store)
 
@@ -460,7 +460,7 @@ def test_given_no_recorder_when_recording_through_core_then_status_is_disabled(h
 async def test_given_disabled_recording_when_attribution_fails_then_it_is_not_resolved(
     history_store, monkeypatch
 ):
-    import kyno.mcp_server as module
+    import kyno.mcp_request_context as module
 
     server, _, _ = server_with_history(history_store, policy="never")
 

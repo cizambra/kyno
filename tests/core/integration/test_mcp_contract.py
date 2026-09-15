@@ -4,7 +4,8 @@ import asyncio
 
 import pytest
 
-from kyno import mcp_server
+from kyno import mcp_handlers, mcp_server
+from kyno.wire import RESOURCE_URI
 
 
 @pytest.mark.asyncio
@@ -18,11 +19,11 @@ async def test_given_a_subscribed_session_when_the_version_bumps_then_it_is_noti
             received.append(str(uri))
 
     server._kyno_subscribers.add(FakeSession())
-    mcp_server.handle_set_direction(
+    mcp_handlers.handle_set_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by=None
     )
     await asyncio.gather(*server._kyno_pending)
-    assert received == [mcp_server.RESOURCE_URI]
+    assert received == [RESOURCE_URI]
 
 
 @pytest.mark.asyncio
@@ -42,13 +43,13 @@ async def test_given_an_mcp_subscriber_raises_when_notifying_then_another_receiv
     healthy = HealthySession()
     server._kyno_subscribers.update((broken, healthy))
 
-    result = mcp_server.handle_set_direction(
+    result = mcp_handlers.handle_set_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by=None
     )
     await asyncio.gather(*server._kyno_pending)
 
     assert result["version"] == 1
-    assert received == [mcp_server.RESOURCE_URI]
+    assert received == [RESOURCE_URI]
     assert server._kyno_subscribers == {healthy}
 
 
@@ -57,7 +58,7 @@ def test_given_no_running_loop_when_notifying_then_it_is_a_noop(cp):
     # the notify hook must not raise anyway.
     server = mcp_server.build_server(cp)
     server._kyno_subscribers.add(object())
-    mcp_server.handle_set_direction(
+    mcp_handlers.handle_set_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by=None
     )
 

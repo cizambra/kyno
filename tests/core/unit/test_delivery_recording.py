@@ -84,9 +84,36 @@ def test_given_irrelevant_selection_arguments_when_recording_then_they_are_ignor
         {"version": 1},
         operation="get_mission",
         constitution="team",
-        arguments={"known_version": object(), "detail": object(), "title": object()},
+        arguments={"detail": object(), "title": object()},
     )
     assert store.append.call_args.kwargs["arguments"] == {}
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        "get_constitution",
+        "get_changes_since",
+        "get_mission",
+        "get_declaration",
+        "get_principles",
+        "get_principle",
+    ],
+)
+@pytest.mark.parametrize("known_version", [0, 1, 3])
+def test_given_caller_version_when_recording_any_read_then_known_and_served_versions_are_kept(
+    store, operation, known_version
+):
+    direction = {"version": 2, "current_version": 2}
+    result = DeliveryRecorder(store, "always").record(
+        direction,
+        operation=operation,
+        constitution="team",
+        arguments={"known_version": known_version, "title": "Care"},
+    )
+    assert result["status"] == "recorded"
+    assert store.append.call_args.kwargs["arguments"]["known_version"] == known_version
+    assert store.append.call_args.args[0] == {"version": 2, "current_version": 2}
 
 
 def test_given_append_failure_when_recording_then_failure_is_reported_without_sensitive_logs(

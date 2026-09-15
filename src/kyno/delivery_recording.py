@@ -20,7 +20,7 @@ def _recording_arguments(operation: str, arguments: dict) -> dict:
     selection = {}
     if operation in ("get_constitution", "get_changes_since"):
         selection["detail"] = arguments.get("detail", "compact")
-    if operation == "get_changes_since":
+    if operation == "get_changes_since" or "known_version" in arguments:
         selection["known_version"] = arguments["known_version"]
     if operation == "get_principles":
         selection["detail"] = arguments.get("detail", "titles")

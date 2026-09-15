@@ -6,6 +6,7 @@ import json
 import mcp.types as types
 from mcp.server import Server
 from pydantic import AnyUrl
+from sqlalchemy.exc import SQLAlchemyError
 
 from kyno.delivery import RecordingPolicy
 from kyno.delivery_context import delivery_context
@@ -38,6 +39,15 @@ def _guard(fn):
 def _require(arguments: dict, key: str) -> None:
     if key not in arguments:
         raise ValueError(f"missing required argument: {key}")
+
+
+def _delivery_query(cp: ControlPlane, read) -> dict:
+    if cp.delivery_record_store is None:
+        raise ValueError("delivery history is not configured on this Core instance")
+    try:
+        return read(cp.delivery_record_store)
+    except SQLAlchemyError:
+        raise ValueError("delivery history is unavailable") from None
 
 
 # Reads default to compact. The declaration and the descriptions are the long text, and an agent
@@ -197,6 +207,11 @@ def build_server(control_plane: ControlPlane, token_store=None) -> Server:
         if name in DIRECTION_READS:
             delivery_context(arguments)
         match name:
+            case "get_delivery_record":
+                _require(arguments, "record_id")
+                result = _delivery_query(
+                    control_plane, lambda store: store.get(arguments["record_id"])
+                )
             case "get_constitution":
                 result = handle_get_constitution(
                     control_plane,

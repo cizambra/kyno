@@ -68,15 +68,16 @@ recording_timeout_seconds = 1
 ```
 
 Omitting the section or its policy defaults to `never`. Unknown keys and
-other policy values fail configuration loading. The policy is parsed into
-`settings.delivery.recording_policy` only; it is not yet connected to runtime
-recording, so selecting `always` does not record direction responses.
+other policy values fail configuration loading. Core reads the policy through
+`settings.delivery.recording_policy`. See
+[Recording direction served over MCP](#recording-direction-served-over-mcp)
+for the recording boundary and response status.
 
 `recording_timeout_seconds` defaults to `1` second. It accepts a positive,
 finite number, including fractional seconds, or a `${VAR}` reference. Invalid
 values fail configuration loading even under `never`. The setting is available
-as `settings.delivery.recording_timeout_seconds`; runtime enforcement is not
-connected yet. It configures recording database wait limits, not a total
+as `settings.delivery.recording_timeout_seconds` and is used by the runtime
+recorder. It configures recording database wait limits, not a total
 response-time deadline, and has no effect when recording is disabled.
 
 The `[database]` section describes the database with split keys, like
@@ -120,6 +121,82 @@ duplicated.
 Reads never fail on an empty store. Before any direction is set, consumers
 get a version-0 empty state, so integrating Kyno ahead of adopting it costs
 nothing.
+
+## Recording direction served over MCP
+
+Recording is off by default. To enable it, set `recording_policy = always`
+under `[delivery]` in `config/server`, run `kyno db upgrade`,
+and restart the server. The choices are `always` and `never`; requests cannot
+override the server setting.
+
+`always` attempts to save each successful runtime direction response, including
+repeated reads of the same version. `never` stops new recording without deleting
+existing records or disabling operational and security logging. Earlier
+unrecorded requests cannot be reconstructed.
+
+The covered operations are `get_constitution`, `get_changes_since`, `get_mission`,
+`get_declaration`, `get_principles`, `get_principle`, and the current-constitution
+MCP resource. Exports, public pages, and direct embedded reads do not record
+runtime deliveries.
+
+Runtime tool calls accept an optional `correlation_id` and JSON `metadata` object.
+The application chooses which requests share a correlation ID. Correlation labels are limited
+to 255 characters and metadata to 16,384 bytes under Python's default JSON
+encoding. Metadata should hold non-secret correlation data, not credentials,
+prompts, or outputs. Authenticated requester identity comes from the token and
+is stored separately from these caller-supplied fields. Resource reads have no
+caller-supplied correlation label or metadata.
+
+The response includes a separate `recording` object:
+
+| Status | Record ID | Meaning |
+| --- | --- | --- |
+| `recorded` | Present | Core confirmed that the delivery event was saved. |
+| `disabled` | `null` | Recording is off; no write was attempted. |
+| `failed` | `null` | Direction was returned, but persistence was not confirmed. |
+
+The event references the immutable constitution ID and served version rather
+than copying mission, declaration, principles, or change notes. It keeps the
+request's known version, detail level, and selection, plus the generated delta
+as returned. A missing delta is null; a returned empty delta is an empty array.
+Version-zero reads retain the requested name without creating a constitution.
+Retrieve the referenced historical version, not current direction, when
+reviewing earlier work. This is not a byte-for-byte response archive. `disabled` and `failed` create no
+placeholder records. Failures produce an operational warning with the error
+class, excluding direction contents and database error messages.
+
+A server record does not confirm prompt injection, model obedience, or client
+receipt after a network interruption. Cache-only work creates no server record.
+There is no automatic expiration or pruning. Recording is synchronous, with
+database wait limits configured by `[delivery].recording_timeout_seconds`:
+
+- SQLite limits waits for database locks.
+- PostgreSQL limits statements (including lock waits) and connection attempts,
+  and configures TCP failure detection where the operating system supports it.
+- MySQL limits socket reads/writes, connection attempts, and database lock waits.
+
+Driver precision and minimums apply: SQLite/PostgreSQL statement limits round
+up to milliseconds; PostgreSQL connections allow at least two seconds; MySQL
+connection and lock limits round up to whole seconds. Very large settings are
+capped at native limits. Separate operations can each wait, so this is not an
+exact total response-time deadline or protection against every OS/network stall.
+
+File/server databases use a separate, short-lived connection built from the
+workspace database URL. Recording does not wait for the direction connection pool or
+change its timeout settings. This adds connection overhead when recording is
+enabled. In-memory SQLite reuses its existing connection to retain the database.
+Programmatic Core integrations using file/server databases must supply an
+explicit `recording_url` when constructing `SqlDeliveryRecordStore`. It must
+match the direction engine URL. Custom creators, connection arguments, and
+hooks are not copied; the supplied URL must carry the intended connection
+configuration. Without an explicit URL, recording fails rather than guessing
+where an injected engine actually connects. Workspace-based setup supplies
+the URL automatically.
+
+A timeout returns the direction with `recording.status = "failed"` and no
+record ID. This means saving was not confirmed, not proof that no row exists:
+for example, a connection can fail while the database is confirming a commit.
+Kyno does not retry the write or keep a background recording worker running.
 
 ## Running Kyno embedded
 

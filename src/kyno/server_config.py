@@ -5,8 +5,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from kyno.delivery import DeliverySettings
+from kyno.delivery_recording import DeliveryRecorder
 from kyno.errors import ConfigError
 from kyno.public_page import PageConfig, PageTheme
+from kyno.service import ControlPlane
+from kyno.store.delivery_record import SqlDeliveryRecordStore
 from kyno.store.sql import SqlConstitutionStore
 from kyno.workspace import find_workspace, read_config
 
@@ -76,3 +79,19 @@ class Settings:
 
 def store_from_settings(settings: Settings) -> SqlConstitutionStore:
     return SqlConstitutionStore(url=settings.database_url)
+
+
+def control_plane_from_settings(settings: Settings, store: SqlConstitutionStore) -> ControlPlane:
+    """Compose the control plane and delivery recorder using the workspace policy."""
+    delivery_record_store = SqlDeliveryRecordStore(
+        store.engine, recording_url=settings.database_url
+    )
+    return ControlPlane(
+        store,
+        delivery_record_store=delivery_record_store,
+        delivery_recorder=DeliveryRecorder(
+            delivery_record_store,
+            settings.delivery.recording_policy,
+            timeout_seconds=settings.delivery.recording_timeout_seconds,
+        ),
+    )

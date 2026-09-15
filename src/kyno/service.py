@@ -5,6 +5,7 @@ import re
 from collections.abc import Callable
 from datetime import UTC, datetime
 
+from kyno.delivery_recording import DeliveryRecorder
 from kyno.errors import (
     AuthoringError,
     EmptyChangeError,
@@ -24,6 +25,8 @@ from kyno.models import (
     PublicVersion,
 )
 from kyno.store.base import ConstitutionStore
+from kyno.store.delivery_record import SqlDeliveryRecordStore
+from kyno.wire.delivery import RecordingStatus, recording_result
 from kyno.wire.models import (
     DIRECTION_MARKER,
     ChangesSince,
@@ -237,10 +240,38 @@ def edit_delta(
 
 
 class ControlPlane:
-    def __init__(self, store: ConstitutionStore, constitution: str = "default") -> None:
+    def __init__(
+        self,
+        store: ConstitutionStore,
+        constitution: str = "default",
+        *,
+        delivery_recorder: DeliveryRecorder | None = None,
+        delivery_record_store: SqlDeliveryRecordStore | None = None,
+    ) -> None:
         self._store = store
         self._constitution = constitution
         self._subscribers: list[Callable[[ConstitutionVersion], None]] = []
+        self.delivery_recorder = delivery_recorder
+        self.delivery_record_store = delivery_record_store
+
+    def record_delivery(
+        self,
+        direction: dict,
+        *,
+        operation: str,
+        arguments: dict,
+        requester: dict | None = None,
+    ) -> dict:
+        """Record the served direction against the resolved constitution name."""
+        if self.delivery_recorder is None:
+            return recording_result(RecordingStatus.DISABLED)
+        return self.delivery_recorder.record(
+            direction,
+            operation=operation,
+            constitution=self._name(arguments.get("constitution")),
+            arguments=arguments,
+            requester=requester,
+        )
 
     def _name(self, constitution: str | None) -> str:
         """Resolve which constitution a call is about.

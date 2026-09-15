@@ -149,14 +149,14 @@ def test_given_saved_deltas_when_listing_then_summaries_omit_them_and_lookup_pre
     assert history.get(identifier) == {**summary, "delta": ["Mission changed."]}
 
 
-def test_given_large_delta_when_listing_then_database_query_does_not_select_delta(history):
+def test_given_delivery_records_when_listing_summaries_then_sql_does_not_select_the_delta_column(
+    history,
+):
     statements = []
 
     def capture(connection, cursor, statement, parameters, context, executemany):
         statements.append(statement)
 
-    with history._engine.begin() as connection:
-        connection.execute(update(history._table).values(delta=json.dumps(["change" * 10000])))
     event.listen(history._engine, "before_cursor_execute", capture)
     try:
         assert len(history.list(limit=1)["items"]) == 1

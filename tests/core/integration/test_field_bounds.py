@@ -158,7 +158,7 @@ def test_given_refusal_and_injected_header_when_comparing_then_one_marker_string
 def test_given_an_oversized_write_when_sent_over_mcp_then_the_field_is_reported_not_a_stack_trace(
     cp,
 ):
-    from kyno.mcp_server import handle_set_direction
+    from kyno.mcp_handlers import handle_set_direction
 
     with pytest.raises(ValueError, match="declaration"):
         handle_set_direction(

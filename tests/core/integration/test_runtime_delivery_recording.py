@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from kyno.delivery_recording import DeliveryRecorder
 from kyno.mcp_server import build_server
+from kyno.mcp_tools import DIRECTION_READS, TOOLS
 from kyno.service import ControlPlane
 from kyno.store.delivery_record import SqlDeliveryRecordStore
 from kyno.store.sql import SqlConstitutionStore
@@ -76,6 +77,7 @@ async def test_given_default_recording_when_reading_direction_then_no_history_is
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("known_version", [None, 0, 1])
 @pytest.mark.parametrize(
     "operation,arguments",
     [
@@ -91,7 +93,12 @@ async def test_given_recording_enabled_when_reading_then_history_keeps_the_serve
     history_store,
     operation,
     arguments,
+    known_version,
 ):
+    arguments = {
+        **arguments,
+        **({"known_version": known_version} if known_version is not None else {}),
+    }
     server, history, _ = server_with_history(history_store)
     result = await invoke(
         server,
@@ -243,6 +250,11 @@ async def test_given_history_when_recording_is_disabled_then_old_records_remain_
         ("get_constitution", {"metadata": {"large": "x" * 16384}}),
         ("get_constitution", {"metadata": {"number": float("nan")}}),
         ("get_constitution", {"correlation_id": "x" * 256}),
+        ("get_mission", {"known_version": True}),
+        ("get_mission", {"known_version": "1"}),
+        ("get_mission", {"known_version": 1.5}),
+        ("get_mission", {"known_version": {"bad": 1}}),
+        ("get_mission", {"known_version": None}),
     ],
 )
 async def test_given_an_invalid_read_when_calling_core_then_no_delivery_is_recorded(
@@ -312,7 +324,6 @@ async def test_given_irrelevant_arguments_when_reading_mission_then_they_cannot_
         server,
         "get_mission",
         {
-            "known_version": {"bad": 1},
             "detail": ["invalid"],
             "title": "not requested",
         },
@@ -322,6 +333,13 @@ async def test_given_irrelevant_arguments_when_reading_mission_then_they_cannot_
     assert record["known_version"] is None
     assert record["detail_level"] is None
     assert record["selection"] == {}
+
+
+@pytest.mark.parametrize("operation", sorted(DIRECTION_READS))
+def test_given_direction_tool_when_listing_schema_then_caller_version_is_declared(operation):
+    schema = next(tool.inputSchema for tool in TOOLS if tool.name == operation)
+    assert schema["properties"]["known_version"]["type"] == "integer"
+    assert ("known_version" in schema.get("required", [])) == (operation == "get_changes_since")
 
 
 @pytest.mark.parametrize("policy", ["never", "always"])

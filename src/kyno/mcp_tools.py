@@ -234,6 +234,14 @@ for tool, _scope in DECLARATIONS:
     if tool.name in DIRECTION_READS:
         tool.inputSchema["properties"].update(
             {
+                "known_version": {
+                    "type": "integer",
+                    "description": (
+                        "Version the caller reports holding; retained for auditing when supplied. "
+                        "Only get_changes_since uses it to calculate changes. "
+                        "Other reads still return current direction."
+                    ),
+                },
                 "correlation_id": {
                     "type": "string",
                     "maxLength": MAX_CORRELATION_CHARS,

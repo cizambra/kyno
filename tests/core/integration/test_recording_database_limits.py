@@ -65,7 +65,7 @@ def test_given_pool_has_no_free_connections_when_recording_then_query_uses_a_sep
         engine.dispose()
 
 
-def test_given_database_when_opening_recording_transaction_then_native_wait_limit_is_applied(store):
+def test_given_database_when_recording_then_timeout_changes_only_for_recording_connection(store):
     statements = {
         "sqlite": ("PRAGMA busy_timeout", 25),
         "postgresql": ("SHOW statement_timeout", "25ms"),

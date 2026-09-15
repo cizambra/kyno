@@ -58,7 +58,7 @@ def test_given_recording_policy_and_timeout_when_loading_settings_then_both_are_
 
 @pytest.mark.parametrize("value", ["0", "-1", "nan", "inf", "-inf", "1e999", "true", "", "secret"])
 @pytest.mark.parametrize("policy", ["never", "always"])
-def test_given_invalid_recording_timeout_when_reading_config_then_it_names_the_setting(
+def test_given_invalid_timeout_when_reading_config_then_error_requires_positive_finite_seconds(
     tmp_path, value, policy
 ):
     root = make(tmp_path)

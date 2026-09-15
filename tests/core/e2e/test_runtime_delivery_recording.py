@@ -12,7 +12,7 @@ from kyno.transports import build_http_app
 from tests.mcp_requests import bearer, call_tool, drive_session, gated_http_app, mint, sse_json
 
 
-def test_given_a_read_token_when_reading_then_only_server_identity_is_attributed():
+def test_given_forged_identity_in_metadata_when_reading_then_record_names_the_authenticated_token():
     store, writer, _ = gated_http_app()
     reader = mint(store, scope="read", name="agents")
     delivery_record_store = SqlDeliveryRecordStore(store.engine)

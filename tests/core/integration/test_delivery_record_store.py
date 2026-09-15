@@ -1,4 +1,4 @@
-"""Recordings preserve delivered direction independently of constitution history."""
+"""Delivery records reference immutable direction and preserve request-specific deltas."""
 
 import json
 from copy import deepcopy
@@ -52,7 +52,7 @@ def capture_statements(statements):
     return capture
 
 
-def test_given_unknown_constitution_when_appending_twice_then_distinct_snapshots_keep_version_zero(
+def test_given_unknown_constitution_when_appending_twice_then_distinct_records_keep_version_zero(
     store,
 ):
     first = append(store, {"version": 0, "principles": []})
@@ -68,12 +68,14 @@ def test_given_unknown_constitution_when_appending_twice_then_distinct_snapshots
         assert connection.execute(select(store.metadata.tables["kyno_constitutions"])).all() == []
 
 
-def test_given_mutable_payloads_when_appending_then_snapshot_captures_original_values(store):
-    direction = {"version": 3, "principles": [{"title": "Before"}]}
+def test_given_mutable_request_data_when_appending_then_delta_and_context_keep_original_values(
+    store,
+):
+    direction = {"version": 0, "delta": ["Mission changed."]}
     context = {"correlation_id": "session", "metadata": {"nested": [1]}}
     requester = {"token_id": 2}
     arguments = {"known_version": 2, "detail": "full", "title": "Before"}
-    expected_direction = deepcopy(direction)
+    expected_delta = deepcopy(direction["delta"])
     expected_context = deepcopy(context)
     expected_requester = deepcopy(requester)
     expected_selection = {"title": arguments["title"]}
@@ -84,11 +86,11 @@ def test_given_mutable_payloads_when_appending_then_snapshot_captures_original_v
         requester=requester,
         arguments=arguments,
     )
-    direction["principles"][0]["title"] = "After"
+    direction["delta"].append("Caller mutation")
     context["metadata"]["nested"].append(2)
     requester["token_id"] = 4
     record = rows(store)[0]
-    assert json.loads(record["direction"]) == expected_direction
+    assert json.loads(record["delta"]) == expected_delta
     assert json.loads(record["metadata"]) == expected_context["metadata"]
     assert json.loads(record["requester"]) == expected_requester
     assert json.loads(record["selection"]) == expected_selection
@@ -102,6 +104,11 @@ def test_given_mutable_payloads_when_appending_then_snapshot_captures_original_v
 def test_given_get_changes_since_when_recording_then_current_version_becomes_served_version(
     store,
 ):
+    plane = ControlPlane(store)
+    for version in range(1, 8):
+        plane.set_direction(
+            constitution="missing", mission=f"Mission {version}", change_note="update"
+        )
     append(store, {"current_version": 7}, operation="get_changes_since")
     assert rows(store)[0]["served_version"] == 7
 
@@ -112,10 +119,26 @@ def test_given_absent_table_when_appending_then_database_error_propagates(store)
         append(store, {"version": 0})
 
 
-def test_given_non_json_direction_when_appending_then_no_partial_record_is_written(store):
+def test_given_non_json_delta_when_appending_then_no_partial_record_is_written(store):
     with pytest.raises(ValueError):
-        append(store, {"version": 1, "invalid": float("nan")})
+        append(store, {"version": 0, "delta": [float("nan")]})
     assert rows(store) == []
+
+
+def test_given_new_version_before_recording_when_saving_delivery_then_served_version_is_kept(
+    store,
+):
+    plane = ControlPlane(store, "missing")
+    plane.set_direction(mission="Original mission", change_note="initial")
+    response = {"version": 1, "mission": "Original mission"}
+    plane.set_direction(mission="New mission", change_note="updated")
+
+    identifier = append(store, response)
+
+    record = SqlDeliveryRecordStore(store.engine).get(identifier)
+    assert record["served_version"] == 1
+    assert store.get("missing", record["served_version"]).mission == "Original mission"
+    assert plane.current().version == 2
 
 
 def test_given_custom_prefix_when_appending_then_only_prefixed_tables_are_used():
@@ -136,14 +159,17 @@ def test_given_custom_prefix_when_appending_then_only_prefixed_tables_are_used()
     assert all(name.startswith("custom_") for name in inspect(store.engine).get_table_names())
     record = SqlDeliveryRecordStore(store.engine, prefix="custom_").get(identifier)
     assert record["record_id"] == identifier
-    assert record["direction"] == {"version": 0}
+    assert record["served_version"] == 0
+    assert record["delta"] is None
 
 
-def test_given_mysql_schema_when_compiling_then_direction_supports_large_documents(store):
+def test_given_mysql_schema_when_compiling_then_delta_supports_large_documents(
+    store,
+):
     statement = str(
         CreateTable(store.metadata.tables["kyno_delivery_records"]).compile(dialect=mysql.dialect())
     )
-    assert "direction LONGTEXT NOT NULL" in statement
+    assert "delta LONGTEXT NOT NULL" in statement
 
 
 def test_given_unknown_record_id_when_getting_then_lookup_raises(store):
@@ -153,7 +179,7 @@ def test_given_unknown_record_id_when_getting_then_lookup_raises(store):
 
 
 @pytest.mark.parametrize("target_first", [True, False])
-def test_given_multiple_deliveries_when_getting_by_id_then_exact_decoded_snapshot_is_returned(
+def test_given_multiple_deliveries_when_getting_by_id_then_exact_decoded_record_is_returned(
     store,
     target_first,
 ):
@@ -170,37 +196,41 @@ def test_given_multiple_deliveries_when_getting_by_id_then_exact_decoded_snapsho
     if target_first:
         append(store, {"version": 0, "principles": []})
     raw = next(record for record in rows(store) if record["record_id"] == identifier)
-    expected = dict(raw)
-    expected.pop("sequence")
-    expected.update(
-        direction=direction,
-        requester={"token_id": 8},
-        metadata={"nested": [1]},
-        selection={"title": "Original"},
-    )
+    expected = {
+        "record_id": identifier,
+        "recorded_at": raw["recorded_at"],
+        "constitution_id": None,
+        "requested_constitution": "missing",
+        "served_version": 0,
+        "operation": "get_direction",
+        "known_version": None,
+        "detail_level": None,
+        "selection": {"title": "Original"},
+        "delta": None,
+        "requester": {"token_id": 8},
+        "correlation_id": "session",
+        "metadata": {"nested": [1]},
+    }
+    assert set(raw) == set(expected) | {"sequence"}
     assert SqlDeliveryRecordStore(store.engine).get(identifier) == expected
 
 
-def test_given_mutations_and_new_versions_when_getting_saved_record_then_snapshot_is_unchanged(
+def test_given_updates_and_mutations_when_getting_delivery_then_version_and_delta_are_unchanged(
     store,
 ):
     plane = ControlPlane(store)
     plane.set_direction(constitution="missing", mission="Original", change_note="initial")
-    direction = {"version": 1, "mission": "Original", "principles": [{"title": "First"}]}
+    direction = {"version": 1, "delta": ["Original delta"]}
     identifier = append(
         store, direction, context={"correlation_id": None, "metadata": {"nested": [1]}}
     )
     first = SqlDeliveryRecordStore(store.engine).get(identifier)
-    first["direction"]["principles"][0]["title"] = "Mutated"
+    first["delta"].append("Mutated")
     first["metadata"]["nested"].append(2)
-    direction["mission"] = "Caller mutation"
     plane.set_direction(constitution="missing", mission="New mission", change_note="updated")
     restored = SqlDeliveryRecordStore(store.engine).get(identifier)
-    assert restored["direction"] == {
-        "version": 1,
-        "mission": "Original",
-        "principles": [{"title": "First"}],
-    }
+    assert restored["delta"] == ["Original delta"]
+    assert store.get("missing", restored["served_version"]).mission == "Original"
     assert restored["metadata"] == {"nested": [1]}
     assert restored["requester"] is None
     assert restored["served_version"] == 1
@@ -258,18 +288,25 @@ def test_given_two_constitutions_when_recording_the_second_then_it_links_to_the_
 
 
 @pytest.mark.parametrize("correlation_id", [None, "", "workflow-42/research"])
+@pytest.mark.parametrize("served_version", [0, 2], ids=["unwritten", "stored-version-with-delta"])
 def test_given_migrated_database_when_reopened_then_committed_recording_is_preserved(
-    tmp_path, correlation_id
+    tmp_path, correlation_id, served_version
 ):
     url = f"sqlite:///{tmp_path / 'recordings.sqlite3'}"
     config = Config("alembic.ini")
     config.set_main_option("sqlalchemy.url", url)
     command.upgrade(config, "head")
     store = SqlConstitutionStore(url=url)
-    direction = {"version": 0, "mission": "", "principles": []}
+    expected_delta = ["Mission changed."] if served_version else None
     try:
+        if served_version:
+            plane = ControlPlane(store, "missing")
+            plane.set_direction(mission="Initial mission", change_note="initial")
+            plane.set_direction(mission="Recorded mission", change_note="updated")
         identifier = append(
-            store, direction, context={"correlation_id": correlation_id, "metadata": {}}
+            store,
+            {"version": served_version, "delta": expected_delta},
+            context={"correlation_id": correlation_id, "metadata": {}},
         )
     finally:
         store.engine.dispose()
@@ -280,11 +317,17 @@ def test_given_migrated_database_when_reopened_then_committed_recording_is_prese
         assert len(records) == 1
         assert records[0]["record_id"] == identifier
         assert records[0]["correlation_id"] == correlation_id
-        assert json.loads(records[0]["direction"]) == direction
+        assert json.loads(records[0]["delta"]) == expected_delta
         saved = SqlDeliveryRecordStore(reopened.engine).get(identifier)
         assert saved["record_id"] == identifier
         assert saved["correlation_id"] == correlation_id
-        assert saved["direction"] == direction
+        assert saved["delta"] == expected_delta
+        assert saved["served_version"] == served_version
+        if served_version:
+            assert saved["constitution_id"] is not None
+            assert reopened.get("missing", served_version).mission == "Recorded mission"
+        else:
+            assert saved["constitution_id"] is None
     finally:
         reopened.engine.dispose()
 
@@ -332,4 +375,28 @@ def test_given_responses_sharing_a_correlation_id_when_recording_then_each_keeps
         {"step": "first"},
         {"step": "second"},
     ]
-    assert all(json.loads(record["direction"]) == direction for record in records)
+    assert all(record["served_version"] == 0 for record in records)
+
+
+@pytest.mark.parametrize(
+    "payload, expected",
+    [({}, None), ({"delta": []}, []), ({"delta": ["Mission changed."]}, ["Mission changed."])],
+    ids=["missing-delta", "empty-delta", "populated-delta"],
+)
+def test_given_a_response_when_recording_then_missing_delta_is_null_and_present_delta_is_kept(
+    store, payload, expected
+):
+    identifier = append(store, {"version": 0, **payload})
+    assert SqlDeliveryRecordStore(store.engine).get(identifier)["delta"] == expected
+
+
+@pytest.mark.parametrize("constitution, version", [("missing", 1), ("existing", 2)])
+def test_given_missing_constitution_or_version_when_recording_then_no_dangling_reference_is_saved(
+    store, constitution, version
+):
+    ControlPlane(store).set_direction(
+        constitution="existing", mission="Initial", change_note="initial"
+    )
+    with pytest.raises(ValueError, match="served constitution version not found"):
+        append(store, {"version": version}, constitution=constitution)
+    assert rows(store) == []

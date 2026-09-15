@@ -14,7 +14,7 @@ class DeliveryRecord(TypedDict):
     known_version: int | None
     detail_level: str | None
     selection: dict[str, JsonValue]
-    direction: dict[str, JsonValue]
+    delta: list[str] | None
     requester: dict[str, JsonValue] | None
     correlation_id: str | None
     metadata: dict[str, JsonValue]

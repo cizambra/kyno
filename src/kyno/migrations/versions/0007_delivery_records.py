@@ -1,4 +1,4 @@
-"""Persist the runtime direction responses recorded by Core."""
+"""Persist delivery references and request-specific deltas recorded by Core."""
 
 import sqlalchemy as sa
 from alembic import op
@@ -25,7 +25,7 @@ def upgrade() -> None:
         sa.Column("known_version", sa.Integer, nullable=True),
         sa.Column("detail_level", sa.String(16), nullable=True),
         sa.Column("selection", sa.Text, nullable=False),
-        sa.Column("direction", sa.Text().with_variant(LONGTEXT(), "mysql"), nullable=False),
+        sa.Column("delta", sa.Text().with_variant(LONGTEXT(), "mysql"), nullable=False),
         sa.Column("requester", sa.Text, nullable=False),
         sa.Column("correlation_id", sa.String(255), nullable=True),
         sa.Column("metadata", sa.Text, nullable=False),

@@ -26,7 +26,7 @@ def _timestamp(value: str | None) -> str | None:
 class SqlDeliveryRecordStore:
     def __init__(self, engine: Engine, prefix: str = "kyno_") -> None:
         self._engine = engine
-        metadata, self._constitutions, *_ = build_metadata(prefix)
+        metadata, self._constitutions, self._versions, _ = build_metadata(prefix)
         self._table = metadata.tables[f"{prefix}delivery_records"]
 
     def append(
@@ -39,7 +39,7 @@ class SqlDeliveryRecordStore:
         context: dict,
         requester: dict | None = None,
     ) -> str:
-        """Persist a direction snapshot atomically and return its unique record ID."""
+        """Record the served version reference and returned delta atomically."""
         identifier = str(uuid4())
         values = {
             "record_id": identifier,
@@ -54,7 +54,7 @@ class SqlDeliveryRecordStore:
             "selection": json.dumps(
                 {key: arguments[key] for key in ("title",) if key in arguments}
             ),
-            "direction": json.dumps(direction, allow_nan=False),
+            "delta": json.dumps(direction.get("delta"), allow_nan=False),
             "requester": json.dumps(requester, allow_nan=False),
             "correlation_id": context["correlation_id"],
             "metadata": json.dumps(context["metadata"], allow_nan=False),
@@ -63,10 +63,15 @@ class SqlDeliveryRecordStore:
             constitution_id = None
             if values["served_version"]:
                 constitution_id = connection.scalar(
-                    select(self._constitutions.c.id).where(
-                        self._constitutions.c.name == constitution
+                    select(self._constitutions.c.id)
+                    .join(self._versions)
+                    .where(
+                        self._constitutions.c.name == constitution,
+                        self._versions.c.version == values["served_version"],
                     )
                 )
+                if constitution_id is None:
+                    raise ValueError("served constitution version not found")
             connection.execute(
                 insert(self._table).values(constitution_id=constitution_id, **values)
             )
@@ -75,12 +80,12 @@ class SqlDeliveryRecordStore:
     def _decode(self, row) -> DeliveryRecord:
         record = dict(row)
         record.pop("sequence")
-        for key in ("direction", "requester", "metadata", "selection"):
+        for key in ("delta", "requester", "metadata", "selection"):
             record[key] = json.loads(record[key])
         return cast(DeliveryRecord, record)
 
     def get(self, record_id: str) -> DeliveryRecord:
-        """Return the decoded snapshot, or raise ValueError when its ID is unknown."""
+        """Return the version reference and saved delta, or raise for an unknown ID."""
         with self._engine.connect() as connection:
             row = (
                 connection.execute(select(self._table).where(self._table.c.record_id == record_id))
@@ -100,7 +105,7 @@ class SqlDeliveryRecordStore:
         until: str | None = None,
         limit: int = 50,
     ) -> list[dict]:
-        """Return up to limit snapshots in insertion order, with inclusive time bounds."""
+        """Return up to limit delivery records in insertion order, with inclusive time bounds."""
         if type(limit) is not int or not 1 <= limit <= 100:
             raise ValueError("limit must be an integer from 1 to 100")
         since, until = _timestamp(since), _timestamp(until)

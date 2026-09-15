@@ -1,4 +1,4 @@
-"""Delivery history queries filter and bound persisted snapshots."""
+"""Delivery history queries filter and bound persisted delivery records."""
 
 import json
 
@@ -25,7 +25,7 @@ def history():
                     served_version=0,
                     operation="get_direction",
                     selection=json.dumps({"title": "Example"}),
-                    direction=json.dumps({"version": 0}),
+                    delta="null",
                     requester="null",
                     correlation_id=correlation_id,
                     metadata=json.dumps({"nested": [index]}),
@@ -70,7 +70,7 @@ def test_given_history_when_filtering_then_matching_records_are_oldest_first(
 
 def test_given_stored_json_when_listing_then_values_are_decoded_without_sequence(history):
     record = history.list(limit=1)[0]
-    assert record["direction"] == {"version": 0}
+    assert record["delta"] is None
     assert record["selection"] == {"title": "Example"}
     assert record["requester"] is None
     assert record["metadata"] == {"nested": [1]}

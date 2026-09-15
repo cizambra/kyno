@@ -10,9 +10,9 @@ from kyno.errors import (
     VersionConflictError,
 )
 from kyno.service import ControlPlane
-from kyno.store.sql import SqlConstitutionStore
 from kyno.wire.errors import MalformedPrincipleError
 from kyno.wire.models import Principle
+from tests.stores import create_memory_store
 
 
 class AlwaysConflictStore:
@@ -35,13 +35,6 @@ class AlwaysConflictStore:
     def append(self, *args, **kwargs):
         self.append_calls += 1
         raise VersionConflictError("simulated permanent race")
-
-
-@pytest.fixture
-def cp():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
-    return ControlPlane(store)
 
 
 def test_given_an_uninitialized_store_when_reading_current_then_the_empty_state_returns(cp):
@@ -139,8 +132,7 @@ def test_given_a_subscriber_when_a_write_commits_then_on_change_fires_after(cp):
 
 
 def test_given_a_racing_writer_when_applying_then_a_conflict_surfaces_not_a_recompute():
-    real = SqlConstitutionStore(url="sqlite://")
-    real.create_all()
+    real = create_memory_store()
     ControlPlane(real).set_direction(mission="M1", principles=("p1",), change_note="init")
 
     class ConflictOnceStore:
@@ -291,8 +283,7 @@ def test_given_all_empty_fields_when_setting_direction_then_an_empty_v1_is_allow
 
 
 def test_given_a_previous_version_when_writing_then_changed_flags_compare_against_it():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     cp.set_direction(mission="M1", principles=("p1",), change_note="init")
     v2 = cp.set_direction(mission="M2", change_note="mission only")
@@ -337,27 +328,19 @@ def test_given_an_unknown_constitution_when_reading_then_the_empty_state_returns
     assert changes.current_version == 0 and changes.changed is False
 
 
-def _plane():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
-    return ControlPlane(store)
-
-
 def _direction(cp, constitution="default", mission="M1", principles=("p1", "p2"), note="init"):
     return cp.set_direction(
         mission=mission, principles=principles, change_note=note, constitution=constitution
     )
 
 
-def test_given_a_written_constitution_when_not_yet_published_then_it_is_private():
-    cp = _plane()
+def test_given_a_written_constitution_when_not_yet_published_then_it_is_private(cp):
     _direction(cp)
     assert cp.publication().published is False
     assert cp.public_constitution() is None
 
 
-def test_given_a_publish_when_reading_the_public_view_then_direction_shows_not_history():
-    cp = _plane()
+def test_given_a_publish_when_reading_the_public_view_then_direction_shows_not_history(cp):
     _direction(cp)
     _direction(cp, mission="M2", note="pivot")
     cp.publish()
@@ -369,10 +352,9 @@ def test_given_a_publish_when_reading_the_public_view_then_direction_shows_not_h
     assert public.history is None
 
 
-def test_given_a_publish_when_history_is_wanted_then_it_is_a_separate_act():
+def test_given_a_publish_when_history_is_wanted_then_it_is_a_separate_act(cp):
     # A change note routinely carries internal reasoning, so one flag that
     # exposed both would leak it the first time anyone published.
-    cp = _plane()
     _direction(cp)
     _direction(cp, mission="M2", note="dropped a principle for the enterprise deal")
     cp.publish(with_history=True)
@@ -382,16 +364,14 @@ def test_given_a_publish_when_history_is_wanted_then_it_is_a_separate_act():
     assert public.history[0].change_note == "dropped a principle for the enterprise deal"
 
 
-def test_given_public_history_when_republishing_without_it_then_history_goes_private_again():
-    cp = _plane()
+def test_given_public_history_when_republishing_without_it_then_history_goes_private_again(cp):
     _direction(cp)
     cp.publish(with_history=True)
     cp.publish()
     assert cp.public_constitution().history is None
 
 
-def test_given_a_published_name_when_unpublishing_then_the_page_goes_away_entirely():
-    cp = _plane()
+def test_given_a_published_name_when_unpublishing_then_the_page_goes_away_entirely(cp):
     _direction(cp)
     cp.publish(with_history=True)
     cp.unpublish()
@@ -400,10 +380,9 @@ def test_given_a_published_name_when_unpublishing_then_the_page_goes_away_entire
     assert cp.publication().history_public is False
 
 
-def test_given_a_republish_when_reading_published_at_then_the_original_stamp_stays():
+def test_given_a_republish_when_reading_published_at_then_the_original_stamp_stays(cp):
     # The stamp records when this constitution went public; turning history on
     # later is not a new publication and must not rewrite that.
-    cp = _plane()
     _direction(cp)
     first = cp.publish().published_at
     again = cp.publish(with_history=True)
@@ -411,24 +390,21 @@ def test_given_a_republish_when_reading_published_at_then_the_original_stamp_sta
     assert again.history_public is True
 
 
-def test_given_no_direction_when_publishing_then_it_is_an_error():
+def test_given_no_direction_when_publishing_then_it_is_an_error(cp):
     # Publishing an empty name would serve a blank page under a real URL.
-    cp = _plane()
     with pytest.raises(UnknownConstitutionError):
         cp.publish(constitution="never-written")
 
 
-def test_given_a_constitution_that_does_not_exist_when_unpublishing_then_it_is_an_error():
+def test_given_a_constitution_that_does_not_exist_when_unpublishing_then_it_is_an_error(cp):
     # A typo must not report success while the real page stays public.
-    cp = _plane()
     _direction(cp)
     with pytest.raises(UnknownConstitutionError):
         cp.unpublish(constitution="defualt")
     assert cp.publication().published is False
 
 
-def test_given_several_names_when_publishing_then_publication_is_per_name():
-    cp = _plane()
+def test_given_several_names_when_publishing_then_publication_is_per_name(cp):
     _direction(cp, "internal", mission="Internal mission")
     _direction(cp, "product", mission="Product mission")
     _direction(cp, "eu", mission="EU mission")
@@ -441,8 +417,7 @@ def test_given_several_names_when_publishing_then_publication_is_per_name():
     assert cp.public_constitution("eu").history is None
 
 
-def test_given_a_mix_of_names_when_listing_published_then_only_the_published_appear():
-    cp = _plane()
+def test_given_a_mix_of_names_when_listing_published_then_only_the_published_appear(cp):
     _direction(cp, "internal", mission="Internal mission")
     _direction(cp, "product", mission="Product mission")
     cp.publish(constitution="product")
@@ -451,25 +426,22 @@ def test_given_a_mix_of_names_when_listing_published_then_only_the_published_app
     assert [c.name for c in listed] == ["product"]
 
 
-def test_given_nothing_published_when_listing_published_then_the_list_is_empty():
-    cp = _plane()
+def test_given_nothing_published_when_listing_published_then_the_list_is_empty(cp):
     _direction(cp)
     assert cp.published_constitutions() == ()
 
 
-def test_given_several_published_names_when_listing_then_they_are_ordered_by_name():
+def test_given_several_published_names_when_listing_then_they_are_ordered_by_name(cp):
     # A stable order keeps the index page deterministic across requests.
-    cp = _plane()
     for name in ("zeta", "alpha", "mu"):
         _direction(cp, name, mission=f"{name} mission")
         cp.publish(constitution=name)
     assert [c.name for c in cp.published_constitutions()] == ["alpha", "mu", "zeta"]
 
 
-def test_given_private_history_when_building_the_public_payload_then_history_is_omitted():
+def test_given_private_history_when_building_the_public_payload_then_history_is_omitted(cp):
     # An empty list would claim there is no history; the truthful machine-
     # readable answer is that history is simply not on offer.
-    cp = _plane()
     _direction(cp)
     cp.publish()
     payload = cp.public_constitution().to_dict()
@@ -483,8 +455,7 @@ def test_given_private_history_when_building_the_public_payload_then_history_is_
     assert payload["last_changed_at"]
 
 
-def test_given_public_history_when_building_the_public_payload_then_it_is_newest_first():
-    cp = _plane()
+def test_given_public_history_when_building_the_public_payload_then_it_is_newest_first(cp):
     _direction(cp)
     _direction(cp, mission="M2", note="pivot")
     cp.publish(with_history=True)
@@ -494,28 +465,25 @@ def test_given_public_history_when_building_the_public_payload_then_it_is_newest
     assert payload["constitution"] == "default"
 
 
-def test_given_a_name_that_cannot_be_a_url_segment_when_publishing_then_it_is_refused():
+def test_given_a_name_that_cannot_be_a_url_segment_when_publishing_then_it_is_refused(cp):
     # The page is served at /constitutions/<name>. A name with a slash in it
     # would report success and then never be reachable.
-    cp = _plane()
     _direction(cp, "acme/eu")
     with pytest.raises(UnpublishableNameError):
         cp.publish(constitution="acme/eu")
     assert cp.publication("acme/eu").published is False
 
 
-def test_given_a_name_ending_in_json_when_publishing_then_it_is_refused():
+def test_given_a_name_ending_in_json_when_publishing_then_it_is_refused(cp):
     # /constitutions/x.json is the machine-readable route for "x", so a
     # constitution named "x.json" would be served under the wrong name.
-    cp = _plane()
     _direction(cp, "policy.json")
     with pytest.raises(UnpublishableNameError):
         cp.publish(constitution="policy.json")
 
 
-def test_given_an_unpublishable_name_when_used_anywhere_else_then_it_still_works():
+def test_given_an_unpublishable_name_when_used_anywhere_else_then_it_still_works(cp):
     # Only publishing is refused; the constitution itself is untouched.
-    cp = _plane()
     _direction(cp, "acme/eu", mission="EU mission")
     assert cp.current("acme/eu").mission == "EU mission"
     assert cp.changes_since(0, "acme/eu").mission == "EU mission"
@@ -528,8 +496,7 @@ def test_given_an_unpublishable_name_when_used_anywhere_else_then_it_still_works
     "name",
     ["acme", "eu", "acme-eu", "acme-eu-west", "policy2", "2026-policy", "index", "a"],
 )
-def test_given_a_slug_name_when_publishing_then_it_is_accepted(name):
-    cp = _plane()
+def test_given_a_slug_name_when_publishing_then_it_is_accepted(name, cp):
     _direction(cp, name)
     assert cp.publish(constitution=name).published is True
 
@@ -552,34 +519,30 @@ def test_given_a_slug_name_when_publishing_then_it_is_accepted(name):
         "",
     ],
 )
-def test_given_a_name_that_is_not_a_slug_when_publishing_then_it_is_refused(name):
-    cp = _plane()
+def test_given_a_name_that_is_not_a_slug_when_publishing_then_it_is_refused(name, cp):
     _direction(cp, name)
     with pytest.raises(UnpublishableNameError):
         cp.publish(constitution=name)
     assert cp.publication(name).published is False
 
 
-def test_given_a_refused_name_when_reading_the_error_then_it_suggests_the_likely_slug():
+def test_given_a_refused_name_when_reading_the_error_then_it_suggests_the_likely_slug(cp):
     # Presentation help only: the suggestion is never applied to the name.
-    cp = _plane()
     _direction(cp, "Epicurean Digital")
     with pytest.raises(UnpublishableNameError, match="epicurean-digital"):
         cp.publish(constitution="Epicurean Digital")
 
 
-def test_given_a_name_with_nothing_sluggable_when_publishing_then_no_suggestion_comes():
-    cp = _plane()
+def test_given_a_name_with_nothing_sluggable_when_publishing_then_no_suggestion_comes(cp):
     _direction(cp, "///")
     with pytest.raises(UnpublishableNameError, match="cannot be published") as refusal:
         cp.publish(constitution="///")
     assert "like ''" not in str(refusal.value)
 
 
-def test_given_a_sluggable_name_when_publishing_then_it_is_never_quietly_slugged():
+def test_given_a_sluggable_name_when_publishing_then_it_is_never_quietly_slugged(cp):
     # The name in the URL is the name agents pass over MCP. Publishing
     # "Acme EU" as "acme-eu" would silently break that identity.
-    cp = _plane()
     _direction(cp, "Acme EU")
     with pytest.raises(UnpublishableNameError):
         cp.publish(constitution="Acme EU")
@@ -587,8 +550,7 @@ def test_given_a_sluggable_name_when_publishing_then_it_is_never_quietly_slugged
     assert cp.current("acme-eu").version == 0
 
 
-def test_given_a_name_refused_for_publishing_when_used_elsewhere_then_it_still_works():
-    cp = _plane()
+def test_given_a_name_refused_for_publishing_when_used_elsewhere_then_it_still_works(cp):
     _direction(cp, "Acme EU", mission="EU mission")
     assert cp.current("Acme EU").mission == "EU mission"
     assert cp.changes_since(0, "Acme EU").mission == "EU mission"
@@ -602,10 +564,9 @@ def _publish_bypassing_the_rule(cp, name):
     )
 
 
-def test_given_a_name_published_before_the_rule_when_serving_then_it_works_and_can_go_down():
+def test_given_a_name_published_before_the_rule_when_serving_then_it_works_and_can_go_down(cp):
     # Nobody gets stranded: the rule bites when you publish, and reading or
     # withdrawing a publication never validates.
-    cp = _plane()
     _direction(cp, "Legacy Name", mission="Still served")
     _publish_bypassing_the_rule(cp, "Legacy Name")
 
@@ -733,10 +694,8 @@ def test_given_a_declaration_when_reading_the_public_view_then_it_is_there(cp):
 
 def test_given_a_head_when_asking_head_and_delta_then_both_come_from_one_read():
     from kyno.service import ControlPlane
-    from kyno.store.sql import SqlConstitutionStore
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     cp.set_direction(mission="M1", change_note="init")
     reads = []
@@ -752,10 +711,8 @@ def test_given_a_head_when_asking_head_and_delta_then_both_come_from_one_read():
 
 def test_given_an_empty_store_when_asking_head_and_delta_then_the_head_is_none():
     from kyno.service import ControlPlane
-    from kyno.store.sql import SqlConstitutionStore
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     head, delta = ControlPlane(store).head_and_delta(mission="M1")
     assert head is None and delta == ("Creates 'default' at version 1.",)
 
@@ -765,10 +722,8 @@ def test_given_a_moved_head_when_applying_with_an_expected_version_then_nothing_
     nothing does."""
     from kyno.errors import VersionConflictError
     from kyno.service import ControlPlane
-    from kyno.store.sql import SqlConstitutionStore
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     cp.set_direction(mission="M1", change_note="init")
     cp.set_direction(mission="M2", change_note="raced in")
@@ -780,10 +735,8 @@ def test_given_a_moved_head_when_applying_with_an_expected_version_then_nothing_
 
 def test_given_the_head_it_reviewed_when_applying_with_an_expected_version_then_it_lands():
     from kyno.service import ControlPlane
-    from kyno.store.sql import SqlConstitutionStore
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     assert cp.set_direction(mission="M1", change_note="init", expected_version=0).version == 1
     assert cp.set_direction(mission="M2", change_note="next", expected_version=1).version == 2
@@ -792,8 +745,7 @@ def test_given_the_head_it_reviewed_when_applying_with_an_expected_version_then_
 def test_given_an_unknown_authorization_when_applying_then_it_is_refused():
     from kyno.errors import AuthoringError
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     with pytest.raises(AuthoringError, match="unknown authorized_by 'sudo'"):
         cp.set_direction(mission="M", change_note="init", authorized_by="sudo")
@@ -803,8 +755,7 @@ def test_given_an_unknown_authorization_when_applying_then_it_is_refused():
 def test_given_an_authorization_when_applying_then_the_version_carries_it():
     from kyno.models import AuthorizationType
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     v = cp.set_direction(mission="M", change_note="init", authorized_by="operator")
     assert v.authorized_by is AuthorizationType.OPERATOR

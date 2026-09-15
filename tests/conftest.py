@@ -5,6 +5,7 @@ import pytest
 
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
+from tests.stores import create_memory_store
 
 # Set this to point the "postgres" case of `store` at a real server, e.g.:
 #   KYNO_TEST_POSTGRES_URL=postgresql+psycopg://user:pass@host/db pytest
@@ -13,10 +14,17 @@ MYSQL_URL_ENV = "KYNO_TEST_MYSQL_URL"
 
 
 @pytest.fixture
-def control_plane():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
-    return ControlPlane(store)
+def memory_store():
+    store = create_memory_store()
+    try:
+        yield store
+    finally:
+        store.engine.dispose()
+
+
+@pytest.fixture
+def control_plane(memory_store):
+    return ControlPlane(memory_store)
 
 
 def _postgres_url() -> str | None:

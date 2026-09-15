@@ -8,8 +8,6 @@ import pytest
 from kyno.authoring import read_constitution_file
 from kyno.conformance import SEPARATOR, check_log
 from kyno.sdk.cell import Direction
-from kyno.service import ControlPlane
-from kyno.store.sql import SqlConstitutionStore
 from kyno.wire.models import DetailLevel
 from tests.paths import REPO_ROOT
 
@@ -18,10 +16,8 @@ CONFORMANCE = ROOT / "conformance"
 
 
 @pytest.fixture()
-def plane():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
-    return ControlPlane(store)
+def plane(control_plane):
+    return control_plane
 
 
 def expected(name: str) -> str:

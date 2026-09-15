@@ -8,8 +8,8 @@ import pytest
 
 from kyno import mcp_handlers, mcp_server
 from kyno.service import ControlPlane
-from kyno.store.sql import SqlConstitutionStore
 from kyno.wire import RESOURCE_URI
+from tests.stores import create_memory_store
 
 
 def _sse_json_body(response_text: str) -> dict:
@@ -35,8 +35,7 @@ async def test_given_a_real_subscription_when_setting_direction_then_the_server_
     # directly), this drives the real subscribe handler and server.run().
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     server = mcp_server.build_server(cp)
 
@@ -63,8 +62,7 @@ async def test_given_a_real_subscription_when_setting_direction_then_the_server_
 async def test_given_a_non_matching_uri_when_subscribing_then_it_is_a_noop():
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     server = mcp_server.build_server(cp)
 
@@ -78,8 +76,7 @@ async def test_given_a_non_matching_uri_when_subscribing_then_it_is_a_noop():
 async def test_given_a_subscribed_session_when_unsubscribing_for_real_then_it_is_removed():
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     server = mcp_server.build_server(cp)
 
@@ -95,8 +92,7 @@ async def test_given_a_subscribed_session_when_unsubscribing_for_real_then_it_is
 async def test_given_an_unknown_tool_name_when_dispatching_then_the_mcp_error_is_clean():
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     server = mcp_server.build_server(cp)
 
@@ -111,8 +107,7 @@ async def test_given_an_unknown_resource_uri_when_dispatching_then_the_mcp_error
     from mcp.shared.exceptions import McpError
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     server = mcp_server.build_server(cp)
 
@@ -126,8 +121,7 @@ async def test_given_an_unknown_resource_uri_when_dispatching_then_the_mcp_error
 async def test_given_a_non_integer_version_when_calling_get_changes_since_then_the_error_is_clean():
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     cp.set_direction(mission="M1", change_note="init")
     server = mcp_server.build_server(cp)
@@ -144,8 +138,7 @@ async def test_given_stdio_and_http_sessions_when_getting_the_constitution_then_
     # compares the in-memory harness against the real HTTP transport for the same version.
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     cp.set_direction(mission="M1", principles=["p1"], change_note="init", created_by="op")
     server = mcp_server.build_server(cp)
@@ -205,8 +198,7 @@ async def test_given_a_fresh_store_when_getting_the_constitution_for_real_then_i
     # called directly), this drives the real call_tool dispatch end to end.
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     server = mcp_server.build_server(cp)
 
@@ -224,8 +216,7 @@ async def test_given_a_fresh_store_when_getting_the_constitution_for_real_then_i
 async def test_given_a_fresh_store_when_reading_the_resource_then_the_empty_state_returns():
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     server = mcp_server.build_server(cp)
 
@@ -241,8 +232,7 @@ async def test_given_a_fresh_store_when_reading_the_resource_then_the_empty_stat
 async def test_given_named_constitutions_when_dispatching_writes_then_sequences_are_independent():
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     server = mcp_server.build_server(cp)
 
@@ -268,8 +258,7 @@ async def test_given_named_constitutions_when_dispatching_writes_then_sequences_
 async def test_given_a_named_write_when_reading_the_resource_then_it_stays_the_default():
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     cp.set_direction(mission="M1", change_note="init")
     cp.set_direction(mission="EU1", change_note="eu init", constitution="eu")
@@ -289,8 +278,7 @@ async def test_given_the_subscribable_resource_when_reading_then_it_serves_the_c
     # the whole document is one tool call away.
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     cp.set_direction(**RICH, change_note="init")
     server = mcp_server.build_server(cp)
@@ -309,8 +297,7 @@ async def test_given_the_subscribable_resource_when_reading_then_it_serves_the_c
 async def test_given_a_detail_argument_when_dispatching_for_real_then_it_travels_through():
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     cp.set_direction(**RICH, change_note="init")
     server = mcp_server.build_server(cp)
@@ -330,8 +317,7 @@ async def test_given_a_detail_argument_when_dispatching_for_real_then_it_travels
 async def test_given_the_targeted_reads_when_dispatching_for_real_then_they_work():
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     cp.set_direction(**RICH, change_note="init")
     server = mcp_server.build_server(cp)
@@ -358,8 +344,7 @@ async def test_given_a_compact_pull_when_an_agent_needs_more_then_it_asks_for_th
     # versions agreeing is what says the two answers describe one document.
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     cp.set_direction(**RICH, change_note="init")
     server = mcp_server.build_server(cp)
@@ -384,8 +369,7 @@ async def test_given_a_compact_pull_when_an_agent_needs_more_then_it_asks_for_th
 async def test_given_the_whole_read_family_when_dispatching_for_real_then_it_works():
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     cp.set_direction(**RICH, change_note="init", constitution="eu")
     server = mcp_server.build_server(cp)

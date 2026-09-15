@@ -5,13 +5,12 @@ import pytest
 
 from kyno.sdk.cell import DIRECTION_MARKER
 from kyno.service import ControlPlane
-from kyno.store.sql import SqlConstitutionStore
+from tests.stores import create_memory_store
 
 
 @pytest.fixture
 def cp():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     return ControlPlane(store)
 
 

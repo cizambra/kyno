@@ -19,10 +19,8 @@ from kyno.store.sql import SqlConstitutionStore
 
 
 @pytest.fixture
-def store():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
-    return store
+def store(memory_store):
+    return memory_store
 
 
 def append(store, direction, **kwargs):

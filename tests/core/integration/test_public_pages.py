@@ -7,15 +7,12 @@ import pytest
 from starlette.testclient import TestClient
 
 from kyno.service import ControlPlane
-from kyno.store.sql import SqlConstitutionStore
 from kyno.transports import build_http_app
 
 
 @pytest.fixture
-def store():
-    s = SqlConstitutionStore(url="sqlite://")
-    s.create_all()
-    return s
+def store(memory_store):
+    return memory_store
 
 
 @pytest.fixture

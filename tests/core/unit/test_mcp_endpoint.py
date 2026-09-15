@@ -3,7 +3,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from kyno.mcp_endpoint import McpEndpoint, _tool_calls
-from tests.mcp_requests import mint, token_store
+from tests.mcp_requests import mint
+from tests.stores import create_memory_store
 
 
 def _endpoint(store):
@@ -11,11 +12,11 @@ def _endpoint(store):
 
 
 def test_given_a_request_with_no_authorization_header_when_resolving_then_no_token_is_found():
-    assert _endpoint(token_store())._authenticate({}) is None
+    assert _endpoint(create_memory_store())._authenticate({}) is None
 
 
 def test_given_a_live_token_when_resolving_then_the_row_comes_back_with_its_scope():
-    store = token_store()
+    store = create_memory_store()
     value = mint(store, scope="read", name="crew")
 
     token = _endpoint(store)._authenticate({"authorization": f"Bearer {value}"})
@@ -25,13 +26,13 @@ def test_given_a_live_token_when_resolving_then_the_row_comes_back_with_its_scop
 
 
 def test_given_a_capitalized_authorization_header_when_resolving_then_it_still_matches():
-    store = token_store()
+    store = create_memory_store()
     value = mint(store)
     assert _endpoint(store)._authenticate({"Authorization": f"Bearer {value}"}) is not None
 
 
 def test_given_a_token_that_is_unknown_revoked_or_expired_when_resolving_then_it_is_none():
-    store = token_store()
+    store = create_memory_store()
     revoked_value = mint(store, name="revoked")
     store.revoke_token(store.tokens()[0].id)
     expired_value = mint(store, name="expired", expires_at=datetime.now(UTC) - timedelta(hours=1))
@@ -41,13 +42,13 @@ def test_given_a_token_that_is_unknown_revoked_or_expired_when_resolving_then_it
 
 
 def test_given_an_authorization_header_that_is_not_a_bearer_value_when_resolving_then_none():
-    store = token_store()
+    store = create_memory_store()
     mint(store)
     assert _endpoint(store)._authenticate({"authorization": "Basic dXNlcjpwdw=="}) is None
 
 
 def test_given_a_non_ascii_bearer_value_when_resolving_then_it_fails_closed_not_crashes():
-    assert _endpoint(token_store())._authenticate({"authorization": "Bearer café"}) is None
+    assert _endpoint(create_memory_store())._authenticate({"authorization": "Bearer café"}) is None
 
 
 def test_given_bodies_of_every_shape_when_listing_tool_calls_then_only_real_calls_count():
@@ -72,7 +73,7 @@ def test_given_bodies_of_every_shape_when_listing_tool_calls_then_only_real_call
 async def test_given_non_utf8_header_bytes_when_handling_the_request_then_it_is_401_not_500():
     # A header value that isn't valid UTF-8 at all (not just non-ASCII) must
     # not crash v.decode() in handle(); it should fail closed as 401.
-    handle = _endpoint(token_store())
+    handle = _endpoint(create_memory_store())
 
     scope = {
         "type": "http",
@@ -98,7 +99,7 @@ async def test_given_non_utf8_header_bytes_when_handling_the_request_then_it_is_
 async def test_given_a_disconnect_mid_body_when_reading_then_nothing_is_sent_back():
     # The client hung up while sending: the endpoint stops and sends no
     # response at all, instead of answering a half-received request.
-    store = token_store()
+    store = create_memory_store()
     value = mint(store)
     endpoint = McpEndpoint(manager=None, token_store=store)
 

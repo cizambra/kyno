@@ -9,7 +9,6 @@ from starlette.testclient import TestClient
 
 from kyno.public_page import PageConfig, PageTheme, render_constitution, render_index
 from kyno.service import ControlPlane
-from kyno.store.sql import SqlConstitutionStore
 from kyno.transports import build_http_app
 from tests.paths import REPO_ROOT
 
@@ -17,10 +16,8 @@ HOSTILE = "<script>alert('xss')</script>"
 
 
 @pytest.fixture
-def store():
-    s = SqlConstitutionStore(url="sqlite://")
-    s.create_all()
-    return s
+def store(memory_store):
+    return memory_store
 
 
 @pytest.fixture

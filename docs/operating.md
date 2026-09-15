@@ -64,12 +64,20 @@ The `[delivery]` section accepts `recording_policy = never` (the default) or
 ```ini
 [delivery]
 recording_policy = never
+recording_timeout_seconds = 1
 ```
 
 Omitting the section or its policy defaults to `never`. Unknown keys and
 other policy values fail configuration loading. The policy is parsed into
 `settings.delivery.recording_policy` only; it is not yet connected to runtime
 recording, so selecting `always` does not record direction responses.
+
+`recording_timeout_seconds` defaults to `1` second. It accepts a positive,
+finite number, including fractional seconds, or a `${VAR}` reference. Invalid
+values fail configuration loading even under `never`. The setting is available
+as `settings.delivery.recording_timeout_seconds`; runtime enforcement is not
+connected yet. It configures recording database wait limits, not a total
+response-time deadline, and has no effect when recording is disabled.
 
 The `[database]` section describes the database with split keys, like
 Rails' `database.yml`. In this example everything is written in except

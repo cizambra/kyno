@@ -17,7 +17,7 @@ from urllib.parse import quote
 
 from kyno.coerce import to_bool as _bool
 from kyno.coerce import to_int as _int
-from kyno.delivery import DeliverySettings
+from kyno.delivery import DeliverySettings, RecordingPolicy
 from kyno.envref import resolve as _resolve_ref
 from kyno.errors import ConfigError
 
@@ -27,7 +27,7 @@ CONFIG_RELPATH = Path("config") / "server"
 _ADAPTERS = {"sqlite3": "sqlite", "postgresql": "postgresql+psycopg", "mysql": "mysql+pymysql"}
 
 _SERVER_KEYS = ("host", "port", "allow_insecure")
-_DELIVERY_KEYS = ("recording_policy",)
+_DELIVERY_KEYS = ("recording_policy", "recording_timeout_seconds")
 _DATABASE_KEYS = ("url", "adapter", "host", "port", "database", "username", "password")
 _PAGE_KEYS = (
     "accent",
@@ -173,9 +173,18 @@ def _delivery_values(parser: configparser.ConfigParser) -> DeliverySettings:
         delivery.get("recording_policy", "never"), owner="delivery.recording_policy"
     )
     try:
-        return DeliverySettings(recording_policy=value)
+        policy = RecordingPolicy(value)
     except ValueError:
         raise ConfigError("delivery.recording_policy must be never or always") from None
+    timeout = _resolve_ref(
+        delivery.get("recording_timeout_seconds", "1"), owner="delivery.recording_timeout_seconds"
+    )
+    try:
+        return DeliverySettings(policy, recording_timeout_seconds=float(timeout))
+    except ValueError:
+        raise ConfigError(
+            "delivery.recording_timeout_seconds must be a positive finite number"
+        ) from None
 
 
 def _page_values(parser: configparser.ConfigParser) -> dict[str, str]:

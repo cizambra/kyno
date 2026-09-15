@@ -88,6 +88,8 @@ def control_plane_from_settings(settings: Settings, store: SqlConstitutionStore)
         store,
         delivery_record_store=delivery_record_store,
         delivery_recorder=DeliveryRecorder(
-            delivery_record_store, settings.delivery.recording_policy
+            delivery_record_store,
+            settings.delivery.recording_policy,
+            timeout_seconds=settings.delivery.recording_timeout_seconds,
         ),
     )

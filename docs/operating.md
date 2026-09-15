@@ -76,8 +76,8 @@ for the recording boundary and response status.
 `recording_timeout_seconds` defaults to `1` second. It accepts a positive,
 finite number, including fractional seconds, or a `${VAR}` reference. Invalid
 values fail configuration loading even under `never`. The setting is available
-as `settings.delivery.recording_timeout_seconds`; runtime enforcement is not
-connected yet. It configures recording database wait limits, not a total
+as `settings.delivery.recording_timeout_seconds` and is used by the runtime
+recorder. It configures recording database wait limits, not a total
 response-time deadline, and has no effect when recording is disabled.
 
 The `[database]` section describes the database with split keys, like
@@ -167,9 +167,30 @@ class, excluding direction contents and database error messages.
 
 A server record does not confirm prompt injection, model obedience, or client
 receipt after a network interruption. Cache-only work creates no server record.
-There is no automatic expiration or pruning. Recording uses synchronous
-database operations with no independent deadline, so connection or lock delays
-can delay the direction response.
+There is no automatic expiration or pruning. Recording is synchronous, with
+database wait limits configured by `[delivery].recording_timeout_seconds`:
+
+- SQLite limits waits for database locks.
+- PostgreSQL limits statements (including lock waits) and connection attempts,
+  and configures TCP failure detection where the operating system supports it.
+- MySQL limits socket reads/writes, connection attempts, and database lock waits.
+
+Driver precision and minimums apply: SQLite/PostgreSQL statement limits round
+up to milliseconds; PostgreSQL connections allow at least two seconds; MySQL
+connection and lock limits round up to whole seconds. Very large settings are
+capped at native limits. Separate operations can each wait, so this is not an
+exact total response-time deadline or protection against every OS/network stall.
+
+File/server databases use a separate, short-lived connection built from the
+database URL. Recording does not wait for the direction connection pool or
+change its timeout settings. This adds connection overhead when recording is
+enabled. In-memory SQLite reuses its existing connection to retain the database.
+Custom engine connection hooks are not copied to the recording connection.
+
+A timeout returns the direction with `recording.status = "failed"` and no
+record ID. This means saving was not confirmed, not proof that no row exists:
+for example, a connection can fail while the database is confirming a commit.
+Kyno does not retry the write or keep a background recording worker running.
 
 ## Running Kyno embedded
 

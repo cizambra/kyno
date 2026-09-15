@@ -1,6 +1,7 @@
 """Runtime MCP reads persist version references with caller context and recording status."""
 
 import json
+from unittest.mock import Mock
 
 import mcp.types as types
 import pytest
@@ -339,6 +340,72 @@ async def test_given_workspace_policy_when_composing_server_then_reads_follow_it
     response = await invoke(build_server(plane), "get_constitution")
     assert response["recording"]["status"] == ("recorded" if policy == "always" else "disabled")
     assert plane.delivery_record_store is not None
+
+
+@pytest.mark.parametrize("timeout", [0.025, 2.5])
+@pytest.mark.asyncio
+async def test_given_workspace_timeout_when_reading_direction_then_recording_uses_that_limit(
+    history_store, monkeypatch, timeout
+):
+    from kyno.delivery import DeliverySettings
+    from kyno.public_page import PageConfig
+    from kyno.server_config import Settings, control_plane_from_settings
+
+    settings = Settings(
+        "sqlite://",
+        "localhost",
+        2256,
+        PageConfig(),
+        delivery=DeliverySettings("always", recording_timeout_seconds=timeout),
+    )
+    plane = control_plane_from_settings(settings, history_store)
+    append = Mock(wraps=plane.delivery_record_store.append)
+    monkeypatch.setattr(plane.delivery_record_store, "append", append)
+    response = await invoke(build_server(plane), "get_mission")
+    assert response["recording"]["status"] == "recorded"
+    assert append.call_args.kwargs["timeout_seconds"] == timeout
+
+
+@pytest.mark.parametrize("policy", ["never", "always"])
+@pytest.mark.asyncio
+async def test_given_locked_recording_database_when_reading_over_mcp_then_direction_still_returns(
+    tmp_path, policy
+):
+    from kyno.delivery import DeliverySettings
+    from kyno.public_page import PageConfig
+    from kyno.server_config import Settings, control_plane_from_settings, store_from_settings
+
+    settings = Settings(
+        f"sqlite:///{tmp_path / 'kyno.db'}",
+        "localhost",
+        2256,
+        PageConfig(),
+        delivery=DeliverySettings(policy, recording_timeout_seconds=0.025),
+    )
+    store = store_from_settings(settings)
+    store.create_all()
+    try:
+        plane = control_plane_from_settings(settings, store)
+        plane.set_direction(mission="Help customers", change_note="initial")
+        server = build_server(plane)
+        with store.engine.connect() as lock:
+            lock.exec_driver_sql("BEGIN IMMEDIATE")
+            try:
+                response = await invoke(server, "get_mission")
+                assert response["mission"] == "Help customers"
+                assert response["version"] == 1
+                assert response["recording"] == {
+                    "status": "failed" if policy == "always" else "disabled",
+                    "record_id": None,
+                }
+            finally:
+                lock.rollback()
+        assert plane.delivery_record_store.list()["items"] == []
+        response = await invoke(server, "get_mission")
+        assert response["mission"] == "Help customers"
+        assert response["recording"]["status"] == ("recorded" if policy == "always" else "disabled")
+    finally:
+        store.engine.dispose()
 
 
 @pytest.mark.asyncio

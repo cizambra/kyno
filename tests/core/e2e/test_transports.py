@@ -4,9 +4,10 @@ import json
 
 import pytest
 
-from kyno.mcp_server import RESOURCE_URI, build_server
+from kyno.mcp_server import build_server
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
+from kyno.wire import RESOURCE_URI
 
 
 @pytest.mark.asyncio

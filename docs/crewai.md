@@ -110,12 +110,13 @@ direction in place. Its return value is ignored: it is not an approval
 gate. This is best-effort observation, not mandatory durable auditing.
 The callback runs synchronously, so slow recording delays the model call.
 
-The adapter accepts an optional `trace` and provides `task_callback` and
-`step_callback` methods for application-configured tracing. These read
-the binder's latest cached direction when the callback runs. A task can
-contain multiple model calls, so a task record is not an exact record of
-the direction supplied to every call. Trace types remain outside the
-stable top-level SDK API.
+To record which direction accompanied a model output, your application
+must capture that call's input messages and output together. `on_direction`
+cannot do this by itself: it runs before the call and receives neither
+the output nor an ID identifying the call. Once your application has
+matched an output to its supplied `Direction`, it can record them with
+`RunTrace.record_step` from `kyno.sdk.trace`. This API is available in its
+own module, but is not part of the stable top-level SDK API.
 
 Neither tracing nor separate receipt storage is required to run the
 adapter. Keep any retained prompts, direction, and outputs in storage
@@ -123,31 +124,63 @@ appropriate for potentially sensitive content.
 
 ## Optional verification
 
-Kyno does not judge model output. To review finished tasks, supply an
-external judge and attach the adapter's task callback when constructing
-your crew:
+You can use Kyno without a verifier. If you also want to check the crew's
+finished answer, your application calls a verifier of your choice. Your
+application decides whether to accept the answer, retry the work, or ask
+a person to review it. Kyno does not make that decision.
+
+For example, suppose you want to review the final answer against the
+direction you read before starting the crew. Save that `Direction` object,
+run the crew, then pass the answer and saved direction to your verifier.
+
+Here is the required integration with that optional review added. As
+before, `crew` is your configured CrewAI crew. Two functions below belong
+to your application; neither is provided by Kyno:
+
+- `assess_output` calls your chosen verifier with the output and direction.
+- `handle_assessment` reads its result and decides what to do next.
+
+You must implement those functions to run this example. Neither is
+required for the direction injection shown earlier.
 
 ```python
-from crewai import Crew
-from kyno.sdk import RealignmentGate
+with kyno.connect() as connection:
+    binder = connection.binder()
+    assessment_direction = binder.bind("customer-support")
+    adapter = CrewAiKyno(binder, constitution="customer-support")
+    adapter.register()
+    try:
+        result = crew.kickoff()
+    finally:
+        adapter.unregister()
 
-adapter = CrewAiKyno(
-    binder,
-    constitution="customer-support",
-    gate=RealignmentGate(source=your_judge),
-)
-crew = Crew(agents=agents, tasks=tasks, task_callback=adapter.task_callback)
+    assessment = assess_output(
+        output=result.raw,
+        direction=assessment_direction,
+    )
+    handle_assessment(result, assessment)
 ```
 
-`your_judge` implements `VerdictSource`; `agents` and `tasks` are your
-application's CrewAI configuration. Register and unregister this adapter
-around execution as shown in the required integration. `register()` does
-not attach the task callback for you. If you already use a task callback,
-compose the two in your own callback.
+`result.raw` is the final answer's text. Review runs after the crew
+finishes, not after every model call. If you keep review records, save
+the answer, `assessment_direction`, and the assessment together.
 
-A halt decision raises `TaskBlockedByKyno`. CrewAI cannot resume a paused
-task through this adapter, so a pause decision also blocks. Review uses
-the direction cached at task completion, not a reconstruction of every
-model call's input. See [the shared gate reference](adapters.md#the-realignment-gate)
-for verdict and failure policies. Neither a gate nor a judge is required
-to consume direction.
+The saved direction does not change when the adapter pulls again. If you
+save version 1 and an operator publishes version 2 while the crew runs,
+later model calls can receive version 2. This example still reviews the
+final answer against version 1. It does not claim every call used that
+version. Your application can instead choose to review against a newer
+version, but should record which version it chose.
+
+The initial `binder.bind()` uses the same failure policy as other reads.
+By default, a failed read returns cached direction, or empty version-0
+direction if nothing was cached. If your review requires a successful
+read, configure the binder as shown in [Failure behavior](#failure-behavior).
+Also reject version 0 if your application requires a written constitution.
+
+To review individual model calls instead, record each call's input and
+output under the same ID in your application. Do not match outputs to
+`on_direction` callbacks by their order: when two calls run at the same
+time, the second can finish first. Reading the binder's cache afterward
+does not identify a call's direction either; another call may already
+have replaced it with a newer version.

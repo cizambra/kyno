@@ -4,7 +4,7 @@ from typing import TypedDict
 from pydantic import JsonValue
 
 
-class DeliveryRecord(TypedDict):
+class DeliverySummary(TypedDict):
     record_id: str
     recorded_at: str
     constitution_id: int | None
@@ -14,7 +14,10 @@ class DeliveryRecord(TypedDict):
     known_version: int | None
     detail_level: str | None
     selection: dict[str, JsonValue]
-    delta: list[str] | None
     requester: dict[str, JsonValue] | None
     correlation_id: str | None
     metadata: dict[str, JsonValue]
+
+
+class DeliveryRecord(DeliverySummary):
+    delta: list[str] | None

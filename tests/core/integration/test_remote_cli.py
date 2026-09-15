@@ -11,8 +11,6 @@ from kyno import mcp_handlers
 from kyno.cli import app
 from kyno.models import AuthorizationType, Token
 from kyno.remote import RemoteError
-from kyno.service import ControlPlane
-from kyno.store.sql import SqlConstitutionStore
 from tests.remote_cli import plain, runner, write_file
 from tests.workspaces import cli_workspace
 
@@ -75,10 +73,8 @@ class FakeRemote:
 
 
 @pytest.fixture
-def remote_cp():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
-    return ControlPlane(store)
+def remote_cp(control_plane):
+    return control_plane
 
 
 @pytest.fixture

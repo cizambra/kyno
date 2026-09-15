@@ -12,16 +12,7 @@ from kyno.mcp_server import build_server
 from kyno.mcp_tools import DIRECTION_READS, TOOLS
 from kyno.service import ControlPlane
 from kyno.store.delivery_record import SqlDeliveryRecordStore
-from kyno.store.sql import SqlConstitutionStore
 from kyno.wire import RESOURCE_URI
-
-
-@pytest.fixture
-def history_store():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
-    yield store
-    store.engine.dispose()
 
 
 def server_with_history(store, policy="always", constitution="default"):
@@ -68,12 +59,12 @@ def saved_record(store, identifier):
 
 @pytest.mark.asyncio
 async def test_given_default_recording_when_reading_direction_then_no_history_is_written(
-    history_store,
+    memory_store,
 ):
-    server, history, _ = server_with_history(history_store, policy="never")
+    server, history, _ = server_with_history(memory_store, policy="never")
     result = await invoke(server, "get_constitution")
     assert result["recording"] == {"status": "disabled", "record_id": None}
-    assert records(history_store) == []
+    assert records(memory_store) == []
 
 
 @pytest.mark.asyncio
@@ -90,7 +81,7 @@ async def test_given_default_recording_when_reading_direction_then_no_history_is
     ],
 )
 async def test_given_recording_enabled_when_reading_then_history_keeps_the_served_version_and_delta(
-    history_store,
+    memory_store,
     operation,
     arguments,
     known_version,
@@ -99,7 +90,7 @@ async def test_given_recording_enabled_when_reading_then_history_keeps_the_serve
         **arguments,
         **({"known_version": known_version} if known_version is not None else {}),
     }
-    server, history, _ = server_with_history(history_store)
+    server, history, _ = server_with_history(memory_store)
     result = await invoke(
         server,
         operation,
@@ -111,7 +102,7 @@ async def test_given_recording_enabled_when_reading_then_history_keeps_the_serve
     )
     recording = result.pop("recording")
     assert recording["status"] == "recorded"
-    record = saved_record(history_store, recording["record_id"])
+    record = saved_record(memory_store, recording["record_id"])
     assert "direction" not in record
     assert record["delta"] == result.get("delta")
     assert record["served_version"] == 1
@@ -125,33 +116,33 @@ async def test_given_recording_enabled_when_reading_then_history_keeps_the_serve
 
 @pytest.mark.asyncio
 async def test_given_unchanged_direction_when_pulling_twice_then_each_response_has_its_own_record(
-    history_store,
+    memory_store,
 ):
-    server, history, _ = server_with_history(history_store)
+    server, history, _ = server_with_history(memory_store)
     first = await invoke(server, "get_constitution")
     second = await invoke(server, "get_constitution")
     assert first["recording"]["record_id"] != second["recording"]["record_id"]
-    assert len(records(history_store)) == 2
+    assert len(records(memory_store)) == 2
 
 
 @pytest.mark.asyncio
 async def test_given_later_direction_when_getting_delivery_then_original_version_remains_available(
-    history_store,
+    memory_store,
 ):
-    server, history, plane = server_with_history(history_store)
+    server, history, plane = server_with_history(memory_store)
     response = await invoke(server, "get_constitution")
     plane.set_direction(mission="Resolve complaints", change_note="new priority")
-    record = saved_record(history_store, response["recording"]["record_id"])
-    assert history_store.get("default", record["served_version"]).mission == "Help customers"
+    record = saved_record(memory_store, response["recording"]["record_id"])
+    assert memory_store.get("default", record["served_version"]).mission == "Help customers"
     assert "direction" not in record
     assert record["served_version"] == 1
 
 
 @pytest.mark.asyncio
 async def test_given_a_known_version_when_recording_changes_then_the_returned_delta_is_preserved(
-    history_store,
+    memory_store,
 ):
-    server, history, plane = server_with_history(history_store)
+    server, history, plane = server_with_history(memory_store)
     plane.set_direction(mission="Resolve complaints", change_note="new priority")
     response = await invoke(server, "get_changes_since", {"known_version": 1, "detail": "full"})
     record_id = response["recording"]["record_id"]
@@ -163,31 +154,31 @@ async def test_given_a_known_version_when_recording_changes_then_the_returned_de
     assert record["delta"] == response["delta"]
     assert "direction" not in record
     assert "change_notes" not in record
-    assert history_store.get("default", 2).mission == "Resolve complaints"
+    assert memory_store.get("default", 2).mission == "Resolve complaints"
 
 
 @pytest.mark.asyncio
 async def test_given_an_unknown_name_when_reading_then_the_record_has_no_constitution_id(
-    history_store,
+    memory_store,
 ):
-    server, history, _ = server_with_history(history_store)
+    server, history, _ = server_with_history(memory_store)
     result = await invoke(server, "get_constitution", {"constitution": "missing"})
-    record = saved_record(history_store, result["recording"]["record_id"])
+    record = saved_record(memory_store, result["recording"]["record_id"])
     assert record["constitution_id"] is None
     assert record["requested_constitution"] == "missing"
     assert record["served_version"] == 0
-    assert history_store.head("missing") is None
+    assert memory_store.head("missing") is None
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("status", ["recorded", "disabled", "failed"])
 async def test_given_recording_outcome_when_reading_resource_then_direction_and_status_are_returned(
-    history_store,
+    memory_store,
     monkeypatch,
     status,
 ):
     server, history, _ = server_with_history(
-        history_store, policy="never" if status == "disabled" else "always", constitution="support"
+        memory_store, policy="never" if status == "disabled" else "always", constitution="support"
     )
     append = Mock(wraps=history.append)
     if status == "failed":
@@ -206,9 +197,9 @@ async def test_given_recording_outcome_when_reading_resource_then_direction_and_
     assert append.call_count == (0 if status == "disabled" else 1)
     if status != "recorded":
         assert payload["recording"]["record_id"] is None
-        assert records(history_store) == []
+        assert records(memory_store) == []
         return
-    record = saved_record(history_store, payload["recording"]["record_id"])
+    record = saved_record(memory_store, payload["recording"]["record_id"])
     assert record["requested_constitution"] == "support"
     assert record["operation"] == "read_resource"
     assert record["detail_level"] == "compact"
@@ -218,9 +209,9 @@ async def test_given_recording_outcome_when_reading_resource_then_direction_and_
 
 @pytest.mark.asyncio
 async def test_given_a_failed_insert_when_reading_then_direction_returns_without_error_details(
-    history_store, monkeypatch, caplog
+    memory_store, monkeypatch, caplog
 ):
-    server, history, _ = server_with_history(history_store)
+    server, history, _ = server_with_history(memory_store)
 
     def fail_insert(*args, **values):
         raise RuntimeError("password=secret-value")
@@ -229,32 +220,32 @@ async def test_given_a_failed_insert_when_reading_then_direction_returns_without
     response = await invoke(server, "get_constitution")
     assert response["mission"] == "Help customers"
     assert response["recording"] == {"status": "failed", "record_id": None}
-    assert records(history_store) == []
+    assert records(memory_store) == []
     assert "delivery_recording_failed" in caplog.text
     assert "secret-value" not in caplog.text
 
 
 @pytest.mark.asyncio
 async def test_given_a_client_policy_override_when_reading_then_the_server_still_records(
-    history_store,
+    memory_store,
 ):
-    server, history, _ = server_with_history(history_store)
+    server, history, _ = server_with_history(memory_store)
     response = await invoke(server, "get_constitution", {"recording_policy": "never"})
     assert response["recording"]["status"] == "recorded"
-    assert len(records(history_store)) == 1
+    assert len(records(memory_store)) == 1
 
 
 @pytest.mark.asyncio
 async def test_given_history_when_recording_is_disabled_then_old_records_remain_queryable(
-    history_store,
+    memory_store,
 ):
-    server, history, plane = server_with_history(history_store)
+    server, history, plane = server_with_history(memory_store)
     recorded = await invoke(server, "get_constitution")
-    plane.delivery_recorder = DeliveryRecorder(SqlDeliveryRecordStore(history_store.engine))
+    plane.delivery_recorder = DeliveryRecorder(SqlDeliveryRecordStore(memory_store.engine))
     result = await invoke(server, "get_constitution")
     assert result["recording"]["status"] == "disabled"
-    assert saved_record(history_store, recorded["recording"]["record_id"])
-    assert len(records(history_store)) == 1
+    assert saved_record(memory_store, recorded["recording"]["record_id"])
+    assert len(records(memory_store)) == 1
 
 
 @pytest.mark.asyncio
@@ -275,11 +266,11 @@ async def test_given_history_when_recording_is_disabled_then_old_records_remain_
     ],
 )
 async def test_given_an_invalid_read_when_calling_core_then_no_delivery_is_recorded(
-    history_store,
+    memory_store,
     operation,
     arguments,
 ):
-    server, history, _ = server_with_history(history_store)
+    server, history, _ = server_with_history(memory_store)
     result = await server.request_handlers[types.CallToolRequest](
         types.CallToolRequest(
             method="tools/call",
@@ -287,40 +278,40 @@ async def test_given_an_invalid_read_when_calling_core_then_no_delivery_is_recor
         )
     )
     assert result.root.isError
-    assert records(history_store) == []
+    assert records(memory_store) == []
 
 
 @pytest.mark.asyncio
 async def test_given_a_dropped_history_table_when_reading_then_direction_still_returns(
-    history_store,
+    memory_store,
 ):
-    server, history, _ = server_with_history(history_store)
-    history_store.metadata.tables["kyno_delivery_records"].drop(history_store.engine)
+    server, history, _ = server_with_history(memory_store)
+    memory_store.metadata.tables["kyno_delivery_records"].drop(memory_store.engine)
     response = await invoke(server, "get_constitution")
     assert response["recording"] == {"status": "failed", "record_id": None}
     assert response["mission"] == "Help customers"
-    assert history_store.head("default").version == 1
+    assert memory_store.head("default").version == 1
 
 
 @pytest.mark.asyncio
 async def test_given_published_direction_when_exporting_then_no_runtime_delivery_is_recorded(
-    history_store,
+    memory_store,
 ):
-    server, history, plane = server_with_history(history_store)
+    server, history, plane = server_with_history(memory_store)
     plane.publish("default")
     assert len(await invoke(server, "export_versions")) == 1
     assert plane.public_constitution("default") is not None
-    assert records(history_store) == []
+    assert records(memory_store) == []
 
 
 @pytest.mark.asyncio
 async def test_given_failed_attribution_when_reading_then_direction_returns_with_failed_recording(
-    history_store,
+    memory_store,
     monkeypatch,
 ):
     import kyno.mcp_request_context as module
 
-    server, history, _ = server_with_history(history_store)
+    server, history, _ = server_with_history(memory_store)
 
     def fail_attribution(*args):
         raise RuntimeError("private connection detail")
@@ -329,14 +320,14 @@ async def test_given_failed_attribution_when_reading_then_direction_returns_with
     result = await invoke(server, "get_constitution")
     assert result["mission"] == "Help customers"
     assert result["recording"] == {"status": "failed", "record_id": None}
-    assert records(history_store) == []
+    assert records(memory_store) == []
 
 
 @pytest.mark.asyncio
 async def test_given_irrelevant_arguments_when_reading_mission_then_they_cannot_disable_recording(
-    history_store,
+    memory_store,
 ):
-    server, history, _ = server_with_history(history_store)
+    server, history, _ = server_with_history(memory_store)
     response = await invoke(
         server,
         "get_mission",
@@ -346,7 +337,7 @@ async def test_given_irrelevant_arguments_when_reading_mission_then_they_cannot_
         },
     )
     assert response["recording"]["status"] == "recorded"
-    record = saved_record(history_store, response["recording"]["record_id"])
+    record = saved_record(memory_store, response["recording"]["record_id"])
     assert record["known_version"] is None
     assert record["detail_level"] is None
     assert record["selection"] == {}
@@ -362,7 +353,7 @@ def test_given_direction_tool_when_listing_schema_then_caller_version_is_declare
 @pytest.mark.parametrize("policy", ["never", "always"])
 @pytest.mark.asyncio
 async def test_given_workspace_policy_when_composing_server_then_reads_follow_it(
-    history_store, policy
+    memory_store, policy
 ):
     from kyno.delivery import DeliverySettings
     from kyno.public_page import PageConfig
@@ -371,7 +362,7 @@ async def test_given_workspace_policy_when_composing_server_then_reads_follow_it
     settings = Settings(
         "sqlite://", "localhost", 2256, PageConfig(), delivery=DeliverySettings(policy)
     )
-    plane = control_plane_from_settings(settings, history_store)
+    plane = control_plane_from_settings(settings, memory_store)
     response = await invoke(build_server(plane), "get_constitution")
     assert response["recording"]["status"] == ("recorded" if policy == "always" else "disabled")
     assert plane.delivery_record_store is not None
@@ -380,7 +371,7 @@ async def test_given_workspace_policy_when_composing_server_then_reads_follow_it
 @pytest.mark.parametrize("timeout", [0.025, 2.5])
 @pytest.mark.asyncio
 async def test_given_workspace_timeout_when_reading_direction_then_recording_uses_that_limit(
-    history_store, monkeypatch, timeout
+    memory_store, monkeypatch, timeout
 ):
     from kyno.delivery import DeliverySettings
     from kyno.public_page import PageConfig
@@ -393,7 +384,7 @@ async def test_given_workspace_timeout_when_reading_direction_then_recording_use
         PageConfig(),
         delivery=DeliverySettings("always", recording_timeout_seconds=timeout),
     )
-    plane = control_plane_from_settings(settings, history_store)
+    plane = control_plane_from_settings(settings, memory_store)
     append = Mock(wraps=plane.delivery_record_store.append)
     monkeypatch.setattr(plane.delivery_record_store, "append", append)
     response = await invoke(build_server(plane), "get_mission")
@@ -444,13 +435,13 @@ async def test_given_locked_recording_database_when_reading_over_mcp_then_direct
 
 
 @pytest.mark.asyncio
-async def test_given_no_recorder_when_reading_then_status_is_disabled(history_store):
-    response = await invoke(build_server(ControlPlane(history_store)), "get_constitution")
+async def test_given_no_recorder_when_reading_then_status_is_disabled(memory_store):
+    response = await invoke(build_server(ControlPlane(memory_store)), "get_constitution")
     assert response["recording"] == {"status": "disabled", "record_id": None}
 
 
-def test_given_no_recorder_when_recording_through_core_then_status_is_disabled(history_store):
-    result = ControlPlane(history_store).record_delivery(
+def test_given_no_recorder_when_recording_through_core_then_status_is_disabled(memory_store):
+    result = ControlPlane(memory_store).record_delivery(
         {"version": 0}, operation="get_constitution", arguments={}
     )
     assert result == {"status": "disabled", "record_id": None}
@@ -458,11 +449,11 @@ def test_given_no_recorder_when_recording_through_core_then_status_is_disabled(h
 
 @pytest.mark.asyncio
 async def test_given_disabled_recording_when_attribution_fails_then_it_is_not_resolved(
-    history_store, monkeypatch
+    memory_store, monkeypatch
 ):
     import kyno.mcp_request_context as module
 
-    server, _, _ = server_with_history(history_store, policy="never")
+    server, _, _ = server_with_history(memory_store, policy="never")
 
     def fail_attribution(*args):
         raise AssertionError("disabled recording must not resolve identity")

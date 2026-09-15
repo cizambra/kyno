@@ -3,7 +3,8 @@
 import pytest
 
 from kyno.service import ControlPlane
-from tests.mcp_requests import MCP_HEADERS, bearer, initialize_payload, mint, token_store
+from tests.mcp_requests import MCP_HEADERS, bearer, initialize_payload, mint
+from tests.stores import create_memory_store
 
 
 def test_given_no_token_store_when_building_the_http_app_then_allow_insecure_is_required():
@@ -11,7 +12,7 @@ def test_given_no_token_store_when_building_the_http_app_then_allow_insecure_is_
     from kyno.errors import ConfigError
     from kyno.transports import build_http_app
 
-    store = token_store()
+    store = create_memory_store()
     with pytest.raises(ConfigError, match="token store"):
         build_http_app(ControlPlane(store))
 
@@ -21,7 +22,7 @@ def test_given_no_token_store_and_allow_insecure_when_posting_then_no_token_is_c
 
     from kyno.transports import build_http_app
 
-    store = token_store()
+    store = create_memory_store()
     app = build_http_app(ControlPlane(store), allow_insecure=True)
 
     with TestClient(app) as client:
@@ -53,7 +54,7 @@ def test_given_an_mcp_release_without_the_body_cap_when_building_the_app_then_it
     monkeypatch.setattr(manager_module, "StreamableHTTPSessionManager", OldRelease)
     from starlette.testclient import TestClient
 
-    store = token_store()
+    store = create_memory_store()
     value = mint(store)
     with TestClient(build_http_app(ControlPlane(store), token_store=store)) as client:
         response = client.post("/mcp", json=initialize_payload(), headers=bearer(value))

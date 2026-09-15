@@ -1,51 +1,16 @@
 """Plans go stale the same way steps do; the tracker is how a planner knows."""
 
-from contextlib import asynccontextmanager
 
-import pytest
-
-from kyno.mcp_server import build_server
-from kyno.sdk import KynoConnection
-from kyno.sdk.client import SessionRunner
-from kyno.service import ControlPlane
-from kyno.store.sql import SqlConstitutionStore
-
-
-@pytest.fixture
-def connection():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
-    control_plane = ControlPlane(store)
-    server = build_server(control_plane)
-
-    @asynccontextmanager
-    async def session_factory(message_handler=None):
-        from mcp.shared.memory import create_connected_server_and_client_session
-
-        async with create_connected_server_and_client_session(
-            server, message_handler=message_handler
-        ) as session:
-            yield session
-
-    runner = SessionRunner(session_factory)
-    runner.start()
-    connection = KynoConnection(runner)
-    try:
-        yield connection, control_plane
-    finally:
-        connection.close()
-
-
-def test_given_a_plan_when_planning_then_the_direction_in_force_is_pulled(connection):
-    conn, control_plane = connection
+def test_given_a_plan_when_planning_then_the_direction_in_force_is_pulled(mcp_connection):
+    conn, control_plane = mcp_connection
     control_plane.set_direction(mission="M1", change_note="init")
     tracker = conn.binder().plan()
 
     assert tracker.direction().version == 1
 
 
-def test_given_an_unchanged_direction_when_checking_then_no_replan_is_needed(connection):
-    conn, control_plane = connection
+def test_given_an_unchanged_direction_when_checking_then_no_replan_is_needed(mcp_connection):
+    conn, control_plane = mcp_connection
     control_plane.set_direction(mission="M1", change_note="init")
     tracker = conn.binder().plan()
     tracker.direction()
@@ -53,8 +18,10 @@ def test_given_an_unchanged_direction_when_checking_then_no_replan_is_needed(con
     assert tracker.changed() is None
 
 
-def test_given_a_new_version_mid_run_when_checking_then_the_fresh_direction_comes_back(connection):
-    conn, control_plane = connection
+def test_given_a_new_version_mid_run_when_checking_then_the_fresh_direction_comes_back(
+    mcp_connection,
+):
+    conn, control_plane = mcp_connection
     control_plane.set_direction(mission="M1", change_note="init")
     tracker = conn.binder().plan()
     tracker.direction()
@@ -67,9 +34,9 @@ def test_given_a_new_version_mid_run_when_checking_then_the_fresh_direction_come
 
 
 def test_given_a_replan_when_it_is_applied_then_the_tracker_arms_against_the_new_version(
-    connection,
+    mcp_connection,
 ):
-    conn, control_plane = connection
+    conn, control_plane = mcp_connection
     control_plane.set_direction(mission="M1", change_note="init")
     tracker = conn.binder().plan()
     tracker.direction()
@@ -83,9 +50,9 @@ def test_given_a_replan_when_it_is_applied_then_the_tracker_arms_against_the_new
 
 
 def test_given_no_direction_yet_when_planning_then_version_zero_holds_and_the_first_replans(
-    connection,
+    mcp_connection,
 ):
-    conn, control_plane = connection
+    conn, control_plane = mcp_connection
     tracker = conn.binder().plan()
 
     assert tracker.direction().version == 0
@@ -95,8 +62,8 @@ def test_given_no_direction_yet_when_planning_then_version_zero_holds_and_the_fi
     assert fresh.version == 1
 
 
-def test_given_an_unreachable_plane_when_checking_then_no_change_is_reported(connection):
-    conn, control_plane = connection
+def test_given_an_unreachable_plane_when_checking_then_no_change_is_reported(mcp_connection):
+    conn, control_plane = mcp_connection
     control_plane.set_direction(mission="M1", change_note="init")
     tracker = conn.binder().plan()
     tracker.direction()

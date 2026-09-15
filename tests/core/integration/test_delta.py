@@ -10,13 +10,12 @@ note saying "the direction has changed" does not say which part.
 import pytest
 
 from kyno.service import ControlPlane
-from kyno.store.sql import SqlConstitutionStore
+from tests.stores import create_memory_store
 
 
 @pytest.fixture
 def plane():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     plane = ControlPlane(store)
     plane.set_direction(
         mission="Run the agency",

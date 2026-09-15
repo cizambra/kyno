@@ -2,8 +2,8 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from kyno.service import ControlPlane
-from kyno.store.sql import SqlConstitutionStore
 from kyno.wire.models import normalize_principles
+from tests.stores import create_memory_store
 
 # A title must survive being stripped; the shapes are mixed on purpose, so
 # the change-detection property covers described and title-only principles
@@ -22,8 +22,7 @@ op = st.tuples(
 @settings(max_examples=100, deadline=None)
 @given(ops=st.lists(op, min_size=1, max_size=25))
 def test_given_any_edit_history_when_asking_changes_since_then_current_and_changed_reconstruct(ops):
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
 
     prev_mission, prev_principles = None, None

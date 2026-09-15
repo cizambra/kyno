@@ -5,13 +5,14 @@ import uvicorn
 
 from kyno.service import ControlPlane
 from kyno.transports import build_http_app
-from tests.mcp_requests import mint, token_store
+from tests.mcp_requests import mint
 from tests.servers import free_port, wait_until
+from tests.stores import create_memory_store
 
 
 @pytest.fixture
 def server_store():
-    store = token_store()
+    store = create_memory_store()
     yield store
     store.engine.dispose()
 

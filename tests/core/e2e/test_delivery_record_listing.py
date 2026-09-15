@@ -12,12 +12,13 @@ from kyno.mcp_server import build_server
 from kyno.service import ControlPlane
 from kyno.store.delivery_record import SqlDeliveryRecordStore
 from kyno.transports import build_http_app
-from tests.mcp_requests import bearer, call_tool, drive_session, mint, sse_json, token_store
+from tests.mcp_requests import bearer, call_tool, drive_session, mint, sse_json
+from tests.stores import create_memory_store
 
 
 @pytest.fixture
 def configured():
-    store = token_store()
+    store = create_memory_store()
     history = SqlDeliveryRecordStore(store.engine)
     control_plane = ControlPlane(store, delivery_record_store=history)
     identifiers = []

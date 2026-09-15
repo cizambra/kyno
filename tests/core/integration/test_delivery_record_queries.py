@@ -6,13 +6,12 @@ import pytest
 from sqlalchemy import event, insert, update
 
 from kyno.store.delivery_record import SqlDeliveryRecordStore
-from kyno.store.sql import SqlConstitutionStore
+from tests.stores import create_memory_store
 
 
 @pytest.fixture
 def history():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     with store.engine.begin() as connection:
         for index, (correlation_id, constitution) in enumerate(
             [("one", "alpha"), ("two", "alpha"), ("one", "beta"), ("", "alpha")], start=1

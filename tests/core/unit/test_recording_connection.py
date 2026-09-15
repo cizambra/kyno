@@ -14,7 +14,7 @@ def engine(url, dialect, driver):
     "timeout, milliseconds, seconds, keepalive_seconds",
     [(0.00001, 1, 2, 1), (0.25, 250, 2, 1), (2.5, 2500, 3, 3)],
 )
-def test_given_postgres_timeout_when_connecting_then_statement_and_network_limits_are_configured(
+def test_given_postgres_when_configuring_recording_then_timeouts_round_up_to_driver_limits(
     timeout, milliseconds, seconds, keepalive_seconds
 ):
     source = engine(

@@ -13,8 +13,8 @@ from tests.mcp_requests import (
     initialize_payload,
     mint,
     sse_json,
-    token_store,
 )
+from tests.stores import create_memory_store
 
 
 def test_given_no_bearer_when_posting_to_the_http_app_then_it_is_401():
@@ -256,7 +256,7 @@ def test_given_allow_insecure_when_calling_set_direction_then_the_write_executes
 
     from kyno.transports import build_http_app
 
-    store = token_store()
+    store = create_memory_store()
     app = build_http_app(ControlPlane(store), allow_insecure=True)
 
     with TestClient(app) as client:
@@ -277,7 +277,7 @@ def test_given_allow_insecure_when_calling_an_undeclared_tool_then_the_server_it
 
     from kyno.transports import build_http_app
 
-    store = token_store()
+    store = create_memory_store()
     app = build_http_app(ControlPlane(store), allow_insecure=True)
 
     with TestClient(app) as client:

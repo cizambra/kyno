@@ -16,12 +16,13 @@ from kyno.service import ControlPlane
 from kyno.store.delivery_record import SqlDeliveryRecordStore
 from kyno.store.sql import SqlConstitutionStore
 from kyno.transports import build_http_app
-from tests.mcp_requests import bearer, call_tool, drive_session, mint, sse_json, token_store
+from tests.mcp_requests import bearer, call_tool, drive_session, mint, sse_json
+from tests.stores import create_memory_store
 
 
 @pytest.fixture
 def delivery_setup():
-    store = token_store()
+    store = create_memory_store()
     deliveries = SqlDeliveryRecordStore(store.engine)
     identifier = deliveries.append(
         {"version": 0, "mission": "Original"},
@@ -83,7 +84,7 @@ async def test_given_missing_or_unknown_id_when_getting_delivery_then_error_retu
 
 async def test_given_unconfigured_history_when_getting_delivery_then_configuration_error_is_safe():
     async with create_connected_server_and_client_session(
-        build_server(ControlPlane(token_store()))
+        build_server(ControlPlane(create_memory_store()))
     ) as client:
         result = await client.call_tool("get_delivery_record", {"record_id": "unknown"})
     assert result.isError

@@ -6,8 +6,8 @@ import pytest
 
 from kyno.mcp.server import build_server
 from kyno.service import ControlPlane
-from kyno.store.sql import SqlConstitutionStore
 from kyno.wire import RESOURCE_URI
+from tests.stores import create_memory_store
 
 
 @pytest.mark.asyncio
@@ -15,8 +15,7 @@ from kyno.wire import RESOURCE_URI
 async def test_given_an_in_process_session_when_calling_tools_then_the_written_mission_reads_back():
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     cp = ControlPlane(store)
     server = build_server(cp)
 

@@ -14,14 +14,12 @@ from kyno.public_page import (
     render_index,
 )
 from kyno.service import ControlPlane
-from kyno.store.sql import SqlConstitutionStore
+from tests.stores import create_memory_store
 
 
 @pytest.fixture
-def plane():
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
-    return ControlPlane(store)
+def plane(control_plane):
+    return control_plane
 
 
 def published(plane, **kwargs):
@@ -142,8 +140,7 @@ def test_given_the_declaration_placeholder_when_rendering_then_it_is_the_whole_b
     )
     assert '[<div class="declaration">' in with_one
 
-    bare = SqlConstitutionStore(url="sqlite://")
-    bare.create_all()
+    bare = create_memory_store()
     other = ControlPlane(bare)
     assert (
         render_constitution(
@@ -165,8 +162,7 @@ def test_given_the_principles_placeholder_when_rendering_then_it_has_its_own_hea
     assert "Operating principles" in with_some
     assert '<ol class="claims">' in with_some
 
-    bare = SqlConstitutionStore(url="sqlite://")
-    bare.create_all()
+    bare = create_memory_store()
     other = ControlPlane(bare)
     assert (
         render_constitution(

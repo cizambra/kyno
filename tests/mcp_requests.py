@@ -1,8 +1,8 @@
 """Helpers for driving MCP-over-HTTP requests in tests: a store with
 minted tokens, the headers, and a full initialize/notify/call session."""
 
-from kyno.store.sql import SqlConstitutionStore
 from kyno.tokens import generate_value, hash_value
+from tests.stores import create_memory_store
 
 MCP_HEADERS = {
     "Accept": "application/json, text/event-stream",
@@ -10,19 +10,12 @@ MCP_HEADERS = {
 }
 
 
-def token_store():
-    """A created in-memory store, ready to hold tokens."""
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
-    return store
-
-
 def gated_http_app():
     """Build a token-gated HTTP app with one live write token."""
     from kyno.service import ControlPlane
     from kyno.transports import build_http_app
 
-    store = token_store()
+    store = create_memory_store()
     value = mint(store)
     return store, value, build_http_app(ControlPlane(store), token_store=store)
 

@@ -6,7 +6,6 @@ from kyno.adapters.langgraph.nodes import (
     direction_from_state,
     direction_node,
     direction_update,
-    gate_node,
     pull_before,
 )
 
@@ -15,6 +14,5 @@ __all__ = [
     "direction_from_state",
     "direction_node",
     "direction_update",
-    "gate_node",
     "pull_before",
 ]

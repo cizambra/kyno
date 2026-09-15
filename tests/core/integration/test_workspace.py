@@ -37,15 +37,23 @@ def test_given_no_recording_timeout_when_loading_settings_then_it_defaults_to_on
     assert Settings.load().delivery.recording_timeout_seconds == 1.0
 
 
-@pytest.mark.parametrize("value", ["0.25", "2", "${ACME_RECORDING_TIMEOUT}"])
-def test_given_recording_timeout_when_loading_settings_then_it_preserves_configured_seconds(
-    tmp_path, monkeypatch, value
+@pytest.mark.parametrize(
+    "value, expected_seconds", [("0.25", 0.25), ("2", 2.0), ("${ACME_RECORDING_TIMEOUT}", 0.25)]
+)
+@pytest.mark.parametrize("policy", [pytest.param(None, id="default-policy"), "never", "always"])
+def test_given_recording_policy_and_timeout_when_loading_settings_then_both_are_preserved(
+    tmp_path, monkeypatch, value, expected_seconds, policy
 ):
     root = make(tmp_path)
     monkeypatch.setenv("ACME_RECORDING_TIMEOUT", "0.25")
-    write_config(root, f"[delivery]\nrecording_timeout_seconds = {value}\n")
+    body = f"[delivery]\nrecording_timeout_seconds = {value}\n"
+    if policy is not None:
+        body += f"recording_policy = {policy}\n"
+    write_config(root, body)
     monkeypatch.chdir(root)
-    assert Settings.load().delivery.recording_timeout_seconds == (2 if value == "2" else 0.25)
+    settings = Settings.load().delivery
+    assert settings.recording_timeout_seconds == expected_seconds
+    assert settings.recording_policy is RecordingPolicy(policy or "never")
 
 
 @pytest.mark.parametrize("value", ["0", "-1", "nan", "inf", "-inf", "1e999", "true", "", "secret"])

@@ -129,7 +129,7 @@ async def test_given_recorded_direction_when_updated_and_restarted_then_lookup_k
     url = f"sqlite:///{tmp_path / 'restart.sqlite3'}"
     store = SqlConstitutionStore(url=url)
     store.create_all()
-    deliveries = SqlDeliveryRecordStore(store.engine)
+    deliveries = SqlDeliveryRecordStore(store.engine, recording_url=url)
     core = ControlPlane(
         store,
         delivery_record_store=deliveries,

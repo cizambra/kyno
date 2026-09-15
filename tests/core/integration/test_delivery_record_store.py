@@ -71,7 +71,7 @@ def test_given_unknown_constitution_when_appending_twice_then_distinct_records_k
 def test_given_mutable_request_data_when_appending_then_delta_and_context_keep_original_values(
     store,
 ):
-    direction = {"version": 0, "delta": ["Mission changed."], "principles": [{"title": "Before"}]}
+    direction = {"version": 0, "delta": ["Mission changed."]}
     context = {"correlation_id": "session", "metadata": {"nested": [1]}}
     requester = {"token_id": 2}
     arguments = {"known_version": 2, "detail": "full", "title": "Before"}
@@ -91,7 +91,6 @@ def test_given_mutable_request_data_when_appending_then_delta_and_context_keep_o
     requester["token_id"] = 4
     record = rows(store)[0]
     assert json.loads(record["delta"]) == expected_delta
-    assert "direction" not in record
     assert json.loads(record["metadata"]) == expected_context["metadata"]
     assert json.loads(record["requester"]) == expected_requester
     assert json.loads(record["selection"]) == expected_selection
@@ -146,17 +145,15 @@ def test_given_custom_prefix_when_appending_then_only_prefixed_tables_are_used()
     assert record["record_id"] == identifier
     assert record["served_version"] == 0
     assert record["delta"] is None
-    assert "direction" not in record
 
 
-def test_given_mysql_schema_when_compiling_then_only_delta_uses_longtext(
+def test_given_mysql_schema_when_compiling_then_delta_supports_large_documents(
     store,
 ):
     statement = str(
         CreateTable(store.metadata.tables["kyno_delivery_records"]).compile(dialect=mysql.dialect())
     )
     assert "delta LONGTEXT NOT NULL" in statement
-    assert "direction " not in statement
 
 
 def test_given_unknown_record_id_when_getting_then_lookup_raises(store):
@@ -183,14 +180,22 @@ def test_given_multiple_deliveries_when_getting_by_id_then_exact_decoded_record_
     if target_first:
         append(store, {"version": 0, "principles": []})
     raw = next(record for record in rows(store) if record["record_id"] == identifier)
-    expected = dict(raw)
-    expected.pop("sequence")
-    expected.update(
-        delta=None,
-        requester={"token_id": 8},
-        metadata={"nested": [1]},
-        selection={"title": "Original"},
-    )
+    expected = {
+        "record_id": identifier,
+        "recorded_at": raw["recorded_at"],
+        "constitution_id": None,
+        "requested_constitution": "missing",
+        "served_version": 0,
+        "operation": "get_direction",
+        "known_version": None,
+        "detail_level": None,
+        "selection": {"title": "Original"},
+        "delta": None,
+        "requester": {"token_id": 8},
+        "correlation_id": "session",
+        "metadata": {"nested": [1]},
+    }
+    assert set(raw) == set(expected) | {"sequence"}
     assert SqlDeliveryRecordStore(store.engine).get(identifier) == expected
 
 
@@ -199,18 +204,16 @@ def test_given_updates_and_mutations_when_getting_delivery_then_version_and_delt
 ):
     plane = ControlPlane(store)
     plane.set_direction(constitution="missing", mission="Original", change_note="initial")
-    direction = {"version": 1, "mission": "Original", "delta": ["Original delta"]}
+    direction = {"version": 1, "delta": ["Original delta"]}
     identifier = append(
         store, direction, context={"correlation_id": None, "metadata": {"nested": [1]}}
     )
     first = SqlDeliveryRecordStore(store.engine).get(identifier)
     first["delta"].append("Mutated")
     first["metadata"]["nested"].append(2)
-    direction["mission"] = "Caller mutation"
     plane.set_direction(constitution="missing", mission="New mission", change_note="updated")
     restored = SqlDeliveryRecordStore(store.engine).get(identifier)
     assert restored["delta"] == ["Original delta"]
-    assert "direction" not in restored
     assert store.get("missing", restored["served_version"]).mission == "Original"
     assert restored["metadata"] == {"nested": [1]}
     assert restored["requester"] is None
@@ -292,7 +295,6 @@ def test_given_migrated_database_when_reopened_then_committed_recording_is_prese
         assert records[0]["record_id"] == identifier
         assert records[0]["correlation_id"] == correlation_id
         assert json.loads(records[0]["delta"]) is None
-        assert "direction" not in records[0]
         saved = SqlDeliveryRecordStore(reopened.engine).get(identifier)
         assert saved["record_id"] == identifier
         assert saved["correlation_id"] == correlation_id
@@ -346,7 +348,6 @@ def test_given_responses_sharing_a_correlation_id_when_recording_then_each_keeps
         {"step": "second"},
     ]
     assert all(record["served_version"] == 0 for record in records)
-    assert all("direction" not in record for record in records)
 
 
 @pytest.mark.parametrize(

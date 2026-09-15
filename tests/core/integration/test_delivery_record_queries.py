@@ -71,7 +71,6 @@ def test_given_history_when_filtering_then_matching_records_are_oldest_first(
 def test_given_stored_json_when_listing_then_values_are_decoded_without_sequence(history):
     record = history.list(limit=1)[0]
     assert record["delta"] is None
-    assert "direction" not in record
     assert record["selection"] == {"title": "Example"}
     assert record["requester"] is None
     assert record["metadata"] == {"nested": [1]}

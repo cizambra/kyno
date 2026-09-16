@@ -8,6 +8,7 @@ from typing import Any, TypedDict
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.binding import DeliveryStatus
 from kyno.sdk.cell import Direction
+from kyno.sdk.recording import RecordingReceipt
 from kyno.wire.models import DetailLevel
 
 
@@ -27,9 +28,15 @@ class KynoState(TypedDict, total=False):
     kyno_context: DetailLevel
     kyno_direction: str
     kyno_delivery_status: DeliveryStatus | None
+    kyno_recording: dict[str, str | None] | None
 
 
-def direction_update(direction: Direction, *, status: DeliveryStatus | str | None = None) -> dict:
+def direction_update(
+    direction: Direction,
+    *,
+    status: DeliveryStatus | str | None = None,
+    recording: RecordingReceipt | None = None,
+) -> dict:
     """Direction travels in graph state so a persisted checkpoint says which
     constitution and version a step served, without any other context.
     Status is unknown when no binding metadata is supplied.
@@ -45,6 +52,11 @@ def direction_update(direction: Direction, *, status: DeliveryStatus | str | Non
         "kyno_direction": direction.render(),
         "kyno_context": direction.context,
         "kyno_delivery_status": DeliveryStatus(status) if status is not None else None,
+        "kyno_recording": (
+            {"status": recording.status.value, "record_id": recording.record_id}
+            if recording is not None
+            else None
+        ),
     }
 
 
@@ -67,7 +79,9 @@ def direction_node(binder: DirectionBinder, constitution: str = "default") -> Ca
 
     def node(state: dict) -> dict:
         binding = binder.bind_with_status(constitution)
-        return direction_update(binding.direction, status=binding.status)
+        return direction_update(
+            binding.direction, status=binding.status, recording=binding.recording
+        )
 
     return node
 
@@ -77,7 +91,9 @@ def pull_before(binder: DirectionBinder, constitution: str = "default") -> Calla
         @functools.wraps(node)
         def wrapped(state: dict, *args: Any, **kwargs: Any) -> dict:
             binding = binder.bind_with_status(constitution)
-            update = direction_update(binding.direction, status=binding.status)
+            update = direction_update(
+                binding.direction, status=binding.status, recording=binding.recording
+            )
             result = node({**state, **update}, *args, **kwargs) or {}
             return {**update, **result}
 

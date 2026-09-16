@@ -1,10 +1,14 @@
+from unittest.mock import Mock
+
 import pytest
 
 pytest.importorskip("langgraph")
 
 from kyno.adapters import langgraph  # noqa: E402
 from kyno.adapters.langgraph import nodes  # noqa: E402
+from kyno.sdk.binding import DeliveryStatus, DirectionBinding  # noqa: E402
 from kyno.sdk.cell import Direction  # noqa: E402
+from kyno.sdk.recording import RecordingReceipt  # noqa: E402
 
 
 def test_given_the_adapter_when_inspecting_exports_then_it_supplies_direction_helpers():
@@ -22,3 +26,46 @@ def test_given_the_adapter_when_inspecting_exports_then_it_supplies_direction_he
 def test_given_direction_state_when_inspecting_fields_then_it_declares_only_direction():
     update = langgraph.direction_update(Direction.empty("support"))
     assert set(langgraph.KynoState.__annotations__) == set(update)
+
+
+@pytest.mark.parametrize("wrapped", [False, True])
+@pytest.mark.parametrize("status", ["recorded", "disabled", "failed", None])
+def test_given_a_recording_receipt_when_a_boundary_runs_then_state_carries_a_plain_copy(
+    wrapped, status
+):
+    record_id = "delivery-1" if status == "recorded" else None
+    recording = RecordingReceipt(status=status, record_id=record_id) if status is not None else None
+    binding = DirectionBinding(
+        direction=Direction.empty("support"),
+        status=DeliveryStatus.CURRENT,
+        recording=recording,
+    )
+    binder = Mock(bind_with_status=Mock(return_value=binding))
+    captured = []
+
+    def work(state):
+        captured.append(state["kyno_recording"])
+        return {"output": "answer"}
+
+    node = (
+        langgraph.pull_before(binder, "support")(work)
+        if wrapped
+        else langgraph.direction_node(binder, "support")
+    )
+    result = node({"kyno_recording": {"status": "recorded", "record_id": "old"}})
+    expected = {"status": status, "record_id": record_id} if status is not None else None
+
+    assert result["kyno_recording"] == expected
+    assert result["kyno_direction"] == binding.direction.render()
+    binder.bind_with_status.assert_called_once_with("support")
+    if wrapped:
+        assert captured == [expected]
+    if recording is not None:
+        result["kyno_recording"]["record_id"] = "edited"
+        assert recording.record_id == record_id
+
+
+def test_given_direction_without_a_receipt_when_state_is_built_then_recording_is_unknown():
+    update = langgraph.direction_update(Direction.empty("support"))
+
+    assert update["kyno_recording"] is None

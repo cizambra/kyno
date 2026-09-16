@@ -115,6 +115,19 @@ class KynoConnection:
         """
         return _history.get_delivery_record(self._runner, record_id)
 
+    def get_direction_version(
+        self, version: int, constitution: str = "default"
+    ) -> Direction | None:
+        """Return one historical version at full detail, or None if absent.
+
+        Version zero returns the empty direction locally. Positive versions use
+        the server's export history, without updating any binder cell. Returned
+        direction has no per-delivery delta or recent change notes.
+        Raises ValueError for invalid arguments, KynoHistoryError for rejected
+        queries, and KynoUnavailableError for transport or reply failures.
+        """
+        return _history.get_direction_version(self._runner, version, constitution)
+
     def list_delivery_records(
         self,
         *,

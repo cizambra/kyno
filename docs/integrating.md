@@ -466,6 +466,25 @@ an agent used the direction. They let your application group recorded responses
 according to its own workflow. Without these arguments, the SDK sends no
 correlation ID and uses empty metadata.
 
+To inspect the full direction associated with a record, request its exact version:
+
+```python
+with kyno.connect() as connection:
+    direction = connection.get_direction_version(
+        record["served_version"], record["requested_constitution"]
+    )
+    if direction is not None:
+        print(direction.mission, direction.declaration, direction.principles)
+```
+
+The lookup uses the existing version export tool with both bounds set to the
+requested version. A missing positive version
+returns `None`; version zero returns the empty direction locally. The lookup
+does not update a binder's cached direction. It returns full content, not the
+exact compact block or selected principle a particular delivery may have served.
+Per-delivery deltas remain on the delivery record; the historical direction has
+no delta or recent change notes.
+
 ## 💬 Questions?
 
 [Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)

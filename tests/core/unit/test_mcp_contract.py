@@ -426,6 +426,7 @@ def test_given_the_server_when_listing_tools_then_all_of_them_read_as_one_family
         "export_versions",
         "set_direction",
         "whoami",
+        "list_delivery_records",
     ]
     for tool in mcp_tools.TOOLS:
         description = tool.description

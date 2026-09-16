@@ -56,9 +56,21 @@ def test_given_filtered_history_when_advancing_cursor_then_matching_summaries_re
     assert len(history.list()["items"]) == 3
 
 
-def test_given_nonmatching_filter_when_listing_with_sdk_then_empty_page_returns(history_connection):
+@pytest.mark.parametrize(
+    "filters",
+    [
+        {"correlation_id": "absent"},
+        {"constitution": "absent"},
+        {"since": "9998-01-01T00:00:00Z"},
+        {"until": "2000-01-01T00:00:00Z"},
+    ],
+    ids=["correlation", "constitution", "since", "until"],
+)
+def test_given_nonmatching_filter_when_listing_with_sdk_then_empty_page_returns(
+    history_connection, filters
+):
     connection, _, _ = history_connection
-    assert connection.list_delivery_records(correlation_id="absent") == {
+    assert connection.list_delivery_records(**filters) == {
         "items": [],
         "next_cursor": None,
     }
@@ -80,8 +92,49 @@ def test_given_invalid_limit_when_listing_with_sdk_then_history_error_is_actiona
         connection.list_delivery_records(limit=0)
 
 
-def test_given_closed_connection_when_reading_history_then_unavailable_is_raised(mcp_connection):
-    connection, _ = mcp_connection
+@pytest.mark.parametrize("operation", ["get_delivery_record", "list_delivery_records"])
+def test_given_a_prior_history_read_when_disconnected_then_read_raises_instead_of_returning_cache(
+    history_connection, operation
+):
+    connection, _, identifiers = history_connection
+    arguments = {"record_id": identifiers[0]} if operation == "get_delivery_record" else {}
+    read = getattr(connection, operation)
+    assert read(**arguments)
     connection.close()
     with pytest.raises(KynoUnavailableError):
-        connection.list_delivery_records()
+        read(**arguments)
+
+
+@pytest.mark.parametrize("operation", ["get_delivery_record", "list_delivery_records"])
+def test_given_history_not_configured_when_reading_with_sdk_then_history_error_explains_why(
+    mcp_connection, operation
+):
+    connection, _ = mcp_connection
+    arguments = {"record_id": "record-1"} if operation == "get_delivery_record" else {}
+    with pytest.raises(KynoHistoryError, match="not configured"):
+        getattr(connection, operation)(**arguments)
+
+
+def test_given_a_version_one_record_when_direction_advances_then_sdk_returns_the_saved_reference(
+    mcp_connection,
+):
+    connection, control_plane = mcp_connection
+    history = SqlDeliveryRecordStore(control_plane._store.engine)
+    control_plane.delivery_record_store = history
+    control_plane.set_direction(mission="Help customers.", change_note="Initial direction")
+    identifier = history.append(
+        {"version": 1},
+        operation="get_mission",
+        constitution="default",
+        arguments={},
+        context={"correlation_id": None, "metadata": {}},
+    )
+    saved_record = history.get(identifier)
+    control_plane.set_direction(mission="Protect trust.", change_note="New priority")
+
+    record = connection.get_delivery_record(identifier)
+
+    assert record == saved_record
+    assert record["constitution_id"] is not None
+    assert record["served_version"] == 1
+    assert record["delta"] is None

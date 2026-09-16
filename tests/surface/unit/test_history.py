@@ -1,10 +1,11 @@
+import asyncio
 import json
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from kyno.sdk import history
+from kyno.sdk import KynoConnection, history
 from kyno.sdk.errors import KynoHistoryError, KynoRefusedError, KynoUnavailableError
 
 
@@ -56,11 +57,15 @@ def test_given_tool_error_when_reading_history_then_history_error_preserves_mess
 
 
 @pytest.mark.parametrize("failure", [KynoUnavailableError("offline"), KynoRefusedError("403")])
-def test_given_transport_failure_when_reading_history_then_original_failure_is_preserved(failure):
+@pytest.mark.parametrize("operation", ["get_delivery_record", "list_delivery_records"])
+def test_given_transport_failure_when_reading_history_then_original_failure_is_preserved(
+    failure, operation
+):
     runner = Mock()
     runner.call.side_effect = failure
     with pytest.raises(type(failure)) as raised:
-        history.get_delivery_record(runner, "record-1")
+        arguments = {"record_id": "record-1"} if operation == "get_delivery_record" else {}
+        getattr(history, operation)(runner, **arguments)
     assert raised.value is failure
 
 
@@ -69,3 +74,45 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
     runner.call.return_value = SimpleNamespace(isError=False, content=[])
     with pytest.raises(KynoUnavailableError, match="bad reply"):
         history.get_delivery_record(runner, "record-1")
+
+
+@pytest.mark.parametrize(
+    "filters, expected_arguments",
+    [
+        ({}, {"limit": 50}),
+        (
+            {
+                "correlation_id": "run-42",
+                "constitution": "support",
+                "since": "2026-01-01T00:00:00Z",
+                "until": "2026-02-01T00:00:00Z",
+                "after": 0,
+                "limit": 1,
+            },
+            {
+                "correlation_id": "run-42",
+                "constitution": "support",
+                "since": "2026-01-01T00:00:00Z",
+                "until": "2026-02-01T00:00:00Z",
+                "after": 0,
+                "limit": 1,
+            },
+        ),
+    ],
+    ids=["default-limit-without-filters", "all-filters-including-zero-cursor"],
+)
+def test_given_list_filters_when_querying_the_connection_then_mcp_receives_the_exact_arguments(
+    filters, expected_arguments
+):
+    session = SimpleNamespace(
+        call_tool=AsyncMock(return_value=reply({"items": [], "next_cursor": None}))
+    )
+    runner = Mock()
+    runner.call.side_effect = lambda operation: asyncio.run(operation(session))
+
+    assert KynoConnection(runner).list_delivery_records(**filters) == {
+        "items": [],
+        "next_cursor": None,
+    }
+
+    session.call_tool.assert_awaited_once_with("list_delivery_records", expected_arguments)

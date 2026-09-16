@@ -7,8 +7,8 @@ import mcp.types as types
 from mcp.server import Server
 from pydantic import AnyUrl
 
-from kyno.mcp_handlers import handle_get_constitution
-from kyno.mcp_request_context import record_response
+from kyno.mcp.handlers import handle_get_constitution
+from kyno.mcp.request_context import record_response
 from kyno.service import ControlPlane
 from kyno.wire import RESOURCE_URI
 

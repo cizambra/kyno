@@ -4,7 +4,8 @@ import asyncio
 
 import pytest
 
-from kyno import mcp_handlers, mcp_server
+from kyno.mcp import handlers as mcp_handlers
+from kyno.mcp import server as mcp_server
 from kyno.wire import RESOURCE_URI
 
 

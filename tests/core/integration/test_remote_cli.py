@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 import pytest
 
 import kyno.cli as cli
-from kyno import mcp_handlers
 from kyno.cli import app
+from kyno.mcp import handlers as mcp_handlers
 from kyno.models import AuthorizationType, Token
 from kyno.remote import RemoteError
 from kyno.service import ControlPlane

@@ -6,7 +6,7 @@ import mcp.types as types
 from mcp.server import Server
 
 from kyno.delivery_context import delivery_context
-from kyno.mcp_handlers import (
+from kyno.mcp.handlers import (
     _delivery_query,
     _require,
     handle_export_versions,
@@ -19,8 +19,8 @@ from kyno.mcp_handlers import (
     handle_set_direction,
     handle_whoami,
 )
-from kyno.mcp_request_context import _request_token, record_response
-from kyno.mcp_tools import DIRECTION_READS, TITLES, TOOLS
+from kyno.mcp.request_context import _request_token, record_response
+from kyno.mcp.tools import DIRECTION_READS, TITLES, TOOLS
 from kyno.service import ControlPlane
 from kyno.wire.models import DetailLevel
 

@@ -4,7 +4,7 @@ from mcp.server import Server
 
 from kyno.delivery import RecordingPolicy
 from kyno.delivery_recording import recording_failure
-from kyno.mcp_handlers import handle_whoami
+from kyno.mcp.handlers import handle_whoami
 from kyno.models import Token
 from kyno.service import ControlPlane
 from kyno.tokens import hash_value

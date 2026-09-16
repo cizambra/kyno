@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from kyno.mcp_tools import PRINCIPLES_DETAIL_LEVELS, TITLES
+from kyno.mcp.tools import PRINCIPLES_DETAIL_LEVELS, TITLES
 from kyno.models import Token
 from kyno.service import ControlPlane
 from kyno.wire.errors import CoherenceError

@@ -2,8 +2,8 @@
 
 from mcp.server import Server
 
-from kyno.mcp_resource_handlers import register_resources
-from kyno.mcp_tool_handlers import register_tools
+from kyno.mcp.resource_handlers import register_resources
+from kyno.mcp.tool_handlers import register_tools
 from kyno.service import ControlPlane
 
 

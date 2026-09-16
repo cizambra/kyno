@@ -93,7 +93,7 @@ def test_given_sdk_transport_errors_when_importing_them_then_the_sdk_owns_the_mo
 
 
 def test_given_mcp_resource_handlers_when_importing_the_resource_uri_then_wire_owns_it():
-    imports = _kyno_imports(SRC / "mcp_resource_handlers.py")
+    imports = _kyno_imports(SRC / "mcp" / "resource_handlers.py")
 
     assert "kyno.wire" in imports
     assert "kyno.sdk.client" not in imports

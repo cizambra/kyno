@@ -380,8 +380,7 @@ lives: `CrewAiKyno.before_llm_call` (`crewai/hooks.py`) and
 ## Read recorded deliveries
 
 If Core has delivery history configured, you can use the SDK connection to
-inspect what Core served. Reading history is optional; agents do not need
-it to receive direction. A record identifies a constitution and version, includes
+inspect what Core served. A record identifies a constitution and version, includes
 the saved delta when applicable, and keeps the caller's correlation metadata.
 It does not prove that an agent applied or followed the direction.
 

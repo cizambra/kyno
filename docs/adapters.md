@@ -65,6 +65,13 @@ flowchart LR
 
 ## Inspecting delivery status
 
+Applications own their model inputs, outputs, reasoning records, and execution
+traces. Use whichever storage or tracing tools suit your application. Kyno's
+delivery history records direction responses, not application execution.
+When a binding has a recorded receipt, its `record_id` can link your records to
+that response. The application must establish which output belongs to which
+supplied direction; Kyno does not infer that association.
+
 Custom direction sources return `DirectionResponse(changes, recording)` from
 `changes_since()`. `changes` is the directional `ChangesSince` value; `recording`
 is a separate immutable `RecordingReceipt` with the server's `RecordingStatus`

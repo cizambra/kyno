@@ -5,7 +5,6 @@ import kyno.sdk as core
 import kyno.sdk.client as client
 import kyno.sdk.policy as policy
 import kyno.sdk.telemetry as telemetry
-import kyno.sdk.trace as trace
 import kyno.wire as wire
 import kyno.wire.models as wire_models
 from tests.paths import REPO_ROOT
@@ -57,20 +56,11 @@ def test_given_the_exports_when_comparing_to_the_docs_then_nothing_extra_leaks()
         "recording",
         "subscriber",
         "telemetry",
-        "trace",
     }
     public = {name for name in vars(core) if not name.startswith("_")} - modules
 
     assert public == set(core.__all__)
     assert len(core.__all__) == len(set(core.__all__))
-
-
-def test_given_trace_types_when_importing_the_sdk_then_they_only_live_in_the_trace_module():
-    names = {"RunTrace", "StepRecord", "DecompositionEdge"}
-
-    assert names.isdisjoint(core.__all__)
-    assert names.isdisjoint(vars(core))
-    assert all(hasattr(trace, name) for name in names)
 
 
 def test_given_connection_plumbing_when_importing_the_sdk_then_it_only_lives_in_the_client_module():

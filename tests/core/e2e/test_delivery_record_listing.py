@@ -41,7 +41,7 @@ async def invoke(control_plane, arguments):
 
 
 @pytest.mark.asyncio
-async def test_given_filtered_history_when_listing_over_mcp_then_cursor_continues_without_recording(
+async def test_given_delivery_filters_when_reading_next_page_then_only_matching_records_return(
     configured,
 ):
     _store, control_plane, identifiers = configured

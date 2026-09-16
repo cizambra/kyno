@@ -77,7 +77,6 @@ class KynoConnection:
 
     def __init__(self, runner: _client.SessionRunner) -> None:
         self._runner = runner
-        self._source = _client.McpDirectionSource(runner)
 
     def binder(
         self,
@@ -85,9 +84,15 @@ class KynoConnection:
         cell: DirectionCell | None = None,
         telemetry: TelemetrySink | None = None,
         context: str | DetailLevel = DetailLevel.COMPACT,
+        *,
+        correlation_id: str | None = None,
+        metadata: dict | None = None,
     ) -> DirectionBinder:
+        source = _client.McpDirectionSource(
+            self._runner, correlation_id=correlation_id, metadata=metadata
+        )
         return DirectionBinder(
-            self._source, cell=cell, policy=policy, telemetry=telemetry, context=context
+            source, cell=cell, policy=policy, telemetry=telemetry, context=context
         )
 
     def close(self) -> None:

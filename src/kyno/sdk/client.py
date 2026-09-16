@@ -12,6 +12,7 @@ from typing import Any, Protocol, runtime_checkable
 
 from kyno.sdk.errors import KynoRefusedError, KynoUnavailableError
 from kyno.wire import RESOURCE_URI as RESOURCE_URI
+from kyno.wire.delivery_context import delivery_context
 from kyno.wire.models import ChangesSince, DetailLevel, check_detail
 
 
@@ -333,8 +334,19 @@ def _changes(payload: dict) -> ChangesSince:
 class McpDirectionSource:
     """Pulls direction over MCP, by constitution name."""
 
-    def __init__(self, runner: SessionRunner) -> None:
+    def __init__(
+        self,
+        runner: SessionRunner,
+        *,
+        correlation_id: str | None = None,
+        metadata: dict | None = None,
+    ) -> None:
         self._runner = runner
+        self._context = delivery_context(
+            {"correlation_id": correlation_id, "metadata": {} if metadata is None else metadata}
+        )
+        if self._context["correlation_id"] is None:
+            self._context.pop("correlation_id")
 
     def changes_since(
         self,
@@ -355,6 +367,7 @@ class McpDirectionSource:
                     "known_version": known_version,
                     "constitution": constitution,
                     "detail": detail.value,
+                    **self._context,
                 },
             )
 

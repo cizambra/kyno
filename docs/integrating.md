@@ -377,7 +377,7 @@ lives: `CrewAiKyno.before_llm_call` (`crewai/hooks.py`) and
 `direction_node` (`langgraph/nodes.py`). If your orchestrator plans first,
 `binder.plan()` (`sdk/plan.py`) is the tracker for the planning bullet above.
 
-## Read recorded deliveries
+## Read delivery records
 
 If Core has delivery history configured, you can use the SDK connection to
 inspect what Core served. A record identifies a constitution and version, includes
@@ -389,8 +389,8 @@ import json
 
 with kyno.connect() as connection:
     page = connection.list_delivery_records(correlation_id="run-42", limit=20)
-    for summary in page["items"]:
-        record = connection.get_delivery_record(summary["record_id"])
+    for listed_record in page["items"]:
+        record = connection.get_delivery_record(listed_record["record_id"])
         print(json.dumps(record, indent=2))
 
     if page["next_cursor"] is not None:
@@ -428,8 +428,10 @@ timestamps vary between records.
 
 Keep the same filters while paging. Optional `constitution`, `since`, and
 `until` filters narrow the results; timestamps must include a timezone and
-both bounds are inclusive. Pages contain up to 100 summaries in insertion
-order, without direction text or deltas. Reading history adds no deliveries.
+both bounds are inclusive. Pages contain up to 100 delivery records in
+insertion order. List results omit deltas; `get_delivery_record()` includes
+the saved delta. Neither response includes direction text. Reading history
+does not create delivery records.
 
 An unknown record or rejected query raises `KynoHistoryError` from
 `kyno.sdk.errors`. A transport or malformed-response failure raises

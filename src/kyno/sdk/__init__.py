@@ -111,7 +111,7 @@ class KynoConnection:
         after: int | None = None,
         limit: int = 50,
     ) -> DeliveryPage:
-        """Return summaries in insertion order, without deltas or direction content.
+        """List delivery records in insertion order, without deltas or direction content.
 
         Pass next_cursor as after with the same filters to fetch another page.
         Timestamps are inclusive ISO timestamps with a timezone. Omitted filters

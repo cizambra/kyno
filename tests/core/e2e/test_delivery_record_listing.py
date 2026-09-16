@@ -1,9 +1,11 @@
 """MCP delivery listing preserves query filters and enforces read authorization."""
 
 import json
+from unittest.mock import Mock
 
 import pytest
 from mcp.shared.memory import create_connected_server_and_client_session
+from sqlalchemy import update
 from starlette.testclient import TestClient
 
 from kyno.delivery import RecordingPolicy
@@ -65,6 +67,67 @@ async def test_given_delivery_filters_when_reading_next_page_then_only_matching_
     assert all("direction" not in item and "delta" not in item for item in final_page["items"])
     assert final_page["next_cursor"] is None
     assert len(control_plane.delivery_record_store.list()["items"]) == 3
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("filters", "positions"),
+    [
+        ({"correlation_id": "two"}, [1]),
+        ({"constitution": "beta"}, [1]),
+        ({"since": "2026-01-02T00:00:00Z"}, [1, 2]),
+        ({"until": "2026-01-02T00:00:00Z"}, [0, 1]),
+        ({"constitution": "missing"}, []),
+    ],
+)
+async def test_given_one_history_filter_when_listing_then_only_matching_deliveries_return(
+    configured, filters, positions
+):
+    store, control_plane, identifiers = configured
+    table = store.metadata.tables["kyno_delivery_records"]
+    with store.engine.begin() as connection:
+        for day, identifier in enumerate(identifiers, start=1):
+            connection.execute(
+                update(table)
+                .where(table.c.record_id == identifier)
+                .values(recorded_at=f"2026-01-0{day}T00:00:00.000000+00:00")
+            )
+    result = await invoke(control_plane, filters)
+    assert not result.isError
+    page = json.loads(result.content[0].text)
+    assert [item["record_id"] for item in page["items"]] == [
+        identifiers[position] for position in positions
+    ]
+    assert page["next_cursor"] is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("arguments", "page_size"), [({}, 50), ({"limit": 1}, 1), ({"limit": 100}, 100)]
+)
+async def test_given_101_deliveries_when_listing_then_page_size_and_cursor_match_the_limit(
+    configured, arguments, page_size
+):
+    _store, control_plane, identifiers = configured
+    history = control_plane.delivery_record_store
+    for _ in range(101 - len(identifiers)):
+        identifiers.append(
+            history.append(
+                {"version": 0},
+                operation="get_mission",
+                constitution="alpha",
+                arguments={},
+                context={"correlation_id": None, "metadata": {}},
+            )
+        )
+    result = await invoke(control_plane, arguments)
+    assert not result.isError
+    page = json.loads(result.content[0].text)
+    assert [item["record_id"] for item in page["items"]] == identifiers[:page_size]
+    assert page["next_cursor"] is not None
+    following = await invoke(control_plane, {"after": page["next_cursor"], "limit": 1})
+    assert not following.isError
+    assert json.loads(following.content[0].text)["items"][0]["record_id"] == identifiers[page_size]
 
 
 @pytest.mark.asyncio
@@ -147,15 +210,20 @@ def test_given_invalid_token_when_listing_history_over_http_then_access_is_denie
 
 
 @pytest.mark.asyncio
-async def test_given_always_recording_when_listing_history_then_no_delivery_is_added(configured):
+async def test_given_always_recording_when_listing_history_then_no_delivery_is_added(
+    configured, monkeypatch
+):
     _store, control_plane, identifiers = configured
     history = control_plane.delivery_record_store
     control_plane.delivery_recorder = DeliveryRecorder(history, RecordingPolicy.ALWAYS)
     async with create_connected_server_and_client_session(build_server(control_plane)) as client:
         direction = await client.call_tool("get_mission", {})
         recorded_id = json.loads(direction.content[0].text)["recording"]["record_id"]
+        append = Mock(side_effect=RuntimeError("recording unavailable"))
+        monkeypatch.setattr(history, "append", append)
         result = await client.call_tool("list_delivery_records", {})
     assert not result.isError
+    append.assert_not_called()
     page = json.loads(result.content[0].text)
     assert "recording" not in page
     assert [item["record_id"] for item in page["items"]] == [*identifiers, recorded_id]

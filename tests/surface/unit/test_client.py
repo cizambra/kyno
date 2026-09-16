@@ -45,14 +45,24 @@ def test_given_server_recording_when_pulling_with_recording_then_the_receipt_is_
     assert not hasattr(result.changes, "recording")
 
 
-def test_given_an_older_server_when_pulling_with_recording_then_no_receipt_is_invented():
-    result = receipt_source({}).changes_since(0, "default")
+@pytest.mark.parametrize("payload", [{}, {"recording": None}])
+def test_given_no_recording_information_when_pulling_then_response_has_no_receipt(payload):
+    result = receipt_source(payload).changes_since(0, "default")
     assert result.recording is None
     assert result.changes.mission == "Serve customers"
 
 
 @pytest.mark.parametrize(
-    "recording", [{"status": "unknown"}, [], {"status": "recorded", "record_id": 7}]
+    "recording",
+    [
+        {"status": "unknown"},
+        [],
+        {"status": "recorded", "record_id": 7},
+        {"status": "recorded"},
+        {"status": "recorded", "record_id": " "},
+        {"status": "disabled", "record_id": "record-1"},
+        {"status": "failed", "record_id": "record-1"},
+    ],
 )
 def test_given_malformed_recording_when_pulling_then_the_reply_is_unavailable(recording):
     with pytest.raises(KynoUnavailableError, match="bad reply"):

@@ -2,11 +2,61 @@
 
 import pytest
 
+from kyno.delivery import RecordingPolicy
+from kyno.delivery_recording import DeliveryRecorder
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.client import DirectionSource, LocalDirectionSource, McpDirectionSource
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.telemetry import EventType, RecordingSink
+from kyno.store.delivery_record import SqlDeliveryRecordStore
+from kyno.wire.delivery import RecordingStatus
 from kyno.wire.models import DetailLevel
+
+
+def test_given_recording_enabled_when_sdk_pulls_twice_then_each_receipt_identifies_its_own_record(
+    mcp_runner,
+):
+    runner, control_plane = mcp_runner
+    history = SqlDeliveryRecordStore(control_plane._store.engine)
+    control_plane.delivery_recorder = DeliveryRecorder(history, RecordingPolicy.ALWAYS)
+    control_plane.set_direction(mission="Help customers.", change_note="Initial direction")
+    source = McpDirectionSource(runner)
+
+    first = source.changes_since(0, "default")
+    second = source.changes_since(1, "default")
+
+    assert first.recording.status is RecordingStatus.RECORDED
+    assert second.recording.status is RecordingStatus.RECORDED
+    assert first.recording.record_id != second.recording.record_id
+    for response, known_version in [(first, 0), (second, 1)]:
+        record = history.get(response.recording.record_id)
+        assert record["served_version"] == response.changes.current_version == 1
+        assert record["known_version"] == known_version
+        assert record["delta"] == list(response.changes.delta)
+    assert first.changes.changed is True
+    assert second.changes.changed is False
+
+
+def test_given_recording_fails_when_sdk_pulls_then_current_direction_and_failed_receipt_return(
+    mcp_runner, monkeypatch
+):
+    runner, control_plane = mcp_runner
+    history = SqlDeliveryRecordStore(control_plane._store.engine)
+    control_plane.delivery_recorder = DeliveryRecorder(history, RecordingPolicy.ALWAYS)
+    control_plane.set_direction(mission="Help customers.", change_note="Initial direction")
+
+    def unavailable_store(*args, **kwargs):
+        raise OSError("Recording store unavailable")
+
+    monkeypatch.setattr(history, "append", unavailable_store)
+
+    response = McpDirectionSource(runner).changes_since(0, "default")
+
+    assert response.changes.current_version == 1
+    assert response.changes.mission == "Help customers."
+    assert response.recording.status is RecordingStatus.FAILED
+    assert response.recording.record_id is None
+    assert history.list()["items"] == []
 
 
 def test_given_a_name_when_the_mcp_source_pulls_then_that_constitution_comes(mcp_runner):

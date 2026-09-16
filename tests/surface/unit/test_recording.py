@@ -13,7 +13,7 @@ def test_given_a_status_string_when_constructing_a_receipt_then_it_becomes_an_en
 
 
 @pytest.mark.parametrize("field", ["status", "record_id"])
-def test_given_a_receipt_when_reassigning_a_field_then_it_is_immutable(field):
+def test_given_a_receipt_when_reassigning_a_field_then_raises_frozen_instance_error(field):
     receipt = RecordingReceipt(RecordingStatus.RECORDED, "receipt-1")
     with pytest.raises(FrozenInstanceError):
         setattr(receipt, field, None)

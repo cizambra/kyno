@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from kyno.errors import ConfigError
-from kyno.mcp_endpoint import MAX_MCP_BODY_BYTES, McpEndpoint
-from kyno.mcp_server import build_server
+from kyno.mcp.endpoint import MAX_MCP_BODY_BYTES, McpEndpoint
+from kyno.mcp.server import build_server
 from kyno.public_page import PageConfig
 from kyno.service import ControlPlane
 

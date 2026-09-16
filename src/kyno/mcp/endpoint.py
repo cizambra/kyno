@@ -11,7 +11,7 @@ import json
 import logging
 from datetime import UTC, datetime, timedelta
 
-from kyno.mcp_tools import TOOL_SCOPES
+from kyno.mcp.tools import TOOL_SCOPES
 from kyno.models import Token, TokenScope
 from kyno.tokens import hash_value
 

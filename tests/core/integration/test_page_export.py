@@ -4,8 +4,12 @@ pages, edit them, point Kyno at your copies."""
 from typer.testing import CliRunner
 
 from kyno.cli import app
-from kyno.public_page import PACKAGED_TEMPLATES, PageConfig, packaged_template
-from kyno.public_page import render_constitution as render
+from kyno.public_page import (
+    PACKAGED_TEMPLATES,
+    PageConfig,
+    packaged_template,
+    render_constitution as render,
+)
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
 from tests.paths import REPO_ROOT

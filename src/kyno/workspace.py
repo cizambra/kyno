@@ -15,8 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import quote
 
-from kyno.coerce import to_bool as _bool
-from kyno.coerce import to_int as _int
+from kyno.coerce import to_bool as _bool, to_int as _int
 from kyno.delivery import DeliverySettings, RecordingPolicy
 from kyno.envref import resolve as _resolve_ref
 from kyno.errors import ConfigError

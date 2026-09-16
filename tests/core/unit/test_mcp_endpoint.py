@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from kyno.mcp_endpoint import McpEndpoint, _tool_calls
+from kyno.mcp.endpoint import McpEndpoint, _tool_calls
 from tests.mcp_requests import mint, token_store
 
 
@@ -130,13 +130,13 @@ def test_given_the_declarations_when_projecting_them_then_no_two_tools_share_a_n
     # they cannot drift apart. The one way the projections can lie is a
     # duplicate tool name, which would silently overwrite its twin in the
     # scope map.
-    from kyno.mcp_tools import TOOL_SCOPES, TOOLS
+    from kyno.mcp.tools import TOOL_SCOPES, TOOLS
 
     assert len(TOOLS) == len(TOOL_SCOPES)
 
 
 def test_given_tool_declarations_when_reading_scopes_then_every_scope_is_typed():
-    from kyno.mcp_tools import TOOL_SCOPES
+    from kyno.mcp.tools import TOOL_SCOPES
     from kyno.models import TokenScope
 
     assert all(type(scope) is TokenScope for scope in TOOL_SCOPES.values())

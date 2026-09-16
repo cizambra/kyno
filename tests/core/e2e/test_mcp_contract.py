@@ -6,9 +6,10 @@ import json
 import mcp.types as types
 import pytest
 
-from kyno import mcp_server
+from kyno.mcp import handlers as mcp_handlers, server as mcp_server
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore
+from kyno.wire import RESOURCE_URI
 
 
 def _sse_json_body(response_text: str) -> dict:
@@ -50,11 +51,11 @@ async def test_given_a_real_subscription_when_setting_direction_then_the_server_
     async with create_connected_server_and_client_session(
         server, message_handler=message_handler
     ) as client:
-        await client.subscribe_resource(mcp_server.RESOURCE_URI)
+        await client.subscribe_resource(RESOURCE_URI)
         await client.call_tool("set_direction", {"mission": "M1", "change_note": "init"})
         await asyncio.gather(*server._kyno_pending)
 
-    assert received == [mcp_server.RESOURCE_URI]
+    assert received == [RESOURCE_URI]
 
 
 @pytest.mark.asyncio
@@ -83,9 +84,9 @@ async def test_given_a_subscribed_session_when_unsubscribing_for_real_then_it_is
     server = mcp_server.build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
-        await client.subscribe_resource(mcp_server.RESOURCE_URI)
+        await client.subscribe_resource(RESOURCE_URI)
         assert len(server._kyno_subscribers) == 1
-        await client.unsubscribe_resource(mcp_server.RESOURCE_URI)
+        await client.unsubscribe_resource(RESOURCE_URI)
         assert server._kyno_subscribers == set()
 
 
@@ -229,7 +230,7 @@ async def test_given_a_fresh_store_when_reading_the_resource_then_the_empty_stat
     server = mcp_server.build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
-        result = await client.read_resource(mcp_server.RESOURCE_URI)
+        result = await client.read_resource(RESOURCE_URI)
         payload = json.loads(result.contents[0].text)
 
     assert payload["version"] == 0
@@ -275,7 +276,7 @@ async def test_given_a_named_write_when_reading_the_resource_then_it_stays_the_d
     server = mcp_server.build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
-        result = await client.read_resource(mcp_server.RESOURCE_URI)
+        result = await client.read_resource(RESOURCE_URI)
         payload = json.loads(result.contents[0].text)
 
     assert payload["mission"] == "M1"
@@ -295,7 +296,7 @@ async def test_given_the_subscribable_resource_when_reading_then_it_serves_the_c
     server = mcp_server.build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
-        result = await client.read_resource(mcp_server.RESOURCE_URI)
+        result = await client.read_resource(RESOURCE_URI)
 
     payload = json.loads(result.contents[0].text)
     assert payload["mission"] == "Ship trustworthy lending"
@@ -414,7 +415,7 @@ async def test_given_a_connected_client_when_calling_export_versions_then_it_is_
     carries the rows as JSON text. One version in, the same version out."""
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    mcp_server.handle_set_direction(
+    mcp_handlers.handle_set_direction(
         cp, mission="M1", principles=None, change_note="init", created_by=None
     )
     async with create_connected_server_and_client_session(mcp_server.build_server(cp)) as client:
@@ -432,4 +433,50 @@ async def test_given_a_connected_client_when_listing_resources_then_the_constitu
 
     async with create_connected_server_and_client_session(mcp_server.build_server(cp)) as client:
         listed = await client.list_resources()
-    assert [str(r.uri) for r in listed.resources] == [mcp_server.RESOURCE_URI]
+    assert [str(r.uri) for r in listed.resources] == [RESOURCE_URI]
+
+
+@pytest.mark.asyncio
+async def test_given_two_servers_when_reading_direction_then_each_serves_its_own_control_plane(
+    cp, store
+):
+    from mcp.shared.memory import create_connected_server_and_client_session
+
+    other_plane = ControlPlane(store)
+    cp.set_direction(mission="Support customers", change_note="initial")
+    other_plane.set_direction(mission="Improve reliability", change_note="initial")
+    servers = [mcp_server.build_server(cp), mcp_server.build_server(other_plane)]
+    async with (
+        create_connected_server_and_client_session(servers[0]) as first_client,
+        create_connected_server_and_client_session(servers[1]) as second_client,
+    ):
+        for client, mission in (
+            (first_client, "Support customers"),
+            (second_client, "Improve reliability"),
+        ):
+            tool_result = await client.call_tool("get_mission", {})
+            assert not tool_result.isError
+            assert json.loads(tool_result.content[0].text)["mission"] == mission
+            resource_result = await client.read_resource(RESOURCE_URI)
+            assert json.loads(resource_result.contents[0].text)["mission"] == mission
+
+
+@pytest.mark.asyncio
+async def test_given_two_servers_when_one_client_unsubscribes_then_the_other_stays_subscribed(
+    cp,
+):
+    from mcp.shared.memory import create_connected_server_and_client_session
+
+    first_server = mcp_server.build_server(cp)
+    second_server = mcp_server.build_server(cp)
+    async with (
+        create_connected_server_and_client_session(first_server) as first_client,
+        create_connected_server_and_client_session(second_server) as second_client,
+    ):
+        await first_client.subscribe_resource(RESOURCE_URI)
+        await second_client.subscribe_resource(RESOURCE_URI)
+        assert len(first_server._kyno_subscribers) == 1
+        assert len(second_server._kyno_subscribers) == 1
+        await first_client.unsubscribe_resource(RESOURCE_URI)
+        assert not first_server._kyno_subscribers
+        assert len(second_server._kyno_subscribers) == 1

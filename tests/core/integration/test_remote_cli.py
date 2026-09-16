@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 import pytest
 
 import kyno.cli as cli
-from kyno import mcp_server
 from kyno.cli import app
+from kyno.mcp import handlers as mcp_handlers
 from kyno.models import AuthorizationType, Token
 from kyno.remote import RemoteError
 from kyno.service import ControlPlane
@@ -35,18 +35,18 @@ class FakeRemote:
     def call_tool(self, name, arguments):
         try:
             if name == "get_constitution":
-                result = mcp_server.handle_get_constitution(
+                result = mcp_handlers.handle_get_constitution(
                     self.cp, arguments.get("constitution"), arguments.get("detail", "compact")
                 )
             elif name == "export_versions":
-                result = mcp_server.handle_export_versions(
+                result = mcp_handlers.handle_export_versions(
                     self.cp,
                     arguments.get("constitution"),
                     from_version=arguments.get("from_version"),
                     to_version=arguments.get("to_version"),
                 )
             elif name == "set_direction":
-                result = mcp_server.handle_set_direction(
+                result = mcp_handlers.handle_set_direction(
                     self.cp,
                     mission=arguments.get("mission"),
                     declaration=arguments.get("declaration"),
@@ -58,7 +58,7 @@ class FakeRemote:
                     authorized_by=arguments.get("authorized_by"),
                 )
             elif name == "whoami":
-                result = mcp_server.handle_whoami(self.token)
+                result = mcp_handlers.handle_whoami(self.token)
             else:
                 raise ValueError(f"unknown tool: {name}")
         except ValueError as exc:

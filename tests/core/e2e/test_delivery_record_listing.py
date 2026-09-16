@@ -10,7 +10,7 @@ from starlette.testclient import TestClient
 
 from kyno.delivery import RecordingPolicy
 from kyno.delivery_recording import DeliveryRecorder
-from kyno.mcp_server import build_server
+from kyno.mcp.server import build_server
 from kyno.service import ControlPlane
 from kyno.store.delivery_record import SqlDeliveryRecordStore
 from kyno.transports import build_http_app

@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import mcp.types as types
 
-from kyno.delivery_context import MAX_CORRELATION_CHARS, MAX_METADATA_BYTES
 from kyno.models import AuthorizationType, TokenScope
+from kyno.wire.delivery_context import MAX_CORRELATION_CHARS, MAX_METADATA_BYTES
 from kyno.wire.models import DetailLevel
 
 # get_principles has its own detail vocabulary: "titles" names exactly what

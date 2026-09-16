@@ -3,9 +3,9 @@
 import logging
 
 from kyno.delivery import DeliverySettings, RecordingPolicy
-from kyno.delivery_context import delivery_context
 from kyno.store.delivery_record import SqlDeliveryRecordStore
 from kyno.wire.delivery import RecordingStatus, recording_result
+from kyno.wire.delivery_context import delivery_context
 
 _log = logging.getLogger("kyno.delivery")
 

@@ -10,7 +10,7 @@ pytest.importorskip("crewai")
 from crewai.hooks import LLMCallHookContext, get_before_llm_call_hooks  # noqa: E402
 
 from kyno.adapters.crewai import CrewAiKyno  # noqa: E402
-from kyno.sdk import DirectionBinder  # noqa: E402
+from kyno.sdk import DirectionBinder, DirectionResponse  # noqa: E402
 from kyno.wire.models import ChangesSince  # noqa: E402
 
 
@@ -20,14 +20,16 @@ def test_given_a_registered_hook_when_crewai_calls_it_then_the_observer_sees_inj
 ):
     source = SimpleNamespace(
         changes_since=Mock(
-            return_value=ChangesSince(
-                current_version=2,
-                changed=True,
-                mission="Help customers",
-                principles=(),
-                changed_mission=True,
-                changed_principles=False,
-                change_notes=("Support first",),
+            return_value=DirectionResponse(
+                ChangesSince(
+                    current_version=2,
+                    changed=True,
+                    mission="Help customers",
+                    principles=(),
+                    changed_mission=True,
+                    changed_principles=False,
+                    change_notes=("Support first",),
+                )
             )
         )
     )

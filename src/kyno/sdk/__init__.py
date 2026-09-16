@@ -26,7 +26,11 @@ from kyno.sdk.cell import (
     is_direction_block,
     refresh,
 )
-from kyno.sdk.client import DirectionSource, LocalDirectionSource
+from kyno.sdk.client import (
+    DirectionResponse,
+    DirectionSource,
+    LocalDirectionSource,
+)
 from kyno.sdk.gate import (
     Action,
     GateDecision,
@@ -39,7 +43,9 @@ from kyno.sdk.policy import (
     GatePolicy,
     PullPolicy,
 )
+from kyno.sdk.recording import RecordingReceipt
 from kyno.sdk.telemetry import TelemetrySink
+from kyno.wire.delivery import RecordingStatus
 from kyno.wire.delivery_record import DeliveryPage, DeliveryRecord, DeliverySummary
 from kyno.wire.models import DetailLevel
 
@@ -60,6 +66,9 @@ __all__ = [
     "DirectionBinder",
     "DirectionCell",
     "DirectionSource",
+    "DirectionResponse",
+    "RecordingReceipt",
+    "RecordingStatus",
     "DetailLevel",
     "KynoConnection",
     "LocalDirectionSource",

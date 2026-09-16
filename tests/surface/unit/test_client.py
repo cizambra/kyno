@@ -2,12 +2,61 @@ import asyncio
 import json
 import threading
 from contextlib import asynccontextmanager, suppress
+from types import SimpleNamespace
 
 import pytest
 
 from kyno.sdk.client import KynoBinding, McpDirectionSource, SessionRunner
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.wire.models import DetailLevel
+
+
+def receipt_source(recording):
+    payload = {
+        "current_version": 2,
+        "changed": False,
+        "mission": "Serve customers",
+        "principles": [],
+        "changed_mission": False,
+        "changed_principles": False,
+        "change_notes": [],
+        **recording,
+    }
+    reply = SimpleNamespace(content=[SimpleNamespace(text=json.dumps(payload))])
+    return McpDirectionSource(SimpleNamespace(call=lambda operation: reply))
+
+
+@pytest.mark.parametrize(
+    "recording",
+    [
+        {"status": "recorded", "record_id": "receipt-1"},
+        {"status": "disabled", "record_id": None},
+        {"status": "failed", "record_id": None},
+    ],
+)
+def test_given_server_recording_when_pulling_with_recording_then_the_receipt_is_preserved(
+    recording,
+):
+    result = receipt_source({"recording": recording}).changes_since(0, "default")
+
+    assert result.recording.status.value == recording["status"]
+    assert result.recording.record_id == recording["record_id"]
+    assert result.changes.current_version == 2
+    assert not hasattr(result.changes, "recording")
+
+
+def test_given_an_older_server_when_pulling_with_recording_then_no_receipt_is_invented():
+    result = receipt_source({}).changes_since(0, "default")
+    assert result.recording is None
+    assert result.changes.mission == "Serve customers"
+
+
+@pytest.mark.parametrize(
+    "recording", [{"status": "unknown"}, [], {"status": "recorded", "record_id": 7}]
+)
+def test_given_malformed_recording_when_pulling_then_the_reply_is_unavailable(recording):
+    with pytest.raises(KynoUnavailableError, match="bad reply"):
+        receipt_source({"recording": recording}).changes_since(0, "default")
 
 
 @pytest.mark.parametrize("session_open", [False, True], ids=["connecting", "connected"])

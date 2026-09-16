@@ -82,11 +82,12 @@ class RegressingSource:
         self.calls = 0
 
     def changes_since(self, known_version, constitution, detail="compact"):
+        from kyno.sdk.client import DirectionResponse
         from kyno.wire.models import ChangesSince
 
         self.calls += 1
         version = 2 if self.calls == 1 else 1
-        return ChangesSince(
+        changes = ChangesSince(
             current_version=version,
             changed=True,
             mission=f"M{version}",
@@ -95,6 +96,7 @@ class RegressingSource:
             changed_mission=True,
             changed_principles=False,
         )
+        return DirectionResponse(changes)
 
 
 def test_given_a_replica_serving_an_older_version_when_checking_then_the_plan_never_rolls_back():

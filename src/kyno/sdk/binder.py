@@ -55,12 +55,13 @@ class DirectionBinder:
         """
         known = self.cell.known_version(constitution)
         try:
-            changes = self._source.changes_since(known, constitution, self.context)
+            response = self._source.changes_since(known, constitution, self.context)
         except (CoherenceError, OSError) as exc:
             # OSError covers the socket family and, since 3.10, TimeoutError;
             # CoherenceError covers everything kyno raises, including the
             # adapters' KynoUnavailableError.
             return self._degrade(constitution, exc)
+        changes = response.changes
         direction = self.cell.update(Direction.from_changes(changes, constitution, self.context))
         status = (
             DeliveryStatus.CACHED

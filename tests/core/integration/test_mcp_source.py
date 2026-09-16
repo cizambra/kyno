@@ -15,8 +15,8 @@ def test_given_a_name_when_the_mcp_source_pulls_then_that_constitution_comes(mcp
     control_plane.set_direction(mission="US mission", change_note="init", constitution="us")
     source = McpDirectionSource(runner)
 
-    assert source.changes_since(0, "eu").mission == "EU mission"
-    assert source.changes_since(0, "us").mission == "US mission"
+    assert source.changes_since(0, "eu").changes.mission == "EU mission"
+    assert source.changes_since(0, "us").changes.mission == "US mission"
 
 
 def test_given_a_known_version_when_the_mcp_source_reports_then_the_notes_since_come(
@@ -27,7 +27,7 @@ def test_given_a_known_version_when_the_mcp_source_reports_then_the_notes_since_
     control_plane.set_direction(mission="M2", change_note="pivot")
     source = McpDirectionSource(runner)
 
-    changes = source.changes_since(1, "default")
+    changes = source.changes_since(1, "default").changes
 
     assert changes.current_version == 2 and changes.changed is True
     assert changes.change_notes == ("pivot",)
@@ -37,7 +37,7 @@ def test_given_an_unwritten_name_when_the_mcp_source_reads_then_it_is_version_ze
     mcp_runner,
 ):
     runner, _cp = mcp_runner
-    assert McpDirectionSource(runner).changes_since(0, "never-written").current_version == 0
+    assert McpDirectionSource(runner).changes_since(0, "never-written").changes.current_version == 0
 
 
 def test_given_a_binder_over_mcp_when_steps_run_then_each_binds_the_live_version(mcp_runner):
@@ -79,7 +79,9 @@ def test_given_the_two_sources_when_asking_the_same_question_then_the_answers_ma
     over_mcp = McpDirectionSource(runner).changes_since(1, "eu")
     in_process = LocalDirectionSource(control_plane).changes_since(1, "eu")
 
-    assert over_mcp == in_process
+    assert over_mcp.changes == in_process.changes
+    assert over_mcp.recording.status.value == "disabled"
+    assert in_process.recording is None
 
 
 def test_given_kyno_going_away_when_a_crew_is_running_then_the_last_direction_carries_it(
@@ -123,8 +125,8 @@ def test_given_a_full_binding_when_pulling_then_the_declaration_and_descriptions
     )
     source = McpDirectionSource(runner)
 
-    compact = source.changes_since(0, "default")
-    full = source.changes_since(0, "default", DetailLevel.FULL)
+    compact = source.changes_since(0, "default").changes
+    full = source.changes_since(0, "default", DetailLevel.FULL).changes
 
     assert compact.declaration == ""
     assert compact.principles[0].description == ""

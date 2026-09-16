@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
 from kyno.sdk.errors import KynoRefusedError, KynoUnavailableError
+from kyno.sdk.recording import RecordingReceipt
 from kyno.wire import RESOURCE_URI as RESOURCE_URI
 from kyno.wire.delivery_context import delivery_context
 from kyno.wire.models import ChangesSince, DetailLevel, check_detail
@@ -32,7 +33,18 @@ class DirectionSource(Protocol):
         known_version: int,
         constitution: str,
         detail: str | DetailLevel = DetailLevel.COMPACT,
-    ) -> ChangesSince: ...
+    ) -> DirectionResponse: ...
+
+
+@dataclass(frozen=True)
+class DirectionResponse:
+    """Direction changes and the recording receipt from the same read.
+
+    Recording is None when the source supplies no server receipt.
+    """
+
+    changes: ChangesSince
+    recording: RecordingReceipt | None = None
 
 
 @runtime_checkable
@@ -58,10 +70,10 @@ class LocalDirectionSource:
         known_version: int,
         constitution: str,
         detail: str | DetailLevel = DetailLevel.COMPACT,
-    ) -> ChangesSince:
+    ) -> DirectionResponse:
         # `detail` exists to save bytes on the wire, and there is no wire here: the control
         # plane returns the whole version either way.
-        return self._control_plane.changes_since(known_version, constitution)
+        return DirectionResponse(self._control_plane.changes_since(known_version, constitution))
 
 
 def _leaves(exc: BaseException) -> list[BaseException]:
@@ -353,7 +365,7 @@ class McpDirectionSource:
         known_version: int,
         constitution: str,
         detail: str | DetailLevel = DetailLevel.COMPACT,
-    ) -> ChangesSince:
+    ) -> DirectionResponse:
         """Every way this can fail arrives as KynoUnavailableError, because
         that is what the binder's policy degrades on. A reply we cannot read
         is the control plane being unreachable as far as the next step is
@@ -372,7 +384,10 @@ class McpDirectionSource:
             )
 
         try:
-            return _changes(_payload(self._runner.call(call)))
+            payload = _payload(self._runner.call(call))
+            recording = payload.get("recording")
+            receipt = RecordingReceipt(**recording) if recording is not None else None
+            return DirectionResponse(_changes(payload), receipt)
         except KynoUnavailableError:
             raise  # already the right answer, with a better reason than ours
         except Exception as exc:

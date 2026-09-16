@@ -436,7 +436,12 @@ does not create delivery records.
 An unknown record or rejected query raises `KynoHistoryError` from
 `kyno.sdk.errors`. A transport or malformed-response failure raises
 `KynoUnavailableError`; an HTTP authorization refusal raises its subclass
-`KynoRefusedError`. Unlike binding, these reads do not fall back to cached data.
+`KynoRefusedError`.
+
+The SDK's [binder](adapters.md#the-loop) fetches direction for an agent's
+next step and, by default, can reuse previously fetched direction if the
+request fails. Delivery-history requests instead raise an error; they do
+not return cached records.
 
 ## 💬 Questions?
 

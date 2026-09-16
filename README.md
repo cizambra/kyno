@@ -155,9 +155,9 @@ before deploying.
 
 Receiving principles does not mean following them. Kyno does not establish
 that an action is aligned or safe, and a direction update does not rewrite
-an active task or replan the workflow. Verification is separate: the
-optional [realignment gate](docs/adapters.md) consumes external verdicts
-rather than judging outputs itself.
+an active task or replan the workflow. Your application owns optional
+[output verification](docs/adapters.md#application-owned-verification),
+including the choice of verifier and whether to continue, retry, or stop.
 
 ## Self-hosting
 
@@ -177,7 +177,7 @@ The [documentation index](docs/README.md) provides a reading order for integrati
 - [The MCP contract](docs/contract.md): every tool, the compact and full
   reads, and subscriptions.
 - [The adapters in depth](docs/adapters.md): binder mechanics, failure
-  postures, and the realignment gate.
+  postures, and application-owned verification.
 - [Build your own adapter](docs/integrating.md): how to build an adapter
   in any language.
 - [Publishing your constitution](docs/publishing.md): the public page,

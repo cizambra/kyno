@@ -11,7 +11,7 @@ On this page:
 - [The integration](#the-integration)
 - [Inspecting delivery status](#inspecting-delivery-status)
 - [Acting on a change](#acting-on-a-change)
-- [The realignment gate](#the-realignment-gate)
+- [Application-owned verification](#application-owned-verification)
 
 ## The loop
 
@@ -199,27 +199,32 @@ fit.
   version. It costs one planning call per change, and it fits workflows
   whose remaining steps were derived from the direction, where following
   a stale plan wastes the rest of the run.
-- **Stop.** Review finished work against the direction it was bound to,
-  and halt on a bad verdict. Wire it with the
-  [realignment gate](#the-realignment-gate) and a judge you supply. It
-  costs a judge call per finished task, and it fits work that is
-  expensive to ship wrong, where a halt is cheaper than a drifted
-  handoff.
+- **Review before continuing.** Your application can check finished work
+  against its supplied direction, using its own checks or a verifier.
+  It decides whether to continue, retry, or ask a person to review the
+  answer. Put this check where sending an incorrect result would be costly;
+  an external verifier adds a call at each review boundary.
 
 Kyno takes no position on which one is right, and they combine: most
-integrations carry on by default and add the gate where the output is
+integrations carry on by default and add application-owned checks where the output is
 expensive.
 
-## The realignment gate
+## Application-owned verification
 
-The gate reviews output at the boundary your integration chooses. It holds
-no judgment of its own: it asks a `VerdictSource` you supply and returns a
-decision. CrewAI handles halt decisions by raising from its task callback;
-LangGraph can interrupt for a pause or return a blocked flag for your graph
-to route on. Kyno ships no judge, and verification is optional.
-Where a gate exists but its judge is unreachable, the work proceeds, and
-an `unchecked` event goes to the telemetry sink -- by default, a warning
-line in your logs. `GatePolicy(fail_closed=True)` stops instead.
+Verification is optional application code that runs after the output is
+available. Your application chooses the checks, calls any external verifier,
+and decides what to do with the result. It also decides what happens when
+verification fails or the verifier is unreachable.
+
+Capture each output together with the direction supplied to that call.
+Reading the binder's latest cache after a call finishes can select direction
+from a later call, especially during parallel work. If a recording receipt
+is available, save its `record_id` with your application record to link it
+to Core's direction response. Core's record does not establish that the
+output followed that direction.
+
+`PullPolicy(fail_closed=True)` controls failed direction reads before work
+runs. Output review and its failure policy belong to your application.
 
 ```mermaid
 ---
@@ -228,17 +233,16 @@ config:
   theme: neutral
 ---
 flowchart LR
-  W["finished work"] --> G["realignment gate"]
-  G <-- "verdict?" --> J["your judge<br/>(VerdictSource)"]
-  G -- "aligned" --> OK["work proceeds"]
-  G -- "drifted" --> ST["halted"]
-  G -. "judge unreachable" .-> P{"fail_closed?"}
-  P -- "no" --> UN["proceeds, marked<br/>unchecked"]
-  P -- "yes" --> ST
+  W["output + supplied direction"] --> R["your application's review"]
+  R <-- "optional check" --> V["your chosen verifier"]
+  R --> D{"your application's decision"}
+  D --> OK["continue"]
+  D --> RETRY["retry"]
+  D --> HUMAN["ask a person or stop"]
 ```
 
 See [CrewAI verification](crewai.md#optional-verification) or
-[LangGraph verification](langgraph.md#optional-verification) for wiring.
+[LangGraph verification](langgraph.md#optional-verification) for concrete examples.
 
 ## 💬 Questions?
 

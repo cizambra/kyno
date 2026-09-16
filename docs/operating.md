@@ -225,9 +225,8 @@ correlation ID, and application metadata. It includes neither direction content
 nor the saved delta. Use `get_delivery_record` for the delta of an individual
 delivery, then retrieve its historical constitution version if needed.
 
-Pages default to 50 records and accept a `limit` from 1 through 100. This is an
-initial operating limit for small reference-based records, not a latency
-guarantee. Metadata can still increase response size.
+Pages default to 50 records. Set `limit` to request between 1 and 100 records
+per page.
 
 Optional `correlation_id`, `constitution`, `since`, and `until` filters select
 matching events before the page limit is applied. Time bounds are inclusive.

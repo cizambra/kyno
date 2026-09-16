@@ -462,7 +462,7 @@ async def test_given_two_servers_when_reading_direction_then_each_serves_its_own
 
 
 @pytest.mark.asyncio
-async def test_given_two_subscribed_servers_when_one_unsubscribes_then_the_other_stays_subscribed(
+async def test_given_two_servers_when_one_client_unsubscribes_then_the_other_stays_subscribed(
     cp,
 ):
     from mcp.shared.memory import create_connected_server_and_client_session

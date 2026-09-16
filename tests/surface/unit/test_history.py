@@ -48,7 +48,9 @@ def test_given_malformed_page_when_listing_history_then_unavailable_is_raised(pa
 
 
 @pytest.mark.parametrize("operation", ["get_delivery_record", "list_delivery_records"])
-def test_given_tool_error_when_reading_history_then_history_error_preserves_message(operation):
+def test_given_mcp_error_when_reading_history_then_sdk_exception_contains_the_server_error_text(
+    operation,
+):
     runner = Mock()
     runner.call.return_value = reply("delivery history is not configured", error=True)
     arguments = {"record_id": "record-1"} if operation == "get_delivery_record" else {}

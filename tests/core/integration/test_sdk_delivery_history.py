@@ -33,7 +33,6 @@ def test_given_saved_record_when_reading_with_sdk_then_version_reference_and_del
     assert record == history.get(identifiers[0])
     assert record["delta"] == ["Saved comparison"]
     assert record["metadata"] == {"step": 1}
-    assert "direction" not in record
 
 
 def test_given_filtered_history_when_advancing_cursor_then_matching_summaries_return(

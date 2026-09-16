@@ -7,11 +7,15 @@ import mcp.types as types
 from mcp.server import Server
 from pydantic import AnyUrl
 
-from kyno.mcp_tools import PRINCIPLES_DETAIL_LEVELS, TITLES, TOOLS
+from kyno.delivery import RecordingPolicy
+from kyno.delivery_context import delivery_context
+from kyno.delivery_recording import recording_failure
+from kyno.mcp_tools import DIRECTION_READS, PRINCIPLES_DETAIL_LEVELS, TITLES, TOOLS
 from kyno.models import Token
 from kyno.service import ControlPlane
 from kyno.tokens import hash_value
 from kyno.wire import RESOURCE_URI
+from kyno.wire.delivery import RecordingStatus, recording_result
 from kyno.wire.errors import CoherenceError
 from kyno.wire.models import DetailLevel, check_detail
 
@@ -190,6 +194,8 @@ def build_server(control_plane: ControlPlane, token_store=None) -> Server:
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
+        if name in DIRECTION_READS:
+            delivery_context(arguments)
         match name:
             case "get_constitution":
                 result = handle_get_constitution(
@@ -246,7 +252,25 @@ def build_server(control_plane: ControlPlane, token_store=None) -> Server:
                 result = handle_whoami(_request_token(server, token_store))
             case _:
                 raise ValueError(f"unknown tool: {name}")
+        if name in DIRECTION_READS:
+            record_response(result, name, arguments)
         return [types.TextContent(type="text", text=json.dumps(result))]
+
+    def record_response(result: dict, operation: str, arguments: dict) -> None:
+        recorder = control_plane.delivery_recorder
+        if recorder is None or recorder.policy is RecordingPolicy.NEVER:
+            result["recording"] = recording_result(RecordingStatus.DISABLED)
+            return
+        try:
+            token = _request_token(server, token_store)
+            result["recording"] = control_plane.record_delivery(
+                result,
+                operation=operation,
+                arguments=arguments,
+                requester=handle_whoami(token) if token else None,
+            )
+        except Exception as exc:
+            result["recording"] = recording_failure(exc)
 
     @server.list_resources()
     async def list_resources() -> list[types.Resource]:
@@ -263,7 +287,9 @@ def build_server(control_plane: ControlPlane, token_store=None) -> Server:
     async def read_resource(uri: AnyUrl) -> str:
         if str(uri) != RESOURCE_URI:
             raise ValueError(f"unknown resource: {uri}")
-        return json.dumps(handle_get_constitution(control_plane))
+        result = handle_get_constitution(control_plane)
+        record_response(result, "read_resource", {})
+        return json.dumps(result)
 
     @server.subscribe_resource()
     async def subscribe_resource(uri: AnyUrl) -> None:

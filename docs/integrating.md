@@ -377,6 +377,36 @@ lives: `CrewAiKyno.before_llm_call` (`crewai/hooks.py`) and
 `direction_node` (`langgraph/nodes.py`). If your orchestrator plans first,
 `binder.plan()` (`sdk/plan.py`) is the tracker for the planning bullet above.
 
+## Read recorded deliveries
+
+If Core has delivery history configured, use the SDK connection to inspect
+what Core served. A record identifies a constitution and version, includes
+the saved delta when applicable, and keeps the caller's correlation metadata.
+It does not prove that an agent applied or followed the direction.
+
+```python
+with kyno.connect() as connection:
+    page = connection.list_delivery_records(correlation_id="run-42", limit=20)
+    for summary in page["items"]:
+        record = connection.get_delivery_record(summary["record_id"])
+        print(record["served_version"], record["delta"])
+
+    if page["next_cursor"] is not None:
+        next_page = connection.list_delivery_records(
+            correlation_id="run-42", limit=20, after=page["next_cursor"]
+        )
+```
+
+Keep the same filters while paging. Optional `constitution`, `since`, and
+`until` filters narrow the results; timestamps must include a timezone and
+both bounds are inclusive. Pages contain up to 100 summaries in insertion
+order, without direction text or deltas. Reading history adds no deliveries.
+
+An unknown record or rejected query raises `KynoHistoryError` from
+`kyno.sdk.errors`. A transport or malformed-response failure raises
+`KynoUnavailableError`; an HTTP authorization refusal raises its subclass
+`KynoRefusedError`. Unlike binding, these reads do not fall back to cached data.
+
 ## 💬 Questions?
 
 [Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)

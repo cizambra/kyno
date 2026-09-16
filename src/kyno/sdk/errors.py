@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Transport errors raised while an SDK connection is unavailable."""
+"""Errors raised by SDK requests to the control plane."""
 
 from kyno.wire.errors import CoherenceError
 
@@ -10,3 +10,7 @@ class KynoUnavailableError(CoherenceError):
 
 class KynoRefusedError(KynoUnavailableError):
     """The server was reached and refused the request with an HTTP auth status."""
+
+
+class KynoHistoryError(CoherenceError):
+    """The control plane rejected a history query; the message contains its reason."""

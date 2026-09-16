@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: MIT
-from typing import TypedDict
-
 from pydantic import JsonValue
+from typing_extensions import TypedDict
 
 
 class DeliverySummary(TypedDict):
@@ -21,3 +20,8 @@ class DeliverySummary(TypedDict):
 
 class DeliveryRecord(DeliverySummary):
     delta: list[str] | None
+
+
+class DeliveryPage(TypedDict):
+    items: list[DeliverySummary]
+    next_cursor: int | None

@@ -16,6 +16,7 @@ Everything an adapter needs is exported here; the framework adapters in
 
 import kyno.config as _config
 import kyno.sdk.client as _client
+import kyno.sdk.history as _history
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.binding import DeliveryStatus, DirectionBinding
 from kyno.sdk.cell import (
@@ -39,9 +40,13 @@ from kyno.sdk.policy import (
     PullPolicy,
 )
 from kyno.sdk.telemetry import TelemetrySink
+from kyno.wire.delivery_record import DeliveryPage, DeliveryRecord, DeliverySummary
 from kyno.wire.models import DetailLevel
 
 __all__ = [
+    "DeliveryPage",
+    "DeliveryRecord",
+    "DeliverySummary",
     "DeliveryStatus",
     "DirectionBinding",
     "DIRECTION_MARKER",
@@ -87,6 +92,41 @@ class KynoConnection:
 
     def close(self) -> None:
         self._runner.close()
+
+    def get_delivery_record(self, record_id: str) -> DeliveryRecord:
+        """Return the persisted delivery reference and delta for one record.
+
+        Raises ValueError for an empty or non-string ID, KynoHistoryError
+        for a rejected query, and KynoUnavailableError for transport or reply failures.
+        """
+        return _history.get_delivery_record(self._runner, record_id)
+
+    def list_delivery_records(
+        self,
+        *,
+        correlation_id: str | None = None,
+        constitution: str | None = None,
+        since: str | None = None,
+        until: str | None = None,
+        after: int | None = None,
+        limit: int = 50,
+    ) -> DeliveryPage:
+        """Return summaries in insertion order, without deltas or direction content.
+
+        Pass next_cursor as after with the same filters to fetch another page.
+        Timestamps are inclusive ISO timestamps with a timezone. Omitted filters
+        include all records. Raises KynoHistoryError for rejected queries and
+        KynoUnavailableError for transport or reply failures.
+        """
+        return _history.list_delivery_records(
+            self._runner,
+            correlation_id=correlation_id,
+            constitution=constitution,
+            since=since,
+            until=until,
+            after=after,
+            limit=limit,
+        )
 
     def __enter__(self) -> "KynoConnection":
         return self

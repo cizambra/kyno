@@ -89,12 +89,26 @@ the required integration. In this example, `observed_bindings` is an
 application-owned list, not storage Kyno creates. Its `append` method
 is the observer; you do not need to override an adapter method.
 
-Each binding contains `direction` and `status`. The status is a
+Each binding contains `direction`, `status`, and `recording`. The status is a
 `DeliveryStatus` enum: `current`, `cached`, or `empty`, with the
 [shared meanings](adapters.md#inspecting-delivery-status). Use
 `binding.direction.render()` for the exact direction block, including
 the selected compact/full context, change notes, and delta. Later pulls
 do not change previously received bindings.
+
+`binding.recording` is the server's immutable recording receipt, or `None`
+when the source supplied no receipt. Its `status` is a `RecordingStatus`:
+`recorded`, `disabled`, or `failed`. A recorded receipt has a `record_id`
+identifying a stored Kyno delivery record; the other statuses have no ID.
+These statuses describe server recording, separately from how direction
+was obtained. A failed pull using cached direction preserves the original
+receipt rather than creating a new record ID.
+
+Recording is disabled by default. When recording succeeds, the record
+describes Core's direction response before the adapter injects it.
+Its receipt does not prove injection, model completion, or that an answer
+followed direction. The observer runs after injection, but still before
+the model call.
 
 If you need durable per-call receipts, replace `append` with your own
 synchronous recording function. Your application assigns run/call IDs,
@@ -114,12 +128,20 @@ To record which direction accompanied a model output, your application
 must capture that call's input messages and output together. `on_direction`
 cannot do this by itself: it runs before the call and receives neither
 the output nor an ID identifying the call. Once your application has
-matched an output to its supplied `Direction`, it can record them with
-`RunTrace.record_step` from `kyno.sdk.trace`. This API is available in its
-own module, but is not part of the stable top-level SDK API.
+matched an output to its supplied binding, store the output together with
+`binding.recording.record_id` when a receipt is available. Kyno stores
+direction delivery history; your application owns output storage and the
+association between each call and its receipt. A record ID identifies a
+server read, not a CrewAI task or model call; cached uses can share an ID.
 
-Neither tracing nor separate receipt storage is required to run the
-adapter. Keep any retained prompts, direction, and outputs in storage
+To group reads for a run, replace the binder setup in the required example
+with `connection.binder(correlation_id="support-run-123")`. Create a binder
+for each run whose reads need a distinct correlation value. This groups
+delivery history without identifying individual outputs. The global hook
+registry still requires the registration scope described above.
+
+Separate application receipt storage is optional. Keep any retained
+prompts, direction, and outputs in storage
 appropriate for potentially sensitive content.
 
 ## Optional verification

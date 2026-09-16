@@ -12,7 +12,12 @@ from crewai.crews.crew_output import CrewOutput  # noqa: E402
 from crewai.hooks import LLMCallHookContext, get_before_llm_call_hooks  # noqa: E402
 
 from kyno.adapters.crewai import CrewAiKyno  # noqa: E402
-from kyno.sdk import DirectionBinder, DirectionResponse  # noqa: E402
+from kyno.sdk import (  # noqa: E402
+    DeliveryStatus,
+    DirectionBinder,
+    DirectionResponse,
+    RecordingReceipt,
+)
 from kyno.wire.models import ChangesSince  # noqa: E402
 
 
@@ -77,7 +82,9 @@ def test_given_a_snapshot_when_direction_changes_then_assessment_uses_the_select
         change_notes=("init",),
     )
     second = replace(first, current_version=2, mission="Help partners", change_notes=("pivot",))
-    source = SimpleNamespace(changes_since=Mock(side_effect=[first, second]))
+    source = SimpleNamespace(
+        changes_since=Mock(side_effect=[DirectionResponse(first), DirectionResponse(second)])
+    )
     binder = DirectionBinder(source)
     assessment_direction = binder.bind()
     executor = SimpleNamespace(
@@ -115,3 +122,77 @@ def test_given_a_snapshot_when_direction_changes_then_assessment_uses_the_select
     assert observed[0].direction.render() == context.messages[0]["content"]
     assert binder.cell.get("default").version == 2
     assert get_before_llm_call_hooks() == previous_hooks
+
+
+@pytest.mark.parametrize("recording_status", ["recorded", "disabled", "failed", None])
+@pytest.mark.parametrize("delivery_status", list(DeliveryStatus))
+def test_given_a_recording_receipt_when_crewai_injects_then_the_observer_receives_its_origin(
+    recording_status, delivery_status
+):
+    receipt = (
+        RecordingReceipt(
+            status=recording_status,
+            record_id="delivery-1" if recording_status == "recorded" else None,
+        )
+        if recording_status is not None
+        else None
+    )
+    source = SimpleNamespace(
+        changes_since=Mock(
+            return_value=DirectionResponse(
+                changes=ChangesSince(1, True, "Help customers", (), True, False, ("init",)),
+                recording=receipt,
+            )
+        )
+    )
+    binder = DirectionBinder(source)
+    if delivery_status is DeliveryStatus.CACHED:
+        binder.bind()
+    if delivery_status is not DeliveryStatus.CURRENT:
+        source.changes_since.side_effect = OSError("offline")
+    source.changes_since.reset_mock()
+    executor = SimpleNamespace(
+        messages=[], llm=None, iterations=0, agent=None, task=None, crew=None
+    )
+    context = LLMCallHookContext(executor=executor)
+    observed = []
+
+    def observe(binding):
+        assert context.messages[0]["content"] == binding.direction.render()
+        observed.append(binding)
+
+    adapter = CrewAiKyno(binder, on_direction=observe)
+    assert adapter.before_llm_call(context) is None
+
+    assert len(observed) == 1
+    assert observed[0].status is delivery_status
+    assert observed[0].recording is (None if delivery_status is DeliveryStatus.EMPTY else receipt)
+    assert source.changes_since.call_count == 1
+
+
+def test_given_two_reads_of_one_version_when_crewai_injects_then_observers_keep_distinct_receipts():
+    changes = ChangesSince(1, True, "Help customers", (), True, False, ("init",))
+    source = SimpleNamespace(
+        changes_since=Mock(
+            side_effect=[
+                DirectionResponse(changes, RecordingReceipt("recorded", "delivery-1")),
+                DirectionResponse(changes, RecordingReceipt("recorded", "delivery-2")),
+            ]
+        )
+    )
+    executor = SimpleNamespace(
+        messages=[], llm=None, iterations=0, agent=None, task=None, crew=None
+    )
+    context = LLMCallHookContext(executor=executor)
+    observed = []
+    adapter = CrewAiKyno(DirectionBinder(source), on_direction=observed.append)
+
+    adapter.before_llm_call(context)
+    first_messages = [message.copy() for message in context.messages]
+    adapter.before_llm_call(context)
+
+    assert observed[0].recording.record_id == "delivery-1"
+    assert observed[1].recording.record_id == "delivery-2"
+    assert observed[0].direction.version == observed[1].direction.version == 1
+    assert observed[0].direction.render() == first_messages[0]["content"]
+    assert observed[1].direction.render() == context.messages[0]["content"]

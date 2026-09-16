@@ -198,6 +198,25 @@ record ID. This means saving was not confirmed, not proof that no row exists:
 for example, a connection can fail while the database is confirming a commit.
 Kyno does not retry the write or keep a background recording worker running.
 
+## Retrieving a recorded delivery
+
+Call the authenticated MCP tool `get_delivery_record` with the `record_id` returned
+in a successful recording result. Read and write tokens can both retrieve
+records; an unknown ID returns an error.
+
+The result includes the constitution ID, served version, operation, requested
+constitution name, UTC recording time, requester, correlation label, metadata,
+request selection, and saved delta. Direction content is not duplicated here.
+Retrieve the referenced version from constitution history to review the mission
+and principles that were in force, even after later updates or a restart.
+Respect the recorded selection: a mission-only read does not mean the whole
+constitution was served. The saved delta preserves the generated comparison
+returned for that request. The internal storage sequence is not included.
+
+Lookup remains available when `[delivery]` has `recording_policy = never`. Looking up history
+does not create another delivery, including when recording is `always`.
+Database failures return an availability error without database details.
+
 ## Running Kyno embedded
 
 When your orchestrator is itself a Python app, you can run the control

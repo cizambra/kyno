@@ -65,6 +65,21 @@ _DRIFT = "If the version disagrees with one you already hold, the direction move
 DECLARATIONS = [
     (
         types.Tool(
+            name="get_delivery_record",
+            description=(
+                "Return a delivery's version reference, request context, "
+                "and saved delta by record ID."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {"record_id": {"type": "string"}},
+                "required": ["record_id"],
+            },
+        ),
+        TokenScope.READ,
+    ),
+    (
+        types.Tool(
             name="get_constitution",
             description=(
                 "Return the constitution in force now. Compact by default: pass "

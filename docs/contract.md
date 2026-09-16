@@ -12,6 +12,10 @@ This is everything an agent or client can ask Kyno, over MCP or Python.
   everything needed.
 - `get_mission`, `get_declaration`, `get_principles`, `get_principle(title)`:
   one piece of the document each, for when a compact read left it out.
+- `get_delivery_record(record_id)`: the saved snapshot of a recorded response,
+  including its original direction and request context. Requires read scope,
+  returns an error for an unknown ID, and does not record another delivery.
+  See [retrieving a recorded delivery](operating.md#retrieving-a-recorded-delivery).
 - `set_direction(mission?, declaration?, principles?, change_note)`: append
   the next version. Omitted fields carry forward; `""` clears one. On HTTP
   this requires a `write` token.
@@ -24,7 +28,7 @@ Every tool declares the scope it needs. The reads above need `read`;
 refused for every token, so a new tool is unreachable until someone
 states what it requires. A call outside your token's scope answers 403.
 
-Every read returns as little as it can by default: the titles, not the long
+Direction reads return as little as they can by default: the titles, not the long
 text. An agent pulls before every step, and would otherwise pay for the
 whole document each time. Ask for more when something actually needs it:
 `detail="full"` on the two pulls, `detail="full"` on `get_principles`, or one

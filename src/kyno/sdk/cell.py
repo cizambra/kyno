@@ -4,6 +4,7 @@ from __future__ import annotations
 import threading
 from dataclasses import dataclass
 
+from kyno.sdk.recording import RecordingReceipt
 from kyno.wire.models import (
     DIRECTION_MARKER,
     ChangesSince,
@@ -127,7 +128,7 @@ class DirectionCell:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._held: dict[str, Direction] = {}
+        self._held: dict[str, tuple[Direction, RecordingReceipt | None]] = {}
         self._context: DetailLevel | None = None
 
     def require_context(self, context: str | DetailLevel) -> None:
@@ -142,6 +143,13 @@ class DirectionCell:
             self._context = context
 
     def get(self, constitution: str) -> Direction | None:
+        snapshot = self.get_with_recording(constitution)
+        return snapshot[0] if snapshot is not None else None
+
+    def get_with_recording(
+        self, constitution: str
+    ) -> tuple[Direction, RecordingReceipt | None] | None:
+        """Return the cached direction and its origin receipt as one snapshot."""
         with self._lock:
             return self._held.get(constitution)
 
@@ -150,13 +158,20 @@ class DirectionCell:
         return held.version if held else 0
 
     def update(self, direction: Direction) -> Direction:
+        return self.update_with_recording(direction)[0]
+
+    def update_with_recording(
+        self, direction: Direction, recording: RecordingReceipt | None = None
+    ) -> tuple[Direction, RecordingReceipt | None]:
+        """Retain direction and receipt together unless a newer version is held."""
         self.require_context(direction.context)
         with self._lock:
             held = self._held.get(direction.constitution)
-            if held is not None and held.version > direction.version:
+            if held is not None and held[0].version > direction.version:
                 return held
-            self._held[direction.constitution] = direction
-            return direction
+            snapshot = (direction, recording)
+            self._held[direction.constitution] = snapshot
+            return snapshot
 
     def names(self) -> tuple[str, ...]:
         with self._lock:

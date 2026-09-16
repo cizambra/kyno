@@ -72,6 +72,13 @@ and nullable `record_id`. Local sources return `None` for recording. MCP sources
 preserve `recorded`, `disabled`, and `failed` outcomes; missing recording information
 remains `None`. These types are exported from `kyno.sdk`.
 
+Bindings expose the origin receipt as `binding.recording`. A successful read
+keeps that response's receipt, including separate record IDs for repeated reads
+of one version. Cached fallback retains the receipt that supplied the cached
+direction; it does not claim that the failed pull was recorded. Older overlapping
+responses cannot replace a newer direction or its receipt. Empty fallback and
+directions supplied without a receipt have `recording=None`.
+
 Custom integrations can use `binder.bind_with_status()` to distinguish a
 successful read from fallback. It returns an immutable `DirectionBinding`
 containing `direction` and a `DeliveryStatus` enum, both exported from

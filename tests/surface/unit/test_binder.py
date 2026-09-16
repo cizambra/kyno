@@ -11,10 +11,12 @@ from kyno.sdk.cell import Direction, DirectionCell
 from kyno.sdk.client import DirectionResponse
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.policy import PullPolicy
+from kyno.sdk.recording import RecordingReceipt
 from kyno.sdk.telemetry import (
     EventType,
     RecordingSink,
 )
+from kyno.wire.delivery import RecordingStatus
 from kyno.wire.models import DetailLevel
 
 
@@ -393,3 +395,133 @@ def test_given_a_preloaded_cell_when_a_binder_requests_another_context_then_setu
 
     assert cell.get("default") is original
     assert scripted_source.calls == []
+
+
+@pytest.mark.parametrize("status", list(RecordingStatus))
+def test_given_a_server_receipt_when_binding_then_it_belongs_to_that_response(
+    scripted_source, status
+):
+    scripted_source.set("sales", 3, "Sales")
+    receipt = RecordingReceipt(status, "record-1" if status is RecordingStatus.RECORDED else None)
+    source = SimpleNamespace(
+        changes_since=lambda *args: DirectionResponse(scripted_source.replies["sales"], receipt)
+    )
+
+    binding = DirectionBinder(source).bind_with_status("sales")
+
+    assert binding.recording is receipt
+    assert binding.status is DeliveryStatus.CURRENT
+    assert "recording" not in binding.direction.to_dict()
+    assert "record-1" not in binding.direction.render()
+
+
+def test_given_separate_reads_of_one_version_when_binding_then_each_keeps_its_own_receipt(
+    scripted_source,
+):
+    scripted_source.set("sales", 3, "Sales")
+    receipts = [RecordingReceipt("recorded", f"record-{number}") for number in (1, 2)]
+    responses = iter(
+        DirectionResponse(scripted_source.replies["sales"], receipt) for receipt in receipts
+    )
+    binder = DirectionBinder(SimpleNamespace(changes_since=lambda *args: next(responses)))
+
+    first = binder.bind_with_status("sales")
+    second = binder.bind_with_status("sales")
+
+    assert first.recording is receipts[0]
+    assert second.recording is receipts[1]
+    assert first.direction.version == second.direction.version == 3
+
+
+@pytest.mark.parametrize(
+    "recording",
+    [
+        None,
+        RecordingReceipt("recorded", "origin"),
+        RecordingReceipt("disabled"),
+        RecordingReceipt("failed"),
+    ],
+)
+def test_given_a_shared_cache_when_another_binder_fails_then_the_origin_receipt_is_retained(
+    scripted_source, recording
+):
+    scripted_source.set("sales", 3, "Sales")
+    source = SimpleNamespace(
+        changes_since=lambda *args: DirectionResponse(scripted_source.replies["sales"], recording)
+    )
+    cell = DirectionCell()
+    original = DirectionBinder(source, cell=cell).bind_with_status("sales")
+    scripted_source.failure = OSError("offline")
+    fallback = DirectionBinder(scripted_source, cell=cell).bind_with_status("sales")
+
+    assert fallback.recording is recording
+    assert fallback.direction is original.direction
+    assert fallback.status is DeliveryStatus.CACHED
+
+
+def test_given_no_server_response_when_a_pull_fails_then_no_receipt_is_invented(scripted_source):
+    scripted_source.failure = OSError("offline")
+    assert DirectionBinder(scripted_source).bind_with_status().recording is None
+
+
+@pytest.mark.parametrize("older_version", [4, 5])
+def test_given_overlapping_pulls_when_a_reply_finishes_last_then_its_version_selects_the_receipt(
+    scripted_source,
+    older_version,
+):
+    scripted_source.set("sales", older_version, "Old")
+    older = DirectionResponse(
+        scripted_source.replies["sales"], RecordingReceipt("recorded", "older")
+    )
+    scripted_source.set("sales", 5, "New")
+    newer = DirectionResponse(
+        scripted_source.replies["sales"], RecordingReceipt("recorded", "newer")
+    )
+    started = Event()
+    release = Event()
+    cell = DirectionCell()
+
+    def delayed_changes(*args):
+        started.set()
+        assert release.wait(timeout=10)
+        return older
+
+    slower = DirectionBinder(SimpleNamespace(changes_since=delayed_changes), cell=cell)
+    faster = DirectionBinder(SimpleNamespace(changes_since=lambda *args: newer), cell=cell)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        pending = executor.submit(slower.bind_with_status, "sales")
+        try:
+            assert started.wait(timeout=10)
+            current = faster.bind_with_status("sales")
+        finally:
+            release.set()
+        retained = pending.result(timeout=10)
+
+    assert current.recording is newer.recording
+    if older_version < 5:
+        assert retained.recording is newer.recording
+        assert retained.direction is current.direction
+        assert retained.status is DeliveryStatus.CACHED
+    else:
+        assert retained.recording is older.recording
+        assert retained.status is DeliveryStatus.CURRENT
+
+
+def test_given_a_receipt_when_manual_direction_replaces_it_then_fallback_has_no_receipt(
+    scripted_source,
+):
+    scripted_source.set("sales", 3, "Sales")
+    source = SimpleNamespace(
+        changes_since=lambda *args: DirectionResponse(
+            scripted_source.replies["sales"], RecordingReceipt("recorded", "origin")
+        )
+    )
+    cell = DirectionCell()
+    DirectionBinder(source, cell=cell).bind("sales")
+    cell.update(Direction("sales", 3, "Manual", ()))
+    scripted_source.failure = OSError("offline")
+
+    fallback = DirectionBinder(scripted_source, cell=cell).bind_with_status("sales")
+
+    assert fallback.recording is None
+    assert fallback.direction.mission == "Manual"

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from kyno.sdk.cell import Direction
+from kyno.sdk.recording import RecordingReceipt
 
 
 class DeliveryStatus(StrEnum):
@@ -19,6 +20,7 @@ class DirectionBinding:
 
     direction: Direction
     status: DeliveryStatus
+    recording: RecordingReceipt | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "status", DeliveryStatus(self.status))

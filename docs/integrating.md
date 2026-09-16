@@ -385,17 +385,46 @@ the saved delta when applicable, and keeps the caller's correlation metadata.
 It does not prove that an agent applied or followed the direction.
 
 ```python
+import json
+
 with kyno.connect() as connection:
     page = connection.list_delivery_records(correlation_id="run-42", limit=20)
     for summary in page["items"]:
         record = connection.get_delivery_record(summary["record_id"])
-        print(record["served_version"], record["delta"])
+        print(json.dumps(record, indent=2))
 
     if page["next_cursor"] is not None:
         next_page = connection.list_delivery_records(
             correlation_id="run-42", limit=20, after=page["next_cursor"]
         )
 ```
+
+A record printed by this example looks like this:
+
+```json
+{
+  "record_id": "0a166028-9315-4f6d-a8bc-d11fc564ed2b",
+  "recorded_at": "2026-09-16T21:06:18.156619+00:00",
+  "constitution_id": 1,
+  "requested_constitution": "default",
+  "served_version": 2,
+  "operation": "get_changes_since",
+  "known_version": 1,
+  "detail_level": "full",
+  "selection": {},
+  "requester": null,
+  "correlation_id": "run-42",
+  "metadata": {},
+  "delta": [
+    "The mission was \"Resolve customer problems.\" and is now \"Protect customer trust.\"."
+  ]
+}
+```
+
+Here, the caller knew version 1 and Core served version 2. The saved delta
+describes the difference for that request. The record references the
+constitution and version rather than storing the full direction. IDs and
+timestamps vary between records.
 
 Keep the same filters while paging. Optional `constitution`, `since`, and
 `until` filters narrow the results; timestamps must include a timezone and

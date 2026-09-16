@@ -1,6 +1,7 @@
 """Authorized MCP clients retrieve persisted delivery references safely."""
 
 import json
+from unittest.mock import Mock
 
 import pytest
 from mcp.shared.memory import create_connected_server_and_client_session
@@ -87,6 +88,21 @@ async def test_given_unconfigured_history_when_getting_delivery_then_configurati
         result = await client.call_tool("get_delivery_record", {"record_id": "unknown"})
     assert result.isError
     assert result.content[0].text == "delivery history is not configured on this Core instance"
+
+
+@pytest.mark.parametrize("record_id", [None, 1, True, [], {}])
+async def test_given_non_string_record_id_when_getting_delivery_then_database_is_not_queried(
+    delivery_setup, monkeypatch, record_id
+):
+    store, deliveries, _ = delivery_setup
+    lookup = Mock(wraps=deliveries.get)
+    monkeypatch.setattr(deliveries, "get", lookup)
+    async with create_connected_server_and_client_session(
+        build_server(ControlPlane(store, delivery_record_store=deliveries))
+    ) as client:
+        result = await client.call_tool("get_delivery_record", {"record_id": record_id})
+    assert result.isError
+    lookup.assert_not_called()
 
 
 async def test_given_database_failure_when_getting_delivery_then_secrets_are_hidden(
@@ -209,8 +225,11 @@ async def test_given_a_saved_delta_when_getting_delivery_over_mcp_then_delta_is_
 
 async def test_given_always_recording_when_getting_delivery_then_history_read_is_not_recorded(
     delivery_setup,
+    monkeypatch,
 ):
     store, deliveries, identifier = delivery_setup
+    append = Mock(side_effect=RuntimeError("recording unavailable"))
+    monkeypatch.setattr(deliveries, "append", append)
     core = ControlPlane(
         store,
         delivery_record_store=deliveries,
@@ -219,6 +238,7 @@ async def test_given_always_recording_when_getting_delivery_then_history_read_is
     async with create_connected_server_and_client_session(build_server(core)) as client:
         result = await client.call_tool("get_delivery_record", {"record_id": identifier})
     assert not result.isError
+    append.assert_not_called()
     assert "recording" not in json.loads(result.content[0].text)
     with store.engine.connect() as connection:
         assert connection.execute(

@@ -1,5 +1,4 @@
-from hypothesis import given, settings
-from hypothesis import strategies as st
+from hypothesis import given, settings, strategies as st
 
 from kyno.service import ControlPlane
 from kyno.store.sql import SqlConstitutionStore

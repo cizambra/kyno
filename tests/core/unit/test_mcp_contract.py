@@ -4,9 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kyno.mcp import handlers as mcp_handlers
-from kyno.mcp import server as mcp_server
-from kyno.mcp import tools as mcp_tools
+from kyno.mcp import handlers as mcp_handlers, server as mcp_server, tools as mcp_tools
 from kyno.models import AuthorizationType, Token, TokenScope
 from kyno.sdk.client import RESOURCE_URI as SDK_RESOURCE_URI
 from kyno.wire import RESOURCE_URI

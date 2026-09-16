@@ -97,6 +97,9 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM"]
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["typer.Option"]
 
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
 [tool.ruff.lint.per-file-ignores]
 # imports follow the importorskip guard deliberately
 "tests/test_transports.py" = ["E402"]

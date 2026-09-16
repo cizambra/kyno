@@ -11,8 +11,8 @@ from kyno.public_page import (
     render_constitution as render,
 )
 from kyno.service import ControlPlane
-from kyno.store.sql import SqlConstitutionStore
 from tests.paths import REPO_ROOT
+from tests.stores import create_memory_store
 
 runner = CliRunner()
 
@@ -113,8 +113,7 @@ def test_given_an_exported_template_when_rendering_then_it_matches_the_page_it_w
     target = tmp_path / "pages"
     assert runner.invoke(app, ["page", "export", str(target)]).exit_code == 0
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     plane = ControlPlane(store)
     plane.set_direction(mission="Ship trust", declaration="## Why\n\nBecause.", change_note="init")
     plane.publish()
@@ -130,8 +129,7 @@ def test_given_an_edited_export_when_serving_then_the_edit_is_what_gets_served(t
     page = target / "constitution.html"
     page.write_text(page.read_text().replace("<main>", '<main class="ours">'))
 
-    store = SqlConstitutionStore(url="sqlite://")
-    store.create_all()
+    store = create_memory_store()
     plane = ControlPlane(store)
     plane.set_direction(mission="Ship trust", change_note="init")
     plane.publish()

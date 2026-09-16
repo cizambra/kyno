@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Validation of application-supplied correlation labels and delivery metadata."""
 
 import json

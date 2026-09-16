@@ -5,7 +5,6 @@ import json
 import mcp.types as types
 from mcp.server import Server
 
-from kyno.delivery_context import delivery_context
 from kyno.mcp.handlers import (
     _delivery_query,
     _require,
@@ -22,6 +21,7 @@ from kyno.mcp.handlers import (
 from kyno.mcp.request_context import _request_token, record_response
 from kyno.mcp.tools import DIRECTION_READS, TITLES, TOOLS
 from kyno.service import ControlPlane
+from kyno.wire.delivery_context import delivery_context
 from kyno.wire.models import DetailLevel
 
 

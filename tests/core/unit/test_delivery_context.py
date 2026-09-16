@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from kyno.delivery_context import MAX_CORRELATION_CHARS, MAX_METADATA_BYTES, delivery_context
+from kyno.wire.delivery_context import MAX_CORRELATION_CHARS, MAX_METADATA_BYTES, delivery_context
 
 
 def test_given_no_context_when_validating_then_defaults_are_returned():

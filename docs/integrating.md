@@ -377,6 +377,72 @@ lives: `CrewAiKyno.before_llm_call` (`crewai/hooks.py`) and
 `direction_node` (`langgraph/nodes.py`). If your orchestrator plans first,
 `binder.plan()` (`sdk/plan.py`) is the tracker for the planning bullet above.
 
+## Read delivery records
+
+If Core has delivery history configured, you can use the SDK connection to
+inspect what Core served. A record identifies a constitution and version, includes
+the saved delta when applicable, and keeps the caller's correlation metadata.
+It does not prove that an agent applied or followed the direction.
+
+```python
+import json
+
+with kyno.connect() as connection:
+    page = connection.list_delivery_records(correlation_id="run-42", limit=20)
+    for listed_record in page["items"]:
+        record = connection.get_delivery_record(listed_record["record_id"])
+        print(json.dumps(record, indent=2))
+
+    if page["next_cursor"] is not None:
+        next_page = connection.list_delivery_records(
+            correlation_id="run-42", limit=20, after=page["next_cursor"]
+        )
+```
+
+A record printed by this example looks like this:
+
+```json
+{
+  "record_id": "0a166028-9315-4f6d-a8bc-d11fc564ed2b",
+  "recorded_at": "2026-09-16T21:06:18.156619+00:00",
+  "constitution_id": 1,
+  "requested_constitution": "default",
+  "served_version": 2,
+  "operation": "get_changes_since",
+  "known_version": 1,
+  "detail_level": "full",
+  "selection": {},
+  "requester": null,
+  "correlation_id": "run-42",
+  "metadata": {},
+  "delta": [
+    "The mission was \"Resolve customer problems.\" and is now \"Protect customer trust.\"."
+  ]
+}
+```
+
+Here, the caller knew version 1 and Core served version 2. The saved delta
+describes the difference for that request. The record references the
+constitution and version rather than storing the full direction. IDs and
+timestamps vary between records.
+
+Keep the same filters while paging. Optional `constitution`, `since`, and
+`until` filters narrow the results; timestamps must include a timezone and
+both bounds are inclusive. Pages contain up to 100 delivery records in
+insertion order. List results omit deltas; `get_delivery_record()` includes
+the saved delta. Neither response includes direction text. Reading history
+does not create delivery records.
+
+An unknown record or rejected query raises `KynoHistoryError` from
+`kyno.sdk.errors`. A transport or malformed-response failure raises
+`KynoUnavailableError`; an HTTP authorization refusal raises its subclass
+`KynoRefusedError`.
+
+The SDK's [binder](adapters.md#the-loop) fetches direction for an agent's
+next step and, by default, can reuse previously fetched direction if the
+request fails. Delivery-history requests instead raise an error; they do
+not return cached records.
+
 ## 💬 Questions?
 
 [Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)

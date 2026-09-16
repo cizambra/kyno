@@ -48,6 +48,7 @@ def test_given_the_exports_when_comparing_to_the_docs_then_nothing_extra_leaks()
         "client",
         "errors",
         "gate",
+        "history",
         "plan",
         "policy",
         "subscriber",

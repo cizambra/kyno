@@ -120,7 +120,6 @@ def test_given_saved_direction_when_before_llm_call_refreshes_then_app_can_asses
     assert assessment_direction.mission == "Help customers"
     assert observed[0].direction.version == 2
     assert observed[0].direction.render() == context.messages[0]["content"]
-    assert binder.cell.get("default").version == 2
     assert get_before_llm_call_hooks() == previous_hooks
 
 

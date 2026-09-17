@@ -8,8 +8,15 @@ import kyno.wire.models as wire_models
 from tests.paths import REPO_ROOT
 
 EXPECTED = {
+    "DeliveryPage",
+    "DeliveryRecord",
+    "DeliverySummary",
+    "KynoConnection",
+    "PlanTracker",
+    "connect",
+    "is_direction_block",
+    "refresh",
     "Direction",
-    "DirectionCell",
     "DIRECTION_MARKER",
     "DirectionSource",
     "DirectionResponse",
@@ -27,7 +34,7 @@ ADAPTERS = REPO_ROOT / "src" / "kyno" / "adapters"
 
 
 def test_given_the_core_when_reading_its_exports_then_one_documented_surface_shows():
-    assert set(core.__all__) >= EXPECTED
+    assert set(core.__all__) == EXPECTED
     for name in core.__all__:
         assert hasattr(core, name), name
 

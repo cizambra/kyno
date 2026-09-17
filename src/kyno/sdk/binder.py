@@ -25,17 +25,17 @@ class DirectionBinder:
     def __init__(
         self,
         source: DirectionSource,
-        cell: DirectionCell | None = None,
+        *,
         policy: PullPolicy | None = None,
         context: str | DetailLevel = DetailLevel.COMPACT,
     ) -> None:
         self._source = source
-        self.cell = cell if cell is not None else DirectionCell()
+        self._cell = DirectionCell()
         self._policy = policy or PullPolicy()
         # Checked here rather than at the first step, so a typo fails while the integration is
         # being set up instead of once it is running.
         self.context = check_context(context)
-        self.cell.require_context(self.context)
+        self._cell.require_context(self.context)
 
     def bind(self, constitution: str = "default") -> Direction:
         """Pull direction, applying the configured failure policy."""
@@ -49,7 +49,7 @@ class DirectionBinder:
         older overlapping response. Empty identifies failure without a cached
         value. A fail-closed pull failure raises instead of returning a binding.
         """
-        last_seen_version = self.cell.last_seen_version(constitution)
+        last_seen_version = self._cell.last_seen_version(constitution)
         try:
             response = self._source.changes_since(last_seen_version, constitution, self.context)
         except (CoherenceError, OSError) as exc:
@@ -58,7 +58,7 @@ class DirectionBinder:
             # adapters' KynoUnavailableError.
             return self._degrade(constitution, exc)
         changes = response.changes
-        direction, recording = self.cell.update_with_recording(
+        direction, recording = self._cell.update_with_recording(
             Direction.from_changes(changes, constitution, self.context), response.recording
         )
         status = (
@@ -69,7 +69,7 @@ class DirectionBinder:
         return DirectionBinding(direction, status, recording)
 
     def _degrade(self, constitution: str, exc: Exception) -> DirectionBinding:
-        snapshot = self.cell.get_with_recording(constitution)
+        snapshot = self._cell.get_with_recording(constitution)
         if self._policy.fail_closed:
             raise KynoUnavailableError(f"cannot reach kyno for '{constitution}': {exc}") from exc
         if snapshot is not None:

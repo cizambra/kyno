@@ -22,7 +22,6 @@ from kyno.sdk.binding import DeliveryStatus, DirectionBinding
 from kyno.sdk.cell import (
     DIRECTION_MARKER,
     Direction,
-    DirectionCell,
     is_direction_block,
     refresh,
 )
@@ -47,7 +46,6 @@ __all__ = [
     "DIRECTION_MARKER",
     "Direction",
     "DirectionBinder",
-    "DirectionCell",
     "DirectionSource",
     "DirectionResponse",
     "RecordingReceipt",
@@ -71,17 +69,16 @@ class KynoConnection:
 
     def binder(
         self,
-        policy: PullPolicy | None = None,
-        cell: DirectionCell | None = None,
-        context: str | DetailLevel = DetailLevel.COMPACT,
         *,
+        policy: PullPolicy | None = None,
+        context: str | DetailLevel = DetailLevel.COMPACT,
         correlation_id: str | None = None,
         metadata: dict | None = None,
     ) -> DirectionBinder:
         source = _client.McpDirectionSource(
             self._runner, correlation_id=correlation_id, metadata=metadata
         )
-        return DirectionBinder(source, cell=cell, policy=policy, context=context)
+        return DirectionBinder(source, policy=policy, context=context)
 
     def close(self) -> None:
         self._runner.close()

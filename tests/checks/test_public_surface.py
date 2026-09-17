@@ -3,8 +3,6 @@ import sys
 
 import kyno.sdk as core
 import kyno.sdk.client as client
-import kyno.sdk.policy as policy
-import kyno.sdk.telemetry as telemetry
 import kyno.wire as wire
 import kyno.wire.models as wire_models
 from tests.paths import REPO_ROOT
@@ -23,7 +21,6 @@ EXPECTED = {
     "DirectionBinding",
     "DeliveryStatus",
     "PullPolicy",
-    "TelemetrySink",
 }
 
 ADAPTERS = REPO_ROOT / "src" / "kyno" / "adapters"
@@ -48,7 +45,6 @@ def test_given_the_exports_when_comparing_to_the_docs_then_nothing_extra_leaks()
         "policy",
         "recording",
         "subscriber",
-        "telemetry",
     }
     public = {name for name in vars(core) if not name.startswith("_")} - modules
 
@@ -68,16 +64,6 @@ def test_given_connection_plumbing_when_importing_the_sdk_then_it_only_lives_in_
     assert names.isdisjoint(core.__all__)
     assert names.isdisjoint(vars(core))
     assert all(hasattr(client, name) for name in names)
-
-
-def test_given_telemetry_helpers_when_importing_then_only_the_telemetry_module_exposes_them():
-    helpers = {"LogSink", "RecordingSink", "TelemetryEvent"}
-    telemetry_types = helpers | {"EventType", "TelemetrySink"}
-
-    assert helpers.isdisjoint(core.__all__)
-    assert helpers.isdisjoint(vars(core))
-    assert telemetry_types.isdisjoint(vars(policy))
-    assert all(hasattr(telemetry, name) for name in telemetry_types)
 
 
 def test_given_detail_levels_when_importing_public_modules_then_legacy_constants_are_absent():

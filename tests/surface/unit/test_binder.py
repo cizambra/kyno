@@ -1,3 +1,4 @@
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 from types import SimpleNamespace
@@ -12,10 +13,6 @@ from kyno.sdk.client import DirectionResponse
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.policy import PullPolicy
 from kyno.sdk.recording import RecordingReceipt
-from kyno.sdk.telemetry import (
-    EventType,
-    RecordingSink,
-)
 from kyno.wire.delivery import RecordingStatus
 from kyno.wire.models import DetailLevel
 
@@ -46,40 +43,101 @@ def test_given_bindings_to_different_constitutions_when_binding_then_they_do_not
     assert binder.cell.last_seen_version("us") == 9
 
 
-def test_given_a_pull_failure_when_binding_then_the_last_known_direction_serves(scripted_source):
+def test_given_a_pull_failure_when_binding_then_the_last_known_direction_serves(
+    scripted_source, caplog
+):
     scripted_source.set("default", 3, "M3")
-    sink = RecordingSink()
-    binder = DirectionBinder(scripted_source, telemetry=sink)
+    binder = DirectionBinder(scripted_source)
     binder.bind()
 
     scripted_source.failure = OSError("connection refused")
     direction = binder.bind()
 
     assert direction.version == 3 and direction.mission == "M3"
-    assert [event.kind for event in sink.events] == [EventType.PULL_FAILED_STALE]
+    assert caplog.record_tuples == [
+        (
+            "kyno.sdk.binder",
+            logging.WARNING,
+            "kyno pull_failed_stale constitution=default version=3 connection refused",
+        )
+    ]
 
 
 def test_given_a_pull_failure_and_an_empty_cell_when_binding_then_the_empty_direction_serves(
     scripted_source,
+    caplog,
 ):
     scripted_source.failure = OSError("connection refused")
-    sink = RecordingSink()
-    binder = DirectionBinder(scripted_source, telemetry=sink)
+    binder = DirectionBinder(scripted_source)
 
     direction = binder.bind("eu")
 
     assert direction.version == 0 and direction.constitution == "eu"
-    assert [event.kind for event in sink.events] == [EventType.PULL_FAILED_EMPTY]
+    assert caplog.record_tuples == [
+        (
+            "kyno.sdk.binder",
+            logging.WARNING,
+            "kyno pull_failed_empty constitution=eu version=0 connection refused",
+        )
+    ]
 
 
 def test_given_a_fail_closed_policy_when_a_pull_fails_then_it_raises_instead_of_degrading(
     scripted_source,
+    caplog,
 ):
     scripted_source.failure = OSError("connection refused")
     binder = DirectionBinder(scripted_source, policy=PullPolicy(fail_closed=True))
 
     with pytest.raises(KynoUnavailableError):
         binder.bind()
+
+    assert caplog.record_tuples == []
+
+
+def test_given_current_direction_when_bind_with_status_succeeds_then_no_fallback_warning_is_logged(
+    scripted_source,
+    caplog,
+):
+    scripted_source.set("default", 3, "M3")
+
+    binding = DirectionBinder(scripted_source).bind_with_status()
+
+    assert binding.status is DeliveryStatus.CURRENT
+    assert caplog.record_tuples == []
+
+
+def test_given_error_log_level_when_bind_with_status_falls_back_then_warning_is_filtered(
+    scripted_source,
+    caplog,
+):
+    scripted_source.failure = OSError("connection refused")
+    binder = DirectionBinder(scripted_source)
+
+    with caplog.at_level(logging.ERROR, logger="kyno.sdk.binder"):
+        binding = binder.bind_with_status()
+
+    assert binding.status is DeliveryStatus.EMPTY
+    assert caplog.record_tuples == []
+
+
+def test_given_application_logging_when_bind_falls_back_then_handlers_and_levels_stay_unchanged(
+    scripted_source,
+):
+    root_logger = logging.getLogger()
+    binder_logger = logging.getLogger("kyno.sdk.binder")
+    root_settings = (root_logger.level, tuple(root_logger.handlers))
+    binder_settings = (binder_logger.level, tuple(binder_logger.handlers), binder_logger.propagate)
+    scripted_source.failure = OSError("connection refused")
+
+    DirectionBinder(scripted_source).bind()
+
+    assert (root_logger.level, tuple(root_logger.handlers)) == root_settings
+    assert (
+        binder_logger.level,
+        tuple(binder_logger.handlers),
+        binder_logger.propagate,
+    ) == binder_settings
 
 
 def test_given_a_shared_cell_when_binding_then_the_binder_and_caller_see_the_same_direction(
@@ -106,17 +164,18 @@ def test_given_a_fail_closed_policy_when_a_last_direction_exists_then_it_still_r
         binder.bind()
 
 
-def test_given_a_kyno_error_when_binding_then_it_degrades_like_an_unreachable_kyno(scripted_source):
+def test_given_a_kyno_error_when_binding_then_it_degrades_like_an_unreachable_kyno(
+    scripted_source, caplog
+):
     scripted_source.set("default", 3, "M3")
-    sink = RecordingSink()
-    binder = DirectionBinder(scripted_source, telemetry=sink)
+    binder = DirectionBinder(scripted_source)
     binder.bind()
 
     scripted_source.failure = UnknownVersionError("last_seen_version 3 > current 1")
     direction = binder.bind()
 
     assert direction.version == 3
-    assert [event.kind for event in sink.events] == [EventType.PULL_FAILED_STALE]
+    assert "pull_failed_stale" in caplog.text
 
 
 def test_given_an_unexpected_error_when_binding_then_it_is_not_swallowed(scripted_source):
@@ -128,20 +187,24 @@ def test_given_an_unexpected_error_when_binding_then_it_is_not_swallowed(scripte
         binder.bind()
 
 
-def test_given_a_degraded_bind_when_reading_the_event_then_the_reason_and_version_are_there(
+def test_given_cached_direction_when_bind_fails_then_warning_names_constitution_version_and_reason(
     scripted_source,
+    caplog,
 ):
     scripted_source.set("eu", 7, "EU")
-    sink = RecordingSink()
-    binder = DirectionBinder(scripted_source, telemetry=sink)
+    binder = DirectionBinder(scripted_source)
     binder.bind("eu")
 
     scripted_source.failure = OSError("connection refused")
     binder.bind("eu")
 
-    event = sink.events[0]
-    assert (event.constitution, event.version) == ("eu", 7)
-    assert "connection refused" in event.detail
+    assert caplog.record_tuples == [
+        (
+            "kyno.sdk.binder",
+            logging.WARNING,
+            "kyno pull_failed_stale constitution=eu version=7 connection refused",
+        )
+    ]
 
 
 def test_given_a_stale_reply_when_binding_then_the_bound_direction_does_not_roll_back(

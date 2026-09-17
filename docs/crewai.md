@@ -56,8 +56,8 @@ run ID, or step ID is required for direction injection.
 ## Failure behavior
 
 By default, a failed pull uses cached direction, or empty version-0
-direction if no value was cached. The binder reports the fallback through
-telemetry. To raise instead of supplying fallback direction:
+direction if no value was cached. The binder logs a warning through Python's
+`kyno.sdk.binder` logger. To raise instead of supplying fallback direction:
 
 ```python
 from kyno.sdk import PullPolicy

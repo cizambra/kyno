@@ -7,7 +7,6 @@ from kyno.delivery_recording import DeliveryRecorder
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.client import DirectionSource, LocalDirectionSource, McpDirectionSource
 from kyno.sdk.errors import KynoUnavailableError
-from kyno.sdk.telemetry import EventType, RecordingSink
 from kyno.store.delivery_record import SqlDeliveryRecordStore
 from kyno.wire.delivery import RecordingStatus
 from kyno.wire.models import DetailLevel
@@ -136,18 +135,18 @@ def test_given_the_two_sources_when_asking_the_same_question_then_the_answers_ma
 
 def test_given_kyno_going_away_when_a_crew_is_running_then_the_last_direction_carries_it(
     mcp_runner,
+    caplog,
 ):
     runner, control_plane = mcp_runner
     control_plane.set_direction(mission="M1", change_note="init")
-    sink = RecordingSink()
-    binder = DirectionBinder(McpDirectionSource(runner), telemetry=sink)
+    binder = DirectionBinder(McpDirectionSource(runner))
     binder.bind()
 
     runner.close()
     direction = binder.bind()
 
     assert direction.version == 1 and direction.mission == "M1"
-    assert [event.kind for event in sink.events] == [EventType.PULL_FAILED_STALE]
+    assert "pull_failed_stale" in caplog.text
 
 
 def test_given_no_message_handler_when_the_session_opens_then_it_is_refused(mcp_runner):

@@ -34,7 +34,6 @@ from kyno.sdk.client import (
 from kyno.sdk.plan import PlanTracker
 from kyno.sdk.policy import PullPolicy
 from kyno.sdk.recording import RecordingReceipt
-from kyno.sdk.telemetry import TelemetrySink
 from kyno.wire.delivery import RecordingStatus
 from kyno.wire.delivery_record import DeliveryPage, DeliveryRecord, DeliverySummary
 from kyno.wire.models import DetailLevel
@@ -58,7 +57,6 @@ __all__ = [
     "LocalDirectionSource",
     "PlanTracker",
     "PullPolicy",
-    "TelemetrySink",
     "connect",
     "is_direction_block",
     "refresh",
@@ -75,7 +73,6 @@ class KynoConnection:
         self,
         policy: PullPolicy | None = None,
         cell: DirectionCell | None = None,
-        telemetry: TelemetrySink | None = None,
         context: str | DetailLevel = DetailLevel.COMPACT,
         *,
         correlation_id: str | None = None,
@@ -84,9 +81,7 @@ class KynoConnection:
         source = _client.McpDirectionSource(
             self._runner, correlation_id=correlation_id, metadata=metadata
         )
-        return DirectionBinder(
-            source, cell=cell, policy=policy, telemetry=telemetry, context=context
-        )
+        return DirectionBinder(source, cell=cell, policy=policy, context=context)
 
     def close(self) -> None:
         self._runner.close()

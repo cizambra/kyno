@@ -34,8 +34,12 @@ class DirectionBinder:
         self._policy = policy or PullPolicy()
         # Checked here rather than at the first step, so a typo fails while the integration is
         # being set up instead of once it is running.
-        self.context = check_context(context)
-        self._cell.require_context(self.context)
+        self._context = check_context(context)
+
+    @property
+    def context(self) -> DetailLevel:
+        """The context level selected when the binder was constructed."""
+        return self._context
 
     def bind(self, constitution: str = "default") -> Direction:
         """Pull direction, applying the configured failure policy."""

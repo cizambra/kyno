@@ -17,6 +17,25 @@ from kyno.wire.delivery import RecordingStatus
 from kyno.wire.models import DetailLevel
 
 
+@pytest.mark.parametrize("context", list(DetailLevel))
+@pytest.mark.parametrize("populated", [False, True], ids=["before-pull", "after-pull"])
+def test_given_fixed_context_when_assigning_binder_context_then_attribute_error_preserves_pulls(
+    scripted_source, context, populated
+):
+    scripted_source.set("default", 1, "Support customers")
+    binder = DirectionBinder(scripted_source, context=context.value)
+    if populated:
+        binder.bind()
+    other_context = DetailLevel.FULL if context is DetailLevel.COMPACT else DetailLevel.COMPACT
+
+    with pytest.raises(AttributeError):
+        binder.context = other_context
+
+    assert binder.context is context
+    assert binder.bind().context is context
+    assert all(detail is context for detail in scripted_source.details)
+
+
 def test_given_a_bound_step_when_the_next_pull_asks_then_the_last_seen_version_has_advanced(
     control_plane, scripted_source
 ):

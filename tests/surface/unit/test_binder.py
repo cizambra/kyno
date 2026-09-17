@@ -550,6 +550,57 @@ def test_given_empty_cache_when_bind_with_status_cannot_pull_then_recording_is_n
     assert DirectionBinder(scripted_source).bind_with_status().recording is None
 
 
+def test_given_two_binders_when_pulls_overlap_then_each_caches_its_own_direction_and_receipt(
+    scripted_source,
+):
+    scripted_source.set("sales", 4, "First consumer")
+    first_response = DirectionResponse(
+        scripted_source.replies["sales"], RecordingReceipt("recorded", "first")
+    )
+    scripted_source.set("sales", 5, "Second consumer")
+    second_response = DirectionResponse(
+        scripted_source.replies["sales"], RecordingReceipt("recorded", "second")
+    )
+    started = Event()
+    release = Event()
+
+    def changes_since(*args):
+        if scripted_source.failure:
+            raise scripted_source.failure
+        if started.is_set():
+            return second_response
+        started.set()
+        assert release.wait(timeout=10)
+        return first_response
+
+    source = SimpleNamespace(changes_since=changes_since)
+    first = DirectionBinder(source)
+    second = DirectionBinder(source)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        pending = executor.submit(first.bind_with_status, "sales")
+        try:
+            assert started.wait(timeout=10)
+            second_binding = second.bind_with_status("sales")
+        finally:
+            release.set()
+        first_binding = pending.result(timeout=10)
+
+    assert first_binding.direction.version == 4
+    assert first_binding.recording is first_response.recording
+    assert second_binding.direction.version == 5
+    assert second_binding.recording is second_response.recording
+    assert first_binding.status is second_binding.status is DeliveryStatus.CURRENT
+
+    scripted_source.failure = OSError("offline")
+    first_fallback = first.bind_with_status("sales")
+    second_fallback = second.bind_with_status("sales")
+    assert first_fallback.direction is first_binding.direction
+    assert first_fallback.recording is first_binding.recording
+    assert second_fallback.direction is second_binding.direction
+    assert second_fallback.recording is second_binding.recording
+    assert first_fallback.status is second_fallback.status is DeliveryStatus.CACHED
+
+
 @pytest.mark.parametrize(
     "older_version",
     [4, 5],

@@ -11,7 +11,7 @@ from kyno.sdk.cell import Direction  # noqa: E402
 from kyno.sdk.recording import RecordingReceipt  # noqa: E402
 
 
-def test_given_the_adapter_when_inspecting_exports_then_it_supplies_direction_helpers():
+def test_given_langgraph_adapter_when_inspecting_exports_then_only_direction_helpers_are_public():
     assert set(langgraph.__all__) == {
         "KynoState",
         "direction_from_state",
@@ -23,14 +23,14 @@ def test_given_the_adapter_when_inspecting_exports_then_it_supplies_direction_he
     assert not hasattr(nodes, "gate_node")
 
 
-def test_given_direction_state_when_inspecting_fields_then_it_declares_only_direction():
+def test_given_KynoState_when_direction_update_runs_then_keys_match_declared_fields():
     update = langgraph.direction_update(Direction.empty("support"))
     assert set(langgraph.KynoState.__annotations__) == set(update)
 
 
 @pytest.mark.parametrize("wrapped", [False, True])
 @pytest.mark.parametrize("status", ["recorded", "disabled", "failed", None])
-def test_given_a_recording_receipt_when_a_boundary_runs_then_state_carries_a_plain_copy(
+def test_given_receipt_when_direction_node_or_pull_before_runs_then_state_has_recording_copy(
     wrapped, status
 ):
     record_id = "delivery-1" if status == "recorded" else None
@@ -65,7 +65,7 @@ def test_given_a_recording_receipt_when_a_boundary_runs_then_state_carries_a_pla
         assert recording.record_id == record_id
 
 
-def test_given_direction_without_a_receipt_when_state_is_built_then_recording_is_unknown():
+def test_given_no_receipt_when_direction_update_runs_then_kyno_recording_is_none():
     update = langgraph.direction_update(Direction.empty("support"))
 
     assert update["kyno_recording"] is None

@@ -26,7 +26,7 @@ class RecordedState(KynoState, total=False):
 
 @pytest.mark.parametrize("recording_status", ["recorded", "disabled", "failed", None])
 @pytest.mark.parametrize("delivery_status", list(DeliveryStatus))
-def test_given_a_delivery_receipt_when_a_checkpoint_resumes_then_work_keeps_the_same_receipt(
+def test_given_direction_node_checkpoint_when_graph_resumes_then_receipt_is_kept_without_repulling(
     recording_status, delivery_status
 ):
     receipt = (
@@ -92,7 +92,7 @@ def test_given_a_delivery_receipt_when_a_checkpoint_resumes_then_work_keeps_the_
     assert source.changes_since.call_count == 1
 
 
-def test_given_two_reads_of_one_version_when_the_graph_runs_twice_then_receipts_stay_distinct():
+def test_given_same_version_when_direction_node_runs_twice_then_saved_receipts_stay_distinct():
     changes = ChangesSince(1, True, "Help customers", (), True, False, ("init",))
     source = SimpleNamespace(
         changes_since=Mock(

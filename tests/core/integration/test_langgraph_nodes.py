@@ -52,7 +52,7 @@ def _capture_graph(bind, captured, schema=GraphState):
     )
 
 
-def test_given_a_wrapped_node_when_it_runs_then_the_direction_is_pulled_into_state(binder):
+def test_given_direction_when_pull_before_runs_then_work_receives_current_direction(binder):
     bind, _cp = binder
 
     @pull_before(bind)
@@ -66,7 +66,7 @@ def test_given_a_wrapped_node_when_it_runs_then_the_direction_is_pulled_into_sta
     assert update["kyno_constitution"] == "default" and update["kyno_version"] == 1
 
 
-def test_given_a_pivot_when_the_next_node_enters_then_it_rebinds(binder):
+def test_given_new_direction_when_direction_node_runs_again_then_state_has_new_version(binder):
     bind, control_plane = binder
     node = direction_node(bind)
 
@@ -78,7 +78,7 @@ def test_given_a_pivot_when_the_next_node_enters_then_it_rebinds(binder):
     assert direction_from_state(second).mission == "M2"
 
 
-def test_given_a_direction_change_when_the_graph_reaches_the_next_node_then_it_binds_the_new_one(
+def test_given_new_direction_when_pull_before_runs_in_graph_then_work_uses_new_mission(
     binder,
 ):
     bind, control_plane = binder
@@ -104,7 +104,7 @@ def test_given_a_direction_change_when_the_graph_reaches_the_next_node_then_it_b
     assert second["output"] == "work on M2"
 
 
-def test_given_a_wrapped_node_when_state_moves_then_the_rendered_block_travels_in_it(binder):
+def test_given_direction_when_direction_node_runs_then_block_has_mission_and_principles(binder):
     """A persisted checkpoint must say which direction the step served."""
     bind, _cp = binder
     update = direction_node(bind)({})
@@ -113,7 +113,7 @@ def test_given_a_wrapped_node_when_state_moves_then_the_rendered_block_travels_i
     assert "M1" in update["kyno_direction"] and "Be honest" in update["kyno_direction"]
 
 
-def test_given_the_schema_when_comparing_state_keys_then_they_are_exactly_what_it_declares():
+def test_given_direction_when_direction_update_runs_then_keys_exist_in_KynoState():
     """A key written but not declared would be dropped between nodes."""
     update = direction_update(
         Direction(constitution="eu", version=4, mission="M", principles=("P",))
@@ -123,18 +123,18 @@ def test_given_the_schema_when_comparing_state_keys_then_they_are_exactly_what_i
     assert update["kyno_principles"] == [{"title": "P", "description": ""}]
 
 
-def test_given_a_direction_when_round_tripping_through_state_then_it_survives():
+def test_given_updated_state_when_direction_from_state_runs_then_original_direction_returns():
     original = Direction(constitution="eu", version=4, mission="M", principles=("P", "Q"))
     assert direction_from_state(direction_update(original)) == original
 
 
-def test_given_state_without_kyno_keys_when_reading_then_it_is_no_direction():
+def test_given_empty_state_when_direction_from_state_runs_then_default_version_zero_returns():
     direction = direction_from_state({})
     assert direction.constitution == "default" and direction.version == 0
     assert direction.mission == "" and direction.principles == ()
 
 
-def test_given_a_node_that_returns_nothing_when_it_runs_then_its_direction_is_still_recorded(
+def test_given_work_returning_none_when_pull_before_runs_then_direction_remains_in_state(
     binder,
 ):
     bind, _cp = binder
@@ -146,7 +146,7 @@ def test_given_a_node_that_returns_nothing_when_it_runs_then_its_direction_is_st
     assert node({})["kyno_version"] == 1
 
 
-def test_given_the_wrapper_wrote_state_when_the_node_writes_too_then_the_node_wins(binder):
+def test_given_work_overriding_mission_when_pull_before_runs_then_work_value_wins(binder):
     """The node runs last, so its own keys win. It saw the direction too."""
     bind, _cp = binder
 
@@ -157,7 +157,7 @@ def test_given_the_wrapper_wrote_state_when_the_node_writes_too_then_the_node_wi
     assert node({})["kyno_mission"] == "as the node saw it"
 
 
-def test_given_a_described_principle_when_checkpoint_round_tripping_then_it_survives():
+def test_given_principle_description_when_direction_from_state_runs_then_description_is_kept():
     from kyno.wire.models import Principle
 
     original = Direction(
@@ -169,7 +169,7 @@ def test_given_a_described_principle_when_checkpoint_round_tripping_then_it_surv
     assert direction_from_state(direction_update(original)) == original
 
 
-def test_given_a_full_binder_when_state_carries_the_block_then_it_is_the_full_document(
+def test_given_full_context_when_direction_node_runs_then_block_has_declaration_and_descriptions(
     control_plane,
 ):
     control_plane.set_direction(
@@ -187,7 +187,7 @@ def test_given_a_full_binder_when_state_carries_the_block_then_it_is_the_full_do
     assert update["kyno_context"] == DetailLevel.FULL
 
 
-def test_given_no_context_asked_when_state_carries_the_block_then_it_stays_compact(binder):
+def test_given_default_context_when_direction_node_runs_then_block_omits_declaration(binder):
     bind, control_plane = binder
     control_plane.set_direction(declaration="The long form.", change_note="add the long form")
 
@@ -197,7 +197,7 @@ def test_given_no_context_asked_when_state_carries_the_block_then_it_stays_compa
     assert update["kyno_context"] == DetailLevel.COMPACT
 
 
-def test_given_complete_direction_when_round_tripping_through_state_then_all_fields_survive():
+def test_given_json_state_when_direction_from_state_runs_then_all_fields_are_restored():
     original = Direction(
         constitution="eu",
         version=4,
@@ -214,7 +214,7 @@ def test_given_complete_direction_when_round_tripping_through_state_then_all_fie
     assert direction_from_state(json.loads(json.dumps(update))) == original
 
 
-def test_given_checkpoint_without_optional_direction_fields_when_reading_then_defaults_are_empty():
+def test_given_missing_optional_fields_when_direction_from_state_runs_then_empty_defaults_apply():
     state = {
         "kyno_constitution": "support",
         "kyno_version": 3,
@@ -232,13 +232,13 @@ def test_given_checkpoint_without_optional_direction_fields_when_reading_then_de
     )
 
 
-def test_given_unknown_delivery_status_when_building_direction_state_then_it_is_rejected():
+def test_given_unknown_status_when_direction_update_runs_then_ValueError_is_raised():
     original = Direction.empty("support")
     with pytest.raises(ValueError, match="unknown-status"):
         direction_update(original, status="unknown-status")
 
 
-def test_given_change_notes_when_a_checkpointed_graph_reaches_a_consumer_then_it_receives_them(
+def test_given_change_notes_when_direction_node_runs_then_consumer_receives_notes(
     binder,
 ):
     bind, _ = binder
@@ -248,7 +248,7 @@ def test_given_change_notes_when_a_checkpointed_graph_reaches_a_consumer_then_it
     assert captured[0].change_notes == ("init",)
 
 
-def test_given_an_intervening_node_when_a_consumer_runs_then_direction_reaches_it(binder):
+def test_given_intervening_work_when_direction_node_runs_then_consumer_receives_direction(binder):
     bind, _ = binder
     captured = []
     graph = _capture_graph(bind, captured)
@@ -257,7 +257,7 @@ def test_given_an_intervening_node_when_a_consumer_runs_then_direction_reaches_i
     assert captured[0].mission == "M1"
 
 
-def test_given_a_schema_without_direction_fields_when_work_runs_then_direction_is_lost(binder):
+def test_given_schema_without_KynoState_when_direction_node_runs_then_graph_drops_direction(binder):
     from typing import TypedDict
 
     class OutputState(TypedDict, total=False):
@@ -272,7 +272,7 @@ def test_given_a_schema_without_direction_fields_when_work_runs_then_direction_i
 
 
 @pytest.mark.parametrize("context", [DetailLevel.COMPACT, DetailLevel.FULL])
-def test_given_a_captured_answer_when_review_resumes_then_it_keeps_its_original_input(
+def test_given_direction_node_refresh_when_review_resumes_then_saved_answer_keeps_prior_direction(
     binder,
     context,
 ):

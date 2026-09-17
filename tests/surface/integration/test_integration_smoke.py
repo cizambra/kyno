@@ -26,7 +26,9 @@ def test_given_the_real_crewai_api_when_registering_hooks_then_they_are_register
         crewai_hooks.clear_all_hooks()
 
 
-def test_given_a_real_react_agent_when_it_runs_then_the_model_receives_direction(control_plane):
+def test_given_direction_node_as_react_hook_when_agent_runs_then_model_receives_direction(
+    control_plane,
+):
     pytest.importorskip("langgraph")
     from typing import Annotated
 

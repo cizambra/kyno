@@ -175,8 +175,8 @@
       <p>No. Kyno stores versioned direction and its adapters pull it before work proceeds. Pulls can fail, and an agent can receive the right principles and still misinterpret them or make a bad decision. Claims about improved behavior require evidence from the actual integration and task.</p>
       <h3>What happens if a pull fails?</h3>
       <p>By default, the binder logs the failure and uses cached direction. If it has never fetched direction, it supplies empty version 0. Configure <code>PullPolicy(fail_closed=True)</code> to raise an error instead. Current direction depends on a successful pull; an update committed after that read becomes available on a later pull.</p>
-      <h3>Do I need Canon?</h3>
-      <p>No. Verification is optional. An independent verifier such as <a href="https://github.com/cizambra/canon">Canon</a> can evaluate outputs against the supplied constitution. Kyno's optional realignment gate accepts external verdicts; it does not ship its own judge.</p>
+      <h3>Do I need a verifier?</h3>
+      <p>Verification is optional, but recommended. Your application can check outputs against their supplied direction using its own checks or an independent verifier. Those assessments can feed back into the running workflow, giving your application a chance to correct course and improve outcomes before the run ends. Your application chooses whether to continue, retry, or ask a person to review the result. Kyno supplies direction; it does not run verification or decide what happens next.</p>
       <h3>When is Kyno useful?</h3>
       <p>When several agents need shared direction, when priorities change during a run, or when your integration needs to record which direction a step received. For a short workflow whose direction is fixed, an existing prompt or file may meet your needs.</p>
     </section>

@@ -12,10 +12,6 @@ logger = logging.getLogger("kyno.adapters")
 class EventType(StrEnum):
     PULL_FAILED_STALE = "pull_failed_stale"
     PULL_FAILED_EMPTY = "pull_failed_empty"
-    UNCHECKED = "unchecked"
-    DRIFT_BLOCKED = "drift_blocked"
-    DRIFT_PAUSED = "drift_paused"
-    PAUSE_UNSUPPORTED = "pause_unsupported"
 
 
 @dataclass(frozen=True)

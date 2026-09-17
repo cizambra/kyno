@@ -6,9 +6,9 @@ from kyno.sdk.telemetry import EventType, LogSink, RecordingSink, TelemetryEvent
 
 
 def test_given_a_string_event_type_when_creating_an_event_then_it_becomes_the_matching_type():
-    event = TelemetryEvent(kind="unchecked", constitution="eu", version=1)
+    event = TelemetryEvent(kind="pull_failed_stale", constitution="eu", version=1)
 
-    assert event.kind is EventType.UNCHECKED
+    assert event.kind is EventType.PULL_FAILED_STALE
 
 
 def test_given_an_unknown_event_type_when_creating_an_event_then_it_is_refused():
@@ -17,11 +17,11 @@ def test_given_an_unknown_event_type_when_creating_an_event_then_it_is_refused()
 
 
 def test_given_a_typed_event_when_serializing_then_its_type_is_a_plain_string():
-    event = TelemetryEvent(kind=EventType.UNCHECKED, constitution="eu", version=1)
+    event = TelemetryEvent(kind=EventType.PULL_FAILED_STALE, constitution="eu", version=1)
 
     payload = event.to_dict()
 
-    assert payload["kind"] == "unchecked"
+    assert payload["kind"] == "pull_failed_stale"
     assert type(payload["kind"]) is str
 
 
@@ -29,23 +29,23 @@ def test_given_events_when_the_recording_sink_takes_them_then_their_order_is_kep
     sink = RecordingSink()
     sink.emit(
         TelemetryEvent(
-            kind=EventType.UNCHECKED,
+            kind=EventType.PULL_FAILED_STALE,
             constitution="eu",
             version=2,
-            detail="no_source",
+            detail="connection unavailable",
         )
     )
     sink.emit(
         TelemetryEvent(
-            kind=EventType.UNCHECKED,
+            kind=EventType.PULL_FAILED_EMPTY,
             constitution="us",
-            version=1,
-            detail="source_error",
+            version=0,
+            detail="connection unavailable",
         )
     )
 
     assert [event.constitution for event in sink.events] == ["eu", "us"]
-    assert sink.events[0].to_dict()["kind"] == "unchecked"
+    assert sink.events[0].to_dict()["kind"] == "pull_failed_stale"
 
 
 def test_given_a_degrade_when_the_log_sink_warns_then_the_constitution_and_version_are_named(
@@ -54,11 +54,11 @@ def test_given_a_degrade_when_the_log_sink_warns_then_the_constitution_and_versi
     with caplog.at_level(logging.WARNING, logger="kyno.adapters"):
         LogSink().emit(
             TelemetryEvent(
-                kind=EventType.UNCHECKED,
+                kind=EventType.PULL_FAILED_STALE,
                 constitution="eu",
                 version=3,
                 detail="x",
             )
         )
 
-    assert "eu" in caplog.text and "3" in caplog.text and "unchecked" in caplog.text
+    assert "eu" in caplog.text and "3" in caplog.text and "pull_failed_stale" in caplog.text

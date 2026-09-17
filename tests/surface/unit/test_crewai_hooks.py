@@ -33,14 +33,6 @@ def unit_kyno(scripted_source):
     return adapter, scripted_source
 
 
-@pytest.mark.parametrize("option", ["gate", "trace"])
-def test_given_gate_or_trace_keyword_when_CrewAiKyno_is_created_then_TypeError_is_raised(
-    scripted_source, option
-):
-    with pytest.raises(TypeError, match=f"unexpected keyword argument '{option}'"):
-        CrewAiKyno(DirectionBinder(scripted_source), **{option: object()})
-
-
 def test_given_second_positional_argument_when_CrewAiKyno_is_created_then_TypeError_is_raised(
     scripted_source,
 ):

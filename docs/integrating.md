@@ -506,8 +506,19 @@ Principles:
 
 This capture uses a real MCP session backed by an isolated SQLite store.
 
-To inspect a recorded delivery's direction, pass its `requested_constitution`
-as the first argument and its `served_version` as `version`. The read describes
+To inspect the direction associated with a delivery ID saved by your application:
+
+```python
+delivery = connection.get_delivery_record(record_id)
+direction = connection.get_constitution(
+    delivery["requested_constitution"],
+    version=delivery["served_version"],
+    context="full",
+)
+```
+
+Here, `record_id` is the ID your application saved alongside its output, and
+`connection` is an open SDK connection. The read describes
 that historical constitution, which may contain more than a selectively
 delivered principle. Per-delivery deltas remain on the delivery record; the
 returned direction has no delta or recent change notes.

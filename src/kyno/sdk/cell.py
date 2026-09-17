@@ -119,7 +119,7 @@ class Direction(HoldsPrinciples):
 
 
 class DirectionCell:
-    """The process-local latest-known direction, one entry per constitution.
+    """One binder's process-local latest-known direction and receipt.
 
     Updates are monotonic so overlapping pulls can finish out of order
     without an older response replacing a newer direction.
@@ -127,38 +127,25 @@ class DirectionCell:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._held: dict[str, tuple[Direction, RecordingReceipt | None]] = {}
+        self._held: tuple[Direction, RecordingReceipt | None] | None = None
 
-    def get(self, constitution: str) -> Direction | None:
-        snapshot = self.get_with_recording(constitution)
-        return snapshot[0] if snapshot is not None else None
-
-    def get_with_recording(
-        self, constitution: str
-    ) -> tuple[Direction, RecordingReceipt | None] | None:
+    def get_with_recording(self) -> tuple[Direction, RecordingReceipt | None] | None:
         """Return the cached direction and its origin receipt as one snapshot."""
         with self._lock:
-            return self._held.get(constitution)
+            return self._held
 
-    def last_seen_version(self, constitution: str) -> int:
-        held = self.get(constitution)
-        return held.version if held else 0
-
-    def update(self, direction: Direction) -> Direction:
-        return self.update_with_recording(direction)[0]
+    def last_seen_version(self) -> int:
+        held = self.get_with_recording()
+        return held[0].version if held is not None else 0
 
     def update_with_recording(
         self, direction: Direction, recording: RecordingReceipt | None = None
     ) -> tuple[Direction, RecordingReceipt | None]:
         """Retain direction and receipt together unless a newer version is held."""
         with self._lock:
-            held = self._held.get(direction.constitution)
+            held = self._held
             if held is not None and held[0].version > direction.version:
                 return held
             snapshot = (direction, recording)
-            self._held[direction.constitution] = snapshot
+            self._held = snapshot
             return snapshot
-
-    def names(self) -> tuple[str, ...]:
-        with self._lock:
-            return tuple(sorted(self._held))

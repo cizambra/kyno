@@ -19,16 +19,14 @@ class CrewAiKyno:
         self,
         binder: DirectionBinder,
         *,
-        constitution: str = "default",
         on_direction: Callable[[DirectionBinding], None] | None = None,
     ) -> None:
         self._binder = binder
-        self.constitution = constitution
         self.on_direction = on_direction
 
     def before_llm_call(self, ctx: Any) -> None:
         """Inject direction, then notify the optional observer; observer failures are logged."""
-        binding = self._binder.bind_with_status(self.constitution)
+        binding = self._binder.bind_with_status()
         messages = getattr(ctx, "messages", None)
         if messages is None:
             messages = ctx.messages = []

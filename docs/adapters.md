@@ -106,7 +106,8 @@ containing `direction` and a `DeliveryStatus` enum, both exported from
 ```python
 from kyno.sdk import DeliveryStatus
 
-binding = binder.bind_with_status("customer-support")
+binder = connection.binder("customer-support")
+binding = binder.bind_with_status()
 if binding.status is DeliveryStatus.CACHED:
     print("Using retained direction", binding.direction.version)
 block = binding.direction.render()
@@ -148,6 +149,28 @@ history records what Core served when recording is enabled, while SDK logs
 report local failures and fallback even when no delivery record exists.
 
 ## The integration
+
+### One binder reads one constitution
+
+Select the constitution when creating a binder. It stays fixed for that
+binder's lifetime; `bind()`, `bind_with_status()`, and `plan()` use that selection.
+The default constitution is `"default"`.
+
+```python
+support = connection.binder("customer-support")
+sales = connection.binder("sales")
+
+support_direction = support.bind()
+sales_direction = sales.bind()
+```
+
+These binders share the connection, not their last-seen versions, cached
+direction, or recording receipts. Pass the chosen binder to your adapter or
+call `support.plan()` to track plans against that same constitution.
+`binder.constitution` is readable but cannot be reassigned.
+
+Consumers can reuse a binder when they intend to share its last-seen version
+and fallback. Each call still pulls; reuse does not deduplicate requests.
 
 Choose the setup for your framework:
 

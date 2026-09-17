@@ -1,9 +1,20 @@
 """Binder behavior against a real control plane."""
 
+import pytest
+
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.binding import DeliveryStatus
 from kyno.sdk.client import LocalDirectionSource
 from kyno.wire.models import DetailLevel
+
+
+@pytest.mark.parametrize("constitution", [None, 1, True, [], {}])
+def test_given_non_string_constitution_when_connection_binder_runs_then_type_error_is_raised(
+    mcp_connection, constitution
+):
+    connection, _control_plane = mcp_connection
+    with pytest.raises(TypeError, match="constitution must be a string"):
+        connection.binder(constitution)
 
 
 def test_given_a_step_when_binding_then_the_current_version_is_bound(control_plane):
@@ -52,9 +63,9 @@ def test_given_an_unchanged_version_when_binding_again_then_the_successful_read_
     control_plane,
 ):
     control_plane.set_direction(mission="Mission", change_note="initial", constitution="sales")
-    binder = DirectionBinder(LocalDirectionSource(control_plane))
-    first = binder.bind_with_status("sales")
-    second = binder.bind_with_status("sales")
+    binder = DirectionBinder(LocalDirectionSource(control_plane), "sales")
+    first = binder.bind_with_status()
+    second = binder.bind_with_status()
     assert first.direction.version == second.direction.version == 1
     assert first.status is second.status is DeliveryStatus.CURRENT
 
@@ -63,10 +74,10 @@ def test_given_a_direction_change_when_binding_again_then_the_prior_result_stays
     control_plane,
 ):
     control_plane.set_direction(mission="Old", change_note="initial", constitution="sales")
-    binder = DirectionBinder(LocalDirectionSource(control_plane))
-    first = binder.bind_with_status("sales")
+    binder = DirectionBinder(LocalDirectionSource(control_plane), "sales")
+    first = binder.bind_with_status()
     control_plane.set_direction(mission="New", change_note="pivot", constitution="sales")
-    second = binder.bind_with_status("sales")
+    second = binder.bind_with_status()
     assert (first.direction.version, first.direction.mission) == (1, "Old")
     assert (second.direction.version, second.direction.mission) == (2, "New")
     assert second.direction.change_notes == ("pivot",)

@@ -123,9 +123,9 @@ def test_given_observer_when_before_llm_call_runs_then_binding_is_reported_after
         declaration="Explain the complete resolution.",
         delta=("Mission changed.",),
     )
-    binder = DirectionBinder(scripted_source, context=context)
+    binder = DirectionBinder(scripted_source, "support", context=context)
     if status is DeliveryStatus.CACHED:
-        binder.bind("support")
+        binder.bind()
     if status is not DeliveryStatus.CURRENT:
         scripted_source.failure = OSError("offline")
     scripted_source.calls.clear()
@@ -136,7 +136,7 @@ def test_given_observer_when_before_llm_call_runs_then_binding_is_reported_after
     def observe(binding):
         observed.append((binding, [message.copy() for message in ctx.messages]))
 
-    adapter = CrewAiKyno(binder, constitution="support", on_direction=observe)
+    adapter = CrewAiKyno(binder, on_direction=observe)
     adapter.before_llm_call(ctx)
 
     assert len(observed) == 1
@@ -170,9 +170,7 @@ def test_given_new_direction_when_before_llm_call_runs_again_then_prior_binding_
 ):
     scripted_source.set("support", 1, "M1")
     observed = []
-    adapter = CrewAiKyno(
-        DirectionBinder(scripted_source), constitution="support", on_direction=observed.append
-    )
+    adapter = CrewAiKyno(DirectionBinder(scripted_source, "support"), on_direction=observed.append)
     ctx = FakeCtx()
     adapter.before_llm_call(ctx)
     first_block = ctx.messages[0]["content"]
@@ -193,9 +191,7 @@ def test_given_observer_error_when_before_llm_call_runs_then_error_is_logged_wit
 ):
     scripted_source.set("support", 3, "Help")
     observer = Mock(side_effect=RuntimeError("recording failed"))
-    adapter = CrewAiKyno(
-        DirectionBinder(scripted_source), constitution="support", on_direction=observer
-    )
+    adapter = CrewAiKyno(DirectionBinder(scripted_source, "support"), on_direction=observer)
     ctx = FakeCtx()
 
     assert adapter.before_llm_call(ctx) is None

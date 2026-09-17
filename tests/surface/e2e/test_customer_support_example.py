@@ -94,8 +94,9 @@ def test_given_an_operator_update_when_the_graph_continues_then_each_call_record
     with connect(url=url, token=token) as connection:
         example.run_example(
             Model(),
-            connection.binder(context=DetailLevel.FULL, policy=PullPolicy(fail_closed=True)),
-            constitution="customer-support",
+            connection.binder(
+                "customer-support", context=DetailLevel.FULL, policy=PullPolicy(fail_closed=True)
+            ),
             model_name="deterministic-test",
             wait_for_operator=operator,
             emit=record_and_print,
@@ -129,8 +130,7 @@ def test_given_no_operator_change_when_the_graph_continues_then_both_receipts_na
     with connect(url=url, token=token) as connection:
         example.run_example(
             model,
-            connection.binder(),
-            constitution="default",
+            connection.binder("default"),
             model_name="fake",
             wait_for_operator=lambda: None,
             emit=events.append,
@@ -163,8 +163,7 @@ def test_given_a_model_failure_when_answering_then_only_the_supplied_direction_i
     ):
         example.run_example(
             FailedModel(),
-            connection.binder(),
-            constitution="default",
+            connection.binder("default"),
             model_name="fake",
             wait_for_operator=unexpected_pause,
             emit=events.append,
@@ -184,8 +183,7 @@ def test_given_an_unwritten_constitution_when_starting_then_no_model_call_or_rec
     ):
         example.run_example(
             model,
-            connection.binder(),
-            constitution="missing",
+            connection.binder("missing"),
             model_name="fake",
             wait_for_operator=lambda: None,
             emit=events.append,
@@ -213,8 +211,7 @@ def test_given_a_failed_second_pull_when_the_graph_continues_then_no_second_mode
     with connect(url=url, token=token) as connection, pytest.raises(expected):
         example.run_example(
             model,
-            connection.binder(policy=PullPolicy(fail_closed=fail_closed)),
-            constitution="default",
+            connection.binder("default", policy=PullPolicy(fail_closed=fail_closed)),
             model_name="fake",
             wait_for_operator=operator,
             emit=events.append,
@@ -247,8 +244,7 @@ def test_given_failed_receipt_storage_when_starting_then_the_model_is_not_called
     ):
         example.run_example(
             model,
-            connection.binder(),
-            constitution="default",
+            connection.binder("default"),
             model_name="fake",
             wait_for_operator=lambda: None,
             emit=lambda event: example.report(event, recording),
@@ -270,8 +266,7 @@ def test_given_operator_cancellation_when_paused_then_only_the_first_call_is_rec
     with connect(url=url, token=token) as connection, pytest.raises(EOFError):
         example.run_example(
             model,
-            connection.binder(),
-            constitution="default",
+            connection.binder("default"),
             model_name="fake",
             wait_for_operator=cancel,
             emit=events.append,

@@ -54,10 +54,10 @@ def supplied_direction_event(state, identity, messages):
     }
 
 
-def answer_node(model, binder, *, constitution, model_name, step_id, emit):
+def answer_node(model, binder, *, model_name, step_id, emit):
     """Create a model node with a fresh pull and separate supplied/output events."""
 
-    @pull_before(binder, constitution=constitution)
+    @pull_before(binder)
     def node(state):
         messages = prepare_messages(state)
         identity = {
@@ -81,7 +81,7 @@ def answer_node(model, binder, *, constitution, model_name, step_id, emit):
     return node
 
 
-def run_example(model, binder, *, constitution, model_name, wait_for_operator, emit):
+def run_example(model, binder, *, model_name, wait_for_operator, emit):
     """Run one graph with two answers and an operator pause between them."""
 
     def operator_pause(state):
@@ -95,7 +95,6 @@ def run_example(model, binder, *, constitution, model_name, wait_for_operator, e
             answer_node(
                 model,
                 binder,
-                constitution=constitution,
                 model_name=model_name,
                 step_id=step_id,
                 emit=emit,
@@ -167,11 +166,12 @@ def run_live(args, token):
         )
         model = ChatOpenAI(model=args.model, max_retries=0, timeout=60)
         connection = stack.enter_context(kyno.connect(url=args.url, token=token))
-        binder = connection.binder(context=DetailLevel.FULL, policy=PullPolicy(fail_closed=True))
+        binder = connection.binder(
+            args.constitution, context=DetailLevel.FULL, policy=PullPolicy(fail_closed=True)
+        )
         run_example(
             model,
             binder,
-            constitution=args.constitution,
             model_name=args.model,
             wait_for_operator=wait_for_operator,
             emit=lambda event: report(event, recording),

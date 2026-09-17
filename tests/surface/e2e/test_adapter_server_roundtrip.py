@@ -89,10 +89,8 @@ def test_given_server_read_failure_when_langgraph_pulls_over_http_then_fallback_
         return {}
 
     with connect(url=url, token=token) as connection:
-        binder = connection.binder()
-        refresh = (
-            pull_before(binder, "support")(work) if wrapper else direction_node(binder, "support")
-        )
+        binder = connection.binder("support")
+        refresh = pull_before(binder)(work) if wrapper else direction_node(binder)
         first = refresh({}) if cached else {}
         unavailable.set()
         fallback = refresh(first)
@@ -127,7 +125,7 @@ def test_given_failed_reads_when_crewai_calls_again_then_observed_fallback_recov
         observed.append((binding, context.messages[0]["content"]))
 
     with connect(url=url, token=token) as connection:
-        adapter = CrewAiKyno(connection.binder(), constitution="support", on_direction=observe)
+        adapter = CrewAiKyno(connection.binder("support"), on_direction=observe)
         if cached:
             adapter.before_llm_call(context)
             control_plane.set_direction(mission="M2", change_note="pivot", constitution="support")

@@ -83,12 +83,12 @@ def test_given_a_rich_constitution_when_published_and_bound_then_a_crew_serves_i
 
     # The crew bound to that same record is sent the handles, not the document.
     source = LocalDirectionSource(plane)
-    compact = DirectionBinder(source).bind("acme").render()
+    compact = DirectionBinder(source, "acme").bind().render()
     assert HEADLINE in compact
     assert "Say the hard number first" in compact and "Refuse quietly" in compact
     assert PARAGRAPH not in compact
     assert DESCRIPTION not in compact
 
     # Unless this binding would rather spend the tokens.
-    full = DirectionBinder(source, context=DetailLevel.FULL).bind("acme").render()
+    full = DirectionBinder(source, "acme", context=DetailLevel.FULL).bind().render()
     assert PARAGRAPH in full and DESCRIPTION in full

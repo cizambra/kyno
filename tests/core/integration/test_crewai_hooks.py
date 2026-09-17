@@ -57,11 +57,17 @@ def test_given_new_direction_when_before_llm_call_runs_again_then_old_block_is_r
     assert "M2" in blocks[0]["content"] and "version=2" in blocks[0]["content"]
 
 
-def test_given_constitution_name_when_CrewAiKyno_is_created_then_constitution_retains_that_name(
+def test_given_european_binder_when_before_llm_call_runs_then_european_direction_is_injected(
     control_plane,
 ):
-    binder = DirectionBinder(LocalDirectionSource(control_plane))
-    assert CrewAiKyno(binder, constitution="eu").constitution == "eu"
+    binder = DirectionBinder(LocalDirectionSource(control_plane), "eu")
+    control_plane.set_direction(
+        mission="European mission", change_note="Initial", constitution="eu"
+    )
+    context = FakeCtx()
+    CrewAiKyno(binder).before_llm_call(context)
+    assert "constitution=eu version=1" in context.messages[0]["content"]
+    assert "European mission" in context.messages[0]["content"]
 
 
 def test_given_full_context_when_before_llm_call_runs_then_declaration_and_descriptions_are_added(

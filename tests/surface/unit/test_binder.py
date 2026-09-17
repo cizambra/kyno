@@ -36,6 +36,39 @@ def test_given_fixed_context_when_assigning_binder_context_then_attribute_error_
     assert all(detail is context for detail in scripted_source.details)
 
 
+@pytest.mark.parametrize("constitution", [None, 1, True, [], {}])
+def test_given_non_string_constitution_when_constructing_direction_binder_then_type_error_is_raised(
+    scripted_source, constitution
+):
+    with pytest.raises(TypeError, match="constitution must be a string"):
+        DirectionBinder(scripted_source, constitution)
+    assert scripted_source.calls == []
+
+
+def test_given_support_binder_when_bind_runs_then_every_pull_uses_support(scripted_source):
+    scripted_source.set("support", 3, "Help customers")
+    binder = DirectionBinder(scripted_source, "support")
+
+    assert binder.constitution == "support"
+    assert binder.bind().constitution == "support"
+    assert binder.bind_with_status().direction.constitution == "support"
+    assert scripted_source.calls == [(0, "support"), (3, "support")]
+
+
+def test_given_support_binder_when_assigning_constitution_then_attribute_error_keeps_support(
+    scripted_source,
+):
+    scripted_source.set("support", 3, "Help customers")
+    binder = DirectionBinder(scripted_source, "support")
+
+    with pytest.raises(AttributeError):
+        binder.constitution = "sales"
+
+    assert binder.constitution == "support"
+    assert binder.bind().constitution == "support"
+    assert scripted_source.calls == [(0, "support")]
+
+
 def test_given_a_bound_step_when_the_next_pull_asks_then_the_last_seen_version_has_advanced(
     control_plane, scripted_source
 ):
@@ -49,17 +82,18 @@ def test_given_a_bound_step_when_the_next_pull_asks_then_the_last_seen_version_h
     assert scripted_source.calls == [(0, "default"), (4, "default")]
 
 
-def test_given_bindings_to_different_constitutions_when_binding_then_they_do_not_collide(
+def test_given_constitution_bound_binders_when_bind_runs_then_last_seen_versions_are_independent(
     scripted_source,
 ):
     scripted_source.set("eu", 2, "EU")
     scripted_source.set("us", 9, "US")
-    binder = DirectionBinder(scripted_source)
+    european = DirectionBinder(scripted_source, "eu")
+    american = DirectionBinder(scripted_source, "us")
 
-    assert binder.bind("eu").mission == "EU"
-    assert binder.bind("us").mission == "US"
-    binder.bind("eu")
-    binder.bind("us")
+    assert european.bind().mission == "EU"
+    assert american.bind().mission == "US"
+    european.bind()
+    american.bind()
     assert scripted_source.calls == [(0, "eu"), (0, "us"), (2, "eu"), (9, "us")]
 
 
@@ -90,9 +124,9 @@ def test_given_a_pull_failure_and_an_empty_cell_when_binding_then_the_empty_dire
     caplog,
 ):
     scripted_source.failure = OSError("connection refused")
-    binder = DirectionBinder(scripted_source)
+    binder = DirectionBinder(scripted_source, "eu")
 
-    direction = binder.bind("eu")
+    direction = binder.bind()
 
     assert direction.version == 0 and direction.constitution == "eu"
     assert caplog.record_tuples == [
@@ -166,13 +200,13 @@ def test_given_binders_when_bind_with_status_fails_then_logs_name_each_constitut
     scripted_source, caplog
 ):
     scripted_source.set("support", 3, "Help customers")
-    support = DirectionBinder(scripted_source)
-    sales = DirectionBinder(scripted_source)
-    support.bind("support")
+    support = DirectionBinder(scripted_source, "support")
+    sales = DirectionBinder(scripted_source, "sales")
+    support.bind()
     scripted_source.failure = OSError("connection refused")
 
-    support_binding = support.bind_with_status("support")
-    sales_binding = sales.bind_with_status("sales")
+    support_binding = support.bind_with_status()
+    sales_binding = sales.bind_with_status()
 
     assert support_binding.status is DeliveryStatus.CACHED
     assert sales_binding.status is DeliveryStatus.EMPTY
@@ -237,11 +271,11 @@ def test_given_cached_direction_when_bind_fails_then_warning_names_constitution_
     caplog,
 ):
     scripted_source.set("eu", 7, "EU")
-    binder = DirectionBinder(scripted_source)
-    binder.bind("eu")
+    binder = DirectionBinder(scripted_source, "eu")
+    binder.bind()
 
     scripted_source.failure = OSError("connection refused")
-    binder.bind("eu")
+    binder.bind()
 
     assert caplog.record_tuples == [
         (
@@ -277,21 +311,21 @@ def test_given_a_binder_when_binding_any_direction_then_its_context_is_stamped_o
     scripted_source,
 ):
     scripted_source.set("eu", 2, "EU")
-    binder = DirectionBinder(scripted_source, context=DetailLevel.FULL)
-    assert binder.bind("eu").context is DetailLevel.FULL
+    binder = DirectionBinder(scripted_source, "eu", context=DetailLevel.FULL)
+    assert binder.bind().context is DetailLevel.FULL
 
 
 def test_given_a_degraded_bind_when_reading_the_empty_direction_then_the_context_is_stamped(
     scripted_source,
 ):
     scripted_source.failure = OSError("connection refused")
-    binder = DirectionBinder(scripted_source, context=DetailLevel.FULL, policy=PullPolicy())
-    assert binder.bind("eu").context is DetailLevel.FULL
+    binder = DirectionBinder(scripted_source, "eu", context=DetailLevel.FULL, policy=PullPolicy())
+    assert binder.bind().context is DetailLevel.FULL
 
 
 def test_given_no_context_asked_when_binding_then_the_compact_context_is_used(scripted_source):
     scripted_source.set("eu", 2, "EU")
-    assert DirectionBinder(scripted_source).bind("eu").context is DetailLevel.COMPACT
+    assert DirectionBinder(scripted_source, "eu").bind().context is DetailLevel.COMPACT
 
 
 def test_given_an_unknown_context_when_building_the_binder_then_it_is_refused(scripted_source):
@@ -306,8 +340,8 @@ def test_given_a_compact_binding_when_pulling_then_kyno_is_asked_for_the_compact
 ):
     # Do not fetch what you will not inject: the pull matches the binding.
     scripted_source.set("eu", 2, "EU")
-    DirectionBinder(scripted_source).bind("eu")
-    DirectionBinder(scripted_source, context=DetailLevel.FULL).bind("eu")
+    DirectionBinder(scripted_source, "eu").bind()
+    DirectionBinder(scripted_source, "eu", context=DetailLevel.FULL).bind()
     assert scripted_source.details == [DetailLevel.COMPACT, DetailLevel.FULL]
 
 
@@ -316,8 +350,8 @@ def test_given_an_authoritative_reply_when_binding_with_status_then_it_is_curren
     scripted_source, version
 ):
     scripted_source.set("sales", version, "Mission" if version else "")
-    binder = DirectionBinder(scripted_source)
-    binding = binder.bind_with_status("sales")
+    binder = DirectionBinder(scripted_source, "sales")
+    binding = binder.bind_with_status()
     assert binding.status is DeliveryStatus.CURRENT
     assert binding.direction.version == version
     assert binding.direction.constitution == "sales"
@@ -330,10 +364,10 @@ def test_given_a_cached_version_when_the_pull_fails_then_the_binding_is_cached(
     scripted_source, version, failure
 ):
     scripted_source.set("sales", version, "Mission" if version else "")
-    binder = DirectionBinder(scripted_source)
-    first = binder.bind_with_status("sales")
+    binder = DirectionBinder(scripted_source, "sales")
+    first = binder.bind_with_status()
     scripted_source.failure = failure
-    fallback = binder.bind_with_status("sales")
+    fallback = binder.bind_with_status()
     assert fallback.status is DeliveryStatus.CACHED
     assert fallback.direction is first.direction
     assert first.status is DeliveryStatus.CURRENT
@@ -341,21 +375,21 @@ def test_given_a_cached_version_when_the_pull_fails_then_the_binding_is_cached(
 
 def test_given_no_cached_direction_when_the_pull_fails_then_the_binding_is_empty(scripted_source):
     scripted_source.failure = OSError("offline")
-    binder = DirectionBinder(scripted_source, context=DetailLevel.FULL)
-    binding = binder.bind_with_status("sales")
+    binder = DirectionBinder(scripted_source, "sales", context=DetailLevel.FULL)
+    binding = binder.bind_with_status()
     assert binding.status is DeliveryStatus.EMPTY
     assert binding.direction == Direction.empty("sales", DetailLevel.FULL)
 
 
 @pytest.mark.parametrize("cached", [False, True])
 def test_given_fail_closed_when_binding_with_status_fails_then_it_raises(scripted_source, cached):
-    binder = DirectionBinder(scripted_source, policy=PullPolicy(fail_closed=True))
+    binder = DirectionBinder(scripted_source, "sales", policy=PullPolicy(fail_closed=True))
     if cached:
         scripted_source.set("sales", 2, "Mission")
-        binder.bind_with_status("sales")
+        binder.bind_with_status()
     scripted_source.failure = OSError("offline")
     with pytest.raises(KynoUnavailableError):
-        binder.bind_with_status("sales")
+        binder.bind_with_status()
 
 
 def test_given_an_unexpected_error_when_binding_with_status_then_it_propagates(scripted_source):
@@ -368,15 +402,15 @@ def test_given_an_unexpected_error_when_binding_with_status_then_it_propagates(s
 def test_given_a_failed_pull_when_the_source_recovers_then_a_new_binding_is_current(
     scripted_source, cached
 ):
-    binder = DirectionBinder(scripted_source)
+    binder = DirectionBinder(scripted_source, "sales")
     if cached:
         scripted_source.set("sales", 1, "Old")
-        binder.bind_with_status("sales")
+        binder.bind_with_status()
     scripted_source.failure = OSError("offline")
-    fallback = binder.bind_with_status("sales")
+    fallback = binder.bind_with_status()
     scripted_source.failure = None
     scripted_source.set("sales", 2, "New")
-    recovered = binder.bind_with_status("sales")
+    recovered = binder.bind_with_status()
     assert recovered.status is DeliveryStatus.CURRENT
     assert recovered.direction.version == 2
     assert fallback.status is (DeliveryStatus.CACHED if cached else DeliveryStatus.EMPTY)
@@ -385,12 +419,13 @@ def test_given_a_failed_pull_when_the_source_recovers_then_a_new_binding_is_curr
 def test_given_only_sales_cached_when_support_pull_fails_then_support_binding_is_empty(
     scripted_source,
 ):
-    binder = DirectionBinder(scripted_source)
+    sales = DirectionBinder(scripted_source, "sales")
+    support_binder = DirectionBinder(scripted_source, "support")
     scripted_source.set("sales", 3, "Sales")
-    binder.bind_with_status("sales")
+    sales.bind_with_status()
     scripted_source.failure = OSError("offline")
-    assert binder.bind_with_status("sales").status is DeliveryStatus.CACHED
-    support = binder.bind_with_status("support")
+    assert sales.bind_with_status().status is DeliveryStatus.CACHED
+    support = support_binder.bind_with_status()
     assert support.status is DeliveryStatus.EMPTY
     assert support.direction.constitution == "support"
 
@@ -399,10 +434,10 @@ def test_given_an_older_reply_when_the_cell_holds_newer_direction_then_the_bindi
     scripted_source,
 ):
     scripted_source.set("sales", 5, "New")
-    binder = DirectionBinder(scripted_source)
-    first = binder.bind_with_status("sales")
+    binder = DirectionBinder(scripted_source, "sales")
+    first = binder.bind_with_status()
     scripted_source.set("sales", 4, "Old")
-    retained = binder.bind_with_status("sales")
+    retained = binder.bind_with_status()
     assert retained.direction is first.direction
     assert retained.status is DeliveryStatus.CACHED
     assert first.status is DeliveryStatus.CURRENT
@@ -412,7 +447,7 @@ def test_given_uncached_sales_when_bind_is_called_then_it_returns_direction_afte
     scripted_source,
 ):
     scripted_source.set("sales", 2, "Sales")
-    direction = DirectionBinder(scripted_source).bind("sales")
+    direction = DirectionBinder(scripted_source, "sales").bind()
     assert isinstance(direction, Direction)
     assert direction.version == 2
     assert scripted_source.calls == [(0, "sales")]
@@ -464,7 +499,7 @@ def test_given_server_receipt_when_bind_with_status_runs_then_recording_is_separ
         changes_since=lambda *args: DirectionResponse(scripted_source.replies["sales"], receipt)
     )
 
-    binding = DirectionBinder(source).bind_with_status("sales")
+    binding = DirectionBinder(source, "sales").bind_with_status()
 
     assert binding.recording is receipt
     assert binding.status is DeliveryStatus.CURRENT
@@ -500,10 +535,10 @@ def test_given_later_response_when_bind_with_status_runs_then_cached_receipt_is_
             raise scripted_source.failure
         return next(responses)
 
-    binder = DirectionBinder(SimpleNamespace(changes_since=changes_since))
+    binder = DirectionBinder(SimpleNamespace(changes_since=changes_since), "sales")
 
-    first = binder.bind_with_status("sales")
-    second = binder.bind_with_status("sales")
+    first = binder.bind_with_status()
+    second = binder.bind_with_status()
 
     assert first.recording is original_receipt
     assert first.direction.version == 3
@@ -512,7 +547,7 @@ def test_given_later_response_when_bind_with_status_runs_then_cached_receipt_is_
     assert second.status is DeliveryStatus.CURRENT
 
     scripted_source.failure = OSError("offline")
-    fallback = binder.bind_with_status("sales")
+    fallback = binder.bind_with_status()
     assert fallback.recording is recording
     assert fallback.direction is second.direction
     assert fallback.status is DeliveryStatus.CACHED
@@ -546,14 +581,14 @@ def test_given_two_binders_when_pulls_fail_then_each_returns_its_own_direction_a
         return next(replies)
 
     source = SimpleNamespace(changes_since=changes_since)
-    first = DirectionBinder(source)
-    second = DirectionBinder(source)
-    original = first.bind_with_status("sales")
-    other = second.bind_with_status("sales")
+    first = DirectionBinder(source, "sales")
+    second = DirectionBinder(source, "sales")
+    original = first.bind_with_status()
+    other = second.bind_with_status()
     scripted_source.failure = OSError("offline")
 
-    first_fallback = first.bind_with_status("sales")
-    second_fallback = second.bind_with_status("sales")
+    first_fallback = first.bind_with_status()
+    second_fallback = second.bind_with_status()
 
     assert first_fallback.direction is original.direction
     assert first_fallback.recording is recording
@@ -593,13 +628,13 @@ def test_given_two_binders_when_pulls_overlap_then_each_caches_its_own_direction
         return first_response
 
     source = SimpleNamespace(changes_since=changes_since)
-    first = DirectionBinder(source)
-    second = DirectionBinder(source)
+    first = DirectionBinder(source, "sales")
+    second = DirectionBinder(source, "sales")
     with ThreadPoolExecutor(max_workers=1) as executor:
-        pending = executor.submit(first.bind_with_status, "sales")
+        pending = executor.submit(first.bind_with_status)
         try:
             assert started.wait(timeout=10)
-            second_binding = second.bind_with_status("sales")
+            second_binding = second.bind_with_status()
         finally:
             release.set()
         first_binding = pending.result(timeout=10)
@@ -611,8 +646,8 @@ def test_given_two_binders_when_pulls_overlap_then_each_caches_its_own_direction
     assert first_binding.status is second_binding.status is DeliveryStatus.CURRENT
 
     scripted_source.failure = OSError("offline")
-    first_fallback = first.bind_with_status("sales")
-    second_fallback = second.bind_with_status("sales")
+    first_fallback = first.bind_with_status()
+    second_fallback = second.bind_with_status()
     assert first_fallback.direction is first_binding.direction
     assert first_fallback.recording is first_binding.recording
     assert second_fallback.direction is second_binding.direction
@@ -647,12 +682,12 @@ def test_given_late_reply_when_bind_with_status_runs_then_only_older_versions_ke
         assert release.wait(timeout=10)
         return older
 
-    binder = DirectionBinder(SimpleNamespace(changes_since=delayed_changes))
+    binder = DirectionBinder(SimpleNamespace(changes_since=delayed_changes), "sales")
     with ThreadPoolExecutor(max_workers=1) as executor:
-        pending = executor.submit(binder.bind_with_status, "sales")
+        pending = executor.submit(binder.bind_with_status)
         try:
             assert started.wait(timeout=10)
-            current = binder.bind_with_status("sales")
+            current = binder.bind_with_status()
         finally:
             release.set()
         retained = pending.result(timeout=10)

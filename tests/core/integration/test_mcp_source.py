@@ -92,11 +92,11 @@ def test_given_an_unwritten_name_when_the_mcp_source_reads_then_it_is_version_ze
 def test_given_a_binder_over_mcp_when_steps_run_then_each_binds_the_live_version(mcp_runner):
     runner, control_plane = mcp_runner
     control_plane.set_direction(mission="M1", change_note="init", constitution="eu")
-    binder = DirectionBinder(McpDirectionSource(runner))
+    binder = DirectionBinder(McpDirectionSource(runner), "eu")
 
-    first = binder.bind("eu")
+    first = binder.bind()
     control_plane.set_direction(mission="M2", change_note="pivot", constitution="eu")
-    second = binder.bind("eu")
+    second = binder.bind()
 
     assert (first.version, second.version) == (1, 2)
     assert second.mission == "M2"

@@ -82,12 +82,22 @@ DECLARATIONS = [
         types.Tool(
             name="get_constitution",
             description=(
-                "Return the constitution in force now. Compact by default: pass "
+                "Return the current constitution, or an exact version when version is supplied. "
+                "A missing exact version is an error; version zero is the empty direction. "
+                "Compact by default: pass "
                 "detail='full' to include the declaration and the principle descriptions."
             ),
             inputSchema={
                 "type": "object",
-                "properties": {"constitution": _CONSTITUTION_ARG, "detail": _DETAIL_ARG},
+                "properties": {
+                    "constitution": _CONSTITUTION_ARG,
+                    "detail": _DETAIL_ARG,
+                    "version": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Exact version to read; omitted means current direction.",
+                    },
+                },
             },
         ),
         TokenScope.READ,
@@ -254,7 +264,7 @@ for tool, _scope in DECLARATIONS:
                     "description": (
                         "Version the caller reports holding; retained for auditing when supplied. "
                         "Only get_changes_since uses it to calculate changes. "
-                        "Other reads still return current direction."
+                        "It does not select the version returned by other reads."
                     ),
                 },
                 "correlation_id": {

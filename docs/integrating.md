@@ -466,24 +466,58 @@ an agent used the direction. They let your application group recorded responses
 according to its own workflow. Without these arguments, the SDK sends no
 correlation ID and uses empty metadata.
 
-To inspect the full direction associated with a record, request its exact version:
+## Current and historical direction
+
+`connection.get_constitution()` reads current direction. Pass `version` to read
+an exact historical version. Both default to the same compact context agents
+read: mission and principle titles. Set `context="full"` to include the
+declaration and principle descriptions.
 
 ```python
 with kyno.connect() as connection:
-    direction = connection.get_direction_version(
-        record["served_version"], record["requested_constitution"]
-    )
-    if direction is not None:
-        print(direction.mission, direction.declaration, direction.principles)
+    current = connection.get_constitution()
+    previous = connection.get_constitution(version=1)
+    full = connection.get_constitution(version=1, context="full")
+    print("Current:", current.version, current.mission)
+    print("Version 1, compact:")
+    print(previous.render())
+    print("Version 1, full:")
+    print(full.render())
 ```
 
-The lookup uses the existing version export tool with both bounds set to the
-requested version. A missing positive version
-returns `None`; version zero returns the empty direction locally. The lookup
-does not update a binder's cached direction. It returns full content, not the
-exact compact block or selected principle a particular delivery may have served.
-Per-delivery deltas remain on the delivery record; the historical direction has
-no delta or recent change notes.
+For an example constitution updated from version 1 to version 2, the output is:
+
+```text
+Current: 2 Protect customer trust.
+Version 1, compact:
+[kyno:direction constitution=default version=1]
+Mission: Resolve customer problems.
+Principles:
+- Be honest
+Version 1, full:
+[kyno:direction constitution=default version=1]
+Mission: Resolve customer problems.
+Declaration:
+Explain the options before making a recommendation.
+Principles:
+- Be honest
+  State the facts and uncertainties.
+```
+
+This capture uses a real MCP session backed by an isolated SQLite store.
+
+To inspect a recorded delivery's direction, pass its `requested_constitution`
+as the first argument and its `served_version` as `version`. The read describes
+that historical constitution, which may contain more than a selectively
+delivered principle. Per-delivery deltas remain on the delivery record; the
+returned direction has no delta or recent change notes.
+
+These reads use the MCP `get_constitution` tool and Core's recording policy,
+including reads of historical versions and the empty version zero. Compact
+responses omit declaration and principle descriptions on the wire. A missing
+positive version raises `KynoHistoryError`; it never substitutes current
+direction. Invalid arguments raise `ValueError`, and transport or malformed
+responses raise `KynoUnavailableError`. Reads do not update a binder's cache.
 
 ## 💬 Questions?
 

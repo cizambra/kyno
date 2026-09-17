@@ -4,7 +4,11 @@ This is everything an agent or client can ask Kyno, over MCP or Python.
 
 ## The tools
 
-- `get_constitution`: the direction in force now (mission, principles, version).
+- `get_constitution(version?, detail?)`: current direction by default, or the
+  exact nonnegative version requested. Version zero is empty direction; a
+  missing positive version returns an error. Compact detail includes the mission
+  and principle titles; full adds the declaration and principle descriptions.
+  Successful reads follow Core's delivery-recording policy.
 - `get_changes_since(known_version)`: the pull an agent makes before a step.
   It returns the current direction plus the change notes since the version
   the agent last saw.
@@ -12,8 +16,8 @@ This is everything an agent or client can ask Kyno, over MCP or Python.
   everything needed.
 - `get_mission`, `get_declaration`, `get_principles`, `get_principle(title)`:
   one piece of the document each, for when a compact read left it out.
-- `get_delivery_record(record_id)`: the saved snapshot of a recorded response,
-  including its original direction and request context. Requires read scope,
+- `get_delivery_record(record_id)`: the saved version reference, request context,
+  and delta for a recorded response. Requires read scope,
   returns an error for an unknown ID, and does not record another delivery.
   See [retrieving a recorded delivery](operating.md#retrieving-a-recorded-delivery).
 - `set_direction(mission?, declaration?, principles?, change_note)`: append

@@ -1,32 +1,32 @@
 # SPDX-License-Identifier: MIT
-from typing import TypeVar
+from typing import NotRequired, TypeVar
 
 from pydantic import TypeAdapter
 from typing_extensions import TypedDict
 
 from kyno.sdk.cell import Direction
-from kyno.sdk.client import MAX_REPLY_CHARS, SessionRunner
+from kyno.sdk.client import SessionRunner, _payload
 from kyno.sdk.errors import KynoHistoryError, KynoUnavailableError
 from kyno.wire.delivery_record import DeliveryPage, DeliveryRecord
-from kyno.wire.models import DetailLevel
+from kyno.wire.models import DetailLevel, check_detail
 
 
-class _HistoricalPrinciple(TypedDict):
+class _ConstitutionPrinciple(TypedDict):
     title: str
-    description: str
+    description: NotRequired[str]
 
 
-class _HistoricalVersion(TypedDict):
+class _Constitution(TypedDict):
     version: int
     mission: str
-    declaration: str
-    principles: list[_HistoricalPrinciple]
+    declaration: NotRequired[str]
+    principles: list[_ConstitutionPrinciple]
 
 
 HistoryResult = TypeVar("HistoryResult")
 _record = TypeAdapter(DeliveryRecord)
 _page = TypeAdapter(DeliveryPage)
-_versions = TypeAdapter(list[_HistoricalVersion])
+_constitution = TypeAdapter(_Constitution)
 
 
 def _query(
@@ -39,10 +39,7 @@ def _query(
         reply = runner.call(call)
         if reply.isError:
             raise KynoHistoryError(reply.content[0].text)
-        text = reply.content[0].text
-        if len(text) > MAX_REPLY_CHARS:
-            raise ValueError(f"reply is {len(text)} characters, over the {MAX_REPLY_CHARS} limit")
-        return adapter.validate_json(text, strict=True)
+        return adapter.validate_python(_payload(reply), strict=True)
     except (KynoUnavailableError, KynoHistoryError):
         raise
     except Exception as exc:
@@ -81,34 +78,32 @@ def list_delivery_records(
     )
 
 
-def get_direction_version(
-    runner: SessionRunner, version: int, constitution: str = "default"
-) -> Direction | None:
-    if type(version) is not int or version < 0:
+def get_constitution(
+    runner: SessionRunner,
+    constitution: str = "default",
+    *,
+    version: int | None = None,
+    context: str | DetailLevel = DetailLevel.COMPACT,
+) -> Direction:
+    context = check_detail(context, "context")
+    if version is not None and (type(version) is not int or version < 0):
         raise ValueError("version must be a non-negative integer")
     if not isinstance(constitution, str) or not constitution.strip():
         raise ValueError("constitution must be a non-empty string")
-    if version == 0:
-        return Direction.empty(constitution, context=DetailLevel.FULL)
-    rows = _query(
-        runner,
-        "export_versions",
-        {"constitution": constitution, "from_version": version, "to_version": version},
-        _versions,
-    )
-    if not rows:
-        return None
-    if len(rows) != 1 or rows[0]["version"] != version:
-        raise KynoUnavailableError("bad reply from kyno: expected only the requested version")
-    row = rows[0]
+    arguments: dict[str, object] = {"constitution": constitution, "detail": context.value}
+    if version is not None:
+        arguments["version"] = version
+    row = _query(runner, "get_constitution", arguments, _constitution)
+    if row["version"] < 0 or (version is not None and row["version"] != version):
+        raise KynoUnavailableError("bad reply from kyno: unexpected constitution version")
     try:
         return Direction(
             constitution=constitution,
-            version=version,
+            version=row["version"],
             mission=row["mission"],
-            declaration=row["declaration"],
+            declaration=row.get("declaration", ""),
             principles=tuple(row["principles"]),
-            context=DetailLevel.FULL,
+            context=context,
         )
     except Exception as exc:
         raise KynoUnavailableError(f"bad reply from kyno: {exc}") from exc

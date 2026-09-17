@@ -121,73 +121,73 @@ def test_given_list_filters_when_querying_the_connection_then_mcp_receives_the_e
     session.call_tool.assert_awaited_once_with("list_delivery_records", expected_arguments)
 
 
-@pytest.mark.parametrize("version", [-1, True, "1", 1.5, None])
+@pytest.mark.parametrize("version", [-1, True, "1", 1.5])
 def test_given_invalid_version_when_reading_direction_then_request_is_not_sent(version):
     runner = Mock()
     with pytest.raises(ValueError, match="version"):
-        history.get_direction_version(runner, version)
+        history.get_constitution(runner, version=version)
     runner.call.assert_not_called()
 
 
-def test_given_version_zero_when_reading_direction_then_empty_full_direction_returns():
-    runner = Mock()
-    direction = history.get_direction_version(runner, 0, "example")
-    assert direction.version == 0
-    assert direction.constitution == "example"
-    assert direction.mission == ""
-    assert direction.principles == ()
-    assert direction.context is DetailLevel.FULL
-    runner.call.assert_not_called()
-
-
-def test_given_requested_version_when_reading_direction_then_exact_export_bounds_are_sent():
-    session = SimpleNamespace(call_tool=AsyncMock(return_value=reply([])))
+@pytest.mark.parametrize("version", [None, 0, 3])
+@pytest.mark.parametrize("context", list(DetailLevel))
+def test_given_version_selection_when_reading_constitution_then_exact_tool_arguments_are_sent(
+    version, context
+):
+    returned_version = 3 if version is None else version
+    payload = {"version": returned_version, "mission": "", "principles": []}
+    session = SimpleNamespace(call_tool=AsyncMock(return_value=reply(payload)))
     runner = Mock()
     runner.call.side_effect = lambda callback: asyncio.run(callback(session))
-    assert history.get_direction_version(runner, 3, "example") is None
-    session.call_tool.assert_awaited_once_with(
-        "export_versions", {"constitution": "example", "from_version": 3, "to_version": 3}
-    )
+    result = KynoConnection(runner).get_constitution("example", version=version, context=context)
+    assert result.version == returned_version
+    assert result.context is context
+    expected = {"constitution": "example", "detail": context.value}
+    if version is not None:
+        expected["version"] = version
+    session.call_tool.assert_awaited_once_with("get_constitution", expected)
 
 
 @pytest.mark.parametrize(
-    "rows",
+    "payload",
     [
         {},
         [None],
-        [{"version": 1}],
-        [{"version": 2, "mission": "M", "declaration": "D", "principles": []}],
-        [{"version": True, "mission": "M", "declaration": "D", "principles": []}],
+        {"version": 1},
+        {"version": 2, "mission": "M", "declaration": "D", "principles": []},
+        {"version": -1, "mission": "M", "declaration": "D", "principles": []},
+        {"version": True, "mission": "M", "declaration": "D", "principles": []},
         [{"version": 1, "mission": "M", "declaration": "D", "principles": []}] * 2,
-        [{"version": 1, "mission": "M", "declaration": "D", "principles": [{}]}],
-        [
-            {
-                "version": 1,
-                "mission": "M",
-                "declaration": "D",
-                "principles": [{"title": "", "description": ""}],
-            }
-        ],
+        {"version": 1, "mission": "M", "declaration": "D", "principles": [{}]},
+        {
+            "version": 1,
+            "mission": "M",
+            "declaration": "D",
+            "principles": [{"title": "", "description": ""}],
+        },
     ],
 )
-def test_given_malformed_version_reply_when_reading_direction_then_unavailable_is_raised(rows):
+def test_given_malformed_version_reply_when_reading_direction_then_unavailable_is_raised(payload):
     runner = Mock()
-    runner.call.return_value = reply(rows)
+    runner.call.return_value = reply(payload)
     with pytest.raises(KynoUnavailableError):
-        history.get_direction_version(runner, 1)
-
-
-def test_given_oversized_history_reply_when_reading_then_unavailable_is_raised(monkeypatch):
-    monkeypatch.setattr(history, "MAX_REPLY_CHARS", 1)
-    runner = Mock()
-    runner.call.return_value = reply([])
-    with pytest.raises(KynoUnavailableError, match="limit"):
-        history.get_direction_version(runner, 1)
+        history.get_constitution(runner, version=1)
 
 
 @pytest.mark.parametrize("constitution", [None, 1, "", "   "])
 def test_given_invalid_constitution_when_reading_version_then_request_is_not_sent(constitution):
     runner = Mock()
     with pytest.raises(ValueError, match="constitution"):
-        history.get_direction_version(runner, 1, constitution)
+        history.get_constitution(runner, constitution, version=1)
+    runner.call.assert_not_called()
+
+
+@pytest.mark.parametrize("context", ["unknown", None, 1])
+@pytest.mark.parametrize("version", [0, 1])
+def test_given_invalid_context_when_reading_historical_direction_then_request_is_not_sent(
+    context, version
+):
+    runner = Mock()
+    with pytest.raises(ValueError, match="context"):
+        KynoConnection(runner).get_constitution(version=version, context=context)
     runner.call.assert_not_called()

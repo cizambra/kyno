@@ -289,6 +289,25 @@ class ControlPlane:
             return _EMPTY_CONSTITUTION
         return head
 
+    def get_constitution(
+        self, constitution: str | None = None, *, version: int | None = None
+    ) -> ConstitutionVersion:
+        """Return current direction, or one exact version including the empty version zero.
+
+        An absent positive version raises UnknownVersionError.
+        """
+        if version is None:
+            return self.current(constitution)
+        if type(version) is not int or version < 0:
+            raise ValueError("version must be a non-negative integer")
+        if version == 0:
+            return _EMPTY_CONSTITUTION
+        name = self._name(constitution)
+        selected = self._store.get(name, version)
+        if selected is None:
+            raise UnknownVersionError(f"constitution '{name}' version {version} not found")
+        return selected
+
     def changes_since(self, known_version: int, constitution: str | None = None) -> ChangesSince:
         name = self._name(constitution)
         head = self._store.head(name)

@@ -46,9 +46,11 @@ def handle_get_constitution(
     cp: ControlPlane,
     constitution: str | None = None,
     detail: str | DetailLevel = DetailLevel.COMPACT,
+    *,
+    version: int | None = None,
 ) -> dict:
     check_detail(detail)
-    return _guard(lambda: cp.current(constitution).to_dict(detail))
+    return _guard(lambda: cp.get_constitution(constitution, version=version).to_dict(detail))
 
 
 def handle_get_changes_since(

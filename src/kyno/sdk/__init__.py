@@ -115,18 +115,26 @@ class KynoConnection:
         """
         return _history.get_delivery_record(self._runner, record_id)
 
-    def get_direction_version(
-        self, version: int, constitution: str = "default"
-    ) -> Direction | None:
-        """Return one historical version at full detail, or None if absent.
+    def get_constitution(
+        self,
+        constitution: str = "default",
+        *,
+        version: int | None = None,
+        context: str | DetailLevel = DetailLevel.COMPACT,
+    ) -> Direction:
+        """Return current direction or an exact version in the requested context.
 
-        Version zero returns the empty direction locally. Positive versions use
-        the server's export history, without updating any binder cell. Returned
-        direction has no per-delivery delta or recent change notes.
-        Raises ValueError for invalid arguments, KynoHistoryError for rejected
-        queries, and KynoUnavailableError for transport or reply failures.
+        Compact context is the default. It retains the mission and principle
+        titles, omitting declaration and principle descriptions as agent reads do.
+        Version zero reads the empty direction. Reads use Core's recording policy
+        and never update binder cells. Returned direction has no per-delivery
+        delta or recent change notes. Raises ValueError for invalid arguments,
+        KynoHistoryError for absent exact versions or rejected queries, and
+        KynoUnavailableError for transport or reply failures.
         """
-        return _history.get_direction_version(self._runner, version, constitution)
+        return _history.get_constitution(
+            self._runner, constitution, version=version, context=context
+        )
 
     def list_delivery_records(
         self,

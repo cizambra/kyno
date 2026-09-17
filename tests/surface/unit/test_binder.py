@@ -398,7 +398,7 @@ def test_given_a_preloaded_cell_when_a_binder_requests_another_context_then_setu
 
 
 @pytest.mark.parametrize("status", list(RecordingStatus))
-def test_given_a_server_receipt_when_binding_then_it_belongs_to_that_response(
+def test_given_server_receipt_when_bind_with_status_runs_then_recording_is_separate_from_direction(
     scripted_source, status
 ):
     scripted_source.set("sales", 3, "Sales")
@@ -415,7 +415,7 @@ def test_given_a_server_receipt_when_binding_then_it_belongs_to_that_response(
     assert "record-1" not in binding.direction.render()
 
 
-def test_given_separate_reads_of_one_version_when_binding_then_each_keeps_its_own_receipt(
+def test_given_same_version_when_bind_with_status_runs_twice_then_each_result_keeps_its_own_receipt(
     scripted_source,
 ):
     scripted_source.set("sales", 3, "Sales")
@@ -442,7 +442,7 @@ def test_given_separate_reads_of_one_version_when_binding_then_each_keeps_its_ow
         RecordingReceipt("failed"),
     ],
 )
-def test_given_a_shared_cache_when_another_binder_fails_then_the_origin_receipt_is_retained(
+def test_given_shared_cache_when_bind_with_status_cannot_pull_then_cached_receipt_is_returned(
     scripted_source, recording
 ):
     scripted_source.set("sales", 3, "Sales")
@@ -459,13 +459,19 @@ def test_given_a_shared_cache_when_another_binder_fails_then_the_origin_receipt_
     assert fallback.status is DeliveryStatus.CACHED
 
 
-def test_given_no_server_response_when_a_pull_fails_then_no_receipt_is_invented(scripted_source):
+def test_given_empty_cache_when_bind_with_status_cannot_pull_then_recording_is_none(
+    scripted_source,
+):
     scripted_source.failure = OSError("offline")
     assert DirectionBinder(scripted_source).bind_with_status().recording is None
 
 
-@pytest.mark.parametrize("older_version", [4, 5])
-def test_given_overlapping_pulls_when_a_reply_finishes_last_then_its_version_selects_the_receipt(
+@pytest.mark.parametrize(
+    "older_version",
+    [4, 5],
+    ids=["older-version-keeps-cached-receipt", "equal-version-uses-response-receipt"],
+)
+def test_given_late_reply_when_bind_with_status_runs_then_only_older_versions_keep_cached_receipt(
     scripted_source,
     older_version,
 ):
@@ -507,7 +513,7 @@ def test_given_overlapping_pulls_when_a_reply_finishes_last_then_its_version_sel
         assert retained.status is DeliveryStatus.CURRENT
 
 
-def test_given_a_receipt_when_manual_direction_replaces_it_then_fallback_has_no_receipt(
+def test_given_manual_cache_update_when_bind_with_status_cannot_pull_then_recording_is_none(
     scripted_source,
 ):
     scripted_source.set("sales", 3, "Sales")

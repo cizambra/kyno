@@ -415,22 +415,47 @@ def test_given_server_receipt_when_bind_with_status_runs_then_recording_is_separ
     assert "record-1" not in binding.direction.render()
 
 
-def test_given_same_version_when_bind_with_status_runs_twice_then_each_result_keeps_its_own_receipt(
+@pytest.mark.parametrize("version", [3, 4], ids=["same-version", "newer-version"])
+@pytest.mark.parametrize(
+    "recording",
+    [
+        None,
+        RecordingReceipt("recorded", "record-2"),
+        RecordingReceipt("disabled"),
+        RecordingReceipt("failed"),
+    ],
+    ids=["no-receipt", "recorded", "disabled", "failed"],
+)
+def test_given_later_response_when_bind_with_status_runs_then_cached_receipt_is_replaced(
     scripted_source,
+    version,
+    recording,
 ):
     scripted_source.set("sales", 3, "Sales")
-    receipts = [RecordingReceipt("recorded", f"record-{number}") for number in (1, 2)]
-    responses = iter(
-        DirectionResponse(scripted_source.replies["sales"], receipt) for receipt in receipts
+    original_receipt = RecordingReceipt("recorded", "record-1")
+    original_response = DirectionResponse(scripted_source.replies["sales"], original_receipt)
+    scripted_source.set("sales", version, "Latest sales")
+    latest_response = DirectionResponse(scripted_source.replies["sales"], recording)
+    responses = iter([original_response, latest_response])
+    cell = DirectionCell()
+    binder = DirectionBinder(
+        SimpleNamespace(changes_since=lambda *args: next(responses)), cell=cell
     )
-    binder = DirectionBinder(SimpleNamespace(changes_since=lambda *args: next(responses)))
 
     first = binder.bind_with_status("sales")
     second = binder.bind_with_status("sales")
 
-    assert first.recording is receipts[0]
-    assert second.recording is receipts[1]
-    assert first.direction.version == second.direction.version == 3
+    assert first.recording is original_receipt
+    assert first.direction.version == 3
+    assert second.recording is recording
+    assert second.direction.version == version
+    assert second.status is DeliveryStatus.CURRENT
+
+    scripted_source.failure = OSError("offline")
+    fallback = DirectionBinder(scripted_source, cell=cell).bind_with_status("sales")
+    assert fallback.recording is recording
+    assert fallback.direction is second.direction
+    assert fallback.status is DeliveryStatus.CACHED
 
 
 @pytest.mark.parametrize(

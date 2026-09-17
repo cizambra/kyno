@@ -8,6 +8,7 @@ from kyno.sdk.cell import (
     Direction,
     DirectionCell,
 )
+from kyno.sdk.recording import RecordingReceipt
 from kyno.wire.models import ChangesSince, DetailLevel, Principle
 
 
@@ -249,3 +250,18 @@ def test_given_competing_contexts_when_claiming_one_cell_then_only_one_context_i
     assert len(accepted) == 1
     direction = Direction(**RICH, context=accepted[0])
     assert cell.update(direction) is direction
+
+
+def test_given_two_constitutions_when_get_with_recording_runs_then_each_has_its_own_receipt():
+    cell = DirectionCell()
+    european_direction = _direction(1, "eu")
+    american_direction = _direction(7, "us")
+    european_receipt = RecordingReceipt("recorded", "eu-record")
+    american_receipt = RecordingReceipt("recorded", "us-record")
+
+    cell.update_with_recording(european_direction, european_receipt)
+    cell.update_with_recording(american_direction, american_receipt)
+
+    assert cell.get_with_recording("eu") == (european_direction, european_receipt)
+    assert cell.get_with_recording("us") == (american_direction, american_receipt)
+    assert cell.get_with_recording("unwritten") is None

@@ -5,21 +5,17 @@ import functools
 from collections.abc import Callable
 from typing import Any, TypedDict
 
-from langgraph.types import interrupt
-
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.binding import DeliveryStatus
 from kyno.sdk.cell import Direction
-from kyno.sdk.gate import Action, RealignmentGate
-from kyno.sdk.trace import RunTrace
+from kyno.sdk.recording import RecordingReceipt
 from kyno.wire.models import DetailLevel
 
 
 class KynoState(TypedDict, total=False):
     """Inherit this in your graph's state schema. LangGraph only carries the
     keys a schema declares. Without it, the direction a node pulls never
-    reaches the gate node that has to judge against it, and nothing reports
-    the gap.
+    reaches downstream work nodes.
     """
 
     kyno_constitution: str
@@ -32,12 +28,15 @@ class KynoState(TypedDict, total=False):
     kyno_context: DetailLevel
     kyno_direction: str
     kyno_delivery_status: DeliveryStatus | None
-    kyno_verdict: str
-    kyno_checked: bool
-    kyno_blocked: bool
+    kyno_recording: dict[str, str | None] | None
 
 
-def direction_update(direction: Direction, *, status: DeliveryStatus | str | None = None) -> dict:
+def direction_update(
+    direction: Direction,
+    *,
+    status: DeliveryStatus | str | None = None,
+    recording: RecordingReceipt | None = None,
+) -> dict:
     """Direction travels in graph state so a persisted checkpoint says which
     constitution and version a step served, without any other context.
     Status is unknown when no binding metadata is supplied.
@@ -53,6 +52,11 @@ def direction_update(direction: Direction, *, status: DeliveryStatus | str | Non
         "kyno_direction": direction.render(),
         "kyno_context": direction.context,
         "kyno_delivery_status": DeliveryStatus(status) if status is not None else None,
+        "kyno_recording": (
+            {"status": recording.status.value, "record_id": recording.record_id}
+            if recording is not None
+            else None
+        ),
     }
 
 
@@ -75,7 +79,9 @@ def direction_node(binder: DirectionBinder, constitution: str = "default") -> Ca
 
     def node(state: dict) -> dict:
         binding = binder.bind_with_status(constitution)
-        return direction_update(binding.direction, status=binding.status)
+        return direction_update(
+            binding.direction, status=binding.status, recording=binding.recording
+        )
 
     return node
 
@@ -85,53 +91,12 @@ def pull_before(binder: DirectionBinder, constitution: str = "default") -> Calla
         @functools.wraps(node)
         def wrapped(state: dict, *args: Any, **kwargs: Any) -> dict:
             binding = binder.bind_with_status(constitution)
-            update = direction_update(binding.direction, status=binding.status)
+            update = direction_update(
+                binding.direction, status=binding.status, recording=binding.recording
+            )
             result = node({**state, **update}, *args, **kwargs) or {}
             return {**update, **result}
 
         return wrapped
 
     return decorator
-
-
-def gate_node(
-    gate: RealignmentGate,
-    output_key: str = "output",
-    trace: RunTrace | None = None,
-) -> Callable:
-    """The gate as a node. It judges against the direction already in state --
-    binding is direction_node's job. On PAUSE it interrupts; LangGraph re-runs the
-    node from its start on resume, so everything before the interrupt here
-    is idempotent (a review and a record)."""
-
-    def node(state: dict) -> dict:
-        direction = direction_from_state(state)
-        output = str(state.get(output_key, ""))
-        decision = gate.review(output=output, direction=direction)
-        if trace is not None:
-            trace.record_step(
-                agent=str(state.get("kyno_agent", "graph")),
-                goal=str(state.get("kyno_goal", "")),
-                output=output,
-                direction=direction,
-                decision=decision,
-            )
-        blocked = decision.halts(can_pause=True)
-        if decision.action is Action.PAUSE:
-            answer = interrupt(
-                {
-                    "reason": decision.reason,
-                    "verdict": decision.verdict.value,
-                    "constitution": decision.constitution,
-                    "version": decision.version,
-                    "output": output,
-                }
-            )
-            blocked = not (isinstance(answer, dict) and answer.get("accept") is True)
-        return {
-            "kyno_verdict": decision.verdict.value,
-            "kyno_checked": decision.checked,
-            "kyno_blocked": blocked,
-        }
-
-    return node

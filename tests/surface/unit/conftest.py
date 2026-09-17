@@ -1,5 +1,6 @@
 import pytest
 
+from kyno.sdk.client import DirectionResponse
 from kyno.wire.models import ChangesSince, DetailLevel
 
 
@@ -29,12 +30,12 @@ class ScriptedDirectionSource:
         known_version: int,
         constitution: str,
         detail: str | DetailLevel = DetailLevel.COMPACT,
-    ) -> ChangesSince:
+    ) -> DirectionResponse:
         self.calls.append((known_version, constitution))
         self.details.append(detail)
         if self.failure is not None:
             raise self.failure
-        return self.replies[constitution]
+        return DirectionResponse(self.replies[constitution])
 
 
 @pytest.fixture

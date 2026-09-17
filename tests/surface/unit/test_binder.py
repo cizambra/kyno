@@ -8,6 +8,7 @@ from kyno.errors import UnknownVersionError
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.binding import DeliveryStatus
 from kyno.sdk.cell import Direction, DirectionCell
+from kyno.sdk.client import DirectionResponse
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.policy import PullPolicy
 from kyno.sdk.telemetry import (
@@ -319,7 +320,7 @@ def test_given_overlapping_pulls_when_the_older_reply_finishes_last_then_it_retu
     def delayed_changes(known_version, constitution, context):
         started.set()
         assert release.wait(timeout=10)
-        return old_reply
+        return DirectionResponse(old_reply)
 
     slower = DirectionBinder(SimpleNamespace(changes_since=delayed_changes), cell=cell)
     faster = DirectionBinder(scripted_source, cell=cell)

@@ -21,7 +21,7 @@ from kyno.adapters.langgraph import (  # noqa: E402
     direction_update,
     pull_before,
 )
-from kyno.sdk import DeliveryStatus, DirectionBinder, PullPolicy  # noqa: E402
+from kyno.sdk import DeliveryStatus, DirectionBinder, DirectionResponse, PullPolicy  # noqa: E402
 from kyno.sdk.cell import Direction  # noqa: E402
 from kyno.sdk.errors import KynoUnavailableError  # noqa: E402
 from kyno.wire.models import ChangesSince, DetailLevel  # noqa: E402
@@ -35,16 +35,18 @@ class ReceiptState(KynoState, total=False):
 def source():
     return SimpleNamespace(
         changes_since=Mock(
-            return_value=ChangesSince(
-                current_version=2,
-                changed=True,
-                mission="Help customers",
-                principles=("Be honest",),
-                changed_mission=True,
-                changed_principles=True,
-                change_notes=("Prioritize lasting fixes",),
-                declaration="Explain the full resolution.",
-                delta=("Mission changed.",),
+            return_value=DirectionResponse(
+                ChangesSince(
+                    current_version=2,
+                    changed=True,
+                    mission="Help customers",
+                    principles=("Be honest",),
+                    changed_mission=True,
+                    changed_principles=True,
+                    change_notes=("Prioritize lasting fixes",),
+                    declaration="Explain the full resolution.",
+                    delta=("Mission changed.",),
+                )
             )
         )
     )
@@ -90,7 +92,9 @@ def test_given_a_binding_when_work_is_checkpointed_then_its_exact_direction_and_
     if status is DeliveryStatus.EMPTY:
         expected = Direction.empty("support", context)
     else:
-        expected = Direction.from_changes(source.changes_since.return_value, "support", context)
+        expected = Direction.from_changes(
+            source.changes_since.return_value.changes, "support", context
+        )
     assert restored["kyno_direction"] == expected.render()
     assert direction_from_state(restored) == expected
     assert direction_from_state(restored["receipts"][0]) == expected
@@ -223,7 +227,7 @@ def test_given_fail_closed_when_the_pull_fails_then_downstream_work_does_not_run
 def test_given_the_same_version_when_read_succeeds_then_new_step_status_is_saved_as_current(
     source, wrapper, failed_read
 ):
-    initial = source.changes_since.return_value
+    initial = source.changes_since.return_value.changes
     unchanged = replace(
         initial,
         changed=False,
@@ -233,7 +237,9 @@ def test_given_the_same_version_when_read_succeeds_then_new_step_status_is_saved
         delta=(),
     )
     replies = [initial, OSError("offline"), unchanged] if failed_read else [initial, unchanged]
-    source.changes_since.side_effect = replies
+    source.changes_since.side_effect = [
+        reply if isinstance(reply, Exception) else DirectionResponse(reply) for reply in replies
+    ]
     binder = DirectionBinder(source)
     graph = StateGraph(ReceiptState)
     if wrapper:
@@ -275,7 +281,7 @@ def test_given_rich_direction_when_fields_are_removed_then_only_new_receipts_cle
     source, use_pull_before
 ):
     initial = replace(
-        source.changes_since.return_value,
+        source.changes_since.return_value.changes,
         principles=({"title": "Be honest", "description": "Explain what remains uncertain."},),
     )
     revised = replace(
@@ -286,7 +292,7 @@ def test_given_rich_direction_when_fields_are_removed_then_only_new_receipts_cle
         change_notes=(),
         delta=(),
     )
-    source.changes_since.side_effect = [initial, revised]
+    source.changes_since.side_effect = [DirectionResponse(initial), DirectionResponse(revised)]
     binder = DirectionBinder(source, context=DetailLevel.FULL)
     graph = StateGraph(ReceiptState)
     if use_pull_before:

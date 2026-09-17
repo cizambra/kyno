@@ -65,6 +65,13 @@ flowchart LR
 
 ## Inspecting delivery status
 
+Custom direction sources return `DirectionResponse(changes, recording)` from
+`changes_since()`. `changes` is the directional `ChangesSince` value; `recording`
+is a separate immutable `RecordingReceipt` with the server's `RecordingStatus`
+and nullable `record_id`. Local sources return `None` for recording. MCP sources
+preserve `recorded`, `disabled`, and `failed` outcomes; missing recording information
+remains `None`. These types are exported from `kyno.sdk`.
+
 Custom integrations can use `binder.bind_with_status()` to distinguish a
 successful read from fallback. It returns an immutable `DirectionBinding`
 containing `direction` and a `DeliveryStatus` enum, both exported from

@@ -147,7 +147,7 @@ def test_given_a_reply_at_the_size_limit_when_receiving_then_it_is_still_read():
     payload = json.dumps(good_payload())
     padded = json.dumps(good_payload(mission="x" * (MAX_REPLY_CHARS - len(payload))))
     assert len(padded) <= MAX_REPLY_CHARS
-    assert source_for(padded).changes_since(0, "default").current_version == 2
+    assert source_for(padded).changes_since(0, "default").changes.current_version == 2
 
 
 def test_given_a_version_that_is_text_when_pulling_then_it_never_reaches_the_cell():
@@ -164,7 +164,7 @@ def test_given_a_version_that_is_text_when_pulling_then_it_never_reaches_the_cel
 
 def test_given_numbers_in_text_fields_when_pulling_then_they_are_coerced_not_dropped():
     payload = json.dumps(good_payload(mission=7, change_notes=[1, 2]))
-    changes = source_for(payload).changes_since(0, "default")
+    changes = source_for(payload).changes_since(0, "default").changes
     assert changes.mission == "7"
     assert changes.change_notes == ("1", "2")
 

@@ -25,7 +25,7 @@ def constitution_connection(mcp_connection):
 
 @pytest.mark.parametrize("context", ["compact", DetailLevel.COMPACT, "full", DetailLevel.FULL])
 @pytest.mark.parametrize("version", [None, 1])
-def test_given_agent_direction_when_reading_constitution_then_requested_context_matches(
+def test_given_version_and_context_when_get_constitution_is_called_then_requested_content_returns(
     constitution_connection, context, version
 ):
     connection, control_plane = constitution_connection
@@ -51,7 +51,7 @@ def test_given_agent_direction_when_reading_constitution_then_requested_context_
     assert binder.cell.get("example") is current
 
 
-def test_given_newer_direction_when_version_is_omitted_then_current_compact_direction_returns(
+def test_given_updates_when_get_constitution_omits_version_then_current_compact_direction_returns(
     constitution_connection,
 ):
     connection, control_plane = constitution_connection
@@ -66,7 +66,7 @@ def test_given_newer_direction_when_version_is_omitted_then_current_compact_dire
 
 
 @pytest.mark.parametrize("version", [None, 1])
-def test_given_two_constitutions_when_reading_then_only_the_requested_constitution_returns(
+def test_given_two_constitutions_when_get_constitution_is_called_then_requested_direction_returns(
     constitution_connection, version
 ):
     connection, control_plane = constitution_connection
@@ -85,7 +85,7 @@ def test_given_two_constitutions_when_reading_then_only_the_requested_constituti
 
 
 @pytest.mark.parametrize("context", list(DetailLevel))
-def test_given_unwritten_constitution_when_reading_current_then_empty_direction_returns(
+def test_given_unwritten_constitution_when_get_constitution_is_called_then_empty_direction_returns(
     constitution_connection, context
 ):
     connection, _ = constitution_connection
@@ -100,7 +100,7 @@ def test_given_unwritten_constitution_when_reading_current_then_empty_direction_
 
 
 @pytest.mark.parametrize("constitution, version", [("example", 2), ("unknown", 1)])
-def test_given_missing_exact_version_when_reading_then_version_not_found_is_raised(
+def test_given_missing_version_when_get_constitution_is_called_then_version_not_found_is_raised(
     constitution_connection, constitution, version
 ):
     connection, _ = constitution_connection
@@ -109,7 +109,7 @@ def test_given_missing_exact_version_when_reading_then_version_not_found_is_rais
 
 
 @pytest.mark.parametrize("context", list(DetailLevel))
-def test_given_live_direction_when_reading_version_zero_then_empty_selected_context_returns(
+def test_given_live_direction_when_get_constitution_requests_zero_then_empty_direction_returns(
     constitution_connection, context
 ):
     connection, _ = constitution_connection
@@ -121,7 +121,7 @@ def test_given_live_direction_when_reading_version_zero_then_empty_selected_cont
 
 
 @pytest.mark.parametrize("version, served_version", [(None, 2), (1, 1), (0, 0)])
-def test_given_recording_enabled_when_sdk_reads_constitution_then_selected_version_is_recorded(
+def test_given_recording_enabled_when_get_constitution_is_called_then_selected_version_is_recorded(
     constitution_connection, memory_store, version, served_version
 ):
     connection, control_plane = constitution_connection
@@ -140,7 +140,7 @@ def test_given_recording_enabled_when_sdk_reads_constitution_then_selected_versi
     assert record["detail_level"] == "compact"
 
 
-def test_given_recording_enabled_when_exact_version_is_missing_then_no_delivery_is_recorded(
+def test_given_missing_version_when_get_constitution_is_called_then_no_delivery_is_recorded(
     constitution_connection,
     memory_store,
 ):

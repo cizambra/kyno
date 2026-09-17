@@ -126,7 +126,7 @@ def test_given_list_filters_when_querying_the_connection_then_mcp_receives_the_e
 
 
 @pytest.mark.parametrize("version", [-1, True, "1", 1.5])
-def test_given_invalid_version_when_reading_direction_then_request_is_not_sent(version):
+def test_given_invalid_version_when_get_constitution_is_called_then_request_is_not_sent(version):
     runner = Mock()
     with pytest.raises(ValueError, match="version"):
         history.get_constitution(runner, version=version)
@@ -135,7 +135,7 @@ def test_given_invalid_version_when_reading_direction_then_request_is_not_sent(v
 
 @pytest.mark.parametrize("version", [None, 0, 3])
 @pytest.mark.parametrize("context", list(DetailLevel))
-def test_given_version_selection_when_reading_constitution_then_exact_tool_arguments_are_sent(
+def test_given_version_selection_when_get_constitution_is_called_then_exact_tool_arguments_are_sent(
     version, context
 ):
     returned_version = 3 if version is None else version
@@ -171,7 +171,7 @@ def test_given_version_selection_when_reading_constitution_then_exact_tool_argum
         },
     ],
 )
-def test_given_malformed_version_reply_when_reading_direction_then_unavailable_is_raised(payload):
+def test_given_malformed_reply_when_get_constitution_is_called_then_unavailable_is_raised(payload):
     runner = Mock()
     runner.call.return_value = reply(payload)
     with pytest.raises(KynoUnavailableError):
@@ -179,7 +179,7 @@ def test_given_malformed_version_reply_when_reading_direction_then_unavailable_i
 
 
 @pytest.mark.parametrize("constitution", [None, 1, "", "   "])
-def test_given_invalid_constitution_when_reading_version_then_request_is_not_sent(constitution):
+def test_given_invalid_name_when_get_constitution_is_called_then_request_is_not_sent(constitution):
     runner = Mock()
     with pytest.raises(ValueError, match="constitution"):
         history.get_constitution(runner, constitution, version=1)
@@ -188,7 +188,7 @@ def test_given_invalid_constitution_when_reading_version_then_request_is_not_sen
 
 @pytest.mark.parametrize("context", ["unknown", None, 1])
 @pytest.mark.parametrize("version", [0, 1])
-def test_given_invalid_context_when_reading_historical_direction_then_request_is_not_sent(
+def test_given_invalid_context_when_get_constitution_is_called_then_request_is_not_sent(
     context, version
 ):
     runner = Mock()

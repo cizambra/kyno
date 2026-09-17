@@ -464,7 +464,7 @@ async def test_given_disabled_recording_when_attribution_fails_then_it_is_not_re
 
 
 @pytest.mark.parametrize("version, served_version", [(None, 2), (0, 0), (1, 1)])
-async def test_given_known_version_when_reading_constitution_then_it_is_recorded_for_audit(
+async def test_given_known_version_when_get_constitution_is_called_then_it_is_recorded_for_audit(
     memory_store, version, served_version
 ):
     server, _, plane = server_with_history(memory_store)
@@ -480,7 +480,7 @@ async def test_given_known_version_when_reading_constitution_then_it_is_recorded
 
 
 @pytest.mark.parametrize("version", [-1, True, "1", 1.5, None, 99])
-async def test_given_invalid_or_missing_version_when_reading_then_no_delivery_is_recorded(
+async def test_given_invalid_version_when_get_constitution_is_called_then_no_delivery_is_recorded(
     memory_store, version
 ):
     server, _, _ = server_with_history(memory_store)

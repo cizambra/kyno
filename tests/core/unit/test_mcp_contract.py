@@ -11,7 +11,7 @@ from kyno.wire import RESOURCE_URI
 
 
 @pytest.mark.parametrize("detail", ["compact", "full"])
-def test_given_newer_direction_when_requesting_a_version_then_its_requested_projection_returns(
+def test_given_updates_when_get_constitution_selects_a_version_then_requested_content_returns(
     cp, detail
 ):
     cp.set_direction(
@@ -29,7 +29,7 @@ def test_given_newer_direction_when_requesting_a_version_then_its_requested_proj
 
 
 @pytest.mark.parametrize("version", [-1, True, "1", 1.5])
-def test_given_invalid_exact_version_when_reading_a_constitution_then_it_is_rejected(cp, version):
+def test_given_invalid_version_when_get_constitution_is_called_then_it_is_rejected(cp, version):
     with pytest.raises(ValueError, match="version"):
         mcp_handlers.handle_get_constitution(cp, version=version)
 

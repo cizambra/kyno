@@ -22,16 +22,19 @@ def test_given_binders_with_distinct_context_when_pulling_then_each_delivery_kee
     assert first.bind().mission == "Support customers"
     assert second.bind().mission == "Support customers"
     assert connection.binder().bind().mission == "Support customers"
+    assert first.bind().mission == "Support customers"
     records = history.list()["items"]
     assert [record["correlation_id"] for record in records] == [
         "workflow-one",
         "workflow-two",
         None,
+        "workflow-one",
     ]
     assert [record["metadata"] for record in records] == [
         {"experiment": {"variant": "A"}},
         {"variant": "B"},
         {},
+        {"experiment": {"variant": "A"}},
     ]
 
 

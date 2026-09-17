@@ -265,7 +265,7 @@ for tool, _scope in DECLARATIONS:
                         "Version the caller already has, not the version being requested. "
                         "get_changes_since compares it with current direction. "
                         "Other reads use it only as audit context when recording is enabled. "
-                        "To request an exact version with get_constitution, use version instead."
+                        "To request an exact version, use get_constitution with version instead."
                     ),
                 },
                 "correlation_id": {

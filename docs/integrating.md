@@ -443,6 +443,29 @@ next step and, by default, can reuse previously fetched direction if the
 request fails. Delivery-history requests instead raise an error; they do
 not return cached records.
 
+## Associating delivery history with application work
+
+Python applications can attach a correlation ID and JSON metadata when creating
+a binder:
+
+```python
+binder = connection.binder(
+    correlation_id="support-workflow-42",
+    metadata={"experiment": "response-style", "variant": "A"},
+)
+```
+
+Every pull through this binder sends the same context. The SDK validates and
+copies it when the binder is created, so later changes to the original metadata
+dictionary do not change future requests. Create another binder for different
+context; binders on the same connection do not share these labels.
+
+Core decides whether to record the response using its recording policy. These
+labels do not enable recording, identify an authenticated caller, or prove that
+an agent used the direction. They let your application group recorded responses
+according to its own workflow. Without these arguments, the SDK sends no
+correlation ID and uses empty metadata.
+
 ## 💬 Questions?
 
 [Ask one](https://github.com/cizambra/kyno/issues/new?template=question.yml)

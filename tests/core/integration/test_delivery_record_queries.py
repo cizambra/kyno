@@ -137,7 +137,7 @@ def test_given_saved_deltas_when_listing_then_summaries_omit_them_and_lookup_pre
         {"current_version": 0, "delta": ["Mission changed."]},
         operation="get_changes_since",
         constitution="extra",
-        arguments={"known_version": 0},
+        arguments={"last_seen_version": 0},
         context={"correlation_id": "run", "metadata": {"step": "first"}},
     )
     summary = history.list(correlation_id="run")["items"][0]

@@ -20,7 +20,7 @@ from kyno.wire.delivery import RecordingStatus
 from kyno.wire.models import DetailLevel
 
 
-def test_given_a_bound_step_when_the_next_pull_asks_then_the_known_version_has_advanced(
+def test_given_a_bound_step_when_the_next_pull_asks_then_the_last_seen_version_has_advanced(
     control_plane, scripted_source
 ):
     scripted_source.set("default", 4, "M4")
@@ -42,8 +42,8 @@ def test_given_bindings_to_different_constitutions_when_binding_then_they_do_not
 
     assert binder.bind("eu").mission == "EU"
     assert binder.bind("us").mission == "US"
-    assert binder.cell.known_version("eu") == 2
-    assert binder.cell.known_version("us") == 9
+    assert binder.cell.last_seen_version("eu") == 2
+    assert binder.cell.last_seen_version("us") == 9
 
 
 def test_given_a_pull_failure_when_binding_then_the_last_known_direction_serves(scripted_source):
@@ -112,7 +112,7 @@ def test_given_a_kyno_error_when_binding_then_it_degrades_like_an_unreachable_ky
     binder = DirectionBinder(scripted_source, telemetry=sink)
     binder.bind()
 
-    scripted_source.failure = UnknownVersionError("known_version 3 > current 1")
+    scripted_source.failure = UnknownVersionError("last_seen_version 3 > current 1")
     direction = binder.bind()
 
     assert direction.version == 3
@@ -319,7 +319,7 @@ def test_given_overlapping_pulls_when_the_older_reply_finishes_last_then_it_retu
     release = Event()
     cell = DirectionCell()
 
-    def delayed_changes(known_version, constitution, context):
+    def delayed_changes(last_seen_version, constitution, context):
         started.set()
         assert release.wait(timeout=10)
         return DirectionResponse(old_reply)
@@ -339,7 +339,7 @@ def test_given_overlapping_pulls_when_the_older_reply_finishes_last_then_it_retu
     assert current.status is DeliveryStatus.CURRENT
     assert retained.status is DeliveryStatus.CACHED
     assert retained.direction is current.direction
-    assert retained.direction.version == cell.known_version("sales") == 5
+    assert retained.direction.version == cell.last_seen_version("sales") == 5
 
 
 @pytest.mark.parametrize("first_context", list(DetailLevel))
@@ -361,7 +361,7 @@ def test_given_a_shared_cell_when_a_binder_requests_another_context_then_setup_i
         DirectionBinder(scripted_source, cell=cell, context=other_context)
 
     assert scripted_source.calls == calls_before
-    assert cell.known_version("default") == (2 if populated else 0)
+    assert cell.last_seen_version("default") == (2 if populated else 0)
 
 
 @pytest.mark.parametrize("context", list(DetailLevel))

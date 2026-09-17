@@ -308,17 +308,21 @@ class ControlPlane:
             raise UnknownVersionError(f"constitution '{name}' version {version} not found")
         return selected
 
-    def changes_since(self, known_version: int, constitution: str | None = None) -> ChangesSince:
+    def changes_since(
+        self, last_seen_version: int, constitution: str | None = None
+    ) -> ChangesSince:
         name = self._name(constitution)
         head = self._store.head(name)
         if head is None:
-            # No HEAD to compare against -- no known_version can be "in the
+            # No HEAD to compare against -- no last_seen_version can be "in the
             # future", so this never raises here (see current()'s docstring
             # note above for the reasoning).
             return _EMPTY_CHANGES
-        if known_version > head.version:
-            raise UnknownVersionError(f"known_version {known_version} > current {head.version}")
-        floor = known_version if known_version > 0 else 0
+        if last_seen_version > head.version:
+            raise UnknownVersionError(
+                f"last_seen_version {last_seen_version} > current {head.version}"
+            )
+        floor = last_seen_version if last_seen_version > 0 else 0
         newer = self._store.versions_after(name, floor)
         changed = bool(newer)
         return ChangesSince(
@@ -330,7 +334,9 @@ class ControlPlane:
             changed_mission=any(v.changed_mission for v in newer),
             changed_principles=any(v.changed_principles for v in newer),
             change_notes=tuple(v.change_note for v in newer),
-            delta=_delta(self._store.get(name, known_version) if known_version else None, head),
+            delta=_delta(
+                self._store.get(name, last_seen_version) if last_seen_version else None, head
+            ),
         )
 
     def publication(self, constitution: str | None = None) -> Publication:

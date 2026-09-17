@@ -106,18 +106,18 @@ DECLARATIONS = [
         types.Tool(
             name="get_changes_since",
             description=(
-                "Return the current direction and what changed since a known version. "
+                "Return the current direction and what changed since a last-seen version. "
                 "Compact by default: pass detail='full' to include the declaration "
                 "and the principle descriptions."
             ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "known_version": {"type": "integer"},
+                    "last_seen_version": {"type": "integer"},
                     "constitution": _CONSTITUTION_ARG,
                     "detail": _DETAIL_ARG,
                 },
-                "required": ["known_version"],
+                "required": ["last_seen_version"],
             },
         ),
         TokenScope.READ,
@@ -259,10 +259,10 @@ for tool, _scope in DECLARATIONS:
     if tool.name in DIRECTION_READS:
         tool.inputSchema["properties"].update(
             {
-                "known_version": {
+                "last_seen_version": {
                     "type": "integer",
                     "description": (
-                        "Version the caller already has, not the version being requested. "
+                        "Version the caller reports having last seen, not the version requested. "
                         "get_changes_since compares it with current direction. "
                         "Other reads use it only as audit context when recording is enabled. "
                         "To request an exact version, use get_constitution with version instead."

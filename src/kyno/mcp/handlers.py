@@ -55,12 +55,12 @@ def handle_get_constitution(
 
 def handle_get_changes_since(
     cp: ControlPlane,
-    known_version: int,
+    last_seen_version: int,
     constitution: str | None = None,
     detail: str | DetailLevel = DetailLevel.COMPACT,
 ) -> dict:
     check_detail(detail)
-    return _guard(lambda: cp.changes_since(known_version, constitution).to_dict(detail))
+    return _guard(lambda: cp.changes_since(last_seen_version, constitution).to_dict(detail))
 
 
 # The targeted reads: after pulling the titles, fetch the one piece that matters instead of the

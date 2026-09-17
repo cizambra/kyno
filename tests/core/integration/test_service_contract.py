@@ -29,7 +29,7 @@ class AlwaysConflictStore:
     def get(self, constitution, version):
         return None
 
-    def versions_after(self, constitution, known_version):
+    def versions_after(self, constitution, last_seen_version):
         return []
 
     def append(self, *args, **kwargs):
@@ -56,7 +56,7 @@ def test_given_an_empty_store_when_asking_changes_since_then_zero_changes_return
 
 
 def test_given_an_empty_store_when_asking_changes_since_any_version_then_it_does_not_raise(cp):
-    # No HEAD to compare against on an empty store, so no known_version can
+    # No HEAD to compare against on an empty store, so no last_seen_version can
     # be "in the future" and UnknownVersionError is never raised.
     c = cp.changes_since(5)
     assert c.current_version == 0
@@ -150,8 +150,8 @@ def test_given_a_racing_writer_when_applying_then_a_conflict_surfaces_not_a_reco
         def get(self, constitution, version):
             return self.inner.get(constitution, version)
 
-        def versions_after(self, constitution, known_version):
-            return self.inner.versions_after(constitution, known_version)
+        def versions_after(self, constitution, last_seen_version):
+            return self.inner.versions_after(constitution, last_seen_version)
 
         def append(self, *args, **kwargs):
             if not self.raised:
@@ -195,8 +195,8 @@ def test_given_a_whitespace_only_change_note_when_setting_direction_then_it_is_r
         cp.set_direction(mission="M1", change_note="   ")
 
 
-def test_given_a_negative_known_version_when_asking_changes_since_then_it_behaves_as_zero(cp):
-    # Deliberate: a negative known_version clamps to the same floor as 0, rather
+def test_given_a_negative_last_seen_version_when_asking_changes_since_then_it_behaves_as_zero(cp):
+    # Deliberate: a negative last_seen_version clamps to the same floor as 0, rather
     # than being treated as "future".
     cp.set_direction(mission="M1", principles=("p1",), change_note="init")
     assert cp.changes_since(-1) == cp.changes_since(0)

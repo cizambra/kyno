@@ -74,10 +74,10 @@ with client libraries in most languages. From your language, call the tool
 `get_changes_since` with these arguments:
 
 ```json
-{ "known_version": 0, "constitution": "default", "detail": "compact" }
+{ "last_seen_version": 0, "constitution": "default", "detail": "compact" }
 ```
 
-`known_version` is the last version number you saw; `0` means "I haven't
+`last_seen_version` is the last version number you saw; `0` means "I haven't
 seen any yet".
 
 Here is that call in three languages. Every example on this page was run
@@ -102,7 +102,7 @@ async def main():
             await session.initialize()
             result = await session.call_tool(
                 "get_changes_since",
-                {"known_version": 0, "constitution": "default", "detail": "compact"},
+                {"last_seen_version": 0, "constitution": "default", "detail": "compact"},
             )
             response = json.loads(result.content[0].text)
             print(response["current_version"], response["mission"])
@@ -126,7 +126,7 @@ await client.connect(transport);
 
 const result = await client.callTool({
   name: "get_changes_since",
-  arguments: { known_version: 0, constitution: "default", detail: "compact" },
+  arguments: { last_seen_version: 0, constitution: "default", detail: "compact" },
 });
 const response = JSON.parse(result.content[0].text);
 console.log(response.current_version, response.mission);
@@ -165,7 +165,7 @@ post({ jsonrpc: "2.0", method: "notifications/initialized" }, session_id: sessio
 
 reply = post({ jsonrpc: "2.0", id: 2, method: "tools/call",
                params: { name: "get_changes_since",
-                         arguments: { known_version: 0, constitution: "default",
+                         arguments: { last_seen_version: 0, constitution: "default",
                                       detail: "compact" } } }, session_id: session_id)
 data = reply.body.lines.find { |l| l.start_with?("data: ") }.delete_prefix("data: ")
 response = JSON.parse(JSON.parse(data).dig("result", "content", 0, "text"))
@@ -288,13 +288,13 @@ In TypeScript, the whole thing, including the stage-5 rule that a failed
 fetch reuses the last block instead of crashing the step:
 
 ```typescript
-let knownVersion = 0;
+let lastSeenVersion = 0;
 let lastBlock = "[kyno:direction constitution=default version=0]\nNo direction has been set yet.";
 
 async function fetchBlock() {
   try {
-    const response = await callGetChangesSince(knownVersion);  // the call from stage 1
-    knownVersion = response.current_version;
+    const response = await callGetChangesSince(lastSeenVersion);  // the call from stage 1
+    lastSeenVersion = response.current_version;
     lastBlock = buildBlock(response);                          // the function from stage 2
   } catch {
     console.error("kyno unreachable, reusing the last block");
@@ -409,7 +409,7 @@ A record printed by this example looks like this:
   "requested_constitution": "default",
   "served_version": 2,
   "operation": "get_changes_since",
-  "known_version": 1,
+  "last_seen_version": 1,
   "detail_level": "full",
   "selection": {},
   "requester": null,

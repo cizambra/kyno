@@ -18,7 +18,7 @@ def history_connection(mcp_connection):
                 {"current_version": 0, "delta": ["Saved comparison"]},
                 operation="get_changes_since",
                 constitution="default",
-                arguments={"known_version": 0, "detail": "full"},
+                arguments={"last_seen_version": 0, "detail": "full"},
                 context={"correlation_id": correlation_id, "metadata": {"step": 1}},
             )
         )

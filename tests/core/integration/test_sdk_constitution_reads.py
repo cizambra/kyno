@@ -135,7 +135,7 @@ def test_given_recording_enabled_when_get_constitution_is_called_then_selected_v
 
     record = history.list()["items"][0]
     assert record["served_version"] == direction.version == served_version
-    assert record["known_version"] is None
+    assert record["last_seen_version"] is None
     assert record["operation"] == "get_constitution"
     assert record["detail_level"] == "compact"
 

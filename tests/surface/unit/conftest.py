@@ -27,11 +27,11 @@ class ScriptedDirectionSource:
 
     def changes_since(
         self,
-        known_version: int,
+        last_seen_version: int,
         constitution: str,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> DirectionResponse:
-        self.calls.append((known_version, constitution))
+        self.calls.append((last_seen_version, constitution))
         self.details.append(detail)
         if self.failure is not None:
             raise self.failure

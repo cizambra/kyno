@@ -16,9 +16,9 @@ def store(memory_store):
 
 
 @pytest.mark.parametrize("policy, status", [("never", "disabled"), ("always", "recorded")])
-@pytest.mark.parametrize("known_version", [None, 0, 3])
+@pytest.mark.parametrize("last_seen_version", [None, 0, 3])
 def test_given_recording_policy_when_recording_then_only_always_persists_a_record(
-    store, policy, status, known_version
+    store, policy, status, last_seen_version
 ):
     direction = {"version": 0, "mission": "Original"}
     result = DeliveryRecorder(SqlDeliveryRecordStore(store.engine), policy).record(
@@ -28,7 +28,7 @@ def test_given_recording_policy_when_recording_then_only_always_persists_a_recor
         arguments={
             "correlation_id": "session",
             "metadata": {"nested": [1]},
-            **({"known_version": known_version} if known_version is not None else {}),
+            **({"last_seen_version": last_seen_version} if last_seen_version is not None else {}),
             "detail": object(),
             "title": object(),
         },
@@ -54,7 +54,7 @@ def test_given_recording_policy_when_recording_then_only_always_persists_a_recor
         assert json.loads(record["requester"]) == {"id": 3}
         assert json.loads(record["metadata"]) == {"nested": [1]}
         assert record["correlation_id"] == "session"
-        assert record["known_version"] == known_version
+        assert record["last_seen_version"] == last_seen_version
         assert record["detail_level"] is None
         assert json.loads(record["selection"]) == {}
 

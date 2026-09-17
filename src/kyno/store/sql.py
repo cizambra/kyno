@@ -151,7 +151,9 @@ class SqlConstitutionStore:
             ).first()
             return self._row_to_version(row) if row else None
 
-    def versions_after(self, constitution: str, known_version: int) -> list[ConstitutionVersion]:
+    def versions_after(
+        self, constitution: str, last_seen_version: int
+    ) -> list[ConstitutionVersion]:
         with self.engine.connect() as conn:
             cid = self._constitution_id(conn, constitution)
             if cid is None:
@@ -159,7 +161,7 @@ class SqlConstitutionStore:
             rows = conn.execute(
                 select(self._versions)
                 .where(self._versions.c.constitution_id == cid)
-                .where(self._versions.c.version > known_version)
+                .where(self._versions.c.version > last_seen_version)
                 .order_by(self._versions.c.version.asc())
             ).all()
             return [self._row_to_version(r) for r in rows]

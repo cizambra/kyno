@@ -30,7 +30,7 @@ class KynoBinding:
 class DirectionSource(Protocol):
     def changes_since(
         self,
-        known_version: int,
+        last_seen_version: int,
         constitution: str,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> DirectionResponse: ...
@@ -50,11 +50,11 @@ class DirectionResponse:
 @runtime_checkable
 class ControlPlaneProjection(Protocol):
     """The projection of a control plane that this source uses: answering
-    what changed since a known version. Anything with that method satisfies
+    what changed since a last-seen version. Anything with that method satisfies
     it, no inheritance needed."""
 
     def changes_since(
-        self, known_version: int, constitution: str | None = None
+        self, last_seen_version: int, constitution: str | None = None
     ) -> ChangesSince: ...
 
 
@@ -67,13 +67,13 @@ class LocalDirectionSource:
 
     def changes_since(
         self,
-        known_version: int,
+        last_seen_version: int,
         constitution: str,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> DirectionResponse:
         # `detail` exists to save bytes on the wire, and there is no wire here: the control
         # plane returns the whole version either way.
-        return DirectionResponse(self._control_plane.changes_since(known_version, constitution))
+        return DirectionResponse(self._control_plane.changes_since(last_seen_version, constitution))
 
 
 def _leaves(exc: BaseException) -> list[BaseException]:
@@ -362,7 +362,7 @@ class McpDirectionSource:
 
     def changes_since(
         self,
-        known_version: int,
+        last_seen_version: int,
         constitution: str,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> DirectionResponse:
@@ -376,7 +376,7 @@ class McpDirectionSource:
             return await session.call_tool(
                 "get_changes_since",
                 {
-                    "known_version": known_version,
+                    "last_seen_version": last_seen_version,
                     "constitution": constitution,
                     "detail": detail.value,
                     **self._context,

@@ -68,12 +68,12 @@ async def test_given_default_recording_when_reading_direction_then_no_history_is
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("known_version", [None, 0, 1])
+@pytest.mark.parametrize("last_seen_version", [None, 0, 1])
 @pytest.mark.parametrize(
     "operation,arguments",
     [
         ("get_constitution", {"detail": "full"}),
-        ("get_changes_since", {"known_version": 0}),
+        ("get_changes_since", {"last_seen_version": 0}),
         ("get_mission", {}),
         ("get_declaration", {}),
         ("get_principles", {"detail": "titles"}),
@@ -84,11 +84,11 @@ async def test_given_recording_enabled_when_reading_then_history_keeps_the_serve
     memory_store,
     operation,
     arguments,
-    known_version,
+    last_seen_version,
 ):
     arguments = {
         **arguments,
-        **({"known_version": known_version} if known_version is not None else {}),
+        **({"last_seen_version": last_seen_version} if last_seen_version is not None else {}),
     }
     server, history, _ = server_with_history(memory_store)
     result = await invoke(
@@ -111,7 +111,7 @@ async def test_given_recording_enabled_when_reading_then_history_keeps_the_serve
     assert record["metadata"] == {"app": {"trial": [1, 2]}}
     assert record["requester"] is None
     assert record["constitution_id"] is not None
-    assert record["known_version"] == arguments.get("known_version")
+    assert record["last_seen_version"] == arguments.get("last_seen_version")
 
 
 @pytest.mark.asyncio
@@ -139,17 +139,17 @@ async def test_given_later_direction_when_getting_delivery_then_original_version
 
 
 @pytest.mark.asyncio
-async def test_given_a_known_version_when_recording_changes_then_the_returned_delta_is_preserved(
+async def test_given_last_seen_version_when_recording_changes_then_the_returned_delta_is_preserved(
     memory_store,
 ):
     server, history, plane = server_with_history(memory_store)
     plane.set_direction(mission="Resolve complaints", change_note="new priority")
-    response = await invoke(server, "get_changes_since", {"known_version": 1, "detail": "full"})
+    response = await invoke(server, "get_changes_since", {"last_seen_version": 1, "detail": "full"})
     record_id = response["recording"]["record_id"]
     assert response["delta"]
     plane.set_direction(mission="Prevent complaints", change_note="next priority")
     record = history.get(record_id)
-    assert record["known_version"] == 1
+    assert record["last_seen_version"] == 1
     assert record["served_version"] == 2
     assert record["delta"] == response["delta"]
     assert "direction" not in record
@@ -253,16 +253,16 @@ async def test_given_history_when_recording_is_disabled_then_old_records_remain_
     "operation,arguments",
     [
         ("get_principle", {"title": "missing"}),
-        ("get_changes_since", {"known_version": 100}),
+        ("get_changes_since", {"last_seen_version": 100}),
         ("get_constitution", {"metadata": []}),
         ("get_constitution", {"metadata": {"large": "x" * 16384}}),
         ("get_constitution", {"metadata": {"number": float("nan")}}),
         ("get_constitution", {"correlation_id": "x" * 256}),
-        ("get_mission", {"known_version": True}),
-        ("get_mission", {"known_version": "1"}),
-        ("get_mission", {"known_version": 1.5}),
-        ("get_mission", {"known_version": {"bad": 1}}),
-        ("get_mission", {"known_version": None}),
+        ("get_mission", {"last_seen_version": True}),
+        ("get_mission", {"last_seen_version": "1"}),
+        ("get_mission", {"last_seen_version": 1.5}),
+        ("get_mission", {"last_seen_version": {"bad": 1}}),
+        ("get_mission", {"last_seen_version": None}),
     ],
 )
 async def test_given_an_invalid_read_when_calling_core_then_no_delivery_is_recorded(
@@ -338,7 +338,7 @@ async def test_given_irrelevant_arguments_when_reading_mission_then_they_cannot_
     )
     assert response["recording"]["status"] == "recorded"
     record = saved_record(memory_store, response["recording"]["record_id"])
-    assert record["known_version"] is None
+    assert record["last_seen_version"] is None
     assert record["detail_level"] is None
     assert record["selection"] == {}
 
@@ -346,8 +346,8 @@ async def test_given_irrelevant_arguments_when_reading_mission_then_they_cannot_
 @pytest.mark.parametrize("operation", sorted(DIRECTION_READS))
 def test_given_direction_tool_when_listing_schema_then_caller_version_is_declared(operation):
     schema = next(tool.inputSchema for tool in TOOLS if tool.name == operation)
-    assert schema["properties"]["known_version"]["type"] == "integer"
-    assert ("known_version" in schema.get("required", [])) == (operation == "get_changes_since")
+    assert schema["properties"]["last_seen_version"]["type"] == "integer"
+    assert ("last_seen_version" in schema.get("required", [])) == (operation == "get_changes_since")
 
 
 @pytest.mark.parametrize("policy", ["never", "always"])
@@ -464,18 +464,18 @@ async def test_given_disabled_recording_when_attribution_fails_then_it_is_not_re
 
 
 @pytest.mark.parametrize("version, served_version", [(None, 2), (0, 0), (1, 1)])
-async def test_given_known_version_when_get_constitution_is_called_then_it_is_recorded_for_audit(
+async def test_given_last_seen_version_when_get_constitution_runs_then_it_is_recorded_for_audit(
     memory_store, version, served_version
 ):
     server, _, plane = server_with_history(memory_store)
     plane.set_direction(mission="Current", change_note="Updated")
-    arguments = {"known_version": 2}
+    arguments = {"last_seen_version": 2}
     if version is not None:
         arguments["version"] = version
     response = await invoke(server, "get_constitution", arguments)
     record = saved_record(memory_store, response["recording"]["record_id"])
     assert record["served_version"] == response["version"] == served_version
-    assert record["known_version"] == 2
+    assert record["last_seen_version"] == 2
     assert (record["constitution_id"] is None) is (served_version == 0)
 
 

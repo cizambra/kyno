@@ -72,7 +72,7 @@ def test_given_mutable_request_data_when_appending_then_delta_and_context_keep_o
     direction = {"version": 0, "delta": ["Mission changed."]}
     context = {"correlation_id": "session", "metadata": {"nested": [1]}}
     requester = {"token_id": 2}
-    arguments = {"known_version": 2, "detail": "full", "title": "Before"}
+    arguments = {"last_seen_version": 2, "detail": "full", "title": "Before"}
     expected_delta = deepcopy(direction["delta"])
     expected_context = deepcopy(context)
     expected_requester = deepcopy(requester)
@@ -92,8 +92,8 @@ def test_given_mutable_request_data_when_appending_then_delta_and_context_keep_o
     assert json.loads(record["metadata"]) == expected_context["metadata"]
     assert json.loads(record["requester"]) == expected_requester
     assert json.loads(record["selection"]) == expected_selection
-    assert (record["known_version"], record["detail_level"], record["correlation_id"]) == (
-        arguments["known_version"],
+    assert (record["last_seen_version"], record["detail_level"], record["correlation_id"]) == (
+        arguments["last_seen_version"],
         arguments["detail"],
         expected_context["correlation_id"],
     )
@@ -201,7 +201,7 @@ def test_given_multiple_deliveries_when_getting_by_id_then_exact_decoded_record_
         "requested_constitution": "missing",
         "served_version": 0,
         "operation": "get_direction",
-        "known_version": None,
+        "last_seen_version": None,
         "detail_level": None,
         "selection": {"title": "Original"},
         "delta": None,

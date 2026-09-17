@@ -54,7 +54,7 @@ class SqlDeliveryRecordStore:
                 "current_version" if operation == "get_changes_since" else "version"
             ],
             "operation": operation,
-            "known_version": arguments.get("known_version"),
+            "last_seen_version": arguments.get("last_seen_version"),
             "detail_level": arguments.get("detail"),
             "selection": json.dumps(
                 {key: arguments[key] for key in ("title",) if key in arguments}

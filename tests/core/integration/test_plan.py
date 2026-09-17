@@ -81,7 +81,7 @@ class RegressingSource:
     def __init__(self):
         self.calls = 0
 
-    def changes_since(self, known_version, constitution, detail="compact"):
+    def changes_since(self, last_seen_version, constitution, detail="compact"):
         from kyno.sdk.client import DirectionResponse
         from kyno.wire.models import ChangesSince
 

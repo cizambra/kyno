@@ -10,7 +10,7 @@ class DeliverySummary(TypedDict):
     requested_constitution: str
     served_version: int
     operation: str
-    known_version: int | None
+    last_seen_version: int | None
     detail_level: str | None
     selection: dict[str, JsonValue]
     requester: dict[str, JsonValue] | None

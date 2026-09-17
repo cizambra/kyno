@@ -22,7 +22,7 @@ from kyno.wire.models import ChangesSince  # noqa: E402
 
 
 @pytest.mark.parametrize("observer_fails", [False, True])
-def test_given_a_registered_hook_when_crewai_calls_it_then_the_observer_sees_injected_messages(
+def test_given_registered_hook_when_before_llm_call_runs_then_observer_sees_injected_messages(
     observer_fails,
 ):
     source = SimpleNamespace(
@@ -71,7 +71,7 @@ def test_given_a_registered_hook_when_crewai_calls_it_then_the_observer_sees_inj
     assert source.changes_since.call_count == 1
 
 
-def test_given_a_snapshot_when_direction_changes_then_assessment_uses_the_selected_version():
+def test_given_saved_direction_when_before_llm_call_refreshes_then_app_can_assess_prior_version():
     first = ChangesSince(
         current_version=1,
         changed=True,
@@ -126,7 +126,7 @@ def test_given_a_snapshot_when_direction_changes_then_assessment_uses_the_select
 
 @pytest.mark.parametrize("recording_status", ["recorded", "disabled", "failed", None])
 @pytest.mark.parametrize("delivery_status", list(DeliveryStatus))
-def test_given_a_recording_receipt_when_crewai_injects_then_the_observer_receives_its_origin(
+def test_given_receipt_when_before_llm_call_runs_then_observer_receives_injected_direction_receipt(
     recording_status, delivery_status
 ):
     receipt = (
@@ -170,7 +170,7 @@ def test_given_a_recording_receipt_when_crewai_injects_then_the_observer_receive
     assert source.changes_since.call_count == 1
 
 
-def test_given_two_reads_of_one_version_when_crewai_injects_then_observers_keep_distinct_receipts():
+def test_given_same_version_when_before_llm_call_runs_twice_then_observed_receipts_are_distinct():
     changes = ChangesSince(1, True, "Help customers", (), True, False, ("init",))
     source = SimpleNamespace(
         changes_since=Mock(

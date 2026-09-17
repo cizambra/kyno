@@ -34,21 +34,21 @@ def unit_kyno(scripted_source):
 
 
 @pytest.mark.parametrize("option", ["gate", "trace"])
-def test_given_gate_or_trace_configuration_when_constructing_the_crewai_adapter_then_it_is_rejected(
+def test_given_gate_or_trace_keyword_when_CrewAiKyno_is_created_then_TypeError_is_raised(
     scripted_source, option
 ):
     with pytest.raises(TypeError, match=f"unexpected keyword argument '{option}'"):
         CrewAiKyno(DirectionBinder(scripted_source), **{option: object()})
 
 
-def test_given_a_second_positional_argument_when_constructing_then_it_cannot_be_a_constitution(
+def test_given_second_positional_argument_when_CrewAiKyno_is_created_then_TypeError_is_raised(
     scripted_source,
 ):
     with pytest.raises(TypeError, match="positional"):
         CrewAiKyno(DirectionBinder(scripted_source), object())
 
 
-def test_given_a_registration_when_installing_and_clearing_then_both_are_clean(unit_kyno):
+def test_given_adapter_when_register_and_clear_all_hooks_run_then_neither_raises(unit_kyno):
     from crewai.hooks import clear_all_hooks
 
     adapter, _cp = unit_kyno
@@ -58,7 +58,7 @@ def test_given_a_registration_when_installing_and_clearing_then_both_are_clean(u
         clear_all_hooks()
 
 
-def test_given_a_registration_when_unregistering_then_the_hook_is_removed(unit_kyno):
+def test_given_registered_adapter_when_unregister_runs_then_before_llm_call_is_removed(unit_kyno):
     from crewai.hooks import clear_all_hooks, get_before_llm_call_hooks
 
     adapter, _cp = unit_kyno
@@ -71,7 +71,9 @@ def test_given_a_registration_when_unregistering_then_the_hook_is_removed(unit_k
         clear_all_hooks()
 
 
-def test_given_the_message_list_when_injecting_then_it_is_edited_in_place(unit_kyno):
+def test_given_message_list_when_before_llm_call_runs_then_direction_is_inserted_in_place(
+    unit_kyno,
+):
     """CrewAI's executor holds this list; rebinding it drops the injection."""
     adapter, _cp = unit_kyno
     messages = [{"role": "user", "content": "go"}]
@@ -83,7 +85,7 @@ def test_given_the_message_list_when_injecting_then_it_is_edited_in_place(unit_k
     assert messages[0]["content"].startswith(DIRECTION_MARKER)
 
 
-def test_given_a_non_system_message_with_the_marker_when_refreshing_then_it_is_not_deleted(
+def test_given_markers_in_user_or_tool_messages_when_before_llm_call_runs_then_messages_are_kept(
     unit_kyno,
 ):
     """The adapter replaces only the block it injected, which is a system
@@ -104,7 +106,7 @@ def test_given_a_non_system_message_with_the_marker_when_refreshing_then_it_is_n
     assert len(blocks) == 1
 
 
-def test_given_messages_the_shim_does_not_understand_when_injecting_then_they_are_left_alone(
+def test_given_non_dict_message_when_before_llm_call_runs_then_message_is_kept(
     unit_kyno,
 ):
     """CrewAI may hand over message objects, not dicts; never drop them."""
@@ -120,7 +122,7 @@ def test_given_messages_the_shim_does_not_understand_when_injecting_then_they_ar
 
 @pytest.mark.parametrize("status", list(DeliveryStatus))
 @pytest.mark.parametrize("context", list(DetailLevel))
-def test_given_an_observer_when_direction_is_injected_then_it_receives_that_binding_after_injection(
+def test_given_observer_when_before_llm_call_runs_then_binding_is_reported_after_injection(
     scripted_source, status, context
 ):
     scripted_source.set("support", 2, "Help customers", "Be honest")
@@ -157,7 +159,7 @@ def test_given_an_observer_when_direction_is_injected_then_it_receives_that_bind
     assert len(scripted_source.calls) == 1
 
 
-def test_given_observer_returns_false_when_hook_runs_then_crewai_receives_no_cancellation_signal(
+def test_given_observer_returning_false_when_before_llm_call_runs_then_hook_returns_none(
     scripted_source,
 ):
     scripted_source.set("default", 1, "Help")
@@ -171,7 +173,7 @@ def test_given_observer_returns_false_when_hook_runs_then_crewai_receives_no_can
     assert "Mission: Help" in ctx.messages[0]["content"]
 
 
-def test_given_two_calls_when_direction_changes_then_each_observer_result_keeps_its_own_version(
+def test_given_new_direction_when_before_llm_call_runs_again_then_prior_binding_keeps_its_version(
     scripted_source,
 ):
     scripted_source.set("support", 1, "M1")
@@ -194,7 +196,7 @@ def test_given_two_calls_when_direction_changes_then_each_observer_result_keeps_
     assert len(ctx.messages) == 1
 
 
-def test_given_a_broken_observer_when_direction_is_injected_then_failure_is_logged_without_escaping(
+def test_given_observer_error_when_before_llm_call_runs_then_error_is_logged_without_raising(
     scripted_source, caplog
 ):
     scripted_source.set("support", 3, "Help")
@@ -213,7 +215,7 @@ def test_given_a_broken_observer_when_direction_is_injected_then_failure_is_logg
 
 
 @pytest.mark.parametrize("cached", [False, True])
-def test_given_fail_closed_when_the_pull_fails_then_no_observer_runs_or_messages_change(
+def test_given_fail_closed_pull_error_when_before_llm_call_runs_then_no_injection_or_notification(
     scripted_source, cached
 ):
     scripted_source.set("default", 1, "M1")
@@ -232,7 +234,7 @@ def test_given_fail_closed_when_the_pull_fails_then_no_observer_runs_or_messages
     assert ctx.messages == [{"role": "user", "content": "Help"}]
 
 
-def test_given_message_injection_failure_when_the_hook_runs_then_no_observer_receipt_is_emitted(
+def test_given_injection_error_when_before_llm_call_runs_then_observer_is_not_called(
     scripted_source,
 ):
     class UnwritableMessages(list):
@@ -249,7 +251,7 @@ def test_given_message_injection_failure_when_the_hook_runs_then_no_observer_rec
     observer.assert_not_called()
 
 
-def test_given_unchanged_direction_when_two_model_calls_start_then_both_notify_the_observer(
+def test_given_same_version_when_before_llm_call_runs_twice_then_observer_is_notified_twice(
     scripted_source,
 ):
     scripted_source.set("default", 2, "Help")
@@ -278,7 +280,7 @@ def test_given_unchanged_direction_when_two_model_calls_start_then_both_notify_t
     assert scripted_source.calls == [(0, "default"), (2, "default")]
 
 
-def test_given_observer_failed_once_when_the_next_call_starts_then_recording_is_attempted_again(
+def test_given_prior_observer_error_when_before_llm_call_runs_again_then_observer_is_called(
     scripted_source, caplog
 ):
     scripted_source.set("default", 1, "M1")
@@ -298,7 +300,7 @@ def test_given_observer_failed_once_when_the_next_call_starts_then_recording_is_
     assert sum("direction observer failed" in record.message for record in caplog.records) == 1
 
 
-def test_given_a_model_call_when_direction_is_injected_then_the_hook_returns_no_control_signal(
+def test_given_user_message_when_before_llm_call_runs_then_direction_is_injected_and_none_returns(
     unit_kyno,
 ):
     adapter, _source = unit_kyno

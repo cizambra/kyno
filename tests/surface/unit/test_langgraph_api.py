@@ -5,7 +5,6 @@ import pytest
 pytest.importorskip("langgraph")
 
 from kyno.adapters import langgraph  # noqa: E402
-from kyno.adapters.langgraph import nodes  # noqa: E402
 from kyno.sdk.binding import DeliveryStatus, DirectionBinding  # noqa: E402
 from kyno.sdk.cell import Direction  # noqa: E402
 from kyno.sdk.recording import RecordingReceipt  # noqa: E402
@@ -19,8 +18,6 @@ def test_given_langgraph_adapter_when_inspecting_exports_then_only_direction_hel
         "direction_update",
         "pull_before",
     }
-    assert not hasattr(langgraph, "gate_node")
-    assert not hasattr(nodes, "gate_node")
 
 
 def test_given_KynoState_when_direction_update_runs_then_keys_match_declared_fields():

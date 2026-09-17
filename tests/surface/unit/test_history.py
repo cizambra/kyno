@@ -48,7 +48,9 @@ def test_given_malformed_page_when_listing_history_then_unavailable_is_raised(pa
         history.list_delivery_records(runner)
 
 
-@pytest.mark.parametrize("operation", ["get_delivery_record", "list_delivery_records"])
+@pytest.mark.parametrize(
+    "operation", ["get_delivery_record", "list_delivery_records", "get_constitution"]
+)
 def test_given_mcp_error_when_reading_history_then_sdk_exception_contains_the_server_error_text(
     operation,
 ):
@@ -60,7 +62,9 @@ def test_given_mcp_error_when_reading_history_then_sdk_exception_contains_the_se
 
 
 @pytest.mark.parametrize("failure", [KynoUnavailableError("offline"), KynoRefusedError("403")])
-@pytest.mark.parametrize("operation", ["get_delivery_record", "list_delivery_records"])
+@pytest.mark.parametrize(
+    "operation", ["get_delivery_record", "list_delivery_records", "get_constitution"]
+)
 def test_given_transport_failure_when_reading_history_then_original_failure_is_preserved(
     failure, operation
 ):

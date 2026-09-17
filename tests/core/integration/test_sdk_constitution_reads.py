@@ -65,6 +65,40 @@ def test_given_newer_direction_when_version_is_omitted_then_current_compact_dire
     assert direction.declaration == direction.principles[0].description == ""
 
 
+@pytest.mark.parametrize("version", [None, 1])
+def test_given_two_constitutions_when_reading_then_only_the_requested_constitution_returns(
+    constitution_connection, version
+):
+    connection, control_plane = constitution_connection
+    control_plane.set_direction(
+        mission="Default mission", change_note="Initial", constitution="default"
+    )
+
+    direction = connection.get_constitution("example", version=version)
+    default_direction = connection.get_constitution(version=version)
+
+    assert direction.constitution == "example"
+    assert direction.mission == "Original mission"
+    assert default_direction.constitution == "default"
+    assert default_direction.mission == "Default mission"
+    assert direction.version == default_direction.version == 1
+
+
+@pytest.mark.parametrize("context", list(DetailLevel))
+def test_given_unwritten_constitution_when_reading_current_then_empty_direction_returns(
+    constitution_connection, context
+):
+    connection, _ = constitution_connection
+
+    direction = connection.get_constitution("unwritten", context=context)
+
+    assert direction.constitution == "unwritten"
+    assert direction.version == 0
+    assert direction.mission == direction.declaration == ""
+    assert direction.principles == direction.change_notes == direction.delta == ()
+    assert direction.context is context
+
+
 @pytest.mark.parametrize("constitution, version", [("example", 2), ("unknown", 1)])
 def test_given_missing_exact_version_when_reading_then_version_not_found_is_raised(
     constitution_connection, constitution, version

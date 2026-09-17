@@ -14,7 +14,7 @@ from kyno.store.delivery_record import SqlDeliveryRecordStore  # noqa: E402
 
 
 @pytest.mark.e2e
-def test_given_a_saved_answer_when_core_changes_then_its_record_resolves_the_served_version(
+def test_given_new_direction_when_pull_before_runs_again_then_prior_record_keeps_original_version(
     live_server, server_store
 ):
     class AnswerState(KynoState, total=False):

@@ -176,7 +176,7 @@
       <h3>What happens if a pull fails?</h3>
       <p>By default, the binder logs the failure and uses cached direction. If it has never fetched direction, it supplies empty version 0. Configure <code>PullPolicy(fail_closed=True)</code> to raise an error instead. Current direction depends on a successful pull; an update committed after that read becomes available on a later pull.</p>
       <h3>Do I need a verifier?</h3>
-      <p>No. Verification is optional. Your application can check outputs against their supplied direction using its own checks or an independent verifier. Your application chooses whether to continue, retry, or ask a person to review the result. Kyno supplies direction and does not make that decision.</p>
+      <p>Verification is optional, but recommended. Your application can check outputs against their supplied direction using its own checks or an independent verifier. Those assessments can feed back into the running workflow, giving your application a chance to correct course and improve outcomes before the run ends. Your application chooses whether to continue, retry, or ask a person to review the result. Kyno supplies direction; it does not run verification or decide what happens next.</p>
       <h3>When is Kyno useful?</h3>
       <p>When several agents need shared direction, when priorities change during a run, or when your integration needs to record which direction a step received. For a short workflow whose direction is fixed, an existing prompt or file may meet your needs.</p>
     </section>

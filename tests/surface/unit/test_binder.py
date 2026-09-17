@@ -43,22 +43,24 @@ def test_given_bindings_to_different_constitutions_when_binding_then_they_do_not
     assert binder.cell.last_seen_version("us") == 9
 
 
-def test_given_a_pull_failure_when_binding_then_the_last_known_direction_serves(
-    scripted_source, caplog
+@pytest.mark.parametrize("version", [0, 3], ids=["unwritten-constitution", "written-direction"])
+def test_given_cached_direction_when_bind_fails_then_warning_reports_the_retained_version(
+    scripted_source, caplog, version
 ):
-    scripted_source.set("default", 3, "M3")
+    mission = "M3" if version else ""
+    scripted_source.set("default", version, mission)
     binder = DirectionBinder(scripted_source)
     binder.bind()
 
     scripted_source.failure = OSError("connection refused")
     direction = binder.bind()
 
-    assert direction.version == 3 and direction.mission == "M3"
+    assert direction.version == version and direction.mission == mission
     assert caplog.record_tuples == [
         (
             "kyno.sdk.binder",
             logging.WARNING,
-            "kyno pull_failed_stale constitution=default version=3 connection refused",
+            f"kyno pull_failed_stale constitution=default version={version} connection refused",
         )
     ]
 
@@ -138,6 +140,28 @@ def test_given_application_logging_when_bind_falls_back_then_handlers_and_levels
         tuple(binder_logger.handlers),
         binder_logger.propagate,
     ) == binder_settings
+
+
+def test_given_binders_when_bind_with_status_fails_then_logs_name_each_constitution_and_fallback(
+    scripted_source, caplog
+):
+    scripted_source.set("support", 3, "Help customers")
+    support = DirectionBinder(scripted_source)
+    sales = DirectionBinder(scripted_source)
+    support.bind("support")
+    scripted_source.failure = OSError("connection refused")
+
+    support_binding = support.bind_with_status("support")
+    sales_binding = sales.bind_with_status("sales")
+
+    assert support_binding.status is DeliveryStatus.CACHED
+    assert sales_binding.status is DeliveryStatus.EMPTY
+    records = [record for record in caplog.records if record.name == "kyno.sdk.binder"]
+    assert [record.levelno for record in records] == [logging.WARNING, logging.WARNING]
+    assert [record.getMessage() for record in records] == [
+        "kyno pull_failed_stale constitution=support version=3 connection refused",
+        "kyno pull_failed_empty constitution=sales version=0 connection refused",
+    ]
 
 
 def test_given_a_shared_cell_when_binding_then_the_binder_and_caller_see_the_same_direction(

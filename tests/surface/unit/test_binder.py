@@ -165,7 +165,7 @@ def test_given_binders_when_bind_with_status_fails_then_logs_name_each_constitut
     ]
 
 
-def test_given_two_binders_when_only_one_pulls_then_the_other_starts_from_version_zero(
+def test_given_one_binder_has_pulled_when_another_calls_bind_then_it_sends_last_seen_version_zero(
     scripted_source,
 ):
     scripted_source.set("default", 2, "M2")

@@ -1,19 +1,17 @@
 # SPDX-License-Identifier: MIT
 from __future__ import annotations
 
+import logging
+
 from kyno.sdk.binding import DeliveryStatus, DirectionBinding
 from kyno.sdk.cell import Direction, DirectionCell, check_context
 from kyno.sdk.client import DirectionSource
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.policy import PullPolicy
-from kyno.sdk.telemetry import (
-    EventType,
-    LogSink,
-    TelemetryEvent,
-    TelemetrySink,
-)
 from kyno.wire.errors import CoherenceError
 from kyno.wire.models import DetailLevel
+
+logger = logging.getLogger(__name__)
 
 
 class DirectionBinder:
@@ -29,13 +27,11 @@ class DirectionBinder:
         source: DirectionSource,
         cell: DirectionCell | None = None,
         policy: PullPolicy | None = None,
-        telemetry: TelemetrySink | None = None,
         context: str | DetailLevel = DetailLevel.COMPACT,
     ) -> None:
         self._source = source
         self.cell = cell if cell is not None else DirectionCell()
         self._policy = policy or PullPolicy()
-        self._telemetry = telemetry or LogSink()
         # Checked here rather than at the first step, so a typo fails while the integration is
         # being set up instead of once it is running.
         self.context = check_context(context)
@@ -78,17 +74,17 @@ class DirectionBinder:
             raise KynoUnavailableError(f"cannot reach kyno for '{constitution}': {exc}") from exc
         if snapshot is not None:
             last, recording = snapshot
-            self._emit(EventType.PULL_FAILED_STALE, constitution, last.version, str(exc))
+            logger.warning(
+                "kyno pull_failed_stale constitution=%s version=%s %s",
+                constitution,
+                last.version,
+                exc,
+            )
             return DirectionBinding(last, DeliveryStatus.CACHED, recording)
-        self._emit(EventType.PULL_FAILED_EMPTY, constitution, 0, str(exc))
+        logger.warning("kyno pull_failed_empty constitution=%s version=0 %s", constitution, exc)
         return DirectionBinding(Direction.empty(constitution, self.context), DeliveryStatus.EMPTY)
 
     def plan(self, constitution: str = "default"):
         from kyno.sdk.plan import PlanTracker
 
         return PlanTracker(self, constitution)
-
-    def _emit(self, kind: EventType, constitution: str, version: int, detail: str) -> None:
-        self._telemetry.emit(
-            TelemetryEvent(kind=kind, constitution=constitution, version=version, detail=detail)
-        )

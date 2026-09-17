@@ -26,9 +26,9 @@ an adapter is expected to do falls out of these four behaviors.
   The default rendering includes the mission and principle titles;
   `connection.binder(context="full")` includes the declaration and
   principle descriptions too. If Kyno is unreachable, the step runs on
-  the last direction the binder holds, and an event goes to the telemetry
-  sink -- by default, a warning line in your logs naming the constitution
-  and the version it fell back to. `PullPolicy(fail_closed=True)` makes
+  the last direction the binder holds. The `kyno.sdk.binder` Python logger
+  emits a warning naming the constitution, fallback version, and failure
+  reason. `PullPolicy(fail_closed=True)` makes
   the step raise instead. Binders may share a `DirectionCell` only when
   they use the same context level. The first binder or direct cell update
   selects that level; a different level raises `ValueError`. Use separate
@@ -132,7 +132,19 @@ direction text. LangGraph exposes this status in graph state; CrewAI exposes
 it through the optional `on_direction` callback.
 
 `binder.bind()` continues to return only `Direction`. Both methods perform
-one pull and use the same failure policy and telemetry.
+one pull and use the same failure policy and diagnostic logging.
+
+## SDK diagnostic logs
+
+The SDK uses Python's standard logging system. The `kyno.sdk.binder` logger
+warns when a failed pull returns cached or empty direction. Your application
+controls log levels, handlers, formatting, and destinations; the SDK does not
+configure the root logger or install output handlers.
+
+You can log returned bindings or delivery records using your application's
+logger. Delivery history and diagnostic logs serve different purposes:
+history records what Core served when recording is enabled, while SDK logs
+report local failures and fallback even when no delivery record exists.
 
 ## The integration
 

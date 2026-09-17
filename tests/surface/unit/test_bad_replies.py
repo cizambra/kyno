@@ -1,7 +1,7 @@
 """What a bad reply from Kyno costs a running host application.
 
 When Kyno is unreachable or answers garbage, the binder falls back to the
-last known direction and emits telemetry saying so. Acting on stale direction
+last known direction and logs a warning saying so. Acting on stale direction
 is the accepted cost; crashing the host's step is not. That fallback catches
 exactly one failure shape, KynoUnavailableError, so these tests force every
 way a reply can be wrong and assert each one arrives as that error. A raw
@@ -16,7 +16,6 @@ import pytest
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.client import McpDirectionSource
 from kyno.sdk.errors import KynoUnavailableError
-from kyno.sdk.telemetry import EventType, RecordingSink
 
 
 class Text:
@@ -91,32 +90,33 @@ def test_given_any_malformed_reply_when_pulling_then_it_arrives_as_unavailable(s
 
 
 @pytest.mark.parametrize("shape", sorted(MALFORMED))
-def test_given_a_malformed_reply_when_a_crew_is_running_then_the_last_direction_carries_it(shape):
+def test_given_a_malformed_reply_when_a_crew_is_running_then_the_last_direction_carries_it(
+    shape, caplog
+):
     # The whole point: a bad reply costs freshness, not the step.
-    sink = RecordingSink()
     runner = ScriptedRunner(reply=Reply([Text(json.dumps(good_payload()))]))
-    binder = DirectionBinder(McpDirectionSource(runner), telemetry=sink)
+    binder = DirectionBinder(McpDirectionSource(runner))
     binder.bind()
 
     runner.reply = MALFORMED[shape]
     direction = binder.bind()
 
     assert direction.version == 2 and direction.mission == "M2"
-    assert [event.kind for event in sink.events] == [EventType.PULL_FAILED_STALE]
+    assert "pull_failed_stale" in caplog.text
 
 
 @pytest.mark.parametrize("shape", sorted(MALFORMED))
 def test_given_a_malformed_reply_and_nothing_cached_when_pulling_then_the_empty_direction_serves(
     shape,
+    caplog,
 ):
-    sink = RecordingSink()
     source = McpDirectionSource(ScriptedRunner(reply=MALFORMED[shape]))
-    binder = DirectionBinder(source, telemetry=sink)
+    binder = DirectionBinder(source)
 
     direction = binder.bind("eu")
 
     assert direction.version == 0 and direction.constitution == "eu"
-    assert [event.kind for event in sink.events] == [EventType.PULL_FAILED_EMPTY]
+    assert "pull_failed_empty" in caplog.text
 
 
 def test_given_a_protocol_error_from_the_session_when_pulling_then_it_arrives_as_unavailable():
@@ -154,7 +154,7 @@ def test_given_a_version_that_is_text_when_pulling_then_it_never_reaches_the_cel
     # A str version poisons the cell's monotonic compare permanently: every
     # later int comparison against it raises, so the crew stops binding.
     runner = ScriptedRunner(reply=Reply([Text(json.dumps(good_payload(current_version="99")))]))
-    binder = DirectionBinder(McpDirectionSource(runner), telemetry=RecordingSink())
+    binder = DirectionBinder(McpDirectionSource(runner))
 
     assert binder.bind().version == 99
 

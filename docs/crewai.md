@@ -133,11 +133,19 @@ matched an output to its supplied binding, store the output together with
 direction delivery history; your application owns output storage and the
 association between each call and its receipt. A record ID identifies a
 server read, not a CrewAI task or model call; cached uses can share an ID.
+For later inspection, you can use the saved delivery ID to
+[retrieve the served direction version](integrating.md#current-and-historical-direction).
 
-To group reads for a run, replace the binder setup in the required example
-with `connection.binder(correlation_id="support-run-123")`. Create a binder
-for each run whose reads need a distinct correlation value. This groups
-delivery history without identifying individual outputs. The global hook
+You can group delivery reads with an application-chosen
+[correlation ID](integrating.md#associating-delivery-history-with-application-work).
+For example, replace the binder setup in the required integration with:
+
+```python
+binder = connection.binder(correlation_id="support-run-123")
+```
+
+Every pull through this binder carries the same correlation ID. It groups
+recorded reads; it does not identify a model call or its output. The global hook
 registry still requires the registration scope described above.
 
 Separate application receipt storage is optional. Keep any retained
@@ -146,24 +154,23 @@ appropriate for potentially sensitive content.
 
 ## Optional verification
 
-You can use Kyno without a verifier. If you also want to check the crew's
-finished answer, your application calls a verifier of your choice. Your
-application decides whether to accept the answer, retry the work, or ask
-a person to review it. Kyno does not make that decision.
+Verification belongs to your application. You choose whether to verify, which
+direction version to assess against, when to run the check, and what to do with
+its result. Kyno supplies direction and delivery history; it does not call a
+verifier or control the crew's next action.
 
 For example, suppose you want to review the final answer against the
 direction you read before starting the crew. Save that `Direction` object,
 run the crew, then pass the answer and saved direction to your verifier.
 
-Here is the required integration with that optional review added. As
-before, `crew` is your configured CrewAI crew. Two functions below belong
-to your application; neither is provided by Kyno:
+This is an illustrative extension of the required integration, not a prescribed
+verification workflow. As before, `crew` is your configured CrewAI crew.
+Two functions below belong to your application; neither is provided by Kyno:
 
 - `assess_output` calls your chosen verifier with the output and direction.
 - `handle_assessment` reads its result and decides what to do next.
 
-You must implement those functions to run this example. Neither is
-required for the direction injection shown earlier.
+Replace these placeholders with your own functions to run this example.
 
 ```python
 with kyno.connect() as connection:
@@ -191,8 +198,7 @@ The saved direction does not change when the adapter pulls again. If you
 save version 1 and an operator publishes version 2 while the crew runs,
 later model calls can receive version 2. This example still reviews the
 final answer against version 1. It does not claim every call used that
-version. Your application can instead choose to review against a newer
-version, but should record which version it chose.
+version. Your application chooses which version is relevant to its assessment.
 
 The initial `binder.bind()` uses the same failure policy as other reads.
 By default, a failed read returns cached direction, or empty version-0

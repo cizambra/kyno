@@ -228,33 +228,44 @@ your outputs and supplied messages in storage appropriate for their
 sensitivity. Capture the state received by this node, rather than reading
 the binder's cache after the model call: another pull may have replaced it.
 Use `direction_from_state()` when you also need structured direction fields.
+For later inspection, you can use the saved delivery ID to
+[retrieve the served direction version](integrating.md#current-and-historical-direction).
 
-If you need to group delivery reads for a workflow run, add
-`correlation_id="support-run-123"` to the existing `connection.binder()`
-configuration and use that binder when building the graph. Keep the guide's
-`context` and `policy` settings. The value belongs to your application;
-it does not become a model-call ID. Each recorded read has its own
-`record_id`, while cached uses can share the original ID.
+You can group delivery reads with an application-chosen
+[correlation ID](integrating.md#associating-delivery-history-with-application-work).
+For example, replace the binder setup above with:
+
+```python
+binder = connection.binder(
+    context=DetailLevel.FULL,
+    policy=PullPolicy(fail_closed=True),
+    correlation_id="support-run-123",
+)
+```
+
+Every pull through this binder carries the same correlation ID. It groups
+recorded reads; it does not identify a model call or its output. Each recorded
+read has its own `record_id`, while cached uses can share the original ID.
 
 
 ## Optional verification
 
-You can use Kyno without checking the model's answer. If you want to add a
-review, put it in a node owned by your application, after the node that
-generates the answer. That review can call a verifier of your choice. Your
-application decides what to do with the result; Kyno does not call the
+Verification belongs to your application. You choose whether to verify, which
+direction version to assess against, when to run the check, and what to do with
+its result. Kyno supplies direction and delivery history; it does not call a
 verifier or choose the graph's next step.
 
-To extend the support-answer example, replace its `State` and `answer`
-definitions with these. Keep the same binder, `SCENARIO`, and model.
+The example below illustrates one approach: keep an answer with the direction
+supplied to that call, then check it in another node. To try it, replace the
+support-answer example's `State` and `answer` definitions with these.
+Keep the same binder, `SCENARIO`, and model.
 The `answer` node now saves three things together in `answer_record`:
 the `Direction` it read, the direction text it sent to the model, and the
 answer returned by that call. The next node can review that answer
 without guessing which direction accompanied it.
 
-`AnswerRecord` describes this application-defined record. It is not a
-Kyno storage service, and the adapter does not create it automatically.
-The `review_answer` function below is also application code, not a Kyno hook:
+`AnswerRecord` is an illustrative application type, not a Kyno API or a required
+storage format. `review_answer` is also application code:
 
 ```python
 from typing import TypedDict
@@ -302,14 +313,8 @@ def review_answer(state):
     return {"needs_review": needs_review}
 ```
 
-`review_answer` reads the record written by `answer`. It sets `needs_review`
-to `True` if the answer contains "refund has been issued", ignoring capitalization.
-This is a Python string check; it does not call a model or an external verifier.
-It does not understand the sentence: "No refund has been issued" would also match.
-The example shows where your application can check an answer, not how to assess
-whether it follows the direction. Use checks appropriate to your application.
-A verifier called from this node can use `record["direction"]`,
-`record["supplied_message"]`, and `record["output"]` to review that same call.
+The phrase check is only an illustration, not an alignment assessment.
+Your own check can use the saved direction, supplied message, and output.
 
 Build the graph after defining those nodes. The edge from `answer` to
 `review_answer` tells LangGraph to run the review after the answer is ready;
@@ -333,8 +338,8 @@ result = graph.invoke({})
 `graph.invoke({})` runs the sequence: pull direction, generate the answer,
 review it, then finish. Read `result["output"]` for the answer and
 `result["needs_review"]` for the check's result. A `True` result does not
-automatically pause, retry, or block anything. Your application must
-decide how to handle it, such as asking a person before sending the answer.
+automatically pause, retry, or block anything. Your application decides
+whether any action follows.
 The string check calls no service, but generating the answer still calls
 your configured model and may incur provider charges. Keep the connection
 open during execution and close it afterward, as in the required integration.
@@ -345,8 +350,7 @@ describe version 2, but `answer_record` still holds the version 1 input
 and its answer. Use that record when reviewing what the original call
 received; do not replace it with the latest direction.
 
-This example keeps one answer record and runs its nodes in sequence.
-If your graph generates several answers in parallel, give each call its
-own record and ID. Use a LangGraph reducer, a function that combines
-updates from different branches, to collect those records rather than
-having every branch overwrite the same `answer_record` field.
+This illustrative graph keeps one answer record and runs sequentially.
+For parallel work, your application owns the association between each output
+and its input. A shared `answer_record` field cannot keep separate answers
+from multiple branches.

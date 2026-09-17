@@ -62,21 +62,24 @@ class DirectionBinder:
             # adapters' KynoUnavailableError.
             return self._degrade(constitution, exc)
         changes = response.changes
-        direction = self.cell.update(Direction.from_changes(changes, constitution, self.context))
+        direction, recording = self.cell.update_with_recording(
+            Direction.from_changes(changes, constitution, self.context), response.recording
+        )
         status = (
             DeliveryStatus.CACHED
             if direction.version > changes.current_version
             else DeliveryStatus.CURRENT
         )
-        return DirectionBinding(direction, status)
+        return DirectionBinding(direction, status, recording)
 
     def _degrade(self, constitution: str, exc: Exception) -> DirectionBinding:
-        last = self.cell.get(constitution)
+        snapshot = self.cell.get_with_recording(constitution)
         if self._policy.fail_closed:
             raise KynoUnavailableError(f"cannot reach kyno for '{constitution}': {exc}") from exc
-        if last is not None:
+        if snapshot is not None:
+            last, recording = snapshot
             self._emit(EventType.PULL_FAILED_STALE, constitution, last.version, str(exc))
-            return DirectionBinding(last, DeliveryStatus.CACHED)
+            return DirectionBinding(last, DeliveryStatus.CACHED, recording)
         self._emit(EventType.PULL_FAILED_EMPTY, constitution, 0, str(exc))
         return DirectionBinding(Direction.empty(constitution, self.context), DeliveryStatus.EMPTY)
 

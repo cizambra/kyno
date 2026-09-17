@@ -19,8 +19,8 @@ def test_given_an_unknown_status_when_constructing_a_binding_then_it_is_rejected
         DirectionBinding(Direction.empty("sales"), "fresh")
 
 
-@pytest.mark.parametrize("field", ["direction", "status"])
-def test_given_a_binding_when_reassigning_a_field_then_it_is_immutable(field):
+@pytest.mark.parametrize("field", ["direction", "status", "recording"])
+def test_given_DirectionBinding_when_reassigning_a_field_then_FrozenInstanceError_is_raised(field):
     binding = DirectionBinding(Direction.empty("sales"), DeliveryStatus.EMPTY)
     with pytest.raises(FrozenInstanceError):
         setattr(binding, field, None)

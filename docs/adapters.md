@@ -72,6 +72,24 @@ and nullable `record_id`. Local sources return `None` for recording. MCP sources
 preserve `recorded`, `disabled`, and `failed` outcomes; missing recording information
 remains `None`. These types are exported from `kyno.sdk`.
 
+The result of `binder.bind_with_status()` includes `binding.recording`. It tells
+you whether Kyno saved a delivery record for the read that supplied the returned
+direction. When a record was saved, `binding.recording.record_id` identifies it.
+
+- After a successful read, the result includes that read's recording status and
+  record ID. Two reads can return the same direction version but have different
+  record IDs: they are separate deliveries.
+- If a read fails and the binder returns cached direction, it also returns the
+  recording information saved with that direction. For example, if an earlier
+  read returned version 3 with record ID `abc`, a later failed read returns the
+  cached version 3 with record ID `abc`. That ID identifies the earlier delivery,
+  not the failed attempt.
+- If two reads overlap and the older version arrives last, the binder keeps the
+  newer cached version and its recording information together.
+- If no direction has been cached, a failed read returns empty direction with
+  `recording=None`. Direction received without recording information also has
+  `recording=None`.
+
 Custom integrations can use `binder.bind_with_status()` to distinguish a
 successful read from fallback. It returns an immutable `DirectionBinding`
 containing `direction` and a `DeliveryStatus` enum, both exported from

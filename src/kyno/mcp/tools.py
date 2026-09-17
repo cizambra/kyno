@@ -262,9 +262,10 @@ for tool, _scope in DECLARATIONS:
                 "known_version": {
                     "type": "integer",
                     "description": (
-                        "Version the caller reports holding; retained for auditing when supplied. "
-                        "Only get_changes_since uses it to calculate changes. "
-                        "It does not select the version returned by other reads."
+                        "Version the caller already has, not the version being requested. "
+                        "get_changes_since compares it with current direction. "
+                        "Other reads use it only as audit context when recording is enabled. "
+                        "To request an exact version with get_constitution, use version instead."
                     ),
                 },
                 "correlation_id": {

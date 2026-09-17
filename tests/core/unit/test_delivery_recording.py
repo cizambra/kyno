@@ -38,11 +38,15 @@ def test_given_invalid_context_when_recording_then_validation_propagates(store, 
     [
         ("get_constitution", {}, {"detail": "compact"}),
         ("get_constitution", {"detail": "full"}, {"detail": "full"}),
-        ("get_changes_since", {"known_version": 1}, {"detail": "compact", "known_version": 1}),
         (
             "get_changes_since",
-            {"known_version": 1, "detail": "full"},
-            {"detail": "full", "known_version": 1},
+            {"last_seen_version": 1},
+            {"detail": "compact", "last_seen_version": 1},
+        ),
+        (
+            "get_changes_since",
+            {"last_seen_version": 1, "detail": "full"},
+            {"detail": "full", "last_seen_version": 1},
         ),
         ("get_principles", {}, {"detail": "titles"}),
         ("get_principles", {"detail": "full"}, {"detail": "full"}),
@@ -100,19 +104,19 @@ def test_given_irrelevant_selection_arguments_when_recording_then_they_are_ignor
         "get_principle",
     ],
 )
-@pytest.mark.parametrize("known_version", [0, 1, 3])
+@pytest.mark.parametrize("last_seen_version", [0, 1, 3])
 def test_given_caller_version_when_recording_any_read_then_known_and_served_versions_are_kept(
-    store, operation, known_version
+    store, operation, last_seen_version
 ):
     direction = {"version": 2, "current_version": 2}
     result = DeliveryRecorder(store, "always").record(
         direction,
         operation=operation,
         constitution="team",
-        arguments={"known_version": known_version, "title": "Care"},
+        arguments={"last_seen_version": last_seen_version, "title": "Care"},
     )
     assert result["status"] == "recorded"
-    assert store.append.call_args.kwargs["arguments"]["known_version"] == known_version
+    assert store.append.call_args.kwargs["arguments"]["last_seen_version"] == last_seen_version
     assert store.append.call_args.args[0] == {"version": 2, "current_version": 2}
 
 

@@ -52,9 +52,9 @@ def test_given_two_names_when_using_the_cell_then_it_is_keyed_by_constitution():
     cell = DirectionCell()
     cell.update(_direction(1, "eu"))
     cell.update(_direction(7, "us"))
-    assert cell.known_version("eu") == 1
-    assert cell.known_version("us") == 7
-    assert cell.known_version("never-written") == 0
+    assert cell.last_seen_version("eu") == 1
+    assert cell.last_seen_version("us") == 7
+    assert cell.last_seen_version("never-written") == 0
     assert cell.get("never-written") is None
     assert cell.names() == ("eu", "us")
 

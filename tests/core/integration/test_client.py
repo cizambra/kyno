@@ -25,14 +25,16 @@ def test_given_the_local_source_when_checking_the_protocol_then_it_satisfies_it(
     assert isinstance(LocalDirectionSource(control_plane), DirectionSource)
 
 
-def test_given_a_future_known_version_when_a_local_source_pulls_then_the_error_propagates(
+def test_given_a_future_last_seen_version_when_a_local_source_pulls_then_the_error_propagates(
     control_plane,
 ):
     from kyno.errors import UnknownVersionError
 
     control_plane.set_direction(mission="M", change_note="init")
     with pytest.raises(UnknownVersionError):
-        LocalDirectionSource(control_plane).changes_since(99, "default")
+        LocalDirectionSource(control_plane).changes_since(
+            last_seen_version=99, constitution="default"
+        )
 
 
 def test_given_one_source_when_serving_two_bindings_then_there_is_no_crosstalk(control_plane):
@@ -50,7 +52,7 @@ def test_given_one_source_when_serving_two_bindings_then_there_is_no_crosstalk(c
     assert after_us.changed is False and after_us.mission == "US v1"
 
 
-def test_given_a_known_version_when_a_local_source_reports_then_every_note_since_comes(
+def test_given_a_last_seen_version_when_a_local_source_reports_then_every_note_since_comes(
     control_plane,
 ):
     control_plane.set_direction(mission="M", change_note="init")

@@ -37,7 +37,9 @@ def receipt_source(recording):
 def test_given_server_recording_when_pulling_with_recording_then_the_receipt_is_preserved(
     recording,
 ):
-    result = receipt_source({"recording": recording}).changes_since(0, "default")
+    result = receipt_source({"recording": recording}).changes_since(
+        last_seen_version=0, constitution="default"
+    )
 
     assert result.recording.status.value == recording["status"]
     assert result.recording.record_id == recording["record_id"]

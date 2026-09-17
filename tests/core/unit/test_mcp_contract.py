@@ -97,9 +97,9 @@ def test_given_a_built_server_when_listing_registrations_then_the_expected_names
     assert RESOURCE_URI == "kyno://constitution/current"
 
 
-def test_given_a_missing_known_version_when_requiring_it_then_it_raises_cleanly():
-    with pytest.raises(ValueError, match="missing required argument: known_version"):
-        mcp_handlers._require({}, "known_version")
+def test_given_a_missing_last_seen_version_when_requiring_it_then_it_raises_cleanly():
+    with pytest.raises(ValueError, match="missing required argument: last_seen_version"):
+        mcp_handlers._require({}, "last_seen_version")
 
 
 def test_given_a_missing_change_note_when_requiring_it_then_it_raises_cleanly():

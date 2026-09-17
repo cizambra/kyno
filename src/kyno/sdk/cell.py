@@ -153,7 +153,7 @@ class DirectionCell:
         with self._lock:
             return self._held.get(constitution)
 
-    def known_version(self, constitution: str) -> int:
+    def last_seen_version(self, constitution: str) -> int:
         held = self.get(constitution)
         return held.version if held else 0
 

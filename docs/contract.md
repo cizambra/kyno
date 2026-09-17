@@ -9,7 +9,7 @@ This is everything an agent or client can ask Kyno, over MCP or Python.
   missing positive version returns an error. Compact detail includes the mission
   and principle titles; full adds the declaration and principle descriptions.
   Successful reads follow Core's delivery-recording policy.
-- `get_changes_since(known_version)`: the pull an agent makes before a step.
+- `get_changes_since(last_seen_version)`: the pull an agent makes before a step.
   It returns the current direction plus the change notes since the version
   the agent last saw.
   Missing a notification causes no harm, because the next pull includes

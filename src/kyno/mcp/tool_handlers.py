@@ -48,10 +48,10 @@ def register_tools(server: Server, control_plane: ControlPlane, token_store=None
                     version=arguments.get("version"),
                 )
             case "get_changes_since":
-                _require(arguments, "known_version")
+                _require(arguments, "last_seen_version")
                 result = handle_get_changes_since(
                     control_plane,
-                    int(arguments["known_version"]),
+                    int(arguments["last_seen_version"]),
                     arguments.get("constitution"),
                     arguments.get("detail", DetailLevel.COMPACT),
                 )

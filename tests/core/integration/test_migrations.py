@@ -1,6 +1,6 @@
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import Integer, create_engine, inspect
 from typer.testing import CliRunner
 
 from tests.workspaces import cli_workspace
@@ -567,6 +567,9 @@ def test_given_delivery_record_schemas_when_inspected_then_indexes_and_unique_id
     store.create_all()
     for engine in (create_engine(url), store.engine):
         inspector = inspect(engine)
+        columns = {item["name"]: item for item in inspector.get_columns("kyno_delivery_records")}
+        assert isinstance(columns["last_seen_version"]["type"], Integer)
+        assert columns["last_seen_version"]["nullable"] is True
         assert {
             item["name"]: item["column_names"]
             for item in inspector.get_indexes("kyno_delivery_records")

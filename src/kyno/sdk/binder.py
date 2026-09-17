@@ -53,9 +53,9 @@ class DirectionBinder:
         older overlapping response. Empty identifies failure without a cached
         value. A fail-closed pull failure raises instead of returning a binding.
         """
-        known = self.cell.known_version(constitution)
+        last_seen_version = self.cell.last_seen_version(constitution)
         try:
-            response = self._source.changes_since(known, constitution, self.context)
+            response = self._source.changes_since(last_seen_version, constitution, self.context)
         except (CoherenceError, OSError) as exc:
             # OSError covers the socket family and, since 3.10, TimeoutError;
             # CoherenceError covers everything kyno raises, including the

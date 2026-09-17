@@ -22,7 +22,7 @@ def upgrade() -> None:
         sa.Column("requested_constitution", sa.String(255), nullable=False),
         sa.Column("served_version", sa.Integer, nullable=False),
         sa.Column("operation", sa.String(64), nullable=False),
-        sa.Column("known_version", sa.Integer, nullable=True),
+        sa.Column("last_seen_version", sa.Integer, nullable=True),
         sa.Column("detail_level", sa.String(16), nullable=True),
         sa.Column("selection", sa.Text, nullable=False),
         sa.Column("delta", sa.Text().with_variant(LONGTEXT(), "mysql"), nullable=False),

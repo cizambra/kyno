@@ -127,7 +127,7 @@ async def test_given_a_non_integer_version_when_calling_get_changes_since_then_t
     server = mcp_server.build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
-        result = await client.call_tool("get_changes_since", {"known_version": "abc"})
+        result = await client.call_tool("get_changes_since", {"last_seen_version": "abc"})
         assert result.isError is True
 
 

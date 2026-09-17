@@ -28,10 +28,10 @@ def test_given_recording_enabled_when_sdk_pulls_twice_then_each_receipt_identifi
     assert first.recording.status is RecordingStatus.RECORDED
     assert second.recording.status is RecordingStatus.RECORDED
     assert first.recording.record_id != second.recording.record_id
-    for response, known_version in [(first, 0), (second, 1)]:
+    for response, last_seen_version in [(first, 0), (second, 1)]:
         record = history.get(response.recording.record_id)
         assert record["served_version"] == response.changes.current_version == 1
-        assert record["known_version"] == known_version
+        assert record["last_seen_version"] == last_seen_version
         assert record["delta"] == list(response.changes.delta)
     assert first.changes.changed is True
     assert second.changes.changed is False
@@ -69,7 +69,7 @@ def test_given_a_name_when_the_mcp_source_pulls_then_that_constitution_comes(mcp
     assert source.changes_since(0, "us").changes.mission == "US mission"
 
 
-def test_given_a_known_version_when_the_mcp_source_reports_then_the_notes_since_come(
+def test_given_a_last_seen_version_when_the_mcp_source_reports_then_the_notes_since_come(
     mcp_runner,
 ):
     runner, control_plane = mcp_runner

@@ -157,7 +157,7 @@ The response includes a separate `recording` object:
 
 The event references the immutable constitution ID and served version rather
 than copying mission, declaration, principles, or change notes. It keeps the
-request's known version, detail level, and selection, plus the generated delta
+request's last-seen version, detail level, and selection, plus the generated delta
 as returned. A missing delta is null; a returned empty delta is an empty array.
 Version-zero reads retain the requested name without creating a constitution.
 Retrieve the referenced historical version, not current direction, when

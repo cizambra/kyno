@@ -211,7 +211,7 @@ async def test_given_a_saved_delta_when_getting_delivery_over_mcp_then_delta_is_
         {"current_version": 0, "delta": ["The mission changed."]},
         operation="get_changes_since",
         constitution="default",
-        arguments={"known_version": 0},
+        arguments={"last_seen_version": 0},
         context={"correlation_id": None, "metadata": {}},
     )
     async with create_connected_server_and_client_session(

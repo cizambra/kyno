@@ -45,6 +45,7 @@ def register_tools(server: Server, control_plane: ControlPlane, token_store=None
                     control_plane,
                     arguments.get("constitution"),
                     arguments.get("detail", DetailLevel.COMPACT),
+                    version=arguments.get("version"),
                 )
             case "get_changes_since":
                 _require(arguments, "known_version")

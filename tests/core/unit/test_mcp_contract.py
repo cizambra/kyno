@@ -10,6 +10,37 @@ from kyno.sdk.client import RESOURCE_URI as SDK_RESOURCE_URI
 from kyno.wire import RESOURCE_URI
 
 
+@pytest.mark.parametrize("detail", ["compact", "full"])
+def test_given_updates_when_get_constitution_selects_a_version_then_requested_content_returns(
+    cp, detail
+):
+    cp.set_direction(
+        mission="Original",
+        declaration="Declaration",
+        principles=[{"title": "Honesty", "description": "State facts"}],
+        change_note="initial",
+    )
+    cp.set_direction(mission="Current", change_note="updated")
+    result = mcp_handlers.handle_get_constitution(cp, detail=detail, version=1)
+    assert result["version"] == 1
+    assert result["mission"] == "Original"
+    assert ("declaration" in result) is (detail == "full")
+    assert ("description" in result["principles"][0]) is (detail == "full")
+
+
+@pytest.mark.parametrize("version", [-1, True, "1", 1.5])
+def test_given_invalid_version_when_get_constitution_is_called_then_it_is_rejected(cp, version):
+    with pytest.raises(ValueError, match="version"):
+        mcp_handlers.handle_get_constitution(cp, version=version)
+
+
+def test_given_get_constitution_when_inspecting_version_then_nonnegative_integers_are_required():
+    tool = next(tool for tool in mcp_tools.TOOLS if tool.name == "get_constitution")
+    assert tool.inputSchema["properties"]["version"]["type"] == "integer"
+    assert tool.inputSchema["properties"]["version"]["minimum"] == 0
+    assert "version" not in tool.inputSchema.get("required", [])
+
+
 def test_given_a_typed_token_scope_when_asking_whoami_then_a_plain_string_is_returned():
     token = Token(id=7, name="deploy", scope=TokenScope.WRITE, created_at=datetime.now(UTC))
 

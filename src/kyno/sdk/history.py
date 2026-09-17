@@ -1,15 +1,32 @@
 # SPDX-License-Identifier: MIT
-from typing import TypeVar
+from typing import NotRequired, TypeVar
 
 from pydantic import TypeAdapter
+from typing_extensions import TypedDict
 
+from kyno.sdk.cell import Direction
 from kyno.sdk.client import SessionRunner, _payload
 from kyno.sdk.errors import KynoHistoryError, KynoUnavailableError
 from kyno.wire.delivery_record import DeliveryPage, DeliveryRecord
+from kyno.wire.models import DetailLevel, check_detail
+
+
+class _ConstitutionPrinciple(TypedDict):
+    title: str
+    description: NotRequired[str]
+
+
+class _Constitution(TypedDict):
+    version: int
+    mission: str
+    declaration: NotRequired[str]
+    principles: list[_ConstitutionPrinciple]
+
 
 HistoryResult = TypeVar("HistoryResult")
 _record = TypeAdapter(DeliveryRecord)
 _page = TypeAdapter(DeliveryPage)
+_constitution = TypeAdapter(_Constitution)
 
 
 def _query(
@@ -59,3 +76,34 @@ def list_delivery_records(
         {key: value for key, value in filters.items() if value is not None},
         _page,
     )
+
+
+def get_constitution(
+    runner: SessionRunner,
+    constitution: str = "default",
+    *,
+    version: int | None = None,
+    context: str | DetailLevel = DetailLevel.COMPACT,
+) -> Direction:
+    context = check_detail(context, "context")
+    if version is not None and (type(version) is not int or version < 0):
+        raise ValueError("version must be a non-negative integer")
+    if not isinstance(constitution, str) or not constitution.strip():
+        raise ValueError("constitution must be a non-empty string")
+    arguments: dict[str, object] = {"constitution": constitution, "detail": context.value}
+    if version is not None:
+        arguments["version"] = version
+    row = _query(runner, "get_constitution", arguments, _constitution)
+    if row["version"] < 0 or (version is not None and row["version"] != version):
+        raise KynoUnavailableError("bad reply from kyno: unexpected constitution version")
+    try:
+        return Direction(
+            constitution=constitution,
+            version=row["version"],
+            mission=row["mission"],
+            declaration=row.get("declaration", ""),
+            principles=tuple(row["principles"]),
+            context=context,
+        )
+    except Exception as exc:
+        raise KynoUnavailableError(f"bad reply from kyno: {exc}") from exc

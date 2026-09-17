@@ -461,3 +461,37 @@ async def test_given_disabled_recording_when_attribution_fails_then_it_is_not_re
     monkeypatch.setattr(module, "_request_token", fail_attribution)
     response = await invoke(server, "get_constitution")
     assert response["recording"]["status"] == "disabled"
+
+
+@pytest.mark.parametrize("version, served_version", [(None, 2), (0, 0), (1, 1)])
+async def test_given_known_version_when_get_constitution_is_called_then_it_is_recorded_for_audit(
+    memory_store, version, served_version
+):
+    server, _, plane = server_with_history(memory_store)
+    plane.set_direction(mission="Current", change_note="Updated")
+    arguments = {"known_version": 2}
+    if version is not None:
+        arguments["version"] = version
+    response = await invoke(server, "get_constitution", arguments)
+    record = saved_record(memory_store, response["recording"]["record_id"])
+    assert record["served_version"] == response["version"] == served_version
+    assert record["known_version"] == 2
+    assert (record["constitution_id"] is None) is (served_version == 0)
+
+
+@pytest.mark.parametrize("version", [-1, True, "1", 1.5, None, 99])
+async def test_given_invalid_version_when_get_constitution_is_called_then_no_delivery_is_recorded(
+    memory_store, version
+):
+    server, _, _ = server_with_history(memory_store)
+    response = await server.request_handlers[types.CallToolRequest](
+        types.CallToolRequest(
+            method="tools/call",
+            params=types.CallToolRequestParams(
+                name="get_constitution",
+                arguments={"version": version},
+            ),
+        )
+    )
+    assert response.root.isError
+    assert records(memory_store) == []

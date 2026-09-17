@@ -7,6 +7,7 @@ import pytest
 
 from kyno.sdk import KynoConnection, history
 from kyno.sdk.errors import KynoHistoryError, KynoRefusedError, KynoUnavailableError
+from kyno.wire.models import DetailLevel
 
 
 def reply(payload, *, error=False):
@@ -47,7 +48,9 @@ def test_given_malformed_page_when_listing_history_then_unavailable_is_raised(pa
         history.list_delivery_records(runner)
 
 
-@pytest.mark.parametrize("operation", ["get_delivery_record", "list_delivery_records"])
+@pytest.mark.parametrize(
+    "operation", ["get_delivery_record", "list_delivery_records", "get_constitution"]
+)
 def test_given_mcp_error_when_reading_history_then_sdk_exception_contains_the_server_error_text(
     operation,
 ):
@@ -59,7 +62,9 @@ def test_given_mcp_error_when_reading_history_then_sdk_exception_contains_the_se
 
 
 @pytest.mark.parametrize("failure", [KynoUnavailableError("offline"), KynoRefusedError("403")])
-@pytest.mark.parametrize("operation", ["get_delivery_record", "list_delivery_records"])
+@pytest.mark.parametrize(
+    "operation", ["get_delivery_record", "list_delivery_records", "get_constitution"]
+)
 def test_given_transport_failure_when_reading_history_then_original_failure_is_preserved(
     failure, operation
 ):
@@ -118,3 +123,75 @@ def test_given_list_filters_when_querying_the_connection_then_mcp_receives_the_e
     }
 
     session.call_tool.assert_awaited_once_with("list_delivery_records", expected_arguments)
+
+
+@pytest.mark.parametrize("version", [-1, True, "1", 1.5])
+def test_given_invalid_version_when_get_constitution_is_called_then_request_is_not_sent(version):
+    runner = Mock()
+    with pytest.raises(ValueError, match="version"):
+        history.get_constitution(runner, version=version)
+    runner.call.assert_not_called()
+
+
+@pytest.mark.parametrize("version", [None, 0, 3])
+@pytest.mark.parametrize("context", list(DetailLevel))
+def test_given_version_selection_when_get_constitution_is_called_then_exact_tool_arguments_are_sent(
+    version, context
+):
+    returned_version = 3 if version is None else version
+    payload = {"version": returned_version, "mission": "", "principles": []}
+    session = SimpleNamespace(call_tool=AsyncMock(return_value=reply(payload)))
+    runner = Mock()
+    runner.call.side_effect = lambda callback: asyncio.run(callback(session))
+    result = KynoConnection(runner).get_constitution("example", version=version, context=context)
+    assert result.version == returned_version
+    assert result.context is context
+    expected = {"constitution": "example", "detail": context.value}
+    if version is not None:
+        expected["version"] = version
+    session.call_tool.assert_awaited_once_with("get_constitution", expected)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        [None],
+        {"version": 1},
+        {"version": 2, "mission": "M", "declaration": "D", "principles": []},
+        {"version": -1, "mission": "M", "declaration": "D", "principles": []},
+        {"version": True, "mission": "M", "declaration": "D", "principles": []},
+        [{"version": 1, "mission": "M", "declaration": "D", "principles": []}] * 2,
+        {"version": 1, "mission": "M", "declaration": "D", "principles": [{}]},
+        {
+            "version": 1,
+            "mission": "M",
+            "declaration": "D",
+            "principles": [{"title": "", "description": ""}],
+        },
+    ],
+)
+def test_given_malformed_reply_when_get_constitution_is_called_then_unavailable_is_raised(payload):
+    runner = Mock()
+    runner.call.return_value = reply(payload)
+    with pytest.raises(KynoUnavailableError):
+        history.get_constitution(runner, version=1)
+
+
+@pytest.mark.parametrize("constitution", [None, 1, "", "   "])
+def test_given_invalid_name_when_get_constitution_is_called_then_request_is_not_sent(constitution):
+    runner = Mock()
+    with pytest.raises(ValueError, match="constitution"):
+        history.get_constitution(runner, constitution, version=1)
+    runner.call.assert_not_called()
+
+
+@pytest.mark.parametrize("context", ["unknown", None, 1])
+@pytest.mark.parametrize("version", [0, 1])
+def test_given_invalid_context_when_get_constitution_is_called_then_request_is_not_sent(
+    context, version
+):
+    runner = Mock()
+    with pytest.raises(ValueError, match="context"):
+        KynoConnection(runner).get_constitution(version=version, context=context)
+    runner.call.assert_not_called()

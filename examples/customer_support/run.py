@@ -1,4 +1,4 @@
-"""Run two support answers with a Kyno pull before each model call."""
+"""Plan and draft support responses with Kyno direction before each model call."""
 
 import argparse
 import json
@@ -26,15 +26,46 @@ SCENARIO = (
 
 class State(KynoState):
     run_id: str
+    plan: str
+    plan_version: int
+    first_answer: str
+    second_answer: str
+    replan_needed: bool
+    plan_change_summary: str
 
 
-def prepare_messages(state):
-    """Build model input from current, written direction; refuse empty or fallback state."""
+def require_current_direction(state):
+    """Refuse empty or fallback direction before planning or inference."""
     if state["kyno_version"] == 0 or state["kyno_delivery_status"] != DeliveryStatus.CURRENT:
         raise ValueError("A current, written constitution is required before calling the model")
+
+
+def task_prompt(state, step_id):
+    """Supply the scenario, existing work, and the application's task for this call."""
+    if step_id == "plan":
+        return SCENARIO + (
+            "\n\nCreate a short plan with two stages: draft a response, then finalize it. "
+            "Use the supplied direction to explain the tradeoffs. Do not draft the response yet."
+        )
+    prompt = f"{SCENARIO}\n\nCurrent plan:\n{state['plan']}"
+    if step_id == "first_answer":
+        return prompt + "\n\nCarry out the drafting stage. Produce a draft, not a sent message."
+    prompt += f"\n\nCompleted draft (not sent):\n{state['first_answer']}"
+    if step_id == "replan":
+        prompt += f"\n\nChanges observed:\n{state['plan_change_summary']}"
+        return prompt + (
+            "\n\nDirection changed. Revise only the remaining finalization plan. "
+            "Use the completed draft as existing work; do not redo the drafting stage."
+        )
+    return prompt + "\n\nCarry out the remaining plan and produce the final proposed response."
+
+
+def prepare_messages(state, step_id):
+    """Build model input from current direction and the application's plan and draft."""
+    require_current_direction(state)
     return [
         {"role": "system", "content": state["kyno_direction"]},
-        {"role": "user", "content": SCENARIO},
+        {"role": "user", "content": task_prompt(state, step_id)},
     ]
 
 
@@ -50,16 +81,17 @@ def supplied_direction_event(state, identity, messages):
         "status": state["kyno_delivery_status"],
         "context": state["kyno_context"],
         "direction": messages[0]["content"],
-        "scenario": messages[1]["content"],
+        "scenario": SCENARIO,
+        "task": messages[1]["content"],
     }
 
 
-def answer_node(model, binder, *, model_name, step_id, emit):
+def model_node(model, binder, *, model_name, step_id, emit):
     """Create a model node with a fresh pull and separate supplied/output events."""
 
     @pull_before(binder)
     def node(state):
-        messages = prepare_messages(state)
+        messages = prepare_messages(state, step_id)
         identity = {
             "run_id": state["run_id"],
             "step_id": step_id,
@@ -76,23 +108,35 @@ def answer_node(model, binder, *, model_name, step_id, emit):
                 "response": response.model_dump(mode="json"),
             }
         )
-        return {}
+        content = response.content
+        text = content if isinstance(content, str) else json.dumps(content, ensure_ascii=False)
+        if step_id in ("plan", "replan"):
+            return {"plan": text, "plan_version": state["kyno_version"]}
+        return {step_id: text}
 
     return node
 
 
 def run_example(model, binder, *, model_name, wait_for_operator, emit):
-    """Run one graph with two answers and an operator pause between them."""
+    """Plan, draft, check for changes, optionally replan, and finalize in one graph."""
 
     def operator_pause(state):
         wait_for_operator()
         return {}
 
+    @pull_before(binder)
+    def check_direction(state):
+        require_current_direction(state)
+        return {
+            "replan_needed": state["kyno_version"] > state["plan_version"],
+            "plan_change_summary": "\n".join(state["kyno_change_notes"] + state["kyno_delta"]),
+        }
+
     graph = StateGraph(State)
-    for step_id in ("first_answer", "second_answer"):
+    for step_id in ("plan", "first_answer", "replan", "second_answer"):
         graph.add_node(
             step_id,
-            answer_node(
+            model_node(
                 model,
                 binder,
                 model_name=model_name,
@@ -101,9 +145,17 @@ def run_example(model, binder, *, model_name, wait_for_operator, emit):
             ),
         )
     graph.add_node("operator_pause", operator_pause)
-    graph.add_edge(START, "first_answer")
+    graph.add_node("check_direction", check_direction)
+    graph.add_edge(START, "plan")
+    graph.add_edge("plan", "first_answer")
     graph.add_edge("first_answer", "operator_pause")
-    graph.add_edge("operator_pause", "second_answer")
+    graph.add_edge("operator_pause", "check_direction")
+    graph.add_conditional_edges(
+        "check_direction",
+        lambda state: "replan" if state["replan_needed"] else "second_answer",
+        {"replan": "replan", "second_answer": "second_answer"},
+    )
+    graph.add_edge("replan", "second_answer")
     graph.add_edge("second_answer", END)
     return graph.compile().invoke({"run_id": str(uuid.uuid4())})
 
@@ -134,7 +186,9 @@ def parse_arguments(argv):
     parser.add_argument("--constitution", default="customer-support")
     parser.add_argument("--model", required=True, help="OpenAI model ID selected by the operator.")
     parser.add_argument(
-        "--allow-model-calls", action="store_true", help="Consent to two billable model calls."
+        "--allow-model-calls",
+        action="store_true",
+        help="Consent to three or four billable model calls.",
     )
     parser.add_argument(
         "--record", type=Path, help="New JSONL file for sensitive receipts and responses."

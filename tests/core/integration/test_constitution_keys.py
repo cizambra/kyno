@@ -33,6 +33,13 @@ def test_given_invalid_key_when_reading_or_importing_then_no_identity_is_created
         memory_store.import_versions(key, [])
 
 
+def test_given_unresolved_key_when_exporting_from_storage_then_explicit_key_is_required(
+    memory_store,
+):
+    with pytest.raises(ValueError, match="constitution key"):
+        memory_store.export_versions(None)
+
+
 def test_given_padded_key_when_constructing_sdk_values_then_identity_is_normalized():
     assert DirectionBinder(Mock(), " eu-west ").constitution_key == "eu-west"
     assert Direction.empty(" eu-west ").constitution_key == "eu-west"

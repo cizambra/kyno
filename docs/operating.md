@@ -262,6 +262,10 @@ Each control-plane operation selects its own constitution. Omit the name or
 pass `None` to use `default`; pass `constitution_key="eu"` to select `eu` for
 that operation. Selecting a name never changes subsequent operations.
 
+Core resolves an omitted selection to `default`. Adapters, the SDK, and MCP
+preserve omission until Core answers. Direct SQL store operations require an
+explicit key.
+
 Constitution keys are unique within a database. Surrounding whitespace is
 trimmed; the remaining 1–200 characters must be lowercase ASCII letters or
 digits separated by single hyphens, such as `eu-west`. Blank keys are invalid.

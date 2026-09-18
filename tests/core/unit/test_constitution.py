@@ -6,7 +6,6 @@ from kyno.wire.constitution import check_constitution_key
 @pytest.mark.parametrize(
     "value, expected",
     [
-        (None, "default"),
         ("default", "default"),
         ("  eu-west\n", "eu-west"),
         (" a" + "b" * 199 + " ", "a" + "b" * 199),
@@ -21,6 +20,7 @@ def test_given_valid_key_when_checking_constitution_key_then_normalized_key_retu
 @pytest.mark.parametrize(
     "value",
     [
+        None,
         "",
         " \n",
         "Acme",

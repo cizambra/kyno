@@ -200,7 +200,7 @@ def test_given_multiple_deliveries_when_getting_by_id_then_exact_decoded_record_
         "record_id": identifier,
         "recorded_at": raw["recorded_at"],
         "constitution_id": None,
-        "requested_constitution": "missing",
+        "constitution_key": "missing",
         "served_version": 0,
         "operation": "get_direction",
         "last_seen_version": None,
@@ -211,7 +211,10 @@ def test_given_multiple_deliveries_when_getting_by_id_then_exact_decoded_record_
         "correlation_id": "session",
         "metadata": {"nested": [1]},
     }
-    assert set(raw) == set(expected) | {"sequence"}
+    assert set(raw) == (set(expected) - {"constitution_key"}) | {
+        "sequence",
+        "requested_constitution",
+    }
     assert SqlDeliveryRecordStore(store.engine).get(identifier) == expected
 
 
@@ -282,10 +285,10 @@ def test_given_two_constitutions_when_recording_the_second_then_it_links_to_the_
             select(constitutions.c.id).where(constitutions.c.name == "support")
         )
 
-    append(store, {"version": 1, "mission": "Resolve issues"}, constitution="support")
+    identifier = append(store, {"version": 1, "mission": "Resolve issues"}, constitution="support")
 
-    record = rows(store)[0]
-    assert record["requested_constitution"] == "support"
+    record = SqlDeliveryRecordStore(store.engine).get(identifier)
+    assert record["constitution_key"] == "support"
     assert record["constitution_id"] == support_id
 
 

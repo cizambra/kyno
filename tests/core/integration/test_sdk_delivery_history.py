@@ -41,7 +41,7 @@ def test_given_filtered_history_when_advancing_cursor_then_matching_summaries_re
     connection, history, identifiers = history_connection
     filters = dict(
         correlation_id="run-1",
-        constitution="default",
+        constitution_key="default",
         since="2000-01-01T00:00:00Z",
         until="9998-01-01T00:00:00Z",
         limit=1,
@@ -59,11 +59,11 @@ def test_given_filtered_history_when_advancing_cursor_then_matching_summaries_re
     "filters",
     [
         {"correlation_id": "absent"},
-        {"constitution": "absent"},
+        {"constitution_key": "absent"},
         {"since": "9998-01-01T00:00:00Z"},
         {"until": "2000-01-01T00:00:00Z"},
     ],
-    ids=["correlation", "constitution", "since", "until"],
+    ids=["correlation", "constitution_key", "since", "until"],
 )
 def test_given_nonmatching_filter_when_listing_with_sdk_then_empty_page_returns(
     history_connection, filters

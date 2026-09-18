@@ -29,7 +29,7 @@ def test_given_distinct_binders_when_bind_runs_then_records_keep_each_constituti
     assert connection.binder().bind().mission == "Support customers"
     assert first.bind().mission == "Support customers"
     records = history.list()["items"]
-    assert [record["requested_constitution"] for record in records] == [
+    assert [record["constitution_key"] for record in records] == [
         constitution,
         "default",
         "default",

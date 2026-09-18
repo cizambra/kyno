@@ -1,5 +1,6 @@
 from io import StringIO
 
+import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import Integer, create_engine, inspect
@@ -685,11 +686,17 @@ def test_given_versions_when_delivery_records_migrate_then_upgrade_and_downgrade
         )
 
 
-def test_given_mysql_at_delivery_schema_when_upgrading_then_all_timestamps_gain_microseconds():
+@pytest.mark.parametrize(
+    "migration, revision, sql_type",
+    [(command.upgrade, "0007:0008", "DATETIME(6)"), (command.downgrade, "0008:0007", "DATETIME")],
+)
+def test_given_mysql_when_changing_timestamp_precision_then_each_column_retains_nullability(
+    migration, revision, sql_type
+):
     output = StringIO()
     config = Config("alembic.ini", output_buffer=output)
     config.set_main_option("sqlalchemy.url", "mysql+pymysql://")
-    command.upgrade(config, "0007:head", sql=True)
+    migration(config, revision, sql=True)
     statements = output.getvalue()
     columns = {
         "constitutions": ("created_at", "published_at"),
@@ -700,14 +707,19 @@ def test_given_mysql_at_delivery_schema_when_upgrading_then_all_timestamps_gain_
         for name in names:
             nullable = "NOT NULL" if name == "created_at" else "NULL"
             assert (
-                f"ALTER TABLE kyno_{table} CHANGE {name} {name} DATETIME(6) {nullable}"
-                in statements
+                f"ALTER TABLE kyno_{table} CHANGE {name} {name} {sql_type} {nullable}" in statements
             )
 
 
-def test_given_mysql_microsecond_schema_when_downgrading_then_timestamp_precision_returns_to_zero():
+@pytest.mark.parametrize("url", ["sqlite://", "postgresql://"])
+@pytest.mark.parametrize(
+    "migration, revision", [(command.upgrade, "0007:0008"), (command.downgrade, "0008:0007")]
+)
+def test_given_other_databases_when_timestamp_precision_migrates_then_no_table_is_altered(
+    url, migration, revision
+):
     output = StringIO()
     config = Config("alembic.ini", output_buffer=output)
-    config.set_main_option("sqlalchemy.url", "mysql+pymysql://")
-    command.downgrade(config, "0008:0007", sql=True)
-    assert output.getvalue().count(" DATETIME ") == 7
+    config.set_main_option("sqlalchemy.url", url)
+    migration(config, revision, sql=True)
+    assert "ALTER TABLE" not in output.getvalue()

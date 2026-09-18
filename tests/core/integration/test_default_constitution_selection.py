@@ -9,18 +9,18 @@ from kyno.service import ControlPlane
 def plane(memory_store):
     control_plane = ControlPlane(memory_store)
     control_plane.apply_direction(
-        mission="Default first", change_note="Initial", constitution="default"
+        mission="Default first", change_note="Initial", constitution_key="default"
     )
     control_plane.apply_direction(
-        mission="Default second", change_note="Updated", constitution="default"
+        mission="Default second", change_note="Updated", constitution_key="default"
     )
     control_plane.apply_direction(
-        mission="Support first", change_note="Initial", constitution="support"
+        mission="Support first", change_note="Initial", constitution_key="support"
     )
     return control_plane
 
 
-@pytest.fixture(params=[{}, {"constitution": None}], ids=["omitted", "explicit-none"])
+@pytest.fixture(params=[{}, {"constitution_key": None}], ids=["omitted", "explicit-none"])
 def default_selection(request):
     return request.param
 

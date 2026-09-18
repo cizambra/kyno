@@ -570,6 +570,23 @@ def test_given_no_name_when_publishing_then_the_default_is_used_and_the_flag_ove
     assert "/constitutions/eu" in r.output
 
 
+@pytest.mark.parametrize("key", ["eu-west", "a" * 200])
+def test_given_padded_key_when_cli_publish_and_unpublish_run_then_output_uses_trimmed_key(
+    tmp_path, monkeypatch, key
+):
+    cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    assert apply_yaml(tmp_path, mission="Help", constitution=key, note="init").exit_code == 0
+
+    published = runner.invoke(app, ["publish", "--constitution", f" {key} "])
+
+    assert published.exit_code == 0
+    assert f"  GET /constitutions/{key}" in published.stdout.splitlines()
+    unpublished = runner.invoke(app, ["unpublish", "--constitution", f" {key} "])
+    assert unpublished.exit_code == 0
+    assert unpublished.stdout.strip() == f"unpublished '{key}'"
+
+
 def test_given_a_constitution_with_no_direction_when_publishing_then_the_error_is_clean(
     tmp_path, monkeypatch
 ):

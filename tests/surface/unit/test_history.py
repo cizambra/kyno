@@ -87,6 +87,7 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
     "filters, expected_arguments",
     [
         ({}, {"limit": 50}),
+        ({"constitution": " support "}, {"constitution": "support", "limit": 50}),
         (
             {
                 "correlation_id": "run-42",
@@ -106,7 +107,11 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
             },
         ),
     ],
-    ids=["default-limit-without-filters", "all-filters-including-zero-cursor"],
+    ids=[
+        "default-limit-without-filters",
+        "normalized-key-filter",
+        "all-filters-including-zero-cursor",
+    ],
 )
 def test_given_list_filters_when_querying_the_connection_then_mcp_receives_the_exact_arguments(
     filters, expected_arguments
@@ -178,12 +183,40 @@ def test_given_malformed_reply_when_get_constitution_is_called_then_unavailable_
         history.get_constitution(runner, version=1)
 
 
-@pytest.mark.parametrize("constitution", [None, 1, "", "   "])
+@pytest.mark.parametrize("constitution", [1, "", "   "])
 def test_given_invalid_name_when_get_constitution_is_called_then_request_is_not_sent(constitution):
     runner = Mock()
     with pytest.raises(ValueError, match="constitution"):
         history.get_constitution(runner, constitution, version=1)
     runner.call.assert_not_called()
+
+
+@pytest.mark.parametrize("key", ["", " ", "Upper", "a" * 201])
+def test_given_invalid_key_when_list_delivery_records_runs_then_mcp_request_is_not_sent(
+    key,
+):
+    runner = Mock()
+    with pytest.raises(ValueError, match="constitution key"):
+        history.list_delivery_records(runner, constitution=key)
+    runner.call.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "key, expected", [(None, "default"), (" a" + "b" * 199 + " ", "a" + "b" * 199)]
+)
+def test_given_omitted_or_padded_key_when_get_constitution_runs_then_request_uses_resolved_key(
+    key, expected
+):
+    session = SimpleNamespace(
+        call_tool=AsyncMock(return_value=reply({"version": 0, "mission": "", "principles": []}))
+    )
+    runner = Mock()
+    runner.call.side_effect = lambda operation: asyncio.run(operation(session))
+    direction = history.get_constitution(runner, key)
+    assert direction.constitution == expected
+    session.call_tool.assert_awaited_once_with(
+        "get_constitution", {"constitution": expected, "detail": "compact"}
+    )
 
 
 @pytest.mark.parametrize("detail", ["unknown", None, 1])

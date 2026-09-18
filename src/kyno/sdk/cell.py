@@ -5,6 +5,7 @@ import threading
 from dataclasses import dataclass
 
 from kyno.sdk.recording import RecordingReceipt
+from kyno.wire.constitution import check_constitution_key
 from kyno.wire.models import (
     DIRECTION_MARKER,
     ChangesSince,
@@ -46,6 +47,7 @@ class Direction(HoldsPrinciples):
 
     def __post_init__(self) -> None:
         super().__post_init__()
+        object.__setattr__(self, "constitution", check_constitution_key(self.constitution))
         object.__setattr__(self, "detail", check_detail(self.detail))
 
     @classmethod

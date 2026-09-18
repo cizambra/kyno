@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import re
 from collections.abc import Callable
 from datetime import UTC, datetime
 
@@ -26,6 +25,7 @@ from kyno.models import (
 )
 from kyno.store.base import ConstitutionStore
 from kyno.store.delivery_record import SqlDeliveryRecordStore
+from kyno.wire.constitution import is_constitution_key, suggest_constitution_key
 from kyno.wire.delivery import RecordingStatus, recording_result
 from kyno.wire.models import (
     DIRECTION_MARKER,
@@ -119,11 +119,6 @@ _EMPTY_CHANGES = ChangesSince(
 )
 
 
-# Lowercase letters and digits, single hyphens between them: the slug shape
-# every publishing platform settled on.
-_SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
-
-
 def _delta(before, after) -> tuple[str, ...]:
     """What moved between two versions, in the wording of both.
 
@@ -147,21 +142,14 @@ def _delta(before, after) -> tuple[str, ...]:
     return tuple(lines)
 
 
-def _slugged(name: str) -> str:
-    """The name the caller probably meant, used only in the error message.
-    Publishing never transforms a name, because the name in the URL has to
-    be the one agents pass over MCP."""
-    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
-
-
 def _check_publishable(name: str) -> None:
     """A published name is a URL and an identity at once: it is what
     /constitutions/<name> serves and what agents pass over MCP. Slugs are what
     survive being pasted into a chat, a slide, or an address bar unmangled, so
     a name that is not one is refused rather than quietly rewritten."""
-    if _SLUG.fullmatch(name):
+    if is_constitution_key(name):
         return
-    suggestion = _slugged(name)
+    suggestion = suggest_constitution_key(name)
     hint = f" like '{suggestion}'" if suggestion else ""
     raise UnpublishableNameError(
         f"'{name}' cannot be published: use a lowercase-and-hyphens name{hint}"

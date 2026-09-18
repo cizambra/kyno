@@ -37,7 +37,7 @@ def test_given_an_operator_update_when_the_graph_continues_then_each_call_record
     directory = Path(example.__file__).parent
     initial = yaml.safe_load((directory / "direction-v1.yaml").read_text())
     revised = yaml.safe_load((directory / "direction-v2.yaml").read_text())
-    control_plane.set_direction(**initial, change_note="initial")
+    control_plane.apply_direction(**initial, change_note="initial")
     operator_token = mint(server_store, scope="write", name="operator")
     reads = []
     original_read = control_plane.changes_since
@@ -143,7 +143,7 @@ def test_given_unchanged_direction_when_graph_resumes_then_it_skips_replanning(
     example, live_server, model
 ):
     control_plane, url, token = live_server
-    control_plane.set_direction(mission="Help", change_note="initial")
+    control_plane.apply_direction(mission="Help", change_note="initial")
     events = []
     with connect(url=url, token=token) as connection:
         example.run_example(
@@ -172,7 +172,7 @@ def test_given_model_failure_when_graph_calls_model_then_failed_call_has_directi
     example, live_server, model, failed_call
 ):
     control_plane, url, token = live_server
-    control_plane.set_direction(mission="Help", change_note="initial")
+    control_plane.apply_direction(mission="Help", change_note="initial")
     events = []
 
     class FailedModel:
@@ -183,7 +183,7 @@ def test_given_model_failure_when_graph_calls_model_then_failed_call_has_directi
 
     def operator():
         assert failed_call > 2
-        control_plane.set_direction(mission="Revised", change_note="update")
+        control_plane.apply_direction(mission="Revised", change_note="update")
 
     with (
         connect(url=url, token=token) as connection,
@@ -229,7 +229,7 @@ def test_given_failed_change_check_when_graph_resumes_then_no_replan_or_final_mo
     example, live_server, model, monkeypatch, fail_closed
 ):
     control_plane, url, token = live_server
-    control_plane.set_direction(mission="Help", change_note="initial")
+    control_plane.apply_direction(mission="Help", change_note="initial")
     events = []
 
     def fail(*args, **kwargs):
@@ -257,7 +257,7 @@ def test_given_failed_pull_when_graph_enters_model_node_then_that_model_call_doe
     example, live_server, model, monkeypatch, failed_read
 ):
     control_plane, url, token = live_server
-    control_plane.set_direction(mission="Help", change_note="initial")
+    control_plane.apply_direction(mission="Help", change_note="initial")
     original_read = control_plane.changes_since
     reads = []
     events = []
@@ -269,7 +269,7 @@ def test_given_failed_pull_when_graph_enters_model_node_then_that_model_call_doe
         return original_read(*args, **kwargs)
 
     def operator():
-        control_plane.set_direction(mission="Revised", change_note="update")
+        control_plane.apply_direction(mission="Revised", change_note="update")
 
     monkeypatch.setattr(control_plane, "changes_since", read)
     with connect(url=url, token=token) as connection, pytest.raises(KynoUnavailableError):
@@ -295,7 +295,7 @@ def test_given_failed_receipt_storage_when_starting_then_the_model_is_not_called
     example, live_server, model, failure
 ):
     control_plane, url, token = live_server
-    control_plane.set_direction(mission="Help", change_note="initial")
+    control_plane.apply_direction(mission="Help", change_note="initial")
 
     class Recording:
         def write(self, text):
@@ -326,7 +326,7 @@ def test_given_operator_cancellation_when_paused_then_only_plan_and_first_answer
     example, live_server, model
 ):
     control_plane, url, token = live_server
-    control_plane.set_direction(mission="Help", change_note="initial")
+    control_plane.apply_direction(mission="Help", change_note="initial")
     events = []
 
     def cancel():

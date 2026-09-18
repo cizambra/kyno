@@ -14,13 +14,13 @@ from kyno.wire import RESOURCE_URI
 def test_given_updates_when_get_constitution_selects_a_version_then_requested_content_returns(
     cp, detail
 ):
-    cp.set_direction(
+    cp.apply_direction(
         mission="Original",
         declaration="Declaration",
         principles=[{"title": "Honesty", "description": "State facts"}],
         change_note="initial",
     )
-    cp.set_direction(mission="Current", change_note="updated")
+    cp.apply_direction(mission="Current", change_note="updated")
     result = mcp_handlers.handle_get_constitution(cp, detail=detail, version=1)
     assert result["version"] == 1
     assert result["mission"] == "Original"
@@ -55,8 +55,8 @@ def test_given_the_current_direction_resource_when_importing_it_then_wire_is_aut
     assert SDK_RESOURCE_URI == RESOURCE_URI
 
 
-def test_given_a_set_direction_when_getting_the_constitution_then_it_round_trips(cp):
-    mcp_handlers.handle_set_direction(
+def test_given_applied_direction_when_calling_get_constitution_then_it_round_trips(cp):
+    mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by="op"
     )
     d = mcp_handlers.handle_get_constitution(cp)
@@ -65,10 +65,10 @@ def test_given_a_set_direction_when_getting_the_constitution_then_it_round_trips
 
 
 def test_given_versions_when_calling_get_changes_since_then_the_changes_return(cp):
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by=None
     )
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp, mission="M2", principles=None, change_note="pivot", created_by=None
     )
     d = mcp_handlers.handle_get_changes_since(cp, 1)
@@ -84,7 +84,7 @@ def test_given_a_fresh_store_when_getting_the_constitution_then_the_empty_state_
 
 
 def test_given_a_future_version_when_calling_get_changes_since_then_valueerror_raises(cp):
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by=None
     )
     with pytest.raises(ValueError):
@@ -107,21 +107,21 @@ def test_given_a_missing_change_note_when_requiring_it_then_it_raises_cleanly():
         mcp_handlers._require({}, "change_note")
 
 
-def test_given_a_no_op_change_when_calling_set_direction_then_it_maps_to_valueerror(cp):
-    mcp_handlers.handle_set_direction(
+def test_given_a_no_op_change_when_calling_apply_direction_then_it_maps_to_valueerror(cp):
+    mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by=None
     )
     with pytest.raises(ValueError):
-        mcp_handlers.handle_set_direction(
+        mcp_handlers.handle_apply_direction(
             cp, mission="M1", principles=["p1"], change_note="noop", created_by=None
         )
 
 
-def test_given_a_blank_change_note_when_calling_set_direction_then_it_maps_to_valueerror(cp):
+def test_given_a_blank_change_note_when_calling_apply_direction_then_it_maps_to_valueerror(cp):
     # _require only checks the key is present; a blank value must still be
     # rejected downstream (EmptyChangeError -> ValueError via _guard).
     with pytest.raises(ValueError):
-        mcp_handlers.handle_set_direction(
+        mcp_handlers.handle_apply_direction(
             cp, mission="M1", principles=["p1"], change_note="   ", created_by=None
         )
 
@@ -149,7 +149,7 @@ def test_given_the_tool_schemas_when_inspecting_then_constitution_is_an_optional
 
 
 def test_given_a_named_set_when_getting_that_name_then_it_round_trips(cp):
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp, mission="EU1", principles=["p1"], change_note="init", created_by="op", constitution="eu"
     )
     d = mcp_handlers.handle_get_constitution(cp, constitution="eu")
@@ -158,10 +158,10 @@ def test_given_a_named_set_when_getting_that_name_then_it_round_trips(cp):
 
 
 def test_given_a_name_when_calling_get_changes_since_then_it_reads_that_constitution(cp):
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp, mission="EU1", principles=["p1"], change_note="init", created_by=None, constitution="eu"
     )
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp, mission="EU2", principles=None, change_note="pivot", created_by=None, constitution="eu"
     )
     d = mcp_handlers.handle_get_changes_since(cp, 1, constitution="eu")
@@ -170,7 +170,7 @@ def test_given_a_name_when_calling_get_changes_since_then_it_reads_that_constitu
 
 
 def test_given_an_unknown_constitution_when_reading_over_mcp_then_the_empty_state_returns(cp):
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by=None
     )
     d = mcp_handlers.handle_get_constitution(cp, constitution="never-written")
@@ -180,7 +180,7 @@ def test_given_an_unknown_constitution_when_reading_over_mcp_then_the_empty_stat
 
 
 def test_given_no_detail_asked_when_getting_the_constitution_then_it_is_compact(cp):
-    mcp_handlers.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
+    mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
 
     d = mcp_handlers.handle_get_constitution(cp)
 
@@ -192,7 +192,7 @@ def test_given_no_detail_asked_when_getting_the_constitution_then_it_is_compact(
 
 
 def test_given_full_detail_when_getting_the_constitution_then_the_whole_document_comes(cp):
-    mcp_handlers.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
+    mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
 
     d = mcp_handlers.handle_get_constitution(cp, detail="full")
 
@@ -201,8 +201,8 @@ def test_given_full_detail_when_getting_the_constitution_then_the_whole_document
 
 
 def test_given_no_detail_asked_when_calling_get_changes_since_then_metadata_still_comes(cp):
-    mcp_handlers.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
+    mcp_handlers.handle_apply_direction(
         cp, mission="M2", principles=None, change_note="pivot", created_by=None
     )
 
@@ -215,8 +215,8 @@ def test_given_no_detail_asked_when_calling_get_changes_since_then_metadata_stil
 
 
 def test_given_full_detail_when_calling_get_changes_since_then_the_whole_document_comes(cp):
-    mcp_handlers.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
+    mcp_handlers.handle_apply_direction(
         cp, mission="M2", principles=None, change_note="pivot", created_by=None
     )
 
@@ -260,7 +260,7 @@ def test_given_any_detail_schema_when_reading_its_values_then_they_are_plain_str
 
 
 def test_given_a_declaration_when_calling_get_declaration_then_it_comes_with_its_version(cp):
-    mcp_handlers.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
+    mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
 
     d = mcp_handlers.handle_get_declaration(cp)
 
@@ -270,7 +270,7 @@ def test_given_a_declaration_when_calling_get_declaration_then_it_comes_with_its
 
 def test_given_no_declaration_when_calling_get_declaration_then_it_is_not_an_error(cp):
     # Reads never fail: "there is no declaration" is an answer, not a fault.
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=None, change_note="init", created_by=None
     )
     assert mcp_handlers.handle_get_declaration(cp) == {"version": 1, "declaration": ""}
@@ -281,7 +281,7 @@ def test_given_an_empty_store_when_calling_get_declaration_then_version_zero_ans
 
 
 def test_given_a_name_when_calling_get_declaration_then_it_reads_that_constitution(cp):
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp,
         mission="EU",
         declaration="The EU long form.",
@@ -295,7 +295,7 @@ def test_given_a_name_when_calling_get_declaration_then_it_reads_that_constituti
 
 
 def test_given_a_title_when_calling_get_principle_then_one_comes_in_full_with_its_version(cp):
-    mcp_handlers.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
+    mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
 
     d = mcp_handlers.handle_get_principle(cp, "Be honest")
 
@@ -307,7 +307,7 @@ def test_given_a_title_when_calling_get_principle_then_one_comes_in_full_with_it
 
 
 def test_given_a_title_when_calling_get_principle_then_the_match_is_exact(cp):
-    mcp_handlers.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
+    mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
     for near_miss in ("be honest", "Be honest ", "honest"):
         with pytest.raises(ValueError, match="honest"):
             mcp_handlers.handle_get_principle(cp, near_miss)
@@ -316,13 +316,13 @@ def test_given_a_title_when_calling_get_principle_then_the_match_is_exact(cp):
 def test_given_a_missing_title_when_calling_get_principle_then_the_error_names_it(cp):
     # Unlike an empty store, asking about a principle that is not there is a
     # real mistake, and the message has to be enough to spot the typo.
-    mcp_handlers.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
+    mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
     with pytest.raises(ValueError, match="Be hnoest"):
         mcp_handlers.handle_get_principle(cp, "Be hnoest")
 
 
 def test_given_a_name_when_calling_get_principle_then_it_reads_that_constitution(cp):
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp,
         mission="EU",
         principles=[{"title": "EU only", "description": "why"}],
@@ -336,7 +336,7 @@ def test_given_a_name_when_calling_get_principle_then_it_reads_that_constitution
 
 
 def test_given_two_principles_with_one_title_when_calling_get_principle_then_the_first_answers(cp):
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp,
         mission="M",
         principles=[
@@ -358,7 +358,7 @@ def test_given_the_targeted_reads_when_inspecting_schemas_then_argument_sources_
 
 
 def test_given_a_mission_when_calling_get_mission_then_the_headline_comes_with_its_version(cp):
-    mcp_handlers.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
+    mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
     assert mcp_handlers.handle_get_mission(cp) == {
         "version": 1,
         "mission": "Ship trustworthy lending",
@@ -370,7 +370,7 @@ def test_given_an_empty_store_when_calling_get_mission_then_version_zero_answers
 
 
 def test_given_a_name_when_calling_get_mission_then_it_reads_that_constitution(cp):
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp,
         mission="EU",
         principles=None,
@@ -383,7 +383,7 @@ def test_given_a_name_when_calling_get_mission_then_it_reads_that_constitution(c
 
 
 def test_given_no_detail_asked_when_calling_get_principles_then_titles_only_come(cp):
-    mcp_handlers.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
+    mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
     assert mcp_handlers.handle_get_principles(cp) == {
         "version": 1,
         "principles": [{"title": "Be honest"}],
@@ -393,7 +393,7 @@ def test_given_no_detail_asked_when_calling_get_principles_then_titles_only_come
 def test_given_explained_detail_when_calling_get_principles_then_every_description_comes(cp):
     # The slice an agent adjudicating between principles wants: all of them,
     # explained, without the mission or the declaration around them.
-    mcp_handlers.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
+    mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
     assert mcp_handlers.handle_get_principles(cp, detail="full") == {
         "version": 1,
         "principles": [{"title": "Be honest", "description": "Say the hard number first."}],
@@ -401,7 +401,7 @@ def test_given_explained_detail_when_calling_get_principles_then_every_descripti
 
 
 def test_given_no_principles_when_calling_get_principles_then_it_is_not_an_error(cp):
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=None, change_note="init", created_by=None
     )
     assert mcp_handlers.handle_get_principles(cp) == {"version": 1, "principles": []}
@@ -417,7 +417,7 @@ def test_given_a_detail_it_does_not_offer_when_calling_get_principles_then_it_re
 
 
 def test_given_a_name_when_calling_get_principles_then_it_reads_that_constitution(cp):
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp,
         mission="EU",
         principles=["EU only"],
@@ -432,7 +432,7 @@ def test_given_a_name_when_calling_get_principles_then_it_reads_that_constitutio
 def test_given_the_read_family_when_answering_then_each_carries_its_source_version(cp):
     # What makes mixing reads safe: two answers with the same version
     # describe one document.
-    mcp_handlers.handle_set_direction(cp, **RICH, change_note="init", created_by=None)
+    mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
     reads = (
         mcp_handlers.handle_get_constitution(cp),
         mcp_handlers.handle_get_mission(cp),
@@ -443,7 +443,7 @@ def test_given_the_read_family_when_answering_then_each_carries_its_source_versi
     assert [r["version"] for r in reads] == [1, 1, 1, 1, 1]
 
 
-def test_given_the_server_when_listing_tools_then_all_of_them_read_as_one_family():
+def test_given_the_server_when_listing_tools_then_apply_direction_is_the_write_tool():
     names = [t.name for t in mcp_tools.TOOLS]
     assert names == [
         "get_delivery_record",
@@ -454,13 +454,13 @@ def test_given_the_server_when_listing_tools_then_all_of_them_read_as_one_family
         "get_principles",
         "get_principle",
         "export_versions",
-        "set_direction",
+        "apply_direction",
         "whoami",
         "list_delivery_records",
     ]
     for tool in mcp_tools.TOOLS:
         description = tool.description
-        assert description.startswith("Return ") or description.startswith("Append "), tool.name
+        assert description.startswith(("Return ", "Apply ")), tool.name
         assert description.endswith("."), tool.name
         if tool.name.startswith("get_") and tool.name != "get_delivery_record":
             assert "constitution" in tool.inputSchema["properties"], tool.name
@@ -470,7 +470,7 @@ def test_given_a_markdown_declaration_when_calling_get_declaration_then_raw_mark
     # Data is markdown. Rendering it is the public HTML page's business, and
     # an agent asking for the declaration wants the source, not a document.
     source = "# What we are for\n\n- one\n- two\n"
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp, mission="M", declaration=source, principles=None, change_note="init", created_by=None
     )
     assert mcp_handlers.handle_get_declaration(cp)["declaration"] == source
@@ -478,10 +478,10 @@ def test_given_a_markdown_declaration_when_calling_get_declaration_then_raw_mark
 
 
 def test_given_versions_when_calling_export_versions_then_the_whole_history_comes_ascending(cp):
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=None, change_note="init", created_by="camilo"
     )
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp, mission="M2", principles=None, change_note="pivot", created_by=None
     )
     rows = mcp_handlers.handle_export_versions(cp)
@@ -492,7 +492,7 @@ def test_given_versions_when_calling_export_versions_then_the_whole_history_come
 
 def test_given_bounds_when_calling_export_versions_then_they_are_inclusive(cp):
     for n in (1, 2, 3):
-        mcp_handlers.handle_set_direction(
+        mcp_handlers.handle_apply_direction(
             cp, mission=f"M{n}", principles=None, change_note=f"n{n}", created_by=None
         )
     rows = mcp_handlers.handle_export_versions(cp, from_version=2, to_version=3)
@@ -503,8 +503,8 @@ def test_given_an_unwritten_name_when_calling_export_versions_then_the_list_is_e
     assert mcp_handlers.handle_export_versions(cp, "nope") == []
 
 
-def test_given_an_authorization_argument_when_setting_direction_then_it_is_recorded(cp):
-    result = mcp_handlers.handle_set_direction(
+def test_given_an_authorization_argument_when_calling_apply_direction_then_it_is_recorded(cp):
+    result = mcp_handlers.handle_apply_direction(
         cp,
         mission="M1",
         principles=None,
@@ -516,9 +516,9 @@ def test_given_an_authorization_argument_when_setting_direction_then_it_is_recor
     assert type(result["authorized_by"]) is str
 
 
-def test_given_authorization_types_when_inspecting_set_direction_then_the_schema_uses_strings():
-    set_direction = next(tool for tool in mcp_tools.TOOLS if tool.name == "set_direction")
-    values = set_direction.inputSchema["properties"]["authorized_by"]["enum"]
+def test_given_authorization_types_when_inspecting_apply_direction_then_the_schema_uses_strings():
+    apply_direction = next(tool for tool in mcp_tools.TOOLS if tool.name == "apply_direction")
+    values = apply_direction.inputSchema["properties"]["authorized_by"]["enum"]
 
     assert values == [value.value for value in AuthorizationType] + [None]
     assert all(type(value) is str for value in values[:-1])

@@ -89,7 +89,7 @@ def test_given_any_adapter_when_looking_for_writes_then_none_can_write_direction
     offenders = [
         path.relative_to(ADAPTERS).as_posix()
         for path in ADAPTERS.rglob("*.py")
-        if "set_direction" in path.read_text()
+        if "apply_direction" in path.read_text()
     ]
     assert offenders == []
 

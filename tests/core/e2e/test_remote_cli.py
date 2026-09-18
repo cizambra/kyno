@@ -29,14 +29,14 @@ def test_given_a_read_token_when_reading_history_over_http_then_full_content_is_
     store = SqlConstitutionStore(url=f"sqlite:///{tmp_path / 'server.sqlite3'}")
     store.create_all()
     control_plane = ControlPlane(store)
-    control_plane.set_direction(
+    control_plane.apply_direction(
         constitution="support",
         mission="",
         declaration="Explain.\nFully.",
         principles=[{"title": "Trust", "description": "Be honest."}],
         change_note="reviewed",
     )
-    control_plane.set_direction(
+    control_plane.apply_direction(
         constitution="support", mission="New mission", change_note="updated"
     )
     before = store.export_versions("support")

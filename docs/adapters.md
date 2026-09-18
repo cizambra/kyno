@@ -41,7 +41,7 @@ an adapter is expected to do falls out of these four behaviors.
 - **Planning.** `binder.plan()` returns a tracker: `direction()` pulls
   what to plan against, and `changed()` tells you when to re-plan the
   remaining work.
-- **Adapters are read-only.** They pull. `set_direction` stays an
+- **Adapters are read-only.** They pull. `apply_direction` stays an
   operator action, never something an adapter calls on the crew's
   behalf.
 

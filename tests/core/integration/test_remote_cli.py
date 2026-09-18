@@ -43,8 +43,8 @@ class FakeRemote:
                     from_version=arguments.get("from_version"),
                     to_version=arguments.get("to_version"),
                 )
-            elif name == "set_direction":
-                result = mcp_handlers.handle_set_direction(
+            elif name == "apply_direction":
+                result = mcp_handlers.handle_apply_direction(
                     self.cp,
                     mission=arguments.get("mission"),
                     declaration=arguments.get("declaration"),
@@ -91,18 +91,20 @@ def fake_dial(remote_cp, monkeypatch):
 
 
 def _three_versions(remote_cp):
-    remote_cp.set_direction(mission="M1", change_note="v1")
-    remote_cp.set_direction(mission="M2", change_note="v2")
-    remote_cp.set_direction(mission="M3", change_note="v3")
+    remote_cp.apply_direction(mission="M1", change_note="v1")
+    remote_cp.apply_direction(mission="M2", change_note="v2")
+    remote_cp.apply_direction(mission="M3", change_note="v3")
 
 
 @pytest.mark.parametrize("version", [1, 2, 3])
 def test_given_remote_history_when_reading_a_numbered_version_then_only_that_version_is_requested(
     fake_dial, remote_cp, monkeypatch, version
 ):
-    remote_cp.set_direction(mission="Other direction", change_note="other", constitution="default")
+    remote_cp.apply_direction(
+        mission="Other direction", change_note="other", constitution="default"
+    )
     for number in (1, 2, 3):
-        remote_cp.set_direction(
+        remote_cp.apply_direction(
             mission=f"Mission {number}", change_note=f"Change {number}", constitution="support"
         )
     calls = []
@@ -148,8 +150,8 @@ def test_given_remote_direction_when_reading_current_or_latest_then_output_and_e
     fake_dial, remote_cp, written, options
 ):
     if written:
-        remote_cp.set_direction(mission="First", change_note="first", constitution="support")
-        remote_cp.set_direction(mission="Second", change_note="second", constitution="support")
+        remote_cp.apply_direction(mission="First", change_note="first", constitution="support")
+        remote_cp.apply_direction(mission="Second", change_note="second", constitution="support")
     options = ["--remote", "--constitution", "support", *options]
     current = runner.invoke(app, ["current", *options])
     latest = runner.invoke(app, ["get-version", "latest", *options])
@@ -198,7 +200,7 @@ def test_given_an_invalid_remote_version_when_reading_then_no_connection_is_open
 
 
 def test_given_a_remote_head_when_reading_current_remotely_then_it_prints(fake_dial, remote_cp):
-    remote_cp.set_direction(mission="M-remote", change_note="init")
+    remote_cp.apply_direction(mission="M-remote", change_note="init")
     r = runner.invoke(app, ["current", "--remote"])
     assert r.exit_code == 0, r.output
     assert json.loads(r.stdout)["mission"] == "M-remote"
@@ -213,7 +215,7 @@ def test_given_an_empty_remote_when_reading_current_remotely_then_version_0_repo
 def test_given_a_remote_head_when_reading_current_yaml_remotely_then_the_file_format_prints(
     fake_dial, remote_cp
 ):
-    remote_cp.set_direction(mission="M-remote", change_note="init")
+    remote_cp.apply_direction(mission="M-remote", change_note="init")
     r = runner.invoke(app, ["current", "--remote", "--yaml"])
     assert r.exit_code == 0
     assert "constitution: default" in r.stdout and "mission: M-remote" in r.stdout
@@ -246,7 +248,7 @@ def test_given_a_file_when_applying_remotely_then_the_delta_shows_and_the_versio
 def test_given_identical_content_when_applying_remotely_then_it_is_a_clean_no_op(
     fake_dial, remote_cp, tmp_path
 ):
-    remote_cp.set_direction(mission="Same", change_note="init")
+    remote_cp.apply_direction(mission="Same", change_note="init")
     path = write_file(tmp_path, mission="Same")
     r = runner.invoke(app, ["apply", path, "--note", "again", "--remote", "--no-interactive"])
     assert r.exit_code == 0, r.output
@@ -269,7 +271,7 @@ def test_given_dry_run_when_applying_remotely_then_the_delta_prints_and_nothing_
 def test_given_a_matching_file_when_checking_remotely_then_it_matches_current_direction(
     fake_dial, remote_cp, tmp_path, constitution
 ):
-    remote_cp.set_direction(mission="M1", change_note="init", constitution=constitution)
+    remote_cp.apply_direction(mission="M1", change_note="init", constitution=constitution)
     path = write_file(tmp_path, mission="M1", constitution=constitution)
     r = runner.invoke(app, ["check", path, "--remote"])
     assert r.exit_code == 0, r.output
@@ -280,7 +282,7 @@ def test_given_a_matching_file_when_checking_remotely_then_it_matches_current_di
 def test_given_a_stale_file_when_checking_remotely_then_it_fails_with_the_delta(
     fake_dial, remote_cp, tmp_path, constitution
 ):
-    remote_cp.set_direction(mission="M1", change_note="init", constitution=constitution)
+    remote_cp.apply_direction(mission="M1", change_note="init", constitution=constitution)
     path = write_file(tmp_path, mission="M2", constitution=constitution)
     r = runner.invoke(app, ["check", path, "--remote"])
     assert r.exit_code == 1
@@ -334,8 +336,8 @@ def test_given_a_failed_remote_read_when_checking_then_it_fails_and_closes_the_c
 def test_given_remote_history_when_reading_history_remotely_then_the_lines_print(
     fake_dial, remote_cp
 ):
-    remote_cp.set_direction(mission="M1", change_note="init", created_by="camilo")
-    remote_cp.set_direction(mission="M2", change_note="pivot", created_by="ci")
+    remote_cp.apply_direction(mission="M1", change_note="init", created_by="camilo")
+    remote_cp.apply_direction(mission="M2", change_note="pivot", created_by="ci")
     r = runner.invoke(app, ["history", "--remote"])
     assert r.exit_code == 0
     lines = r.stdout.strip().splitlines()
@@ -348,7 +350,7 @@ def test_given_remote_history_when_exporting_remotely_then_rows_and_the_stderr_l
 ):
     # The stderr line needs no server data -- the name is the one the
     # caller asked for -- so it prints on remote exports too.
-    remote_cp.set_direction(mission="M1", change_note="init")
+    remote_cp.apply_direction(mission="M1", change_note="init")
     r = runner.invoke(app, ["export", "--remote"])
     assert r.exit_code == 0
     assert "Constitution 'default' exported" in r.stderr
@@ -357,7 +359,7 @@ def test_given_remote_history_when_exporting_remotely_then_rows_and_the_stderr_l
 
 
 def test_given_remote_flags_when_dialing_then_they_pass_through(fake_dial, remote_cp):
-    remote_cp.set_direction(mission="M1", change_note="init")
+    remote_cp.apply_direction(mission="M1", change_note="init")
     r = runner.invoke(app, ["current", "--remote", "--profile", "oncall", "--credentials", "ops"])
     assert r.exit_code == 0, r.output
     assert fake_dial.dialed == {"profile": "oncall", "credentials": "ops", "token_env": None}
@@ -389,8 +391,8 @@ def test_given_a_writer_racing_in_mid_apply_when_applying_remotely_then_nothing_
     """The delta was computed against the head we fetched. If the head moves
     before the write, the server refuses instead of applying an edit that was
     never reviewed against the new head."""
-    remote_cp.set_direction(mission="M1", change_note="init")
-    fake_dial.after_fetch = lambda: remote_cp.set_direction(
+    remote_cp.apply_direction(mission="M1", change_note="init")
+    fake_dial.after_fetch = lambda: remote_cp.apply_direction(
         mission="Raced in", change_note="someone else"
     )
     path = write_file(tmp_path, mission="M2")
@@ -572,10 +574,10 @@ def test_given_content_equal_to_the_head_when_applying_interactively_then_no_rev
 def test_given_two_older_versions_with_the_same_content_when_asking_then_the_newest_is_named(
     fake_dial, remote_cp, tmp_path
 ):
-    remote_cp.set_direction(mission="M1", change_note="v1")
-    remote_cp.set_direction(mission="M2", change_note="v2")
-    remote_cp.set_direction(mission="M1", change_note="v3, back to v1")
-    remote_cp.set_direction(mission="M4", change_note="v4")
+    remote_cp.apply_direction(mission="M1", change_note="v1")
+    remote_cp.apply_direction(mission="M2", change_note="v2")
+    remote_cp.apply_direction(mission="M1", change_note="v3, back to v1")
+    remote_cp.apply_direction(mission="M4", change_note="v4")
     path = write_file(tmp_path, mission="M1")
     r = runner.invoke(app, ["apply", path, "--note", "back", "--remote"], input="y\ny\n")
     assert r.exit_code == 0, r.output
@@ -587,8 +589,8 @@ def test_given_a_file_omitting_fields_when_carry_forward_matches_an_old_version_
 ):
     """The comparison uses the effective content: what the apply would
     write after omitted fields carry forward from the head."""
-    remote_cp.set_direction(mission="M1", principles=["p1"], change_note="v1")
-    remote_cp.set_direction(mission="M2", principles=["p1"], change_note="v2")
+    remote_cp.apply_direction(mission="M1", principles=["p1"], change_note="v1")
+    remote_cp.apply_direction(mission="M2", principles=["p1"], change_note="v2")
     # The file omits principles; p1 carries forward, so the result is v1.
     path = write_file(tmp_path, mission="M1")
     r = runner.invoke(app, ["apply", path, "--note", "back", "--remote"], input="y\ny\n")
@@ -599,8 +601,8 @@ def test_given_a_file_omitting_fields_when_carry_forward_matches_an_old_version_
 def test_given_the_same_mission_but_different_principles_when_applying_then_no_revert_asks(
     fake_dial, remote_cp, tmp_path
 ):
-    remote_cp.set_direction(mission="M1", principles=["p1"], change_note="v1")
-    remote_cp.set_direction(mission="M2", principles=["p1"], change_note="v2")
+    remote_cp.apply_direction(mission="M1", principles=["p1"], change_note="v1")
+    remote_cp.apply_direction(mission="M2", principles=["p1"], change_note="v2")
     p = pathlib.Path(tmp_path) / "c.yaml"
     p.write_text("constitution: default\nmission: M1\nprinciples:\n  - p2\n", encoding="utf-8")
     r = runner.invoke(app, ["apply", str(p), "--note", "new mix", "--remote"], input="y\n")

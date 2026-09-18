@@ -33,14 +33,14 @@ def test_given_a_live_server_when_the_adapter_refreshes_then_the_latest_directio
     live_server,
 ):
     control_plane, url, token = live_server
-    control_plane.set_direction(mission="M1", change_note="init")
+    control_plane.apply_direction(mission="M1", change_note="init")
 
     with connect(url=url, token=token) as connection:
         adapter = CrewAiKyno(connection.binder())
         context = FakeCtx()
 
         adapter.before_llm_call(context)
-        control_plane.set_direction(mission="M2", change_note="pivot")
+        control_plane.apply_direction(mission="M2", change_note="pivot")
         adapter.before_llm_call(context)
 
     direction_blocks = [message for message in context.messages if message["role"] == "system"]
@@ -57,12 +57,12 @@ def test_given_a_live_server_when_langgraph_refreshes_then_the_latest_direction_
     from kyno.adapters.langgraph.nodes import direction_node
 
     control_plane, url, token = live_server
-    control_plane.set_direction(mission="M1", change_note="init")
+    control_plane.apply_direction(mission="M1", change_note="init")
 
     with connect(url=url, token=token) as connection:
         refresh = direction_node(connection.binder())
         first = refresh({})
-        control_plane.set_direction(mission="M2", change_note="pivot")
+        control_plane.apply_direction(mission="M2", change_note="pivot")
         second = refresh(first)
 
     assert second["kyno_version"] == 2
@@ -81,7 +81,7 @@ def test_given_server_read_failure_when_langgraph_pulls_over_http_then_fallback_
 
     control_plane, url, token = live_server
     unavailable = read_failure
-    control_plane.set_direction(mission="M1", change_note="init", constitution="support")
+    control_plane.apply_direction(mission="M1", change_note="init", constitution="support")
     supplied = []
 
     def work(state):
@@ -94,7 +94,7 @@ def test_given_server_read_failure_when_langgraph_pulls_over_http_then_fallback_
         first = refresh({}) if cached else {}
         unavailable.set()
         fallback = refresh(first)
-        control_plane.set_direction(mission="M2", change_note="pivot", constitution="support")
+        control_plane.apply_direction(mission="M2", change_note="pivot", constitution="support")
         unavailable.clear()
         recovered = refresh(fallback)
 
@@ -117,7 +117,7 @@ def test_given_failed_reads_when_crewai_calls_again_then_observed_fallback_recov
     live_server, read_failure, cached
 ):
     control_plane, url, token = live_server
-    control_plane.set_direction(mission="M1", change_note="init", constitution="support")
+    control_plane.apply_direction(mission="M1", change_note="init", constitution="support")
     observed = []
     context = FakeCtx()
 
@@ -128,11 +128,11 @@ def test_given_failed_reads_when_crewai_calls_again_then_observed_fallback_recov
         adapter = CrewAiKyno(connection.binder("support"), on_direction=observe)
         if cached:
             adapter.before_llm_call(context)
-            control_plane.set_direction(mission="M2", change_note="pivot", constitution="support")
+            control_plane.apply_direction(mission="M2", change_note="pivot", constitution="support")
             adapter.before_llm_call(context)
         read_failure.set()
         adapter.before_llm_call(context)
-        control_plane.set_direction(
+        control_plane.apply_direction(
             mission="Recovered", change_note="restore", constitution="support"
         )
         read_failure.clear()

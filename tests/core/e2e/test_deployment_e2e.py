@@ -117,7 +117,7 @@ def _the_reader_cannot_write(direction):
         app, ["apply", str(direction), "--note", "first", "--remote", "--no-interactive"]
     )
     assert r.exit_code == 1
-    assert "the server refused set_direction: 403 forbidden" in r.output
+    assert "the server refused apply_direction: 403 forbidden" in r.output
 
 
 def _the_writer_writes_and_the_reader_sees_the_version(direction):

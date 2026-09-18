@@ -36,13 +36,13 @@ def test_given_a_completed_draft_when_direction_is_checked_then_remaining_work_u
     directory = Path(crewai_example.__file__).parent
     initial = yaml.safe_load((directory / "direction-v1.yaml").read_text())
     revised = yaml.safe_load((directory / "direction-v2.yaml").read_text())
-    control_plane.set_direction(**initial, change_note="initial")
+    control_plane.apply_direction(**initial, change_note="initial")
     events = []
 
     def operator():
         assert len(fake_llm.calls) == 2
         if changed:
-            control_plane.set_direction(**revised, change_note="new tradeoff")
+            control_plane.apply_direction(**revised, change_note="new tradeoff")
 
     with connect(url=url, token=token) as connection:
         state = crewai_example.run_example(
@@ -85,7 +85,7 @@ def test_given_model_failure_when_a_stage_runs_then_no_output_or_retry_is_record
     crewai_example, fake_llm, live_server, failed_call
 ):
     control_plane, url, token = live_server
-    control_plane.set_direction(mission="Help", change_note="initial")
+    control_plane.apply_direction(mission="Help", change_note="initial")
     fake_llm.fail_on = failed_call
     events = []
     with (
@@ -96,7 +96,7 @@ def test_given_model_failure_when_a_stage_runs_then_no_output_or_retry_is_record
             fake_llm,
             connection.binder(),
             model_name="fake",
-            wait_for_operator=lambda: control_plane.set_direction(
+            wait_for_operator=lambda: control_plane.apply_direction(
                 mission="Choice", change_note="new"
             ),
             emit=events.append,
@@ -113,7 +113,7 @@ def test_given_unavailable_direction_or_recording_when_starting_then_inference_i
 ):
     control_plane, url, token = live_server
     if failure != "unwritten":
-        control_plane.set_direction(mission="Help", change_note="initial")
+        control_plane.apply_direction(mission="Help", change_note="initial")
 
     def fail(*args, **kwargs):
         raise OSError("unavailable")
@@ -140,7 +140,7 @@ def test_given_a_failed_pull_when_the_cycle_continues_then_no_later_inference_ru
     crewai_example, fake_llm, live_server, monkeypatch, failed_read, fail_closed
 ):
     control_plane, url, token = live_server
-    control_plane.set_direction(mission="Help", change_note="initial")
+    control_plane.apply_direction(mission="Help", change_note="initial")
     original = control_plane.changes_since
     reads = []
 
@@ -158,7 +158,7 @@ def test_given_a_failed_pull_when_the_cycle_continues_then_no_later_inference_ru
             connection.binder(policy=PullPolicy(fail_closed=fail_closed)),
             model_name="fake",
             emit=lambda event: None,
-            wait_for_operator=lambda: control_plane.set_direction(
+            wait_for_operator=lambda: control_plane.apply_direction(
                 mission="Choice", change_note="new"
             ),
         )
@@ -170,7 +170,7 @@ def test_given_operator_cancellation_when_paused_then_the_completed_draft_is_the
     crewai_example, fake_llm, live_server
 ):
     control_plane, url, token = live_server
-    control_plane.set_direction(mission="Help", change_note="initial")
+    control_plane.apply_direction(mission="Help", change_note="initial")
 
     def cancel():
         raise EOFError("closed")
@@ -190,7 +190,7 @@ def test_given_plain_output_when_crewai_finishes_each_stage_then_it_uses_one_cal
     crewai_example, fake_llm, live_server
 ):
     control_plane, url, token = live_server
-    control_plane.set_direction(mission="Help", change_note="initial")
+    control_plane.apply_direction(mission="Help", change_note="initial")
     fake_llm.response = "Thought: I should think again"
     events = []
     with connect(url=url, token=token) as connection:
@@ -209,7 +209,7 @@ def test_given_output_recording_failure_when_a_call_completes_then_later_stages_
     crewai_example, fake_llm, live_server
 ):
     control_plane, url, token = live_server
-    control_plane.set_direction(mission="Help", change_note="initial")
+    control_plane.apply_direction(mission="Help", change_note="initial")
 
     def emit(event):
         if event["event"] == "model_output":
@@ -238,7 +238,7 @@ def test_given_a_framework_retry_when_the_call_budget_is_used_then_inference_is_
 
     monkeypatch.setattr(crewai, "Agent", retrying_agent)
     control_plane, url, token = live_server
-    control_plane.set_direction(mission="Help", change_note="initial")
+    control_plane.apply_direction(mission="Help", change_note="initial")
     fake_llm.response = "Thought: Use a tool\nAction: unavailable\nAction Input: {}"
     events = []
     with connect(url=url, token=token) as connection, pytest.raises(RuntimeError, match="budget"):

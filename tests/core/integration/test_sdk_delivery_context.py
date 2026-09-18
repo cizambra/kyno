@@ -14,9 +14,9 @@ def test_given_distinct_binders_when_bind_runs_then_records_keep_each_constituti
     connection, control_plane = mcp_connection
     history = SqlDeliveryRecordStore(memory_store.engine)
     control_plane.delivery_recorder = DeliveryRecorder(history, RecordingPolicy.ALWAYS)
-    control_plane.set_direction(mission="Support customers", change_note="initial")
+    control_plane.apply_direction(mission="Support customers", change_note="initial")
     if constitution != "default":
-        control_plane.set_direction(
+        control_plane.apply_direction(
             mission="Support customers", change_note="initial", constitution=constitution
         )
     metadata = {"experiment": {"variant": "A"}}

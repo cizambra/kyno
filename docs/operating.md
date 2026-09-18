@@ -267,7 +267,7 @@ working against the same database for edits and inspection.
   server hashes what arrived and looks it up. Unknown, revoked and expired
   all get the same 401, so a caller cannot use the response to find out
   which tokens exist. A `read` token can call every tool except
-  `set_direction`; `set_direction` needs `write` and answers 403
+  `apply_direction`; `apply_direction` needs `write` and answers 403
   otherwise. Every tool declares the scope it needs, and a tool the
   server does not declare is refused for every token: a new tool is
   unreachable until someone states what it requires. A server with no live tokens still
@@ -306,7 +306,7 @@ to receive direction, not permission to rewrite it.
 
 The distinction is about credentials and process access, not just which
 tools you show the model. Shipped adapters only pull, but an application
-holding a write token can call `set_direction` directly. Removing that
+holding a write token can call `apply_direction` directly. Removing that
 tool from the agent's tool list does not reduce the token's authority.
 
 ```mermaid
@@ -350,7 +350,7 @@ mission or principles are sensible, safe, or reviewed.
 
 The remote CLI's confirmation questions help an operator review an
 apply. They are not a server-enforced approval workflow. Another client
-with a write token can call `set_direction` without answering them.
+with a write token can call `apply_direction` without answering them.
 Review requirements belong in the surrounding deployment process and
 in who can obtain its write credentials.
 
@@ -389,7 +389,7 @@ kyno token revoke --id 3                      # when two live tokens share a nam
 The rules, one at a time:
 
 - `--scope` is required; there is no default. `read` allows every tool
-  except `set_direction`; `write` allows everything.
+  except `apply_direction`; `write` allows everything.
 - The value is printed once, at minting, and starts with `kyno_` so a
   leaked one is recognizable, by people and by secret scanners. Only its
   sha256 is stored: steal the database and you hold hashes, and a hash
@@ -526,7 +526,7 @@ It is remote only, because a local store has no request to look at. Against a se
 - Field sizes are part of the API contract: mission ≤ 4,000 characters,
   declaration ≤ 200,000, change note ≤ 2,000, up to 100 principles with
   titles ≤ 300 and descriptions ≤ 4,000, constitution names ≤ 200.
-  `set_direction` refuses anything larger, and `/mcp` request bodies are
+  `apply_direction` refuses anything larger, and `/mcp` request bodies are
   capped at 5 MB.
 - A pip-installed Kyno ships with its own migration scripts: `kyno db init`
   creates a fresh schema stamped at the current head, and `kyno db upgrade`

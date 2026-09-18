@@ -17,7 +17,7 @@ def test_given_the_real_crewai_api_when_registering_hooks_then_they_are_register
     from kyno.sdk.binder import DirectionBinder
     from kyno.sdk.client import LocalDirectionSource
 
-    control_plane.set_direction(mission="M1", change_note="init")
+    control_plane.apply_direction(mission="M1", change_note="init")
     adapter = CrewAiKyno(DirectionBinder(LocalDirectionSource(control_plane)))
     try:
         adapter.register()
@@ -42,7 +42,7 @@ def test_given_direction_node_as_react_hook_when_agent_runs_then_model_receives_
     from kyno.sdk.binder import DirectionBinder
     from kyno.sdk.client import LocalDirectionSource
 
-    control_plane.set_direction(mission="M1", change_note="init")
+    control_plane.apply_direction(mission="M1", change_note="init")
     binder = DirectionBinder(LocalDirectionSource(control_plane))
 
     class SupportState(KynoState):

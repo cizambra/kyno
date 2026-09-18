@@ -36,7 +36,7 @@ def test_given_any_edit_history_when_asking_changes_since_then_current_and_chang
             cp_changed = want_principles != prev_principles
             if not (cm or cp_changed):
                 continue  # no-op would raise; skip to mirror engine semantics
-        v = cp.set_direction(
+        v = cp.apply_direction(
             mission=mission,
             principles=principles,
             change_note="n",

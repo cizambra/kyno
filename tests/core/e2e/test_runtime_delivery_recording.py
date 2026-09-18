@@ -18,7 +18,7 @@ def test_given_forged_identity_in_metadata_when_reading_then_record_names_the_au
     reader = mint(store, scope="read", name="agents")
     delivery_record_store = SqlDeliveryRecordStore(store.engine)
     plane = ControlPlane(store, delivery_recorder=DeliveryRecorder(delivery_record_store, "always"))
-    plane.set_direction(mission="Support customers", change_note="initial")
+    plane.apply_direction(mission="Support customers", change_note="initial")
     with TestClient(build_http_app(plane, token_store=store)) as client:
         headers = drive_session(client, bearer(reader))
         response = call_tool(
@@ -35,7 +35,7 @@ def test_given_forged_identity_in_metadata_when_reading_then_record_names_the_au
         direction = json.loads(sse_json(response.text)["result"]["content"][0]["text"])
         assert direction["recording"]["status"] == "recorded"
         refused = call_tool(
-            client, headers, 3, "set_direction", {"mission": "No", "change_note": "No"}
+            client, headers, 3, "apply_direction", {"mission": "No", "change_note": "No"}
         )
         assert refused.status_code == 403
         missing_auth = call_tool(
@@ -73,7 +73,7 @@ def test_given_authenticated_resource_read_when_recording_then_requester_matches
     reader = mint(store, scope="read", name="resource-reader")
     history = SqlDeliveryRecordStore(store.engine)
     plane = ControlPlane(store, delivery_recorder=DeliveryRecorder(history, "always"))
-    plane.set_direction(mission="Support customers", change_note="initial")
+    plane.apply_direction(mission="Support customers", change_note="initial")
     try:
         with TestClient(build_http_app(plane, token_store=store)) as client:
             headers = drive_session(client, bearer(reader))

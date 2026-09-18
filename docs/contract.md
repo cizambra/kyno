@@ -20,9 +20,9 @@ This is everything an agent or client can ask Kyno, over MCP or Python.
   and delta for a recorded response. Requires read scope,
   returns an error for an unknown ID, and does not record another delivery.
   See [retrieving a recorded delivery](operating.md#retrieving-a-recorded-delivery).
-- `set_direction(mission?, declaration?, principles?, change_note)`: append
-  the next version. Omitted fields carry forward; `""` clears one. On HTTP
-  this requires a `write` token.
+- `apply_direction(mission?, declaration?, principles?, change_note)`: append
+  the next version. Omitted fields carry forward; `""` clears mission or
+  declaration, and `[]` clears principles. On HTTP this requires a `write` token.
 - `whoami`: the id, name and scope of the token this request authenticated
   with. Every field is null when the server checked no token, which is the
   case over stdio and on a server running with `allow_insecure`.
@@ -35,7 +35,7 @@ This is everything an agent or client can ask Kyno, over MCP or Python.
   `next_cursor` is null. Listing history does not record another delivery.
 
 Every tool declares the scope it needs. The reads above need `read`;
-`set_direction` needs `write`; a tool the server does not declare is
+`apply_direction` needs `write`; a tool the server does not declare is
 refused for every token, so a new tool is unreachable until someone
 states what it requires. A call outside your token's scope answers 403.
 
@@ -73,7 +73,7 @@ config:
   theme: neutral
 ---
 flowchart LR
-  OP["operator"] -- "set_direction" --> KY["Kyno server"]
+  OP["operator"] -- "apply_direction" --> KY["Kyno server"]
   KY -. "notifications/resources/updated" .-> BE["subscribed backend"]
   BE -- "get_changes_since(last processed)" --> KY
 ```

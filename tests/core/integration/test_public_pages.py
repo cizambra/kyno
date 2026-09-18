@@ -29,7 +29,7 @@ def client(plane, store):
 
 
 def direction(plane, constitution="default", mission="M1", principles=("p1", "p2"), note="init"):
-    return plane.set_direction(
+    return plane.apply_direction(
         mission=mission, principles=principles, change_note=note, constitution=constitution
     )
 
@@ -141,7 +141,7 @@ def test_given_the_page_when_inspecting_then_it_is_self_contained_with_no_extern
 
 
 def test_given_no_principles_when_rendering_then_the_principles_list_is_omitted(plane, client):
-    plane.set_direction(mission="Mission only", principles=(), change_note="init")
+    plane.apply_direction(mission="Mission only", principles=(), change_note="init")
     plane.publish()
     body = client.get("/constitutions/default").text
     assert "Mission only" in body
@@ -151,7 +151,7 @@ def test_given_no_principles_when_rendering_then_the_principles_list_is_omitted(
 def test_given_no_mission_when_rendering_then_the_name_is_the_headline(plane, client):
     # Reachable: `kyno apply --principle p --note init` sets no mission. A
     # blank headline would read as a broken page rather than a sparse one.
-    plane.set_direction(principles=("p1",), change_note="init", constitution="rules")
+    plane.apply_direction(principles=("p1",), change_note="init", constitution="rules")
     plane.publish(constitution="rules")
     body = client.get("/constitutions/rules").text
     assert "<h1" in body
@@ -362,7 +362,7 @@ def test_given_no_mission_when_rendering_the_title_then_the_escaped_name_is_the_
 ):
     import re
 
-    plane.set_direction(principles=("p1",), change_note="init", constitution="a<b>")
+    plane.apply_direction(principles=("p1",), change_note="init", constitution="a<b>")
     _publish_bypassing_the_name_rule(plane, "a<b>")
     page = client.get("/constitutions/a%3Cb%3E")
     assert page.status_code == 200
@@ -376,7 +376,7 @@ def test_given_no_mission_when_rendering_the_title_then_the_escaped_name_is_the_
 def test_given_a_described_principle_when_rendering_then_its_title_and_paragraph_show(
     plane, client
 ):
-    plane.set_direction(
+    plane.apply_direction(
         mission="Ship lending people trust",
         principles=(
             {"title": "Say the hard number first", "description": "Before any softening story."},
@@ -402,7 +402,7 @@ def test_given_a_hostile_description_when_rendering_then_it_is_escaped_like_ever
     plane, client
 ):
     hostile = "<script>alert('xss')</script>"
-    plane.set_direction(
+    plane.apply_direction(
         principles=({"title": "t", "description": f"Because {hostile}"},), change_note="init"
     )
     plane.publish()
@@ -414,7 +414,7 @@ def test_given_a_hostile_description_when_rendering_then_it_is_escaped_like_ever
 def test_given_the_json_view_when_reading_then_principles_come_as_titles_and_descriptions(
     plane, client
 ):
-    plane.set_direction(
+    plane.apply_direction(
         principles=("plain", {"title": "described", "description": "why"}), change_note="init"
     )
     plane.publish()
@@ -431,7 +431,7 @@ def test_given_the_json_view_when_reading_then_principles_come_as_titles_and_des
 def test_given_a_declaration_when_rendering_then_it_sits_between_mission_and_principles(
     plane, client
 ):
-    plane.set_direction(
+    plane.apply_direction(
         mission="Ship lending people trust",
         declaration="The long form of what that means.",
         principles=("Say the hard number first",),
@@ -447,7 +447,7 @@ def test_given_a_declaration_when_rendering_then_it_sits_between_mission_and_pri
 def test_given_a_blank_line_in_the_declaration_when_rendering_then_a_new_paragraph_starts(
     plane, client
 ):
-    plane.set_direction(
+    plane.apply_direction(
         mission="M", declaration="First paragraph.\n\nSecond paragraph.", change_note="init"
     )
     plane.publish()
@@ -461,7 +461,7 @@ def test_given_a_wrapped_line_in_the_declaration_when_rendering_then_it_stays_on
 ):
     # CommonMark: a single newline is a soft break. Somebody wrapping a
     # paragraph in their editor must not get it broken across lines.
-    plane.set_direction(mission="M", declaration="One line.\nNext line.", change_note="init")
+    plane.apply_direction(mission="M", declaration="One line.\nNext line.", change_note="init")
     plane.publish()
     assert "<p>One line.\nNext line.</p>" in client.get("/constitutions/default").text
 
@@ -469,7 +469,7 @@ def test_given_a_wrapped_line_in_the_declaration_when_rendering_then_it_stays_on
 def test_given_a_markdown_declaration_when_rendering_the_page_then_the_markdown_renders(
     plane, client
 ):
-    plane.set_direction(
+    plane.apply_direction(
         mission="M",
         declaration=(
             "# What we are for\n\n"
@@ -494,7 +494,7 @@ def test_given_markup_in_a_declaration_when_rendering_then_it_is_escaped_not_pas
 ):
     # The load-bearing one: this page serves anonymous visitors, so an
     # organization's own text must never become markup that runs.
-    plane.set_direction(
+    plane.apply_direction(
         mission="M",
         declaration="Before\n\n<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>",
         change_note="init",
@@ -508,7 +508,7 @@ def test_given_markup_in_a_declaration_when_rendering_then_it_is_escaped_not_pas
 
 
 def test_given_a_javascript_link_in_a_declaration_when_rendering_then_it_is_refused(plane, client):
-    plane.set_direction(
+    plane.apply_direction(
         mission="M",
         declaration="[click](javascript:alert(1)) and [ok](https://example.com/policy)",
         change_note="init",
@@ -526,7 +526,7 @@ def test_given_an_image_in_a_declaration_when_rendering_then_no_external_asset_a
 ):
     # Deliberate: the page is self-contained. One response that renders on
     # a locked-down network and survives being saved to a file.
-    plane.set_direction(
+    plane.apply_direction(
         mission="M", declaration="![tracker](https://evil.example/x.png)", change_note="init"
     )
     plane.publish()
@@ -537,7 +537,7 @@ def test_given_a_rendered_declaration_when_inspecting_the_page_then_it_stays_wel
     plane, client
 ):
     hostile = "</div></main># heading\n\n- <script>alert(1)</script>\n"
-    plane.set_direction(mission="M", declaration=hostile, change_note="init")
+    plane.apply_direction(mission="M", declaration=hostile, change_note="init")
     plane.publish()
     assert _unbalanced_tags(client.get("/constitutions/default").text) == []
 
@@ -545,7 +545,7 @@ def test_given_a_rendered_declaration_when_inspecting_the_page_then_it_stays_wel
 def test_given_the_json_view_when_reading_the_declaration_then_it_is_raw_markdown(plane, client):
     # Data is markdown; rendering is the HTML page's business alone.
     source = "# What we are for\n\n- one\n"
-    plane.set_direction(mission="M", declaration=source, change_note="init")
+    plane.apply_direction(mission="M", declaration=source, change_note="init")
     plane.publish()
     assert client.get("/constitutions/default.json").json()["declaration"] == source
 
@@ -559,7 +559,7 @@ def test_given_no_declaration_when_rendering_then_no_empty_block_appears(plane, 
 
 
 def test_given_the_json_view_when_reading_then_the_declaration_is_exposed(plane, client):
-    plane.set_direction(mission="M", declaration="The long form.", change_note="init")
+    plane.apply_direction(mission="M", declaration="The long form.", change_note="init")
     plane.publish()
     assert client.get("/constitutions/default.json").json()["declaration"] == "The long form."
 
@@ -569,7 +569,7 @@ def test_given_markdown_in_mission_and_principles_when_rendering_then_they_stay_
 ):
     # Markdown applies to the declaration only, because it is the long-form
     # document. The other fields are single lines, rendered as literal text.
-    plane.set_direction(
+    plane.apply_direction(
         mission="# Not a heading",
         principles=({"title": "*not emphasis*", "description": "- not a list"},),
         change_note="init",
@@ -672,7 +672,7 @@ def test_given_repeat_visits_when_rendering_a_declaration_then_it_renders_once_p
     from kyno.public_page import _declaration_html
 
     _declaration_html.cache_clear()
-    plane.set_direction(mission="M", declaration="## Long\n\ntext", change_note="init")
+    plane.apply_direction(mission="M", declaration="## Long\n\ntext", change_note="init")
     plane.publish()
 
     first = client.get("/constitutions/default").text
@@ -693,7 +693,7 @@ def test_given_the_render_cache_when_inspecting_its_key_then_it_is_the_declarati
     _declaration_html.cache_clear()
     text = "## Shared\n\nsame text"
     for name in ("alpha", "beta"):
-        plane.set_direction(mission="M", declaration=text, change_note="init", constitution=name)
+        plane.apply_direction(mission="M", declaration=text, change_note="init", constitution=name)
         plane.publish(name)
 
     client.get("/constitutions/alpha")

@@ -115,7 +115,7 @@ def test_given_served_version_when_recording_with_wait_limits_then_reference_and
     store, records
 ):
     plane = ControlPlane(store)
-    plane.set_direction(constitution="team", mission="Help customers", change_note="initial")
+    plane.apply_direction(constitution="team", mission="Help customers", change_note="initial")
     result = DeliveryRecorder(records, "always", timeout_seconds=1).record(
         {"version": 1, "delta": ["Mission changed."]},
         operation="get_constitution",

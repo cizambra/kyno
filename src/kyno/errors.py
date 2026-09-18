@@ -10,7 +10,7 @@ class UnknownVersionError(CoherenceError):
 
 
 class EmptyChangeError(CoherenceError):
-    """set_direction was called with no field that actually changes."""
+    """apply_direction was called with no field that actually changes."""
 
 
 class NoFieldChangedError(EmptyChangeError):

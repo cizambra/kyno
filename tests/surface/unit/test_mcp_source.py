@@ -141,12 +141,14 @@ def test_given_a_failure_with_extra_message_lines_when_starting_then_the_error_k
 def test_given_a_body_that_can_be_read_when_building_the_message_then_it_is_the_body():
     from kyno.sdk.client import _refusal_text
 
-    failure = refused_with_body(403, "forbidden: this token's scope does not cover 'set_direction'")
+    failure = refused_with_body(
+        403, "forbidden: this token's scope does not cover 'apply_direction'"
+    )
 
     # A refusal reaches this function inside the group the transport raised.
     line = _refusal_text(ExceptionGroup("unhandled", [failure]))
 
-    assert line == "forbidden: this token's scope does not cover 'set_direction'"
+    assert line == "forbidden: this token's scope does not cover 'apply_direction'"
 
 
 def test_given_a_body_that_cannot_be_read_when_building_the_message_then_it_is_the_status_line():
@@ -162,7 +164,7 @@ def test_given_a_call_in_flight_when_a_403_ends_the_session_then_the_error_carri
     # is cancelled rather than answered. Without this path the command
     # exits with no message at all.
     runner = _runner_whose_session_ends_during_a_call(
-        refused_with_body(403, "forbidden: this token's scope does not cover 'set_direction'")
+        refused_with_body(403, "forbidden: this token's scope does not cover 'apply_direction'")
     )
     try:
         with pytest.raises(KynoRefusedError, match="scope does not cover"):

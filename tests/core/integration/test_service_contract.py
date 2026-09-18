@@ -66,43 +66,43 @@ def test_given_an_empty_store_when_asking_changes_since_any_version_then_it_does
 def test_given_prior_empty_reads_when_writing_the_first_version_then_it_is_still_v1(cp):
     assert cp.current().version == 0
     assert cp.changes_since(0).current_version == 0
-    v = cp.set_direction(mission="M1", principles=("p1",), change_note="init")
+    v = cp.apply_direction(mission="M1", principles=("p1",), change_note="init")
     assert v.version == 1
     assert cp.current().version == 1
     assert cp.current().mission == "M1"
 
 
-def test_given_a_fresh_store_when_setting_direction_first_then_v1_marks_all_changed(cp):
-    v = cp.set_direction(mission="M1", principles=("p1",), change_note="init", created_by="op")
+def test_given_a_fresh_store_when_calling_apply_direction_first_then_v1_marks_all_changed(cp):
+    v = cp.apply_direction(mission="M1", principles=("p1",), change_note="init", created_by="op")
     assert v.version == 1 and v.changed_mission and v.changed_principles
     assert cp.current().mission == "M1"
 
 
-def test_given_omitted_fields_when_setting_direction_then_they_carry_forward(cp):
-    cp.set_direction(mission="M1", principles=("p1",), change_note="init")
-    v2 = cp.set_direction(principles=("p1", "p2"), change_note="add p2")
+def test_given_omitted_fields_when_calling_apply_direction_then_they_carry_forward(cp):
+    cp.apply_direction(mission="M1", principles=("p1",), change_note="init")
+    v2 = cp.apply_direction(principles=("p1", "p2"), change_note="add p2")
     assert v2.mission == "M1"
     assert v2.changed_mission is False
     assert v2.changed_principles is True
     assert v2.principles == (Principle("p1"), Principle("p2"))
 
 
-def test_given_identical_content_when_setting_direction_then_the_no_op_is_rejected(cp):
-    cp.set_direction(mission="M1", principles=("p1",), change_note="init")
+def test_given_identical_content_when_calling_apply_direction_then_the_no_op_is_rejected(cp):
+    cp.apply_direction(mission="M1", principles=("p1",), change_note="init")
     with pytest.raises(EmptyChangeError):
-        cp.set_direction(mission="M1", principles=("p1",), change_note="noop")
+        cp.apply_direction(mission="M1", principles=("p1",), change_note="noop")
 
 
 def test_given_the_current_version_when_asking_changes_since_then_it_reports_unchanged(cp):
-    cp.set_direction(mission="M1", principles=("p1",), change_note="init")
+    cp.apply_direction(mission="M1", principles=("p1",), change_note="init")
     c = cp.changes_since(1)
     assert c.changed is False and c.current_version == 1
 
 
 def test_given_several_versions_when_asking_changes_since_then_notes_and_flags_aggregate(cp):
-    cp.set_direction(mission="M1", principles=("p1",), change_note="init")
-    cp.set_direction(mission="M2", change_note="pivot mission")
-    cp.set_direction(principles=("p1", "p2"), change_note="add p2")
+    cp.apply_direction(mission="M1", principles=("p1",), change_note="init")
+    cp.apply_direction(mission="M2", change_note="pivot mission")
+    cp.apply_direction(principles=("p1", "p2"), change_note="add p2")
     c = cp.changes_since(1)
     assert c.current_version == 3 and c.changed is True
     assert c.mission == "M2" and c.principles == (Principle("p1"), Principle("p2"))
@@ -111,14 +111,14 @@ def test_given_several_versions_when_asking_changes_since_then_notes_and_flags_a
 
 
 def test_given_version_zero_when_asking_changes_since_then_the_full_current_returns(cp):
-    cp.set_direction(mission="M1", principles=("p1",), change_note="init")
+    cp.apply_direction(mission="M1", principles=("p1",), change_note="init")
     c = cp.changes_since(0)
     assert c.changed is True and c.current_version == 1
     assert c.change_notes == ("init",)
 
 
 def test_given_a_future_version_when_asking_changes_since_then_it_raises(cp):
-    cp.set_direction(mission="M1", principles=("p1",), change_note="init")
+    cp.apply_direction(mission="M1", principles=("p1",), change_note="init")
     with pytest.raises(UnknownVersionError):
         cp.changes_since(5)
 
@@ -126,14 +126,14 @@ def test_given_a_future_version_when_asking_changes_since_then_it_raises(cp):
 def test_given_a_subscriber_when_a_write_commits_then_on_change_fires_after(cp):
     seen = []
     cp.on_change(lambda v: seen.append(v.version))
-    cp.set_direction(mission="M1", principles=("p1",), change_note="init")
-    cp.set_direction(mission="M2", change_note="pivot")
+    cp.apply_direction(mission="M1", principles=("p1",), change_note="init")
+    cp.apply_direction(mission="M2", change_note="pivot")
     assert seen == [1, 2]
 
 
 def test_given_a_racing_writer_when_applying_then_a_conflict_surfaces_not_a_recompute():
     real = create_memory_store()
-    ControlPlane(real).set_direction(mission="M1", principles=("p1",), change_note="init")
+    ControlPlane(real).apply_direction(mission="M1", principles=("p1",), change_note="init")
 
     class ConflictOnceStore:
         """Delegates to a real store, but the first append() simulates a
@@ -174,7 +174,7 @@ def test_given_a_racing_writer_when_applying_then_a_conflict_surfaces_not_a_reco
     # silently recomputed: the conflict surfaces, and the head is the
     # concurrent writer's edit, untouched.
     with pytest.raises(VersionConflictError, match="moved while applying"):
-        cp.set_direction(mission="M2", change_note="pivot after race")
+        cp.apply_direction(mission="M2", change_note="pivot after race")
     head = real.head("default")
     assert head.version == 2
     assert head.principles == (Principle("p1"), Principle("concurrent"))
@@ -184,29 +184,29 @@ def test_given_a_conflict_when_applying_then_there_is_one_attempt_never_a_loop()
     stub = AlwaysConflictStore()
     cp = ControlPlane(stub)
     with pytest.raises(VersionConflictError):
-        cp.set_direction(mission="M", change_note="x")
+        cp.apply_direction(mission="M", change_note="x")
     assert stub.append_calls == 1
 
 
-def test_given_a_whitespace_only_change_note_when_setting_direction_then_it_is_rejected(cp):
+def test_given_a_whitespace_only_change_note_when_calling_apply_direction_then_it_is_rejected(cp):
     # Service strips before checking emptiness (change_note.strip()); a
     # whitespace-only note must raise the same as a truly empty one.
     with pytest.raises(EmptyChangeError):
-        cp.set_direction(mission="M1", change_note="   ")
+        cp.apply_direction(mission="M1", change_note="   ")
 
 
 def test_given_a_negative_last_seen_version_when_asking_changes_since_then_it_behaves_as_zero(cp):
     # Deliberate: a negative last_seen_version clamps to the same floor as 0, rather
     # than being treated as "future".
-    cp.set_direction(mission="M1", principles=("p1",), change_note="init")
+    cp.apply_direction(mission="M1", principles=("p1",), change_note="init")
     assert cp.changes_since(-1) == cp.changes_since(0)
 
 
-def test_given_an_empty_principles_tuple_when_setting_direction_then_the_list_clears(cp):
+def test_given_an_empty_principles_tuple_when_calling_apply_direction_then_the_list_clears(cp):
     # Deliberate: principles=() is a real, present value (distinct from None /
     # "carry forward"), so it clears an existing list rather than being ignored.
-    cp.set_direction(mission="M1", principles=("p1", "p2"), change_note="init")
-    v2 = cp.set_direction(principles=(), change_note="clear principles")
+    cp.apply_direction(mission="M1", principles=("p1", "p2"), change_note="init")
+    v2 = cp.apply_direction(principles=(), change_note="clear principles")
     assert v2.principles == ()
     assert v2.changed_principles is True
 
@@ -216,7 +216,7 @@ def test_given_a_raising_subscriber_when_writing_then_the_committed_version_retu
         raise RuntimeError("subscriber blew up")
 
     cp.on_change(bad_subscriber)
-    version = cp.set_direction(mission="M1", change_note="init")
+    version = cp.apply_direction(mission="M1", change_note="init")
 
     assert version.version == 1
     assert cp.current() == version
@@ -238,7 +238,7 @@ def test_given_a_raising_subscriber_when_notifying_then_later_subscribers_still_
     cp.on_change(bad_subscriber)
     cp.on_change(healthy_subscriber)
 
-    cp.set_direction(mission="M1", change_note="init")
+    cp.apply_direction(mission="M1", change_note="init")
 
     assert notifications == [("bad", 1), ("healthy", 1)]
 
@@ -250,7 +250,7 @@ def test_given_a_process_control_exception_when_notifying_then_it_still_propagat
     cp.on_change(interrupted_subscriber)
 
     with pytest.raises(KeyboardInterrupt):
-        cp.set_direction(mission="M1", change_note="init")
+        cp.apply_direction(mission="M1", change_note="init")
 
     assert cp.current().version == 1
 
@@ -266,17 +266,17 @@ def test_given_a_subscriber_added_during_notification_when_writing_then_it_start
 
     cp.on_change(registering_subscriber)
 
-    cp.set_direction(mission="M1", change_note="init")
+    cp.apply_direction(mission="M1", change_note="init")
     assert notifications == []
 
-    cp.set_direction(mission="M2", change_note="next")
+    cp.apply_direction(mission="M2", change_note="next")
     assert notifications == [2]
 
 
-def test_given_all_empty_fields_when_setting_direction_then_an_empty_v1_is_allowed(cp):
+def test_given_all_empty_fields_when_calling_apply_direction_then_an_empty_v1_is_allowed(cp):
     # Current behavior, kept intentionally. Whether an all-empty v1 should be
     # rejected instead is still an open design question.
-    v = cp.set_direction(change_note="x")
+    v = cp.apply_direction(change_note="x")
     assert v.version == 1
     assert v.mission == ""
     assert v.principles == ()
@@ -285,27 +285,27 @@ def test_given_all_empty_fields_when_setting_direction_then_an_empty_v1_is_allow
 def test_given_a_previous_version_when_writing_then_changed_flags_compare_against_it():
     store = create_memory_store()
     cp = ControlPlane(store)
-    cp.set_direction(mission="M1", principles=("p1",), change_note="init")
-    v2 = cp.set_direction(mission="M2", change_note="mission only")
+    cp.apply_direction(mission="M1", principles=("p1",), change_note="init")
+    v2 = cp.apply_direction(mission="M2", change_note="mission only")
     assert v2.changed_mission is True and v2.changed_principles is False
-    v3 = cp.set_direction(principles=("p1", "p2"), change_note="principles only")
+    v3 = cp.apply_direction(principles=("p1", "p2"), change_note="principles only")
     assert v3.changed_mission is False and v3.changed_principles is True
 
 
 def test_given_named_constitutions_when_writing_to_each_then_sequences_stay_independent(cp):
-    cp.set_direction(mission="M1", change_note="default init")
-    eu = cp.set_direction(mission="EU1", change_note="eu init", constitution="eu")
+    cp.apply_direction(mission="M1", change_note="default init")
+    eu = cp.apply_direction(mission="EU1", change_note="eu init", constitution="eu")
     assert eu.version == 1
     assert cp.current().version == 1 and cp.current().mission == "M1"
     assert cp.current("eu").version == 1 and cp.current("eu").mission == "EU1"
-    assert cp.set_direction(mission="EU2", change_note="eu pivot", constitution="eu").version == 2
+    assert cp.apply_direction(mission="EU2", change_note="eu pivot", constitution="eu").version == 2
     assert cp.current().version == 1
 
 
 def test_given_a_per_call_name_when_writing_then_the_control_plane_keeps_its_default(cp):
     """Deliberate: the name is per call, not state — one named write must not
     silently redirect every later read on the same control plane."""
-    cp.set_direction(mission="EU1", change_note="eu init", constitution="eu")
+    cp.apply_direction(mission="EU1", change_note="eu init", constitution="eu")
     assert cp.current().version == 0
     assert cp.changes_since(0).current_version == 0
 
@@ -314,14 +314,14 @@ def test_given_no_name_when_calling_then_the_constructor_name_is_the_fallback(st
     """Backward compatibility: a control plane pinned to one constitution keeps
     behaving as it did before any call took a name."""
     cp = ControlPlane(store, constitution="eu")
-    cp.set_direction(mission="EU1", change_note="init")
+    cp.apply_direction(mission="EU1", change_note="init")
     assert cp.current().mission == "EU1"
     assert store.head("eu").mission == "EU1"
     assert store.head("default") is None
 
 
 def test_given_an_unknown_constitution_when_reading_then_the_empty_state_returns(cp):
-    cp.set_direction(mission="M1", change_note="init")
+    cp.apply_direction(mission="M1", change_note="init")
     unknown = cp.current("never-written")
     assert unknown.version == 0 and unknown.mission == "" and unknown.principles == ()
     changes = cp.changes_since(3, constitution="never-written")
@@ -329,7 +329,7 @@ def test_given_an_unknown_constitution_when_reading_then_the_empty_state_returns
 
 
 def _direction(cp, constitution="default", mission="M1", principles=("p1", "p2"), note="init"):
-    return cp.set_direction(
+    return cp.apply_direction(
         mission=mission, principles=principles, change_note=note, constitution=constitution
     )
 
@@ -582,13 +582,13 @@ def test_given_a_name_published_before_the_rule_when_serving_then_it_works_and_c
 
 
 def test_given_plain_strings_when_storing_principles_then_they_are_title_only(cp):
-    v = cp.set_direction(mission="M1", principles=("p1", "p2"), change_note="init")
+    v = cp.apply_direction(mission="M1", principles=("p1", "p2"), change_note="init")
     assert v.principles == (Principle("p1"), Principle("p2"))
     assert all(p.description == "" for p in v.principles)
 
 
 def test_given_mappings_objects_and_strings_when_setting_principles_then_all_are_accepted(cp):
-    v = cp.set_direction(
+    v = cp.apply_direction(
         principles=(
             "plain",
             {"title": "described", "description": "the paragraph that disambiguates it"},
@@ -603,13 +603,13 @@ def test_given_mappings_objects_and_strings_when_setting_principles_then_all_are
     )
 
 
-def test_given_a_description_only_rewrite_when_setting_direction_then_it_is_a_real_change(cp):
+def test_given_a_description_only_rewrite_when_calling_apply_direction_then_it_is_a_real_change(cp):
     # The description is the half that disambiguates a principle, so an edit
     # to it must append a version rather than read as "nothing moved".
-    cp.set_direction(
+    cp.apply_direction(
         principles=({"title": "Be honest", "description": "first try"},), change_note="init"
     )
-    v2 = cp.set_direction(
+    v2 = cp.apply_direction(
         principles=({"title": "Be honest", "description": "sharper second try"},),
         change_note="sharpen",
     )
@@ -617,15 +617,17 @@ def test_given_a_description_only_rewrite_when_setting_direction_then_it_is_a_re
     assert v2.principles[0].description == "sharper second try"
 
 
-def test_given_a_malformed_principle_when_setting_direction_then_it_is_refused_before_append(cp):
-    cp.set_direction(mission="M1", change_note="init")
+def test_given_a_malformed_principle_when_calling_apply_direction_then_it_is_refused_before_append(
+    cp,
+):
+    cp.apply_direction(mission="M1", change_note="init")
     with pytest.raises(MalformedPrincipleError):
-        cp.set_direction(principles=({"description": "no title"},), change_note="bad")
+        cp.apply_direction(principles=({"description": "no title"},), change_note="bad")
     assert cp.current().version == 1
 
 
 def test_given_described_principles_when_reading_the_public_view_then_descriptions_show(cp):
-    cp.set_direction(
+    cp.apply_direction(
         mission="M1",
         principles=("plain", {"title": "described", "description": "why it matters"}),
         change_note="init",
@@ -642,42 +644,42 @@ def test_given_described_principles_when_reading_the_public_view_then_descriptio
 # --- the declaration -------------------------------------------------------
 
 
-def test_given_an_omitted_declaration_when_setting_direction_then_it_carries_forward(cp):
-    cp.set_direction(mission="M1", declaration="The long form.", change_note="init")
-    v2 = cp.set_direction(mission="M2", change_note="pivot")
+def test_given_an_omitted_declaration_when_calling_apply_direction_then_it_carries_forward(cp):
+    cp.apply_direction(mission="M1", declaration="The long form.", change_note="init")
+    v2 = cp.apply_direction(mission="M2", change_note="pivot")
     assert v2.declaration == "The long form."
 
 
-def test_given_an_empty_declaration_when_setting_direction_then_it_clears(cp):
+def test_given_an_empty_declaration_when_calling_apply_direction_then_it_clears(cp):
     # Deliberate, and the distinction that matters: omitting it carries the
     # previous one forward, while "" is a present value that removes it.
-    cp.set_direction(mission="M1", declaration="The long form.", change_note="init")
-    v2 = cp.set_direction(declaration="", change_note="retract the long form")
+    cp.apply_direction(mission="M1", declaration="The long form.", change_note="init")
+    v2 = cp.apply_direction(declaration="", change_note="retract the long form")
     assert v2.declaration == ""
     assert cp.current().declaration == ""
 
 
-def test_given_a_declaration_only_rewrite_when_setting_direction_then_it_is_a_real_change(cp):
-    cp.set_direction(mission="M1", declaration="First draft.", change_note="init")
-    v2 = cp.set_direction(declaration="Second draft.", change_note="rewrite the long form")
+def test_given_a_declaration_only_rewrite_when_calling_apply_direction_then_it_is_a_real_change(cp):
+    cp.apply_direction(mission="M1", declaration="First draft.", change_note="init")
+    v2 = cp.apply_direction(declaration="Second draft.", change_note="rewrite the long form")
     assert v2.version == 2 and v2.declaration == "Second draft."
 
 
 def test_given_a_declaration_only_change_when_a_consumer_polls_then_it_reaches_them(cp):
     # The flags refer only to mission and principles, so `changed`, which
     # means a new version exists, is what tells an agent to re-read.
-    cp.set_direction(mission="M1", declaration="First draft.", change_note="init")
-    cp.set_direction(declaration="Second draft.", change_note="rewrite")
+    cp.apply_direction(mission="M1", declaration="First draft.", change_note="init")
+    cp.apply_direction(declaration="Second draft.", change_note="rewrite")
     changes = cp.changes_since(1)
     assert changes.changed is True
     assert changes.declaration == "Second draft."
     assert changes.change_notes == ("rewrite",)
 
 
-def test_given_an_unchanged_declaration_when_setting_direction_then_it_is_still_no_change(cp):
-    cp.set_direction(mission="M1", declaration="Same.", change_note="init")
+def test_given_an_unchanged_declaration_when_calling_apply_direction_then_it_is_still_no_change(cp):
+    cp.apply_direction(mission="M1", declaration="Same.", change_note="init")
     with pytest.raises(EmptyChangeError):
-        cp.set_direction(mission="M1", declaration="Same.", change_note="noop")
+        cp.apply_direction(mission="M1", declaration="Same.", change_note="noop")
 
 
 def test_given_the_empty_state_when_reading_then_there_is_no_declaration(cp):
@@ -686,7 +688,7 @@ def test_given_the_empty_state_when_reading_then_there_is_no_declaration(cp):
 
 
 def test_given_a_declaration_when_reading_the_public_view_then_it_is_there(cp):
-    cp.set_direction(mission="M1", declaration="The long form.", change_note="init")
+    cp.apply_direction(mission="M1", declaration="The long form.", change_note="init")
     cp.publish()
     assert cp.public_constitution().declaration == "The long form."
     assert cp.public_constitution().to_dict()["declaration"] == "The long form."
@@ -697,7 +699,7 @@ def test_given_a_head_when_asking_head_and_delta_then_both_come_from_one_read():
 
     store = create_memory_store()
     cp = ControlPlane(store)
-    cp.set_direction(mission="M1", change_note="init")
+    cp.apply_direction(mission="M1", change_note="init")
     reads = []
     real_head = store.head
     store.head = lambda name: reads.append(name) or real_head(name)
@@ -725,11 +727,11 @@ def test_given_a_moved_head_when_applying_with_an_expected_version_then_nothing_
 
     store = create_memory_store()
     cp = ControlPlane(store)
-    cp.set_direction(mission="M1", change_note="init")
-    cp.set_direction(mission="M2", change_note="raced in")
+    cp.apply_direction(mission="M1", change_note="init")
+    cp.apply_direction(mission="M2", change_note="raced in")
 
     with pytest.raises(VersionConflictError, match="moved while applying; read it again"):
-        cp.set_direction(mission="M3", change_note="stale", expected_version=1)
+        cp.apply_direction(mission="M3", change_note="stale", expected_version=1)
     assert cp.current().version == 2 and cp.current().mission == "M2"
 
 
@@ -738,8 +740,8 @@ def test_given_the_head_it_reviewed_when_applying_with_an_expected_version_then_
 
     store = create_memory_store()
     cp = ControlPlane(store)
-    assert cp.set_direction(mission="M1", change_note="init", expected_version=0).version == 1
-    assert cp.set_direction(mission="M2", change_note="next", expected_version=1).version == 2
+    assert cp.apply_direction(mission="M1", change_note="init", expected_version=0).version == 1
+    assert cp.apply_direction(mission="M2", change_note="next", expected_version=1).version == 2
 
 
 def test_given_an_unknown_authorization_when_applying_then_it_is_refused():
@@ -748,7 +750,7 @@ def test_given_an_unknown_authorization_when_applying_then_it_is_refused():
     store = create_memory_store()
     cp = ControlPlane(store)
     with pytest.raises(AuthoringError, match="unknown authorized_by 'sudo'"):
-        cp.set_direction(mission="M", change_note="init", authorized_by="sudo")
+        cp.apply_direction(mission="M", change_note="init", authorized_by="sudo")
     assert store.head("default") is None
 
 
@@ -757,7 +759,7 @@ def test_given_an_authorization_when_applying_then_the_version_carries_it():
 
     store = create_memory_store()
     cp = ControlPlane(store)
-    v = cp.set_direction(mission="M", change_note="init", authorized_by="operator")
+    v = cp.apply_direction(mission="M", change_note="init", authorized_by="operator")
     assert v.authorized_by is AuthorizationType.OPERATOR
     assert v.to_dict()["authorized_by"] == "operator"
     assert type(v.to_dict()["authorized_by"]) is str

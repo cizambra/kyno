@@ -11,12 +11,12 @@ def test_given_a_connection_when_its_binder_binds_then_the_direction_in_force_se
     mcp_connection,
 ):
     connection, control_plane = mcp_connection
-    control_plane.set_direction(mission="M1", change_note="init")
+    control_plane.apply_direction(mission="M1", change_note="init")
     binder = connection.binder()
 
     assert "version=1" in binder.bind().render()
 
-    control_plane.set_direction(mission="M2", change_note="pivot")
+    control_plane.apply_direction(mission="M2", change_note="pivot")
     assert "version=2" in binder.bind().render()
 
 
@@ -24,13 +24,13 @@ def test_given_binders_sharing_a_session_when_connection_closes_then_each_uses_i
     mcp_connection,
 ):
     connection, control_plane = mcp_connection
-    control_plane.set_direction(mission="M1", change_note="init")
+    control_plane.apply_direction(mission="M1", change_note="init")
 
     first = connection.binder()
     second = connection.binder()
     empty = connection.binder()
     assert first.bind().version == 1
-    control_plane.set_direction(mission="M2", change_note="pivot")
+    control_plane.apply_direction(mission="M2", change_note="pivot")
     assert second.bind().version == 2
 
     connection.close()
@@ -48,7 +48,7 @@ def test_given_one_connection_when_binders_pull_compact_and_full_then_each_recei
     mcp_connection,
 ):
     connection, control_plane = mcp_connection
-    control_plane.set_direction(
+    control_plane.apply_direction(
         mission="Help customers", declaration="Explain each decision", change_note="init"
     )
     compact = connection.binder(context=DetailLevel.COMPACT).bind()
@@ -77,7 +77,7 @@ def test_given_fail_closed_support_binder_when_bind_with_status_loses_connection
     mcp_connection, cached
 ):
     connection, control_plane = mcp_connection
-    control_plane.set_direction(
+    control_plane.apply_direction(
         mission="Support customers", change_note="initial", constitution="support"
     )
     binder = connection.binder("support", policy=PullPolicy(fail_closed=True))

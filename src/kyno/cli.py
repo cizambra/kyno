@@ -103,7 +103,7 @@ app.add_typer(token_app, name="token")
 def token_add(
     name: str = typer.Argument(..., help="A label for humans. The id is the identity."),
     scope: str = typer.Option(
-        ..., "--scope", help="read: every tool except set_direction. write: everything."
+        ..., "--scope", help="read: every tool except apply_direction. write: everything."
     ),
     ttl: str | None = typer.Option(
         None, "--ttl", help="Expire on its own after this long (30m, 2h, 7d)."
@@ -266,7 +266,7 @@ def apply_direction_cmd(
         content = _content_of(fields)
         target = _constitution_name(fields, file)
         if remote:
-            _remote_set(
+            _remote_apply(
                 target,
                 content,
                 note,
@@ -287,7 +287,7 @@ def apply_direction_cmd(
         # The delta goes to stderr so stdout stays the version JSON, pipeable.
         _print_delta(delta, err=True)
         try:
-            version = plane.set_direction(
+            version = plane.apply_direction(
                 **content,
                 change_note=note,
                 created_by=by if by is not None else _system_user(),
@@ -304,7 +304,7 @@ def apply_direction_cmd(
         typer.echo(json.dumps(version.to_dict(), indent=2))
 
 
-def _remote_set(
+def _remote_apply(
     target: str,
     content: dict,
     note: str | None,
@@ -356,7 +356,7 @@ def _remote_set(
             ),
         }
         try:
-            result = client.call_tool("set_direction", arguments)
+            result = client.call_tool("apply_direction", arguments)
         except RemoteError as refusal:
             if "no field changed" not in str(refusal):
                 raise

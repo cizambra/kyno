@@ -18,7 +18,7 @@ def test_given_recording_enabled_when_sdk_pulls_twice_then_each_receipt_identifi
     runner, control_plane = mcp_runner
     history = SqlDeliveryRecordStore(control_plane._store.engine)
     control_plane.delivery_recorder = DeliveryRecorder(history, RecordingPolicy.ALWAYS)
-    control_plane.set_direction(mission="Help customers.", change_note="Initial direction")
+    control_plane.apply_direction(mission="Help customers.", change_note="Initial direction")
     source = McpDirectionSource(runner)
 
     first = source.changes_since(0, "default")
@@ -42,7 +42,7 @@ def test_given_recording_fails_when_sdk_pulls_then_current_direction_and_failed_
     runner, control_plane = mcp_runner
     history = SqlDeliveryRecordStore(control_plane._store.engine)
     control_plane.delivery_recorder = DeliveryRecorder(history, RecordingPolicy.ALWAYS)
-    control_plane.set_direction(mission="Help customers.", change_note="Initial direction")
+    control_plane.apply_direction(mission="Help customers.", change_note="Initial direction")
 
     def unavailable_store(*args, **kwargs):
         raise OSError("Recording store unavailable")
@@ -60,8 +60,8 @@ def test_given_recording_fails_when_sdk_pulls_then_current_direction_and_failed_
 
 def test_given_a_name_when_the_mcp_source_pulls_then_that_constitution_comes(mcp_runner):
     runner, control_plane = mcp_runner
-    control_plane.set_direction(mission="EU mission", change_note="init", constitution="eu")
-    control_plane.set_direction(mission="US mission", change_note="init", constitution="us")
+    control_plane.apply_direction(mission="EU mission", change_note="init", constitution="eu")
+    control_plane.apply_direction(mission="US mission", change_note="init", constitution="us")
     source = McpDirectionSource(runner)
 
     assert source.changes_since(0, "eu").changes.mission == "EU mission"
@@ -72,8 +72,8 @@ def test_given_a_last_seen_version_when_the_mcp_source_reports_then_the_notes_si
     mcp_runner,
 ):
     runner, control_plane = mcp_runner
-    control_plane.set_direction(mission="M1", change_note="init")
-    control_plane.set_direction(mission="M2", change_note="pivot")
+    control_plane.apply_direction(mission="M1", change_note="init")
+    control_plane.apply_direction(mission="M2", change_note="pivot")
     source = McpDirectionSource(runner)
 
     changes = source.changes_since(1, "default").changes
@@ -91,11 +91,11 @@ def test_given_an_unwritten_name_when_the_mcp_source_reads_then_it_is_version_ze
 
 def test_given_a_binder_over_mcp_when_steps_run_then_each_binds_the_live_version(mcp_runner):
     runner, control_plane = mcp_runner
-    control_plane.set_direction(mission="M1", change_note="init", constitution="eu")
+    control_plane.apply_direction(mission="M1", change_note="init", constitution="eu")
     binder = DirectionBinder(McpDirectionSource(runner), "eu")
 
     first = binder.bind()
-    control_plane.set_direction(mission="M2", change_note="pivot", constitution="eu")
+    control_plane.apply_direction(mission="M2", change_note="pivot", constitution="eu")
     second = binder.bind()
 
     assert (first.version, second.version) == (1, 2)
@@ -122,8 +122,8 @@ def test_given_the_two_sources_when_asking_the_same_question_then_the_answers_ma
 ):
     """The in-process and MCP paths must stay interchangeable for a binder."""
     runner, control_plane = mcp_runner
-    control_plane.set_direction(mission="M1", change_note="init", constitution="eu")
-    control_plane.set_direction(principles=("Be honest",), change_note="add", constitution="eu")
+    control_plane.apply_direction(mission="M1", change_note="init", constitution="eu")
+    control_plane.apply_direction(principles=("Be honest",), change_note="add", constitution="eu")
 
     over_mcp = McpDirectionSource(runner).changes_since(1, "eu")
     in_process = LocalDirectionSource(control_plane).changes_since(1, "eu")
@@ -138,7 +138,7 @@ def test_given_kyno_going_away_when_a_crew_is_running_then_the_last_direction_ca
     caplog,
 ):
     runner, control_plane = mcp_runner
-    control_plane.set_direction(mission="M1", change_note="init")
+    control_plane.apply_direction(mission="M1", change_note="init")
     binder = DirectionBinder(McpDirectionSource(runner))
     binder.bind()
 
@@ -166,7 +166,7 @@ def test_given_a_full_binding_when_pulling_then_the_declaration_and_descriptions
     mcp_runner,
 ):
     runner, control_plane = mcp_runner
-    control_plane.set_direction(
+    control_plane.apply_direction(
         mission="M1",
         declaration="The long form.",
         principles=({"title": "Be honest", "description": "Say the hard number first."},),

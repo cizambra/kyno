@@ -5,13 +5,15 @@ def test_given_support_binder_when_plan_tracker_checks_changes_then_only_support
     mcp_connection,
 ):
     connection, control_plane = mcp_connection
-    control_plane.set_direction(mission="Support", change_note="Initial", constitution="support")
+    control_plane.apply_direction(mission="Support", change_note="Initial", constitution="support")
     tracker = connection.binder("support").plan()
 
     planned = tracker.direction()
-    control_plane.set_direction(mission="Sales", change_note="Initial", constitution="sales")
+    control_plane.apply_direction(mission="Sales", change_note="Initial", constitution="sales")
     assert tracker.changed() is None
-    control_plane.set_direction(mission="New support", change_note="Update", constitution="support")
+    control_plane.apply_direction(
+        mission="New support", change_note="Update", constitution="support"
+    )
     changed = tracker.changed()
 
     assert planned.constitution == changed.constitution == "support"
@@ -21,7 +23,7 @@ def test_given_support_binder_when_plan_tracker_checks_changes_then_only_support
 
 def test_given_a_plan_when_planning_then_the_direction_in_force_is_pulled(mcp_connection):
     conn, control_plane = mcp_connection
-    control_plane.set_direction(mission="M1", change_note="init")
+    control_plane.apply_direction(mission="M1", change_note="init")
     tracker = conn.binder().plan()
 
     assert tracker.direction().version == 1
@@ -29,7 +31,7 @@ def test_given_a_plan_when_planning_then_the_direction_in_force_is_pulled(mcp_co
 
 def test_given_an_unchanged_direction_when_checking_then_no_replan_is_needed(mcp_connection):
     conn, control_plane = mcp_connection
-    control_plane.set_direction(mission="M1", change_note="init")
+    control_plane.apply_direction(mission="M1", change_note="init")
     tracker = conn.binder().plan()
     tracker.direction()
 
@@ -40,11 +42,11 @@ def test_given_a_new_version_mid_run_when_checking_then_the_fresh_direction_come
     mcp_connection,
 ):
     conn, control_plane = mcp_connection
-    control_plane.set_direction(mission="M1", change_note="init")
+    control_plane.apply_direction(mission="M1", change_note="init")
     tracker = conn.binder().plan()
     tracker.direction()
 
-    control_plane.set_direction(mission="M2", change_note="pivot")
+    control_plane.apply_direction(mission="M2", change_note="pivot")
     fresh = tracker.changed()
     assert fresh is not None
     assert fresh.version == 2
@@ -55,10 +57,10 @@ def test_given_a_replan_when_it_is_applied_then_the_tracker_arms_against_the_new
     mcp_connection,
 ):
     conn, control_plane = mcp_connection
-    control_plane.set_direction(mission="M1", change_note="init")
+    control_plane.apply_direction(mission="M1", change_note="init")
     tracker = conn.binder().plan()
     tracker.direction()
-    control_plane.set_direction(mission="M2", change_note="pivot")
+    control_plane.apply_direction(mission="M2", change_note="pivot")
 
     assert tracker.changed() is not None
     # The orchestrator re-plans against the fresh direction, which is a new
@@ -74,7 +76,7 @@ def test_given_no_direction_yet_when_planning_then_version_zero_holds_and_the_fi
     tracker = conn.binder().plan()
 
     assert tracker.direction().version == 0
-    control_plane.set_direction(mission="M1", change_note="init")
+    control_plane.apply_direction(mission="M1", change_note="init")
     fresh = tracker.changed()
     assert fresh is not None
     assert fresh.version == 1
@@ -82,7 +84,7 @@ def test_given_no_direction_yet_when_planning_then_version_zero_holds_and_the_fi
 
 def test_given_an_unreachable_plane_when_checking_then_no_change_is_reported(mcp_connection):
     conn, control_plane = mcp_connection
-    control_plane.set_direction(mission="M1", change_note="init")
+    control_plane.apply_direction(mission="M1", change_note="init")
     tracker = conn.binder().plan()
     tracker.direction()
     conn.close()

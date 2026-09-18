@@ -211,7 +211,7 @@ def test_given_invalid_name_when_get_constitution_is_called_then_request_is_not_
 def test_given_invalid_key_filter_when_listing_history_then_request_is_not_sent(key):
     runner = Mock()
     with pytest.raises(ValueError, match="constitution key"):
-        history.list_delivery_records(runner, constitution=key)
+        history.list_delivery_records(runner, constitution_key=key)
     runner.call.assert_not_called()
 
 

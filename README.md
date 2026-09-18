@@ -67,7 +67,7 @@ point, rather than infer them from when an update was applied.
 pip install kyno
 kyno new acme && cd acme  # the workspace: this instance's config and store
 kyno db init
-printf 'constitution: default\nmission: Ship a lending product people trust\n' > constitution.yaml
+printf 'constitution_key: default\nmission: Ship a lending product people trust\n' > constitution.yaml
 kyno apply constitution.yaml --note "initial constitution"
 kyno current
 export APP_TOKEN="$(kyno token add agents --scope read)"

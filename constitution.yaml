@@ -1,4 +1,4 @@
-constitution: main
+constitution_key: main
 
 mission: To help organizations keep multi-agent systems coherent.
 
@@ -121,4 +121,3 @@ declaration: |
   through the same publishing flow, and rendered on the same page. When our
   direction changes, the change note is public. If the project's behavior
   contradicts a principle here, that is a bug in the project.
-

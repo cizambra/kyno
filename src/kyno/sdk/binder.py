@@ -89,7 +89,7 @@ class DirectionBinder:
         if snapshot is not None:
             last, recording = snapshot
             logger.warning(
-                "kyno pull_failed_stale constitution=%s version=%s %s",
+                "kyno pull_failed_cached constitution=%s version=%s %s",
                 constitution,
                 last.version,
                 exc,

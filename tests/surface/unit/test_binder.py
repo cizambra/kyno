@@ -98,7 +98,7 @@ def test_given_constitution_bound_binders_when_bind_runs_then_last_seen_versions
 
 
 @pytest.mark.parametrize("version", [0, 3], ids=["unwritten-constitution", "written-direction"])
-def test_given_cached_direction_when_bind_fails_then_warning_reports_the_retained_version(
+def test_given_cached_direction_when_bind_fails_then_warning_reports_cached_fallback_and_version(
     scripted_source, caplog, version
 ):
     mission = "M3" if version else ""
@@ -114,7 +114,7 @@ def test_given_cached_direction_when_bind_fails_then_warning_reports_the_retaine
         (
             "kyno.sdk.binder",
             logging.WARNING,
-            f"kyno pull_failed_stale constitution=default version={version} connection refused",
+            f"kyno pull_failed_cached constitution=default version={version} connection refused",
         )
     ]
 
@@ -213,7 +213,7 @@ def test_given_binders_when_bind_with_status_fails_then_logs_name_each_constitut
     records = [record for record in caplog.records if record.name == "kyno.sdk.binder"]
     assert [record.levelno for record in records] == [logging.WARNING, logging.WARNING]
     assert [record.getMessage() for record in records] == [
-        "kyno pull_failed_stale constitution=support version=3 connection refused",
+        "kyno pull_failed_cached constitution=support version=3 connection refused",
         "kyno pull_failed_empty constitution=sales version=0 connection refused",
     ]
 
@@ -254,7 +254,7 @@ def test_given_a_kyno_error_when_binding_then_it_degrades_like_an_unreachable_ky
     direction = binder.bind()
 
     assert direction.version == 3
-    assert "pull_failed_stale" in caplog.text
+    assert "pull_failed_cached" in caplog.text
 
 
 def test_given_an_unexpected_error_when_binding_then_it_is_not_swallowed(scripted_source):
@@ -281,7 +281,7 @@ def test_given_cached_direction_when_bind_fails_then_warning_names_constitution_
         (
             "kyno.sdk.binder",
             logging.WARNING,
-            "kyno pull_failed_stale constitution=eu version=7 connection refused",
+            "kyno pull_failed_cached constitution=eu version=7 connection refused",
         )
     ]
 

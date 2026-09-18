@@ -3,8 +3,9 @@
 from unittest.mock import Mock
 
 import pytest
+import yaml
 
-from kyno.authoring import read_constitution_file
+from kyno.authoring import read_constitution_file, render_constitution_yaml
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.cell import Direction
 from kyno.service import ControlPlane
@@ -43,6 +44,21 @@ def test_given_padded_file_key_when_reading_authoring_then_identity_is_normalize
     path = tmp_path / "constitution.yaml"
     path.write_text('constitution: " eu-west "\nmission: Help\n')
     assert read_constitution_file(str(path)).constitution == "eu-west"
+
+
+@pytest.mark.parametrize("key", ["eu-west", "a" * 200])
+def test_given_padded_key_when_rendering_authoring_then_yaml_contains_normalized_identity(
+    memory_store, key
+):
+    version = ControlPlane(memory_store).current()
+    document = yaml.safe_load(render_constitution_yaml(version, f" {key} "))
+    assert document["constitution"] == key
+
+
+@pytest.mark.parametrize("key", [" ", "Upper"])
+def test_given_invalid_key_when_rendering_authoring_then_key_is_refused(memory_store, key):
+    with pytest.raises(ValueError, match="constitution key"):
+        render_constitution_yaml(ControlPlane(memory_store).current(), key)
 
 
 @pytest.mark.parametrize("key", ["", " ", "Acme EU", "a" * 201])

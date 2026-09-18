@@ -1,5 +1,6 @@
 """Plan and draft support responses using CrewAI and current Kyno direction."""
 
+import os
 import sys
 import uuid
 from contextlib import ExitStack
@@ -10,6 +11,8 @@ from support import SCENARIO, parse_arguments, report, task_prompt, wait_for_ope
 import kyno
 from kyno.adapters.crewai import CrewAiKyno
 from kyno.sdk import DeliveryStatus, DetailLevel, PullPolicy
+
+os.environ["PYTHON_DOTENV_DISABLED"] = "1"
 
 
 def require_current_direction(binding):

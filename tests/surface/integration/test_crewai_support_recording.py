@@ -1,6 +1,10 @@
 """CrewAI command consent protects external resources and preserves opt-in recordings."""
 
 import json
+import os
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 
@@ -138,3 +142,29 @@ def test_given_an_unrelated_agent_when_hooks_run_then_direction_and_recording_ar
     assert boundary.after_call(context) is None
     assert context.messages == []
     assert events == []
+
+
+def test_given_a_local_dotenv_when_crewai_is_imported_by_the_example_then_it_is_not_loaded(
+    crewai_example, tmp_path
+):
+    (tmp_path / ".env").write_text("KYNO_EXAMPLE_DOTENV_SENTINEL=unexpected\n")
+    directory = str(Path(crewai_example.__file__).parent)
+    script = (
+        "import os, sys\n"
+        f"sys.path.insert(0, {directory!r})\n"
+        "import crewai_run\n"
+        "import crewai\n"
+        "assert 'KYNO_EXAMPLE_DOTENV_SENTINEL' not in os.environ\n"
+    )
+    environment = dict(os.environ)
+    environment.pop("PYTHON_DOTENV_DISABLED", None)
+    environment.pop("KYNO_EXAMPLE_DOTENV_SENTINEL", None)
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr

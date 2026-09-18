@@ -29,7 +29,7 @@ From the repository checkout, install the CrewAI extra:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[crewai]"
+pip install -e ".[crewai]" "python-dotenv>=1.2"
 ```
 
 Follow steps 1 and 2 of the [shared walkthrough](README.md#1-server-terminal)
@@ -50,7 +50,9 @@ python examples/customer_support/crewai_run.py --url http://127.0.0.1:2256 --mod
 
 The operator chooses a model available in their account. Explicit
 `--allow-model-calls` consent is required; calls can incur charges and send
-the sample direction and complaint to OpenAI. No `.env` file is loaded.
+the sample direction and complaint to OpenAI. The example sets
+`PYTHON_DOTENV_DISABLED=1` before importing CrewAI because CrewAI otherwise
+loads `.env` files implicitly. This requires the python-dotenv version above.
 CrewAI tracing is disabled on each crew; the environment variables above
 also disable CrewAI telemetry. Provider retention settings still apply.
 
@@ -104,7 +106,7 @@ Recordings contain prompts and responses; review them before sharing.
 ## Verify without a model provider
 
 ```bash
-pip install -e ".[dev,crewai]"
+pip install -e ".[dev,crewai]" "python-dotenv>=1.2"
 CREWAI_TELEMETRY_DISABLED=true CREWAI_TRACING_ENABLED=false python -m pytest -q tests/surface/e2e/test_crewai_support_example.py tests/surface/integration/test_crewai_support_recording.py
 ```
 

@@ -17,6 +17,7 @@ def example(monkeypatch):
 
 @pytest.fixture
 def crewai_example(monkeypatch):
+    monkeypatch.setenv("PYTHON_DOTENV_DISABLED", "1")
     monkeypatch.setenv("CREWAI_TELEMETRY_DISABLED", "true")
     monkeypatch.setenv("CREWAI_TRACING_ENABLED", "false")
     pytest.importorskip("crewai")

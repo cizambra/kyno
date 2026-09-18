@@ -132,6 +132,16 @@ def test_given_list_filters_when_querying_the_connection_then_mcp_receives_the_e
     session.call_tool.assert_awaited_once_with("list_delivery_records", expected_arguments)
 
 
+@pytest.mark.parametrize("constitution_key", ["", "   ", "Upper"])
+def test_given_invalid_key_filter_when_listing_history_then_request_is_not_sent(constitution_key):
+    runner = Mock()
+
+    with pytest.raises(ValueError, match="constitution key"):
+        KynoConnection(runner).list_delivery_records(constitution_key=constitution_key)
+
+    runner.call.assert_not_called()
+
+
 @pytest.mark.parametrize("version", [-1, True, "1", 1.5])
 def test_given_invalid_version_when_get_constitution_is_called_then_request_is_not_sent(version):
     runner = Mock()

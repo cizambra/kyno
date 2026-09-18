@@ -226,3 +226,8 @@ def test_given_cached_version_zero_when_get_with_recording_runs_then_empty_direc
 
     assert cell.get_with_recording() == (direction, receipt)
     assert cell.last_seen_version() == 0
+
+
+def test_given_unresolved_key_when_constructing_written_direction_then_value_is_refused():
+    with pytest.raises(ValueError, match="resolved constitution key"):
+        Direction(constitution_key=None, version=1, mission="Help", principles=())

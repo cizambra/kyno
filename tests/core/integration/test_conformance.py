@@ -110,3 +110,15 @@ def test_given_an_empty_file_when_checked_then_it_says_how_to_write_the_log():
     report = check_log("")
     assert not report.ok
     assert SEPARATOR in report.problems[0]
+
+
+def test_given_unresolved_empty_direction_when_checking_log_then_no_identity_is_required():
+    report = check_log(log_of("[kyno:direction version=0]\nNo direction has been received yet."))
+    assert report.ok
+    assert report.versions == [0]
+
+
+def test_given_written_direction_without_key_when_checking_log_then_identity_is_required():
+    report = check_log(log_of("[kyno:direction version=1]\nMission: Help"))
+    assert not report.ok
+    assert "constitution key" in report.problems[0]

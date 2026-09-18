@@ -71,7 +71,8 @@ class LocalDirectionSource:
         constitution_key: str | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> DirectionResponse:
-        constitution_key = check_constitution_key(constitution_key)
+        if constitution_key is not None:
+            constitution_key = check_constitution_key(constitution_key)
         detail = check_detail(detail)
         changes = self._control_plane.changes_since(last_seen_version, constitution_key)
         return DirectionResponse(_changes(changes.to_dict(detail)))
@@ -375,19 +376,19 @@ class McpDirectionSource:
         that is what the binder's policy degrades on. A reply we cannot read
         is the control plane being unreachable as far as the next step is
         concerned, and it must cost freshness rather than the step itself."""
-        constitution_key = check_constitution_key(constitution_key)
+        if constitution_key is not None:
+            constitution_key = check_constitution_key(constitution_key)
         detail = check_detail(detail)
+        arguments = {
+            "last_seen_version": last_seen_version,
+            "detail": detail.value,
+            **self._context,
+        }
+        if constitution_key is not None:
+            arguments["constitution_key"] = constitution_key
 
         async def call(session):
-            return await session.call_tool(
-                "get_changes_since",
-                {
-                    "last_seen_version": last_seen_version,
-                    "constitution_key": constitution_key,
-                    "detail": detail.value,
-                    **self._context,
-                },
-            )
+            return await session.call_tool("get_changes_since", arguments)
 
         try:
             payload = _payload(self._runner.call(call))

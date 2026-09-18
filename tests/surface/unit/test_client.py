@@ -3,7 +3,7 @@ import json
 import threading
 from contextlib import asynccontextmanager, suppress
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -298,3 +298,28 @@ def test_given_invalid_detail_when_changes_since_is_called_then_source_dependenc
         source_type(dependency).changes_since(0, "default", detail)
 
     assert dependency.mock_calls == []
+
+
+@pytest.mark.parametrize("selection", [{}, {"constitution_key": None}])
+def test_given_omitted_key_when_local_source_pulls_then_core_receives_none(selection):
+    control_plane = Mock()
+    control_plane.changes_since.side_effect = OSError("offline")
+
+    with pytest.raises(OSError, match="offline"):
+        LocalDirectionSource(control_plane).changes_since(0, **selection)
+
+    control_plane.changes_since.assert_called_once_with(0, None)
+
+
+@pytest.mark.parametrize("selection", [{}, {"constitution_key": None}])
+def test_given_omitted_key_when_mcp_source_pulls_then_request_omits_selection(selection):
+    session = SimpleNamespace(call_tool=AsyncMock(side_effect=OSError("offline")))
+    runner = Mock()
+    runner.call.side_effect = lambda operation: asyncio.run(operation(session))
+
+    with pytest.raises(KynoUnavailableError, match="offline"):
+        McpDirectionSource(runner).changes_since(0, **selection)
+
+    session.call_tool.assert_awaited_once_with(
+        "get_changes_since", {"last_seen_version": 0, "detail": "compact", "metadata": {}}
+    )

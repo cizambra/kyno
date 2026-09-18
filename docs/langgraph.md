@@ -99,7 +99,8 @@ version = state["kyno_version"]
 ```
 
 `direction_from_state(state)` restores the same key as
-`direction.constitution_key`. With an empty state, it selects `"default"`.
+`direction.constitution_key`. An empty state or failed first pull with no selected
+key retains `None`; only a successful Core reply resolves an omitted key.
 
 Before your work node runs, `direction_node` or `pull_before` supplies the
 direction and sets `state["kyno_binding_status"]` automatically. Your application

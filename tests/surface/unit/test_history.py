@@ -87,7 +87,7 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
     "filters, expected_arguments",
     [
         ({}, {"limit": 50}),
-        ({"constitution": " support "}, {"constitution": "support", "limit": 50}),
+        ({"constitution": " support "}, {"constitution_key": "support", "limit": 50}),
         (
             {
                 "correlation_id": "run-42",

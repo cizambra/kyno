@@ -92,7 +92,7 @@ Each call creates a `direction_supplied` event and, after the call returns,
 a separate `model_output` event with matching run, step, call, and model IDs.
 
 The supplied event includes direction, constitution, version, binding status,
-context level, scenario, task, and the actual CrewAI message list after
+detail level, scenario, task, and the actual CrewAI message list after
 injection. The output event preserves the response string exposed by CrewAI's
 after-call hook, before CrewAI parses the final answer. Provider-specific
 response metadata is not exposed by that hook. Application state uses the

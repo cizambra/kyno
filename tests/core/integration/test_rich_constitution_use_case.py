@@ -90,5 +90,5 @@ def test_given_a_rich_constitution_when_published_and_bound_then_a_crew_serves_i
     assert DESCRIPTION not in compact
 
     # Unless this binding would rather spend the tokens.
-    full = DirectionBinder(source, "acme", context=DetailLevel.FULL).bind().render()
+    full = DirectionBinder(source, "acme", detail=DetailLevel.FULL).bind().render()
     assert PARAGRAPH in full and DESCRIPTION in full

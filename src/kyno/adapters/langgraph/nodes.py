@@ -25,7 +25,7 @@ class KynoState(TypedDict, total=False):
     kyno_change_notes: list[str]
     kyno_delta: list[str]
     kyno_principles: list[dict]
-    kyno_context: DetailLevel
+    kyno_detail: DetailLevel
     kyno_direction: str
     kyno_binding_status: BindingStatus | None
     kyno_recording: dict[str, str | None] | None
@@ -50,7 +50,7 @@ def direction_update(
         "kyno_delta": list(direction.delta),
         "kyno_principles": [p.to_dict() for p in direction.principles],
         "kyno_direction": direction.render(),
-        "kyno_context": direction.context,
+        "kyno_detail": direction.detail,
         "kyno_binding_status": BindingStatus(status) if status is not None else None,
         "kyno_recording": (
             {"status": recording.status.value, "record_id": recording.record_id}
@@ -69,7 +69,7 @@ def direction_from_state(state: dict) -> Direction:
         change_notes=tuple(state.get("kyno_change_notes", ())),
         delta=tuple(state.get("kyno_delta", ())),
         principles=state.get("kyno_principles", ()),
-        context=state.get("kyno_context", DetailLevel.COMPACT),
+        detail=state.get("kyno_detail", DetailLevel.COMPACT),
     )
 
 

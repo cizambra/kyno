@@ -17,23 +17,23 @@ from kyno.wire.delivery import RecordingStatus
 from kyno.wire.models import DetailLevel
 
 
-@pytest.mark.parametrize("context", list(DetailLevel))
+@pytest.mark.parametrize("detail", list(DetailLevel))
 @pytest.mark.parametrize("populated", [False, True], ids=["before-pull", "after-pull"])
-def test_given_fixed_context_when_assigning_binder_context_then_attribute_error_preserves_pulls(
-    scripted_source, context, populated
+def test_given_fixed_detail_when_assigning_binder_detail_then_attribute_error_preserves_pulls(
+    scripted_source, detail, populated
 ):
     scripted_source.set("default", 1, "Support customers")
-    binder = DirectionBinder(scripted_source, context=context.value)
+    binder = DirectionBinder(scripted_source, detail=detail.value)
     if populated:
         binder.bind()
-    other_context = DetailLevel.FULL if context is DetailLevel.COMPACT else DetailLevel.COMPACT
+    other_detail = DetailLevel.FULL if detail is DetailLevel.COMPACT else DetailLevel.COMPACT
 
     with pytest.raises(AttributeError):
-        binder.context = other_context
+        binder.detail = other_detail
 
-    assert binder.context is context
-    assert binder.bind().context is context
-    assert all(detail is context for detail in scripted_source.details)
+    assert binder.detail is detail
+    assert binder.bind().detail is detail
+    assert all(requested_detail is detail for requested_detail in scripted_source.details)
 
 
 @pytest.mark.parametrize("constitution_name", [None, 1, True, [], {}])
@@ -307,32 +307,36 @@ def test_given_a_binder_with_no_sink_when_a_pull_fails_then_it_degrades_quietly(
     assert DirectionBinder(scripted_source).bind() == Direction.empty("default")
 
 
-def test_given_a_binder_when_binding_any_direction_then_its_context_is_stamped_on_it(
+def test_given_full_detail_when_bind_is_called_then_direction_has_full_detail(
     scripted_source,
 ):
     scripted_source.set("eu", 2, "EU")
-    binder = DirectionBinder(scripted_source, "eu", context=DetailLevel.FULL)
-    assert binder.bind().context is DetailLevel.FULL
+    binder = DirectionBinder(scripted_source, "eu", detail=DetailLevel.FULL)
+    assert binder.bind().detail is DetailLevel.FULL
 
 
-def test_given_a_degraded_bind_when_reading_the_empty_direction_then_the_context_is_stamped(
+def test_given_full_detail_and_failed_pull_when_bind_is_called_then_empty_direction_has_full_detail(
     scripted_source,
 ):
     scripted_source.failure = OSError("connection refused")
-    binder = DirectionBinder(scripted_source, "eu", context=DetailLevel.FULL, policy=PullPolicy())
-    assert binder.bind().context is DetailLevel.FULL
+    binder = DirectionBinder(scripted_source, "eu", detail=DetailLevel.FULL, policy=PullPolicy())
+    assert binder.bind().detail is DetailLevel.FULL
 
 
-def test_given_no_context_asked_when_binding_then_the_compact_context_is_used(scripted_source):
+def test_given_default_detail_when_bind_is_called_then_direction_has_compact_detail(
+    scripted_source,
+):
     scripted_source.set("eu", 2, "EU")
-    assert DirectionBinder(scripted_source, "eu").bind().context is DetailLevel.COMPACT
+    assert DirectionBinder(scripted_source, "eu").bind().detail is DetailLevel.COMPACT
 
 
-def test_given_an_unknown_context_when_building_the_binder_then_it_is_refused(scripted_source):
+def test_given_unknown_detail_when_direction_binder_is_constructed_then_value_error_is_raised(
+    scripted_source,
+):
     # At wiring time, not at the first step: a typo must not survive until a
     # crew is already running.
     with pytest.raises(ValueError, match="verbose"):
-        DirectionBinder(scripted_source, context="verbose")
+        DirectionBinder(scripted_source, detail="verbose")
 
 
 def test_given_a_compact_binding_when_pulling_then_kyno_is_asked_for_the_compact_form(
@@ -341,7 +345,7 @@ def test_given_a_compact_binding_when_pulling_then_kyno_is_asked_for_the_compact
     # Do not fetch what you will not inject: the pull matches the binding.
     scripted_source.set("eu", 2, "EU")
     DirectionBinder(scripted_source, "eu").bind()
-    DirectionBinder(scripted_source, "eu", context=DetailLevel.FULL).bind()
+    DirectionBinder(scripted_source, "eu", detail=DetailLevel.FULL).bind()
     assert scripted_source.details == [DetailLevel.COMPACT, DetailLevel.FULL]
 
 
@@ -375,7 +379,7 @@ def test_given_a_cached_version_when_the_pull_fails_then_the_binding_is_cached(
 
 def test_given_no_cached_direction_when_the_pull_fails_then_the_binding_is_empty(scripted_source):
     scripted_source.failure = OSError("offline")
-    binder = DirectionBinder(scripted_source, "sales", context=DetailLevel.FULL)
+    binder = DirectionBinder(scripted_source, "sales", detail=DetailLevel.FULL)
     binding = binder.bind_with_status()
     assert binding.status is BindingStatus.EMPTY
     assert binding.direction == Direction.empty("sales", DetailLevel.FULL)
@@ -453,12 +457,12 @@ def test_given_uncached_sales_when_bind_is_called_then_it_returns_direction_afte
     assert scripted_source.calls == [(0, "sales")]
 
 
-@pytest.mark.parametrize("context", list(DetailLevel))
+@pytest.mark.parametrize("detail", list(DetailLevel))
 def test_given_two_binders_when_only_one_has_cached_direction_then_failed_pulls_use_own_state(
-    scripted_source, context
+    scripted_source, detail
 ):
-    first = DirectionBinder(scripted_source, context=context)
-    second = DirectionBinder(scripted_source, context=context)
+    first = DirectionBinder(scripted_source, detail=detail)
+    second = DirectionBinder(scripted_source, detail=detail)
     scripted_source.set("default", 2, "M2")
     original = first.bind()
     scripted_source.failure = OSError("offline")
@@ -469,15 +473,15 @@ def test_given_two_binders_when_only_one_has_cached_direction_then_failed_pulls_
     assert populated.status is BindingStatus.CACHED
     assert populated.direction is original
     assert empty.status is BindingStatus.EMPTY
-    assert empty.direction == Direction.empty("default", context)
+    assert empty.direction == Direction.empty("default", detail)
     assert empty.recording is None
 
 
-def test_given_compact_and_full_binders_when_pulls_fail_then_each_retains_its_requested_context(
+def test_given_compact_and_full_binders_when_pulls_fail_then_each_retains_its_requested_detail(
     scripted_source,
 ):
-    compact = DirectionBinder(scripted_source, context=DetailLevel.COMPACT)
-    full = DirectionBinder(scripted_source, context=DetailLevel.FULL)
+    compact = DirectionBinder(scripted_source, detail=DetailLevel.COMPACT)
+    full = DirectionBinder(scripted_source, detail=DetailLevel.FULL)
     scripted_source.set("default", 2, "M2")
     compact_direction = compact.bind()
     full_direction = full.bind()
@@ -485,8 +489,8 @@ def test_given_compact_and_full_binders_when_pulls_fail_then_each_retains_its_re
 
     assert compact.bind() is compact_direction
     assert full.bind() is full_direction
-    assert compact_direction.context is DetailLevel.COMPACT
-    assert full_direction.context is DetailLevel.FULL
+    assert compact_direction.detail is DetailLevel.COMPACT
+    assert full_direction.detail is DetailLevel.FULL
 
 
 @pytest.mark.parametrize("status", list(RecordingStatus))

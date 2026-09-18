@@ -49,7 +49,7 @@ failure policy, and replaces the previous Kyno direction block in the
 messages. The block names the constitution and version and includes the
 mission, principles, and change context. Other messages are preserved.
 
-Use `connection.binder("customer-support", context="full")` if the model also needs the
+Use `connection.binder("customer-support", detail="full")` if the model also needs the
 declaration and principle descriptions. No callback, receipt storage,
 run ID, or step ID is required for direction injection.
 
@@ -92,7 +92,7 @@ Each binding contains `direction`, `status`, and `recording`. The status is a
 `BindingStatus` enum: `pulled`, `cached`, or `empty`, with the
 [shared meanings](adapters.md#inspecting-binding-status). Use
 `binding.direction.render()` for the exact direction block, including
-the selected compact/full context, change notes, and delta. Later pulls
+the selected compact/full detail, change notes, and delta. Later pulls
 do not change previously received bindings.
 
 `binding.recording` is the server's immutable recording receipt, or `None`

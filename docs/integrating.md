@@ -471,15 +471,15 @@ correlation ID and uses empty metadata.
 ## Current and historical direction
 
 `connection.get_constitution()` reads current direction. Pass `version` to read
-an exact historical version. Both default to the same compact context agents
-read: mission and principle titles. Set `context="full"` to include the
+an exact historical version. Both default to the same compact detail agents
+read: mission and principle titles. Set `detail="full"` to include the
 declaration and principle descriptions.
 
 ```python
 with kyno.connect() as connection:
     current = connection.get_constitution()
     previous = connection.get_constitution(version=1)
-    full = connection.get_constitution(version=1, context="full")
+    full = connection.get_constitution(version=1, detail="full")
     print("Current:", current.version, current.mission)
     print("Version 1, compact:")
     print(previous.render())
@@ -515,7 +515,7 @@ delivery = connection.get_delivery_record(record_id)
 direction = connection.get_constitution(
     delivery["requested_constitution"],
     version=delivery["served_version"],
-    context="full",
+    detail="full",
 )
 ```
 

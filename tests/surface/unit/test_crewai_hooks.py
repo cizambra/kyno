@@ -113,9 +113,9 @@ def test_given_non_dict_message_when_before_llm_call_runs_then_message_is_kept(
 
 
 @pytest.mark.parametrize("status", list(BindingStatus))
-@pytest.mark.parametrize("context", list(DetailLevel))
+@pytest.mark.parametrize("detail", list(DetailLevel))
 def test_given_observer_when_before_llm_call_runs_then_binding_is_reported_after_injection(
-    scripted_source, status, context
+    scripted_source, status, detail
 ):
     scripted_source.set("support", 2, "Help customers", "Be honest")
     scripted_source.replies["support"] = replace(
@@ -123,7 +123,7 @@ def test_given_observer_when_before_llm_call_runs_then_binding_is_reported_after
         declaration="Explain the complete resolution.",
         delta=("Mission changed.",),
     )
-    binder = DirectionBinder(scripted_source, "support", context=context)
+    binder = DirectionBinder(scripted_source, "support", detail=detail)
     if status is BindingStatus.CACHED:
         binder.bind()
     if status is not BindingStatus.PULLED:
@@ -143,7 +143,7 @@ def test_given_observer_when_before_llm_call_runs_then_binding_is_reported_after
     binding, captured_messages = observed[0]
     assert binding.status is status
     assert binding.direction.constitution == "support"
-    assert binding.direction.context is context
+    assert binding.direction.detail is detail
     assert binding.direction.version == (0 if status is BindingStatus.EMPTY else 2)
     assert captured_messages == messages
     assert messages[0]["content"] == binding.direction.render()

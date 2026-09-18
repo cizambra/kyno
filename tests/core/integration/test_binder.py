@@ -40,7 +40,7 @@ def test_given_a_direction_change_between_steps_when_binding_the_second_then_it_
     assert (second.version, second.mission) == (2, "M2")
 
 
-def test_given_a_context_choice_when_binding_then_only_the_injected_block_changes(control_plane):
+def test_given_a_detail_choice_when_binding_then_only_the_injected_block_changes(control_plane):
     # The knob is about what an agent is sent at every step, never about what
     # the control plane holds or answers.
     control_plane.apply_direction(
@@ -51,7 +51,7 @@ def test_given_a_context_choice_when_binding_then_only_the_injected_block_change
     )
     source = LocalDirectionSource(control_plane)
     compact = DirectionBinder(source).bind()
-    full = DirectionBinder(source, context=DetailLevel.FULL).bind()
+    full = DirectionBinder(source, detail=DetailLevel.FULL).bind()
 
     assert "The long form." not in compact.render()
     assert "The long form." in full.render()

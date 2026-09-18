@@ -58,11 +58,11 @@ def receipt(state):
 
 @pytest.mark.parametrize("wrapper", [False, True], ids=["direction-node", "pull-before"])
 @pytest.mark.parametrize("status", list(BindingStatus))
-@pytest.mark.parametrize("context", list(DetailLevel))
+@pytest.mark.parametrize("detail", list(DetailLevel))
 def test_given_a_binding_when_work_is_checkpointed_then_its_exact_direction_and_status_survive(
-    source, wrapper, status, context
+    source, wrapper, status, detail
 ):
-    binder = DirectionBinder(source, "support", context=context)
+    binder = DirectionBinder(source, "support", detail=detail)
     if status is BindingStatus.CACHED:
         binder.bind()
     if status is not BindingStatus.PULLED:
@@ -90,10 +90,10 @@ def test_given_a_binding_when_work_is_checkpointed_then_its_exact_direction_and_
     assert restored["receipts"][0]["kyno_direction"] == restored["kyno_direction"]
     assert restored["kyno_constitution"] == "support"
     if status is BindingStatus.EMPTY:
-        expected = Direction.empty("support", context)
+        expected = Direction.empty("support", detail)
     else:
         expected = Direction.from_changes(
-            source.changes_since.return_value.changes, "support", context
+            source.changes_since.return_value.changes, "support", detail
         )
     assert restored["kyno_direction"] == expected.render()
     assert direction_from_state(restored) == expected
@@ -293,7 +293,7 @@ def test_given_rich_direction_when_fields_are_removed_then_only_new_receipts_cle
         delta=(),
     )
     source.changes_since.side_effect = [DirectionResponse(initial), DirectionResponse(revised)]
-    binder = DirectionBinder(source, "support", context=DetailLevel.FULL)
+    binder = DirectionBinder(source, "support", detail=DetailLevel.FULL)
     graph = StateGraph(ReceiptState)
     if use_pull_before:
         graph.add_node("work", pull_before(binder)(receipt)).add_edge(START, "work")

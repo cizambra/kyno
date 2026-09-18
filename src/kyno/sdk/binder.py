@@ -4,12 +4,12 @@ from __future__ import annotations
 import logging
 
 from kyno.sdk.binding import BindingStatus, DirectionBinding
-from kyno.sdk.cell import Direction, DirectionCell, check_context
+from kyno.sdk.cell import Direction, DirectionCell
 from kyno.sdk.client import DirectionSource
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.policy import PullPolicy
 from kyno.wire.errors import CoherenceError
-from kyno.wire.models import DetailLevel
+from kyno.wire.models import DetailLevel, check_detail
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class DirectionBinder:
         constitution: str = "default",
         *,
         policy: PullPolicy | None = None,
-        context: str | DetailLevel = DetailLevel.COMPACT,
+        detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> None:
         if not isinstance(constitution, str):
             raise TypeError("constitution name must be a string")
@@ -38,12 +38,12 @@ class DirectionBinder:
         self._policy = policy or PullPolicy()
         # Checked here rather than at the first step, so a typo fails while the integration is
         # being set up instead of once it is running.
-        self._context = check_context(context)
+        self._detail = check_detail(detail)
 
     @property
-    def context(self) -> DetailLevel:
-        """The context level selected when the binder was constructed."""
-        return self._context
+    def detail(self) -> DetailLevel:
+        """The detail level selected when the binder was constructed."""
+        return self._detail
 
     @property
     def constitution(self) -> str:
@@ -65,7 +65,7 @@ class DirectionBinder:
         constitution = self.constitution
         last_seen_version = self._cell.last_seen_version()
         try:
-            response = self._source.changes_since(last_seen_version, constitution, self.context)
+            response = self._source.changes_since(last_seen_version, constitution, self.detail)
         except (CoherenceError, OSError) as exc:
             # OSError covers the socket family and, since 3.10, TimeoutError;
             # CoherenceError covers everything kyno raises, including the
@@ -73,7 +73,7 @@ class DirectionBinder:
             return self._degrade(constitution, exc)
         changes = response.changes
         direction, recording = self._cell.update_with_recording(
-            Direction.from_changes(changes, constitution, self.context), response.recording
+            Direction.from_changes(changes, constitution, self.detail), response.recording
         )
         status = (
             BindingStatus.CACHED
@@ -96,7 +96,7 @@ class DirectionBinder:
             )
             return DirectionBinding(last, BindingStatus.CACHED, recording)
         logger.warning("kyno pull_failed_empty constitution=%s version=0 %s", constitution, exc)
-        return DirectionBinding(Direction.empty(constitution, self.context), BindingStatus.EMPTY)
+        return DirectionBinding(Direction.empty(constitution, self.detail), BindingStatus.EMPTY)
 
     def plan(self):
         from kyno.sdk.plan import PlanTracker

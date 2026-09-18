@@ -52,7 +52,7 @@ class StageBoundary:
                     "constitution": direction.constitution,
                     "version": direction.version,
                     "status": binding.status,
-                    "context": direction.context,
+                    "detail": direction.detail,
                     "direction": direction.render(),
                     "scenario": SCENARIO,
                     "task": self.prompt,
@@ -166,7 +166,7 @@ def run_live(args, token):
         run_example(
             model,
             connection.binder(
-                args.constitution, context=DetailLevel.FULL, policy=PullPolicy(fail_closed=True)
+                args.constitution, detail=DetailLevel.FULL, policy=PullPolicy(fail_closed=True)
             ),
             model_name=args.model,
             wait_for_operator=wait_for_operator,

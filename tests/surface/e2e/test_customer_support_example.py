@@ -98,7 +98,7 @@ def test_given_an_operator_update_when_the_graph_continues_then_each_call_record
         state = example.run_example(
             Model(),
             connection.binder(
-                "customer-support", context=DetailLevel.FULL, policy=PullPolicy(fail_closed=True)
+                "customer-support", detail=DetailLevel.FULL, policy=PullPolicy(fail_closed=True)
             ),
             model_name="deterministic-test",
             wait_for_operator=operator,

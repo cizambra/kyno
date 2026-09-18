@@ -134,19 +134,19 @@ def test_given_invalid_version_when_get_constitution_is_called_then_request_is_n
 
 
 @pytest.mark.parametrize("version", [None, 0, 3])
-@pytest.mark.parametrize("context", list(DetailLevel))
+@pytest.mark.parametrize("detail", list(DetailLevel))
 def test_given_version_selection_when_get_constitution_is_called_then_exact_tool_arguments_are_sent(
-    version, context
+    version, detail
 ):
     returned_version = 3 if version is None else version
     payload = {"version": returned_version, "mission": "", "principles": []}
     session = SimpleNamespace(call_tool=AsyncMock(return_value=reply(payload)))
     runner = Mock()
     runner.call.side_effect = lambda callback: asyncio.run(callback(session))
-    result = KynoConnection(runner).get_constitution("example", version=version, context=context)
+    result = KynoConnection(runner).get_constitution("example", version=version, detail=detail)
     assert result.version == returned_version
-    assert result.context is context
-    expected = {"constitution": "example", "detail": context.value}
+    assert result.detail is detail
+    expected = {"constitution": "example", "detail": detail.value}
     if version is not None:
         expected["version"] = version
     session.call_tool.assert_awaited_once_with("get_constitution", expected)
@@ -186,12 +186,12 @@ def test_given_invalid_name_when_get_constitution_is_called_then_request_is_not_
     runner.call.assert_not_called()
 
 
-@pytest.mark.parametrize("context", ["unknown", None, 1])
+@pytest.mark.parametrize("detail", ["unknown", None, 1])
 @pytest.mark.parametrize("version", [0, 1])
-def test_given_invalid_context_when_get_constitution_is_called_then_request_is_not_sent(
-    context, version
+def test_given_invalid_detail_when_get_constitution_is_called_then_request_is_not_sent(
+    detail, version
 ):
     runner = Mock()
-    with pytest.raises(ValueError, match="context"):
-        KynoConnection(runner).get_constitution(version=version, context=context)
+    with pytest.raises(ValueError, match="detail"):
+        KynoConnection(runner).get_constitution(version=version, detail=detail)
     runner.call.assert_not_called()

@@ -171,7 +171,7 @@ still apply.
 Each call produces two separate events:
 
 - `direction_supplied`: run/call/step IDs, model ID, constitution, version,
-  binding status, context level, exact rendered direction, fixed scenario,
+  binding status, detail level, exact rendered direction, fixed scenario,
   task prompt (including the plan and draft when applicable),
   and the time immediately before the model call.
 - `model_output`: the same call identity, capture time, and the full serialized

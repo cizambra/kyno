@@ -23,6 +23,7 @@ def _direction(version: int, constitution: str = "default") -> Direction:
 
 def test_given_changes_when_building_a_direction_then_the_constitution_name_is_carried():
     changes = ChangesSince(
+        constitution_key="default",
         current_version=3,
         changed=True,
         mission="Ship trustworthy lending",
@@ -157,6 +158,7 @@ def test_given_the_injected_block_when_reading_then_the_declaration_is_left_out(
 
 def test_given_a_direction_when_reading_then_the_declaration_is_there_for_the_full_text():
     changes = ChangesSince(
+        constitution_key="default",
         current_version=3,
         changed=True,
         mission="M",

@@ -38,7 +38,7 @@ def test_given_a_named_write_when_applying_without_a_selection_then_only_default
     assert plane.current("support").mission == "Support first"
 
 
-def test_given_two_histories_when_get_constitution_selects_version_one_then_default_is_returned(
+def test_given_no_constitution_when_get_constitution_requests_v1_then_default_v1_is_returned(
     plane, default_selection
 ):
     direction = plane.get_constitution(version=1, **default_selection)

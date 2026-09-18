@@ -216,7 +216,7 @@ def token_revoke(
 
 
 _CONSTITUTION_KEY_OPTION = typer.Option(
-    "default", "--constitution-key", help="The unique constitution key to act on."
+    None, "--constitution-key", help="The constitution key; omitted uses Core's default."
 )
 
 _REMOTE_HELP = "Run against a remote profile's endpoint instead of the local store."
@@ -488,10 +488,11 @@ def _remote_options_guard(
         )
 
 
-def _fetch_remote_head(client, constitution: str) -> dict:
-    return client.call_tool(
-        "get_constitution", {"constitution_key": constitution, "detail": "full"}
-    )
+def _fetch_remote_head(client, constitution: str | None) -> dict:
+    arguments = {"detail": "full"}
+    if constitution is not None:
+        arguments["constitution_key"] = constitution
+    return client.call_tool("get_constitution", arguments)
 
 
 def _system_user() -> str | None:
@@ -692,7 +693,7 @@ def page_export(
 
 @app.command()
 def current(
-    constitution: str = _CONSTITUTION_KEY_OPTION,
+    constitution: str | None = _CONSTITUTION_KEY_OPTION,
     as_yaml: bool = typer.Option(
         False,
         "--yaml",
@@ -715,7 +716,7 @@ def current(
 @app.command("get-version")
 def get_version(
     version: str = typer.Argument(..., help="A positive version number, or 'latest'."),
-    constitution: str = _CONSTITUTION_KEY_OPTION,
+    constitution: str | None = _CONSTITUTION_KEY_OPTION,
     as_yaml: bool = typer.Option(
         False, "--yaml", help="Print direction in the file format `kyno apply` reads."
     ),
@@ -733,17 +734,20 @@ def get_version(
     number = _parse_version_selector(version)
     _remote_options_guard(remote, profile, credentials, token_env)
     with _clean_errors():
-        constitution = check_constitution_key(constitution)
+        if constitution is not None:
+            constitution = check_constitution_key(constitution)
         payload = _read_direction_version(
             number, constitution, remote, profile, credentials, token_env
         )
         head = version_from_payload(payload)
         if head is None:
             if as_yaml:
-                raise CoherenceError(f"nothing to read: '{constitution}' has no versions")
+                raise CoherenceError(
+                    f"nothing to read: '{payload['constitution_key']}' has no versions"
+                )
             typer.echo("no constitution set (version 0)")
         elif as_yaml:
-            typer.echo(render_constitution_yaml(head, constitution), nl=False)
+            typer.echo(render_constitution_yaml(head, head.constitution_key), nl=False)
         else:
             typer.echo(json.dumps(payload, indent=2))
 
@@ -761,9 +765,13 @@ def _parse_version_selector(version: str) -> int | None:
     return number
 
 
+def _constitution_label(constitution: str | None) -> str:
+    return repr(constitution) if constitution is not None else "the default constitution"
+
+
 def _read_direction_version(
     number: int | None,
-    constitution: str,
+    constitution: str | None,
     remote: bool,
     profile: str,
     credentials: str | None,
@@ -774,9 +782,13 @@ def _read_direction_version(
         if remote:
             rows = _fetch_remote_rows(profile, credentials, token_env, constitution, version=number)
         else:
-            rows = _store().export_versions(constitution, from_version=number, to_version=number)
+            rows = _control_plane().export_versions(
+                constitution, from_version=number, to_version=number
+            )
         if not rows:
-            raise CoherenceError(f"nothing to read: '{constitution}' has no version {number}")
+            raise CoherenceError(
+                f"nothing to read: {_constitution_label(constitution)} has no version {number}"
+            )
         return rows[0]
     if not remote:
         return _control_plane().current(constitution).to_dict()
@@ -884,7 +896,7 @@ def _render_comparison(target: str, head, delta: tuple[str, ...]) -> None:
 
 @app.command()
 def publish(
-    constitution: str = _CONSTITUTION_KEY_OPTION,
+    constitution: str | None = _CONSTITUTION_KEY_OPTION,
     with_history: bool = typer.Option(
         False,
         "--with-history",
@@ -894,8 +906,10 @@ def publish(
     """Serve a constitution publicly. Without --with-history only the current
     mission, principles, version and last-changed date are exposed."""
     try:
-        constitution = check_constitution_key(constitution)
+        if constitution is not None:
+            constitution = check_constitution_key(constitution)
         pub = _control_plane().publish(constitution, with_history=with_history)
+        constitution = pub.constitution_key
         history = "public" if pub.history_public else "hidden"
         typer.echo(f"published '{constitution}' (history: {history})")
         typer.echo(f"  GET /constitutions/{constitution}")
@@ -906,11 +920,12 @@ def publish(
 
 
 @app.command()
-def unpublish(constitution: str = _CONSTITUTION_KEY_OPTION) -> None:
+def unpublish(constitution: str | None = _CONSTITUTION_KEY_OPTION) -> None:
     """Take a constitution's public page down. History goes private too."""
     try:
-        constitution = check_constitution_key(constitution)
-        _control_plane().unpublish(constitution)
+        if constitution is not None:
+            constitution = check_constitution_key(constitution)
+        constitution = _control_plane().unpublish(constitution).constitution_key
         typer.echo(f"unpublished '{constitution}'")
     except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
@@ -919,7 +934,7 @@ def unpublish(constitution: str = _CONSTITUTION_KEY_OPTION) -> None:
 
 @app.command()
 def history(
-    constitution: str = _CONSTITUTION_KEY_OPTION,
+    constitution: str | None = _CONSTITUTION_KEY_OPTION,
     remote: bool = typer.Option(False, "--remote", help=_REMOTE_HELP),
     profile: str = typer.Option("default", "--profile", help="Which remote profile to use."),
     credentials: str | None = typer.Option(
@@ -933,11 +948,12 @@ def history(
     author, and the change note. `kyno export` has the full content."""
     _remote_options_guard(remote, profile, credentials, token_env)
     try:
-        constitution = check_constitution_key(constitution)
+        if constitution is not None:
+            constitution = check_constitution_key(constitution)
         if remote:
             rows = _fetch_remote_rows(profile, credentials, token_env, constitution)
         else:
-            rows = _store().export_versions(constitution)
+            rows = _control_plane().export_versions(constitution)
     except (CoherenceError, SQLAlchemyError) as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from None
@@ -953,7 +969,7 @@ def history(
 
 @app.command()
 def export(
-    constitution: str = _CONSTITUTION_KEY_OPTION,
+    constitution: str | None = _CONSTITUTION_KEY_OPTION,
     remote: bool = typer.Option(False, "--remote", help=_REMOTE_HELP),
     profile: str = typer.Option("default", "--profile", help="Which remote profile to use."),
     credentials: str | None = typer.Option(
@@ -969,20 +985,25 @@ def export(
     with no versions is refused, the same as `kyno current --yaml`."""
     _remote_options_guard(remote, profile, credentials, token_env)
     try:
-        constitution = check_constitution_key(constitution)
+        if constitution is not None:
+            constitution = check_constitution_key(constitution)
         if remote:
             rows = _fetch_remote_rows(profile, credentials, token_env, constitution)
         else:
-            rows = _store().export_versions(constitution)
+            rows = _control_plane().export_versions(constitution)
         if not rows:
             # An empty file is not a backup, and a misspelled name is the
             # common way to ask for one: exiting 0 would leave a cron job
             # writing nothing and reporting success.
-            typer.echo(f"error: nothing to export: '{constitution}' has no versions", err=True)
+            typer.echo(
+                f"error: nothing to export: {_constitution_label(constitution)} has no versions",
+                err=True,
+            )
             raise typer.Exit(code=1)
         # On stderr so stdout stays the JSON alone. Naming the one
         # constitution keeps a scheduled `kyno export > backup.json` from
         # passing as a full instance backup.
+        constitution = rows[0]["constitution_key"]
         typer.echo(f"Constitution '{constitution}' exported", err=True)
         typer.echo(json.dumps(rows, indent=2))
     except (CoherenceError, SQLAlchemyError) as exc:
@@ -993,15 +1014,15 @@ def export(
 @app.command("import")
 def import_ledger(
     file: str = typer.Argument(..., help="A JSON file written by kyno export."),
-    as_name: str = typer.Option(
-        "default", "--as", help="The constitution to write the history under."
+    as_name: str | None = typer.Option(
+        None, "--as", help="The destination constitution key; omitted uses Core's default."
     ),
 ) -> None:
     """Restore a constitution version history from a Kyno export, keeping
     every version's number, dates and authors. Local only: it writes
     straight to the workspace's database, and there is no --remote."""
     with _clean_errors():
-        as_name = check_constitution_key(as_name)
+        as_name = _control_plane().current(as_name).constitution_key
         count = _store().import_versions(as_name, _read_export(file))
     word = "version" if count == 1 else "versions"
     typer.echo(f"imported {count} {word} into '{as_name}'")
@@ -1023,11 +1044,13 @@ def _fetch_remote_rows(
     profile: str,
     credentials: str | None,
     token_env: str | None,
-    constitution: str,
+    constitution: str | None,
     *,
     version: int | None = None,
 ) -> list[dict]:
-    arguments = {"constitution_key": constitution}
+    arguments = {}
+    if constitution is not None:
+        arguments["constitution_key"] = constitution
     if version is not None:
         arguments.update(from_version=version, to_version=version)
     client = dial(profile, credentials_profile=credentials, token_env=token_env)

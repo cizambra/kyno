@@ -172,7 +172,7 @@ def test_given_a_missing_remote_version_when_reading_then_output_is_empty_and_co
     result = runner.invoke(app, ["get-version", "2", "--remote", *options])
     assert result.exit_code == 1
     assert result.stdout == ""
-    assert "'default' has no version 2" in result.stderr
+    assert "the default constitution has no version 2" in result.stderr
     assert fake_dial.closed
 
 

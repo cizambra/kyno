@@ -41,14 +41,14 @@ def test_given_padded_key_when_constructing_sdk_values_then_identity_is_normaliz
 
 def test_given_padded_file_key_when_reading_authoring_then_identity_is_normalized(tmp_path):
     path = tmp_path / "constitution.yaml"
-    path.write_text('constitution: " eu-west "\nmission: Help\n')
-    assert read_constitution_file(str(path)).constitution == "eu-west"
+    path.write_text('constitution_key: " eu-west "\nmission: Help\n')
+    assert read_constitution_file(str(path)).constitution_key == "eu-west"
 
 
 @pytest.mark.parametrize("key", ["", " ", "Acme EU", "a" * 201])
 def test_given_invalid_file_key_when_reading_authoring_then_key_is_refused(tmp_path, key):
     path = tmp_path / "constitution.yaml"
-    path.write_text(f'constitution: "{key}"\nmission: Help\n')
+    path.write_text(f'constitution_key: "{key}"\nmission: Help\n')
     with pytest.raises(ValueError, match="constitution key"):
         read_constitution_file(str(path))
 

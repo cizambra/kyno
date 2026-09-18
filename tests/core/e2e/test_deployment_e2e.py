@@ -108,7 +108,7 @@ def _the_reader_reads_the_empty_instance():
 
 def _a_direction_file(root):
     path = root / "c.yaml"
-    path.write_text("constitution: default\nmission: Ship it\n", encoding="utf-8")
+    path.write_text("constitution_key: default\nmission: Ship it\n", encoding="utf-8")
     return path
 
 

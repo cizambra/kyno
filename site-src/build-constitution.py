@@ -32,7 +32,7 @@ def main() -> None:
 
     fields = read_constitution_file(str(ROOT / "constitution.yaml"))
     view = PublicConstitution(
-        name=fields.constitution or "default",
+        name=fields.constitution_key or "default",
         mission=fields.mission or "",
         principles=normalize_principles(fields.principles) or (),
         version=args.version,

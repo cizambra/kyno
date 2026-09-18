@@ -23,7 +23,7 @@ def apply_yaml(
     """Write a constitution file and apply it: the only way content lands."""
     lines = []
     if constitution is not None:
-        lines.append(f"constitution: {constitution}")
+        lines.append(f"constitution_key: {constitution}")
     lines.append(f"mission: {mission}")
     if principles:
         lines.append("principles:")
@@ -143,7 +143,7 @@ def test_given_an_empty_direction_field_when_reading_yaml_then_the_field_is_expl
     cli_workspace(monkeypatch, tmp_path)
     assert runner.invoke(app, ["db", "init"]).exit_code == 0
     content = {
-        "constitution": "support",
+        "constitution_key": "support",
         "mission": "Help",
         "declaration": "Explain.\nFully.",
         "principles": [{"title": "Trust", "description": "Be honest."}],
@@ -167,7 +167,7 @@ def test_given_an_empty_direction_field_when_reading_yaml_then_the_field_is_expl
         path.write_text(
             json.dumps(
                 {
-                    "constitution": "support",
+                    "constitution_key": "support",
                     "mission": "New mission",
                     "declaration": "New declaration",
                     "principles": ["New principle"],
@@ -622,7 +622,7 @@ def test_given_a_head_when_reading_current_yaml_then_it_prints_in_file_format(
     apply_yaml(tmp_path, mission="M1", principles=["p1"], note="init", by="camilo")
     r = runner.invoke(app, ["current", "--yaml"])
     assert r.exit_code == 0
-    assert "constitution: default" in r.stdout
+    assert "constitution_key: default" in r.stdout
     assert "mission: M1" in r.stdout
     # Content only: the note and author live in the store, not the output.
     assert "note:" not in r.stdout and "by:" not in r.stdout
@@ -667,7 +667,7 @@ def test_given_a_named_constitution_when_reading_current_yaml_then_the_name_rout
     runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="EU rules", constitution="eu", note="init")
     out = runner.invoke(app, ["current", "--yaml", "--constitution", "eu"]).stdout
-    assert "constitution: eu" in out
+    assert "constitution_key: eu" in out
     # The name in the output is enough to route a later apply back to eu.
     target = tmp_path / "eu.yaml"
     target.write_text(out, encoding="utf-8")
@@ -693,11 +693,11 @@ def test_given_typos_and_custom_keys_when_checking_then_the_report_lists_them_wi
     assert apply_yaml(tmp_path, mission="M", note="init").exit_code == 0
     target = tmp_path / "constitution.yaml"
     target.write_text(
-        "constitution: default\nmission: M\nprincipals:\n  - p1\nnote: n\n", encoding="utf-8"
+        "constitution_key: default\nmission: M\nprincipals:\n  - p1\nnote: n\n", encoding="utf-8"
     )
     r = runner.invoke(app, ["check", str(target)])
     assert r.exit_code == 0
-    assert "kyno fields present: constitution, mission" in r.output
+    assert "kyno fields present: constitution_key, mission" in r.output
     assert "principles" in r.output
     assert "note, principals" in r.output
 
@@ -716,7 +716,8 @@ def test_given_custom_fields_when_applying_then_they_are_ignored(tmp_path, monke
     runner.invoke(app, ["db", "init"])
     target = tmp_path / "constitution.yaml"
     target.write_text(
-        "constitution: default\nmission: M1\nnote: the file note\nteam: lending\n", encoding="utf-8"
+        "constitution_key: default\nmission: M1\nnote: the file note\nteam: lending\n",
+        encoding="utf-8",
     )
     r = runner.invoke(app, ["apply", str(target), "--note", "the real note"])
     assert r.exit_code == 0
@@ -751,7 +752,7 @@ def test_given_dry_run_when_applying_then_the_delta_prints_and_nothing_is_persis
     runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init")
     target = tmp_path / "next.yaml"
-    target.write_text("constitution: default\nmission: M2\n", encoding="utf-8")
+    target.write_text("constitution_key: default\nmission: M2\n", encoding="utf-8")
     r = runner.invoke(app, ["apply", str(target), "--dry-run"])
     assert r.exit_code == 0
     assert 'The mission was "M1" and is now "M2".' in r.output
@@ -774,7 +775,7 @@ def test_given_dry_run_when_no_note_is_passed_then_it_still_runs(tmp_path, monke
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     target = tmp_path / "next.yaml"
-    target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
+    target.write_text("constitution_key: default\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["apply", str(target), "--dry-run"])
     assert r.exit_code == 0
 
@@ -825,7 +826,7 @@ def test_given_a_file_without_a_constitution_key_when_applying_then_it_is_refuse
     runner.invoke(app, ["db", "init"])
     r = apply_yaml(tmp_path, mission="M1", note="init", constitution=None)
     assert r.exit_code == 1
-    assert "constitution: <name>" in r.output
+    assert "constitution_key: <key>" in r.output
     assert "no constitution set" in runner.invoke(app, ["current"]).output
 
 
@@ -869,7 +870,7 @@ def test_given_a_stale_file_when_checking_then_it_fails_and_shows_the_delta(
     runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M2", note="hotfix", constitution=constitution)
     stale = tmp_path / "stale.yaml"
-    stale.write_text(f"constitution: {constitution}\nmission: M1\n", encoding="utf-8")
+    stale.write_text(f"constitution_key: {constitution}\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(stale)])
     assert r.exit_code == 1
     assert f"direction: '{constitution}' differs from current version 1:" in r.stdout
@@ -880,7 +881,7 @@ def test_given_an_empty_store_when_checking_then_it_fails(tmp_path, monkeypatch)
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     target = tmp_path / "c.yaml"
-    target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
+    target.write_text("constitution_key: default\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(target)])
     assert r.exit_code == 1
     assert "direction: 'default' has no versions; applying this file creates version 1" in r.stdout
@@ -891,10 +892,10 @@ def test_given_an_unreachable_store_when_checking_then_it_fails_and_the_report_s
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "never.sqlite3")
     target = tmp_path / "c.yaml"
-    target.write_text("constitution: default\nmission: M1\n", encoding="utf-8")
+    target.write_text("constitution_key: default\nmission: M1\n", encoding="utf-8")
     r = runner.invoke(app, ["check", str(target)])
     assert r.exit_code == 1
-    assert "kyno fields present: constitution, mission" in r.stdout
+    assert "kyno fields present: constitution_key, mission" in r.stdout
     assert "direction: not compared" in r.stdout
     assert "[SQL:" not in r.stdout and r.stdout.count("direction:") == 1
 
@@ -905,12 +906,12 @@ def test_given_an_invalid_database_adapter_when_checking_then_it_fails_with_a_fi
     root = cli_workspace(monkeypatch, tmp_path)
     (root / "config" / "server").write_text("[database]\nadapter = unknown\n", encoding="utf-8")
     target = tmp_path / "constitution.yaml"
-    target.write_text("constitution: default\nmission: Help customers\n", encoding="utf-8")
+    target.write_text("constitution_key: default\nmission: Help customers\n", encoding="utf-8")
 
     result = runner.invoke(app, ["check", str(target)])
 
     assert result.exit_code == 1
-    assert "kyno fields present: constitution, mission" in result.stdout
+    assert "kyno fields present: constitution_key, mission" in result.stdout
     assert "direction: not compared (unknown adapter 'unknown':" in result.stdout
     assert result.stdout.count("direction:") == 1
     assert result.stderr == ""
@@ -926,7 +927,7 @@ def test_given_a_file_without_a_constitution_key_when_checking_then_the_store_is
     r = runner.invoke(app, ["check", str(target)])
     assert r.exit_code == 1
     assert "kyno fields omitted: constitution" in r.output
-    assert "direction: not compared" in r.output and "constitution: <name>" in r.output
+    assert "direction: not compared" in r.output and "constitution_key: <key>" in r.output
 
 
 def test_given_a_check_when_comparing_with_the_store_then_the_head_is_read_once(

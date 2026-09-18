@@ -36,9 +36,9 @@ _DETAIL_ARG = {
     ),
 }
 
-_CONSTITUTION_ARG = {
-    "type": "string",
-    "description": 'Which named constitution to act on. Defaults to "default".',
+_CONSTITUTION_KEY_ARG = {
+    "type": ["string", "null"],
+    "description": 'Constitution key, unique within this database. Defaults to "default".',
 }
 
 # Either shape a principle comes in: a bare title, or a title with the
@@ -88,7 +88,7 @@ DECLARATIONS = [
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "constitution": _CONSTITUTION_ARG,
+                    "constitution_key": _CONSTITUTION_KEY_ARG,
                     "detail": _DETAIL_ARG,
                     "version": {
                         "type": "integer",
@@ -112,7 +112,7 @@ DECLARATIONS = [
                 "type": "object",
                 "properties": {
                     "last_seen_version": {"type": "integer", "minimum": 0},
-                    "constitution": _CONSTITUTION_ARG,
+                    "constitution_key": _CONSTITUTION_KEY_ARG,
                     "detail": _DETAIL_ARG,
                 },
                 "required": ["last_seen_version"],
@@ -127,7 +127,10 @@ DECLARATIONS = [
                 "Return the mission alone, with the version it belongs to. One piece "
                 f"of the constitution, for when a compact read is all you need. {_DRIFT}"
             ),
-            inputSchema={"type": "object", "properties": {"constitution": _CONSTITUTION_ARG}},
+            inputSchema={
+                "type": "object",
+                "properties": {"constitution_key": _CONSTITUTION_KEY_ARG},
+            },
         ),
         TokenScope.READ,
     ),
@@ -138,7 +141,10 @@ DECLARATIONS = [
                 "Return the long-form declaration alone, with the version it belongs "
                 f"to. One piece of the constitution, for when a compact read left it out. {_DRIFT}"
             ),
-            inputSchema={"type": "object", "properties": {"constitution": _CONSTITUTION_ARG}},
+            inputSchema={
+                "type": "object",
+                "properties": {"constitution_key": _CONSTITUTION_KEY_ARG},
+            },
         ),
         TokenScope.READ,
     ),
@@ -153,7 +159,7 @@ DECLARATIONS = [
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "constitution": _CONSTITUTION_ARG,
+                    "constitution_key": _CONSTITUTION_KEY_ARG,
                     "detail": _PRINCIPLES_DETAIL_ARG,
                 },
             },
@@ -175,7 +181,7 @@ DECLARATIONS = [
                         "type": "string",
                         "description": "Exact title, from get_constitution.",
                     },
-                    "constitution": _CONSTITUTION_ARG,
+                    "constitution_key": _CONSTITUTION_KEY_ARG,
                 },
                 "required": ["title"],
             },
@@ -192,7 +198,7 @@ DECLARATIONS = [
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "constitution": _CONSTITUTION_ARG,
+                    "constitution_key": _CONSTITUTION_KEY_ARG,
                     "from_version": {"type": ["integer", "null"]},
                     "to_version": {"type": ["integer", "null"]},
                 },
@@ -216,7 +222,7 @@ DECLARATIONS = [
                     "principles": {"type": ["array", "null"], "items": _PRINCIPLE_ITEM},
                     "change_note": {"type": "string"},
                     "created_by": {"type": ["string", "null"]},
-                    "constitution": _CONSTITUTION_ARG,
+                    "constitution_key": _CONSTITUTION_KEY_ARG,
                     "expected_version": {"type": ["integer", "null"], "minimum": 0},
                     "authorized_by": {
                         "type": ["string", "null"],
@@ -297,9 +303,9 @@ DECLARATIONS.append(
                 "type": "object",
                 "properties": {
                     "correlation_id": {"type": "string"},
-                    "constitution": {
-                        "type": "string",
-                        "description": "Filter by named constitution; omitted means all.",
+                    "constitution_key": {
+                        "type": ["string", "null"],
+                        "description": "Filter by constitution key; omitted means all.",
                     },
                     "since": {
                         "type": "string",

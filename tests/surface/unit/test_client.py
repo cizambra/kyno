@@ -271,7 +271,7 @@ def test_given_a_typed_detail_when_pulling_over_mcp_then_arguments_are_normalize
 
     McpDirectionSource(Runner()).changes_since(0, key, DetailLevel.FULL)
 
-    assert seen["constitution"] == key.strip()
+    assert seen["constitution_key"] == key.strip()
     assert seen["detail"] == "full"
     assert type(seen["detail"]) is str
 

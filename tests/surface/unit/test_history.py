@@ -87,7 +87,7 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
     "filters, expected_arguments",
     [
         ({}, {"limit": 50}),
-        ({"constitution": " support "}, {"constitution": "support", "limit": 50}),
+        ({"constitution": " support "}, {"constitution_key": "support", "limit": 50}),
         (
             {
                 "correlation_id": "run-42",
@@ -99,7 +99,7 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
             },
             {
                 "correlation_id": "run-42",
-                "constitution": "support",
+                "constitution_key": "support",
                 "since": "2026-01-01T00:00:00Z",
                 "until": "2026-02-01T00:00:00Z",
                 "after": 0,
@@ -151,7 +151,7 @@ def test_given_version_selection_when_get_constitution_is_called_then_exact_tool
     result = KynoConnection(runner).get_constitution("example", version=version, detail=detail)
     assert result.version == returned_version
     assert result.detail is detail
-    expected = {"constitution": "example", "detail": detail.value}
+    expected = {"constitution_key": "example", "detail": detail.value}
     if version is not None:
         expected["version"] = version
     session.call_tool.assert_awaited_once_with("get_constitution", expected)
@@ -213,7 +213,7 @@ def test_given_normalizable_key_when_get_constitution_runs_then_request_uses_nor
     direction = history.get_constitution(runner, key)
     assert direction.constitution == expected
     session.call_tool.assert_awaited_once_with(
-        "get_constitution", {"constitution": expected, "detail": "compact"}
+        "get_constitution", {"constitution_key": expected, "detail": "compact"}
     )
 
 

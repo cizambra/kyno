@@ -181,7 +181,7 @@ async def test_given_an_unknown_name_when_reading_then_the_record_has_no_constit
     memory_store,
 ):
     server, history, _ = server_with_history(memory_store)
-    result = await invoke(server, "get_constitution", {"constitution": "missing"})
+    result = await invoke(server, "get_constitution", {"constitution_key": "missing"})
     record = saved_record(memory_store, result["recording"]["record_id"])
     assert record["constitution_id"] is None
     assert record["requested_constitution"] == "missing"

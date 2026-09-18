@@ -94,6 +94,7 @@ class SqlDeliveryRecordStore:
     def _decode(self, row) -> DeliverySummary:
         record = dict(row)
         record.pop("sequence")
+        record["constitution_key"] = record.pop("requested_constitution")
         for key in ("requester", "metadata", "selection"):
             record[key] = json.loads(record[key])
         return cast(DeliverySummary, record)
@@ -114,7 +115,7 @@ class SqlDeliveryRecordStore:
         self,
         *,
         correlation_id: str | None = None,
-        constitution: str | None = None,
+        constitution_key: str | None = None,
         since: str | None = None,
         until: str | None = None,
         after: int = 0,
@@ -125,8 +126,8 @@ class SqlDeliveryRecordStore:
         Time bounds are inclusive. Continue with the same filters and the returned
         cursor as after; records appended between pages can appear on later pages.
         """
-        if constitution is not None:
-            constitution = check_constitution_key(constitution)
+        if constitution_key is not None:
+            constitution_key = check_constitution_key(constitution_key)
         if type(limit) is not int or not 1 <= limit <= 100:
             raise ValueError("limit must be an integer from 1 to 100")
         if type(after) is not int or after < 0:
@@ -138,7 +139,7 @@ class SqlDeliveryRecordStore:
         query = select(*columns).where(self._table.c.sequence > after)
         for column, value in (
             (self._table.c.correlation_id, correlation_id),
-            (self._table.c.requested_constitution, constitution),
+            (self._table.c.requested_constitution, constitution_key),
         ):
             if value is not None:
                 query = query.where(column == value)

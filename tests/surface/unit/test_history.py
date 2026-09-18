@@ -87,10 +87,11 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
     "filters, expected_arguments",
     [
         ({}, {"limit": 50}),
+        ({"constitution_key": None}, {"limit": 50}),
         (
             {
                 "correlation_id": "run-42",
-                "constitution": "support",
+                "constitution_key": "support",
                 "since": "2026-01-01T00:00:00Z",
                 "until": "2026-02-01T00:00:00Z",
                 "after": 0,
@@ -106,7 +107,7 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
             },
         ),
     ],
-    ids=["default-limit-without-filters", "all-filters-including-zero-cursor"],
+    ids=["default-limit-without-filters", "null-key-filter", "all-filters-including-zero-cursor"],
 )
 def test_given_list_filters_when_querying_the_connection_then_mcp_receives_the_exact_arguments(
     filters, expected_arguments

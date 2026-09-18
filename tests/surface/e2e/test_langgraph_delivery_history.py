@@ -50,7 +50,7 @@ def test_given_new_direction_when_pull_before_runs_again_then_prior_record_keeps
         newer = graph.invoke({})["answer_record"]
 
     record = history.get(original["record_id"])
-    version = server_store.get(record["requested_constitution"], record["served_version"])
+    version = server_store.get(record["constitution_key"], record["served_version"])
 
     assert record["served_version"] == 1
     assert version.mission == "Resolve delivery complaints"

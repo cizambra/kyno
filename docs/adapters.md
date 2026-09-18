@@ -230,8 +230,8 @@ fit.
   direction boundary wired by your integration. It fits most workflows, where any
   step done under the current direction is good work.
 - **Reassess.** Re-derive the remaining plan under the new direction.
-  The [runnable planning example](../examples/planning/README.md) shows an
-  application checking for changes and rebuilding its unfinished checklist.
+  The [customer-support example](../examples/customer_support/README.md) shows
+  planning, execution, and application-owned replanning in one LangGraph run.
   Wire it where your orchestrator plans: call `binder.plan()`, plan
   against `direction()`, and re-plan when `changed()` returns a fresh
   version. It costs one planning call per change, and it fits workflows

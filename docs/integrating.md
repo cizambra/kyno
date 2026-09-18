@@ -366,8 +366,8 @@ ones that ship with Kyno. Two smaller things worth adding after:
 - **Planning.** If your orchestrator makes a plan before executing it,
   fetch the direction at planning time too, and re-plan the remaining steps
   whenever a fetch returns a higher version than the plan was made under.
-  The [planning example](../examples/planning/README.md) shows these reads
-  and the application's decision to rebuild unfinished work.
+  The [customer-support example](../examples/customer_support/README.md) shows
+  adapter pulls before planning and the application's decision to replan.
 
 If your adapter targets a framework other people use, we'd welcome a PR.
 The Python versions of everything on this page live in the SDK,

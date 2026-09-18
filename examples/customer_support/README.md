@@ -1,14 +1,25 @@
 # Direction changes during a customer-support run
 
-Run one LangGraph workflow with two model calls. After the first answer,
-the graph waits while you change direction in Kyno. The second call pulls
-again without restarting the workflow.
+Run the full planning and response cycle in one LangGraph workflow:
 
-Both calls receive the same customer complaint and the same permitted
-actions. Only the supplied direction changes. The model may choose a
-different answer; this example does not assert that it follows the principles
-or that its second answer is better. It drafts responses and executes no
-refunds, messages, or other actions.
+1. Pull direction and ask the model to make a response plan.
+2. Pull again and ask the model to draft a response using that plan.
+3. Wait while the operator changes direction in Kyno.
+4. Pull again and compare the version with the one used for planning.
+5. If it changed, ask the model to revise the remaining plan using the
+   completed draft. Otherwise, keep the plan.
+6. Pull before asking the model for the final proposed response.
+
+**The graph decides whether to replan. Kyno supplies direction, not workflow
+decisions.** Planning, drafting, and finalization all use the LangGraph
+adapter's `pull_before` wrapper. There are four model calls when direction
+changes and three when it does not.
+
+The customer complaint and permitted actions stay fixed, but the later calls
+also receive the plan and completed draft. This is an integration example,
+not a controlled comparison that changes only direction. It does not assert
+that the model follows the principles or produces a better answer. No refunds,
+messages, or other actions are executed.
 
 ```mermaid
 sequenceDiagram
@@ -17,18 +28,31 @@ sequenceDiagram
     participant Graph
     participant Model
     Operator->>Kyno: Apply direction v1
-    Graph->>Kyno: Pull before first answer
-    Kyno-->>Graph: v1 and delivery status
-    Graph->>Graph: Record supplied direction
-    Graph->>Model: Direction and customer complaint
-    Model-->>Graph: First answer
+    Graph->>Kyno: Pull before planning
+    Kyno-->>Graph: v1
+    Graph->>Model: Direction and complaint; create a plan
+    Model-->>Graph: Plan
+    Graph->>Kyno: Pull before drafting
+    Kyno-->>Graph: Current direction
+    Graph->>Model: Direction, complaint, and plan
+    Model-->>Graph: Draft
     Graph->>Graph: Wait for operator input
     Operator->>Kyno: Apply direction v2
     Operator->>Graph: Press Enter to continue
-    Graph->>Kyno: Pull before second answer
+    Graph->>Kyno: Pull and check the plan's direction version
     Kyno-->>Graph: v2 and change context
-    Graph->>Model: New direction and the same complaint
-    Model-->>Graph: Second answer
+    alt Direction is newer than the plan
+        Graph->>Kyno: Pull before replanning
+        Kyno-->>Graph: Current direction
+        Graph->>Model: Revise remaining plan; keep completed draft
+        Model-->>Graph: Revised plan
+    else Direction has not changed
+        Graph->>Graph: Keep the plan
+    end
+    Graph->>Kyno: Pull before final response
+    Kyno-->>Graph: Current direction
+    Graph->>Model: Direction, plan, and completed draft
+    Model-->>Graph: Final proposed response
 ```
 
 ## Install
@@ -95,8 +119,9 @@ read -rp 'OpenAI model ID: ' MODEL
 python examples/customer_support/run.py --url http://127.0.0.1:2256 --model "$MODEL" --allow-model-calls
 ```
 
-The first step prints the run ID, step ID, constitution, version, delivery
-status, and model answer. It then waits for your input. This is an ordinary
+The script prints the plan and first draft, each with its run ID, step ID,
+constitution, direction version, and delivery status. It then waits for your input.
+This is an ordinary
 input pause inside the same graph invocation, not checkpoint persistence or
 a Kyno orchestration feature. Do not press Enter until the next apply succeeds.
 
@@ -108,9 +133,29 @@ In the **operator terminal**:
 kyno apply examples/customer_support/direction-v2.yaml --remote --profile support-operator --note "Explain remedies and preserve customer choice"
 ```
 
-Return to the agent terminal and press Enter. The second step pulls the
-latest direction and prints another answer. If no change was applied, both
-receipts name the same version. Kyno does not invent a change for the example.
+Return to the agent terminal and press Enter. The graph checks direction.
+When the version is newer than the plan's version, it calls the model to revise
+the unfinished plan, then calls the model for the final response. The completed
+draft remains in graph state and is included in both calls; the drafting node
+does not run again. With no update, the graph skips replanning.
+
+## Where planning belongs
+
+In `run.py`, `model_node()` wraps every model call with `pull_before(binder)`.
+Planning nodes store the returned plan and the direction version supplied to
+that call. `check_direction()` pulls at the application's chosen review boundary;
+the graph's conditional edge routes to `replan` or directly to `second_answer`.
+
+The graph stores its planning version itself because it already receives
+direction through the adapter. It does not also call `binder.plan()`, which
+would introduce another read. Applications without this graph state can use
+the SDK's `PlanTracker` for that bookkeeping.
+
+These pulls are separate reads, not one locked snapshot. Another operator
+update can arrive between planning and execution. Each model call receives
+freshly pulled direction, but this example checks whether to replan only at
+the explicit review boundary. Your application chooses its own boundaries
+and what to do with work already completed.
 
 ## Optional recording
 
@@ -125,6 +170,7 @@ Each call produces two separate events:
 
 - `direction_supplied`: run/call/step IDs, model ID, constitution, version,
   delivery status, context level, exact rendered direction, fixed scenario,
+  task prompt (including the plan and draft when applicable),
   and the time immediately before the model call.
 - `model_output`: the same call identity, capture time, and the full serialized
   LangChain response message, including its content and response metadata.

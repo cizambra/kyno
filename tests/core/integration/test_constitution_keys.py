@@ -52,7 +52,7 @@ def test_given_padded_key_when_rendering_authoring_then_yaml_contains_normalized
 ):
     version = ControlPlane(memory_store).current()
     document = yaml.safe_load(render_constitution_yaml(version, f" {key} "))
-    assert document["constitution"] == key
+    assert document["constitution_key"] == key
 
 
 @pytest.mark.parametrize("key", [" ", "Upper"])

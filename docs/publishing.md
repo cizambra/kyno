@@ -20,10 +20,10 @@ kyno unpublish --constitution eu
 While `kyno serve --transport http` is running, a published constitution is
 readable by anyone at:
 
-- `GET /constitutions/{name}`: a self-contained HTML page (no scripts, no
+- `GET /constitutions/{constitution_key}`: a self-contained HTML page (no scripts, no
   external assets, light and dark). The declaration is the body of it,
   rendered from markdown, and a described principle shows its paragraph.
-- `GET /constitutions/{name}.json`: the same content, machine-readable.
+- `GET /constitutions/{constitution_key}.json`: the same content, machine-readable.
 - `GET /constitutions/` and `GET /constitutions.json`: an index of what you
   have published.
 
@@ -118,7 +118,7 @@ variables above; one that drops it is fully yours.
 | Placeholder | What it is |
 | --- | --- |
 | `$stylesheet` | the whole `<style>` block: color variables + Kyno's page styles |
-| `$name` | the constitution's name |
+| `$constitution_key` | the constitution's database-unique key |
 | `$mission` | the mission, or the name when there's no mission |
 | `$declaration` | the declaration rendered from markdown, wrapped in its `<div>`; empty when there's none |
 | `$principles` | the principles section, heading and list; empty when there are none |

@@ -92,7 +92,7 @@ def test_given_a_theme_when_rendering_the_index_then_it_uses_the_same_theme(plan
 # --- template override -----------------------------------------------------
 
 TEMPLATE = """<!doctype html>
-<html><head><title>$name</title></head>
+<html><head><title>$constitution_key</title></head>
 <body>
 <h1>$mission</h1>
 <ul class="ours">$principles</ul>
@@ -312,7 +312,7 @@ def test_given_the_docs_when_comparing_to_the_code_then_the_documented_placehold
     readme = (REPO_ROOT / "docs" / "publishing.md").read_text()
     documented = [
         "$stylesheet",
-        "$name",
+        "$constitution_key",
         "$mission",
         "$declaration",
         "$principles",

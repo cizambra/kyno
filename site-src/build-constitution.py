@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from kyno.authoring import read_constitution_file
-from kyno.models import PublicConstitution, normalize_principles
+from kyno.models import PublicConstitution
 from kyno.public_page import PageConfig, render_constitution
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -32,9 +32,9 @@ def main() -> None:
 
     fields = read_constitution_file(str(ROOT / "constitution.yaml"))
     view = PublicConstitution(
-        name=fields.constitution or "default",
+        constitution_key=fields.constitution or "default",
         mission=fields.mission or "",
-        principles=normalize_principles(fields.principles) or (),
+        principles=fields.principles or (),
         version=args.version,
         last_changed_at=datetime.strptime(args.updated, "%Y-%m-%d").replace(tzinfo=UTC),
         history=None,

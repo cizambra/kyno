@@ -164,7 +164,7 @@ def test_given_the_json_route_when_requesting_then_the_machine_readable_view_ret
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("application/json")
     payload = r.json()
-    assert payload["constitution"] == "default"
+    assert payload["constitution_key"] == "default"
     assert payload["mission"] == "Ship trust"
     assert payload["principles"] == [
         {"title": "p1", "description": ""},
@@ -175,10 +175,10 @@ def test_given_the_json_route_when_requesting_then_the_machine_readable_view_ret
 
 
 def test_given_a_json_request_when_routing_then_it_matches_before_the_html_route(plane, client):
-    # /constitutions/{name} would otherwise match "default.json" as a name.
+    # /constitutions/{constitution_key} would otherwise match "default.json" as a name.
     direction(plane)
     plane.publish()
-    assert client.get("/constitutions/default.json").json()["constitution"] == "default"
+    assert client.get("/constitutions/default.json").json()["constitution_key"] == "default"
 
 
 def test_given_an_unpublished_name_when_requesting_its_json_then_it_is_404(plane, client):
@@ -224,7 +224,7 @@ def test_given_an_unpublished_constitution_when_rendering_the_index_then_it_neve
     assert "product" in body
 
     payload = client.get("/constitutions.json").json()
-    assert [c["constitution"] for c in payload["constitutions"]] == ["product"]
+    assert [c["constitution_key"] for c in payload["constitutions"]] == ["product"]
 
 
 def test_given_nothing_published_when_rendering_the_index_then_it_says_so_and_lists_nothing(
@@ -255,7 +255,7 @@ def test_given_a_constitution_named_index_when_routing_then_the_index_route_does
     direction(plane, "index", mission="A constitution actually named index")
     plane.publish(constitution_key="index")
     assert client.get("/constitutions/index").status_code == 200
-    assert client.get("/constitutions/index.json").json()["constitution"] == "index"
+    assert client.get("/constitutions/index.json").json()["constitution_key"] == "index"
 
 
 def test_given_no_trailing_slash_when_requesting_the_index_then_it_is_reachable(plane, client):

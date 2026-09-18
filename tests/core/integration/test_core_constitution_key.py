@@ -17,7 +17,7 @@ def test_given_named_direction_when_selecting_key_then_embedded_operations_share
     assert plane.head_and_delta(mission="Next mission", constitution_key="eu-west")[0].version == 1
     assert plane.publish(constitution_key="eu-west").published
     assert plane.publication(constitution_key="eu-west").published
-    assert plane.public_constitution(constitution_key="eu-west").name == "eu-west"
+    assert plane.public_constitution(constitution_key="eu-west").constitution_key == "eu-west"
     assert not plane.unpublish(constitution_key="eu-west").published
     assert plane.current().version == 0
 

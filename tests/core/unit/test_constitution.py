@@ -1,6 +1,6 @@
 import pytest
 
-from kyno.wire.constitution import check_constitution_key
+from kyno.wire.constitution import InvalidConstitutionKeyError, check_constitution_key
 
 
 @pytest.mark.parametrize(
@@ -8,11 +8,14 @@ from kyno.wire.constitution import check_constitution_key
     [
         (None, "default"),
         ("default", "default"),
+        ("a", "a"),
+        ("0", "0"),
+        ("team-2-eu", "team-2-eu"),
         ("  eu-west\n", "eu-west"),
         (" a" + "b" * 199 + " ", "a" + "b" * 199),
     ],
 )
-def test_given_valid_key_when_checking_constitution_key_then_normalized_key_returns(
+def test_given_valid_key_when_check_constitution_key_runs_then_surrounding_whitespace_is_removed(
     value, expected
 ):
     assert check_constitution_key(value) == expected
@@ -30,12 +33,20 @@ def test_given_valid_key_when_checking_constitution_key_then_normalized_key_retu
         "-acme",
         "acme-",
         "équipe",
+        "team\nsupport",
+        "team\tsupport",
+        "team\x00support",
+        "１２３",
         "a" * 201,
         1,
         True,
         [],
+        {},
+        b"support",
     ],
 )
-def test_given_invalid_key_when_checking_constitution_key_then_value_is_refused(value):
-    with pytest.raises(ValueError, match="constitution key"):
+def test_given_invalid_key_when_check_constitution_key_runs_then_typed_key_error_is_raised(
+    value,
+):
+    with pytest.raises(InvalidConstitutionKeyError, match="constitution key"):
         check_constitution_key(value)

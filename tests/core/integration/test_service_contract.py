@@ -510,14 +510,16 @@ def test_given_a_slug_name_when_publishing_then_it_is_accepted(name, cp):
 @pytest.mark.parametrize(
     "operation", ["current", "publication", "publish", "unpublish", "public_constitution"]
 )
-def test_given_invalid_key_when_selecting_constitution_then_operation_is_refused(
+def test_given_invalid_key_when_core_reads_or_publishes_then_value_error_is_raised(
     name, operation, cp
 ):
     with pytest.raises(ValueError, match="constitution key"):
         getattr(cp, operation)(name)
 
 
-def test_given_a_sluggable_key_when_writing_then_suggestion_does_not_create_direction(cp):
+def test_given_uppercase_words_when_apply_direction_runs_then_suggested_key_remains_unwritten(
+    cp,
+):
     with pytest.raises(ValueError, match="epicurean-digital"):
         _direction(cp, "Epicurean Digital")
     assert cp.current("epicurean-digital").version == 0

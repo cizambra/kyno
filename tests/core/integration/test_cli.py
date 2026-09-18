@@ -571,7 +571,7 @@ def test_given_no_name_when_publishing_then_the_default_is_used_and_the_flag_ove
 
 
 @pytest.mark.parametrize("key", ["eu-west", "a" * 200])
-def test_given_padded_key_when_publishing_then_cli_prints_the_normalized_public_url(
+def test_given_padded_key_when_cli_publish_and_unpublish_run_then_output_uses_trimmed_key(
     tmp_path, monkeypatch, key
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")

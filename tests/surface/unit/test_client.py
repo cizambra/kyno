@@ -247,7 +247,9 @@ def test_given_two_bindings_with_one_wiring_when_comparing_then_they_are_equal_a
 
 
 @pytest.mark.parametrize("key", ["default", " " + "a" * 200 + " "])
-def test_given_a_typed_detail_when_pulling_over_mcp_then_arguments_are_normalized(key):
+def test_given_key_and_detail_enum_when_mcp_changes_since_runs_then_wire_arguments_are_normalized(
+    key,
+):
     seen = {}
 
     class Session:
@@ -278,7 +280,9 @@ def test_given_a_typed_detail_when_pulling_over_mcp_then_arguments_are_normalize
 
 @pytest.mark.parametrize("source_type", [LocalDirectionSource, McpDirectionSource])
 @pytest.mark.parametrize("key", ["", " ", "Upper", "a" * 201])
-def test_given_invalid_key_when_pulling_direction_then_dependency_is_not_called(source_type, key):
+def test_given_invalid_key_when_source_changes_since_runs_then_dependency_is_not_called(
+    source_type, key
+):
     dependency = Mock()
     with pytest.raises(ValueError, match="constitution key"):
         source_type(dependency).changes_since(0, key)

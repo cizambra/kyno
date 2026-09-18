@@ -12,7 +12,7 @@ from kyno.service import ControlPlane
 from kyno.store.delivery_record import SqlDeliveryRecordStore
 
 
-def test_given_padded_key_when_writing_direction_then_reads_and_history_share_one_identity(
+def test_given_padded_key_when_apply_direction_runs_then_reads_and_publication_use_trimmed_key(
     memory_store,
 ):
     plane = ControlPlane(memory_store)
@@ -24,8 +24,44 @@ def test_given_padded_key_when_writing_direction_then_reads_and_history_share_on
     assert plane.public_constitution("eu-west").name == "eu-west"
 
 
+def test_given_existing_key_when_apply_direction_uses_padded_key_then_same_history_gets_version_two(
+    memory_store,
+):
+    plane = ControlPlane(memory_store)
+    plane.apply_direction(mission="First", change_note="init", constitution="support")
+
+    updated = plane.apply_direction(
+        mission="Second", change_note="update", constitution=" \tsupport\n", expected_version=1
+    )
+
+    assert updated.version == 2
+    assert plane.current("support").mission == "Second"
+    assert [version.version for version in memory_store.versions_after("support", 0)] == [1, 2]
+    assert plane.current().version == 0
+
+
+@pytest.mark.parametrize("key", [" ", "Upper", "bad/name", "a" * 201])
+def test_given_invalid_key_when_delivery_store_append_runs_then_value_error_leaves_history_empty(
+    memory_store, key
+):
+    history = SqlDeliveryRecordStore(memory_store.engine)
+
+    with pytest.raises(ValueError, match="constitution key"):
+        history.append(
+            {"version": 0},
+            operation="get_direction",
+            constitution=key,
+            arguments={},
+            context={"correlation_id": None, "metadata": {}},
+        )
+
+    assert history.list()["items"] == []
+
+
 @pytest.mark.parametrize("key", ["", " ", "Upper", "bad/name", "a" * 201])
-def test_given_invalid_key_when_reading_or_importing_then_no_identity_is_created(memory_store, key):
+def test_given_invalid_key_when_core_reads_or_store_import_runs_then_value_error_is_raised(
+    memory_store, key
+):
     with pytest.raises(ValueError, match="constitution key"):
         ControlPlane(memory_store).current(key)
     with pytest.raises(ValueError, match="constitution key"):
@@ -34,20 +70,22 @@ def test_given_invalid_key_when_reading_or_importing_then_no_identity_is_created
         memory_store.import_versions(key, [])
 
 
-def test_given_padded_key_when_constructing_sdk_values_then_identity_is_normalized():
+def test_given_padded_key_when_creating_binder_and_empty_direction_then_both_store_trimmed_key():
     assert DirectionBinder(Mock(), " eu-west ").constitution == "eu-west"
     assert Direction.empty(" eu-west ").constitution == "eu-west"
     assert DirectionBinder(Mock(), None).constitution == "default"
 
 
-def test_given_padded_file_key_when_reading_authoring_then_identity_is_normalized(tmp_path):
+def test_given_padded_yaml_key_when_read_constitution_file_runs_then_constitution_is_trimmed(
+    tmp_path,
+):
     path = tmp_path / "constitution.yaml"
     path.write_text('constitution: " eu-west "\nmission: Help\n')
     assert read_constitution_file(str(path)).constitution == "eu-west"
 
 
 @pytest.mark.parametrize("key", ["eu-west", "a" * 200])
-def test_given_padded_key_when_rendering_authoring_then_yaml_contains_normalized_identity(
+def test_given_padded_key_when_render_constitution_yaml_runs_then_yaml_contains_trimmed_key(
     memory_store, key
 ):
     version = ControlPlane(memory_store).current()
@@ -56,20 +94,24 @@ def test_given_padded_key_when_rendering_authoring_then_yaml_contains_normalized
 
 
 @pytest.mark.parametrize("key", [" ", "Upper"])
-def test_given_invalid_key_when_rendering_authoring_then_key_is_refused(memory_store, key):
+def test_given_invalid_key_when_render_constitution_yaml_runs_then_value_error_is_raised(
+    memory_store, key
+):
     with pytest.raises(ValueError, match="constitution key"):
         render_constitution_yaml(ControlPlane(memory_store).current(), key)
 
 
 @pytest.mark.parametrize("key", ["", " ", "Acme EU", "a" * 201])
-def test_given_invalid_file_key_when_reading_authoring_then_key_is_refused(tmp_path, key):
+def test_given_invalid_yaml_key_when_read_constitution_file_runs_then_value_error_is_raised(
+    tmp_path, key
+):
     path = tmp_path / "constitution.yaml"
     path.write_text(f'constitution: "{key}"\nmission: Help\n')
     with pytest.raises(ValueError, match="constitution key"):
         read_constitution_file(str(path))
 
 
-def test_given_delivery_filters_when_listing_then_none_means_all_and_padded_key_matches(
+def test_given_two_keys_when_delivery_store_list_filters_by_padded_key_then_only_that_key_returns(
     memory_store,
 ):
     history = SqlDeliveryRecordStore(memory_store.engine)
@@ -112,14 +154,14 @@ def test_given_delivery_filters_when_listing_then_none_means_all_and_padded_key_
     ],
 )
 @pytest.mark.parametrize("key", [" ", "Upper", "a" * 201])
-def test_given_invalid_key_when_using_storage_directly_then_boundary_refuses_it(
+def test_given_invalid_key_when_sql_store_operation_runs_then_value_error_is_raised(
     memory_store, operation, arguments, key
 ):
     with pytest.raises(ValueError, match="constitution key"):
         getattr(memory_store, operation)(key, **arguments)
 
 
-def test_given_padded_maximum_key_when_using_storage_directly_then_one_identity_is_preserved(
+def test_given_padded_200_character_key_when_sql_store_operations_run_then_trimmed_key_is_used(
     memory_store,
 ):
     key = "a" * 200

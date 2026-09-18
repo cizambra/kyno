@@ -9,7 +9,7 @@ from kyno.wire.models import DetailLevel
 
 
 @pytest.mark.parametrize("constitution_name", [1, True, [], {}])
-def test_given_non_string_constitution_name_when_connection_binder_runs_then_invalid_key_is_refused(
+def test_given_non_string_key_when_connection_binder_runs_then_value_error_is_raised(
     mcp_connection, constitution_name
 ):
     connection, _control_plane = mcp_connection

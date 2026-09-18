@@ -192,7 +192,9 @@ def test_given_invalid_name_when_get_constitution_is_called_then_request_is_not_
 
 
 @pytest.mark.parametrize("key", ["", " ", "Upper", "a" * 201])
-def test_given_invalid_key_filter_when_listing_history_then_request_is_not_sent(key):
+def test_given_invalid_key_when_list_delivery_records_runs_then_mcp_request_is_not_sent(
+    key,
+):
     runner = Mock()
     with pytest.raises(ValueError, match="constitution key"):
         history.list_delivery_records(runner, constitution=key)
@@ -202,7 +204,7 @@ def test_given_invalid_key_filter_when_listing_history_then_request_is_not_sent(
 @pytest.mark.parametrize(
     "key, expected", [(None, "default"), (" a" + "b" * 199 + " ", "a" + "b" * 199)]
 )
-def test_given_normalizable_key_when_get_constitution_runs_then_request_uses_normalized_key(
+def test_given_omitted_or_padded_key_when_get_constitution_runs_then_request_uses_resolved_key(
     key, expected
 ):
     session = SimpleNamespace(

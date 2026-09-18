@@ -8,7 +8,7 @@ from kyno.mcp import handlers as mcp_handlers, server as mcp_server
 from kyno.wire import RESOURCE_URI
 
 
-@pytest.mark.parametrize("version", [-1, True, 1.0, 1.5, "1"])
+@pytest.mark.parametrize("version", [-1, True, False, 0.0, 1.0, 1.5, "1"])
 @pytest.mark.parametrize("operation", ["get_changes_since", "apply_direction"])
 def test_given_invalid_version_when_call_tool_is_called_then_request_is_rejected(
     mcp_runner, operation, version
@@ -26,6 +26,31 @@ def test_given_invalid_version_when_call_tool_is_called_then_request_is_rejected
     assert result.isError
     assert control_plane.current().version == 1
     assert control_plane.current().mission == "Original"
+
+
+@pytest.mark.parametrize("initial_version", [0, 1])
+@pytest.mark.parametrize("conditional", [False, True])
+def test_given_null_or_matching_version_when_apply_direction_runs_over_mcp_then_write_succeeds(
+    mcp_runner, initial_version, conditional
+):
+    runner, control_plane = mcp_runner
+    if initial_version:
+        control_plane.apply_direction(mission="Original", change_note="init")
+
+    result = runner.call(
+        lambda session: session.call_tool(
+            "apply_direction",
+            {
+                "expected_version": initial_version if conditional else None,
+                "mission": "Updated",
+                "change_note": "update",
+            },
+        )
+    )
+
+    assert not result.isError
+    assert control_plane.current().version == initial_version + 1
+    assert control_plane.current().mission == "Updated"
 
 
 @pytest.mark.asyncio

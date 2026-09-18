@@ -58,7 +58,7 @@ def saved_record(store, identifier):
 
 
 @pytest.mark.parametrize("operation", sorted(DIRECTION_READS))
-@pytest.mark.parametrize("last_seen_version", [-1, True, 1.0, 1.5, "1"])
+@pytest.mark.parametrize("last_seen_version", [-1, True, False, 0.0, 1.0, 1.5, "1", None])
 async def test_given_invalid_last_seen_version_when_call_tool_runs_then_no_delivery_is_recorded(
     memory_store, operation, last_seen_version
 ):

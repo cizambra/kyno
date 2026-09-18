@@ -31,13 +31,14 @@ def test_given_changes_when_building_a_direction_then_the_constitution_name_is_c
         changed_principles=False,
         change_notes=("pivot",),
     )
-    d = Direction.from_changes(changes, "eu")
+    d = Direction.from_changes(changes, constitution_key="eu")
     assert d.constitution_key == "eu" and d.version == 3
     assert d.principles == (Principle("Be honest"),) and d.change_notes == ("pivot",)
 
 
 def test_given_the_empty_direction_when_comparing_then_it_matches_version_zero():
-    d = Direction.empty("eu")
+    d = Direction.empty(constitution_key="eu")
+    assert d.constitution_key == "eu"
     assert (d.version, d.mission, d.principles) == (0, "", ())
 
 

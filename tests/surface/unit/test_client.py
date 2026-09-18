@@ -14,6 +14,7 @@ from kyno.wire.models import DetailLevel
 
 def receipt_source(recording):
     payload = {
+        "constitution_key": "default",
         "current_version": 2,
         "changed": False,
         "mission": "Serve customers",
@@ -53,6 +54,11 @@ def test_given_no_recording_information_when_pulling_then_response_has_no_receip
     result = receipt_source(payload).changes_since(0, "default")
     assert result.recording is None
     assert result.changes.mission == "Serve customers"
+
+
+def test_given_resolved_response_key_when_pulling_then_decoder_preserves_it():
+    response = receipt_source({"constitution_key": "eu-west"}).changes_since(0, "eu-west")
+    assert response.changes.constitution_key == "eu-west"
 
 
 @pytest.mark.parametrize(
@@ -254,6 +260,7 @@ def test_given_a_typed_detail_when_pulling_over_mcp_then_arguments_are_normalize
         async def call_tool(self, name, arguments):
             seen.update(arguments)
             payload = {
+                "constitution_key": "default",
                 "current_version": 0,
                 "changed": False,
                 "mission": "",

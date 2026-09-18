@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
@@ -29,6 +29,7 @@ class TokenScope(StrEnum):
 
 @dataclass(frozen=True)
 class ConstitutionVersion(HoldsPrinciples):
+    constitution_key: str = field(kw_only=True)
     version: int
     mission: str
     principles: tuple[Principle, ...]
@@ -61,7 +62,11 @@ class ConstitutionVersion(HoldsPrinciples):
         raise UnknownPrincipleError(f"no principle titled '{title}' in version {self.version}")
 
     def to_dict(self, detail: str | DetailLevel = DetailLevel.FULL) -> dict:
-        payload = {"version": self.version, "mission": self.mission}
+        payload = {
+            "constitution_key": self.constitution_key,
+            "version": self.version,
+            "mission": self.mission,
+        }
         if check_detail(detail) is DetailLevel.FULL:
             payload["declaration"] = self.declaration
         payload["principles"] = [p.to_dict(detail) for p in self.principles]
@@ -78,6 +83,7 @@ class ConstitutionVersion(HoldsPrinciples):
 class Publication:
     """Whether a constitution is served publicly, and how much of it."""
 
+    constitution_key: str = field(kw_only=True)
     published_at: datetime | None
     history_public: bool
 

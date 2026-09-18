@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import UTC, datetime
 
 from kyno.delivery_recording import DeliveryRecorder
@@ -91,6 +92,7 @@ def _check_fields(
 # "now", so repeated empty reads are identical and clearly a placeholder instead of a real write
 # timestamp.
 _EMPTY_CONSTITUTION = ConstitutionVersion(
+    constitution_key=DEFAULT_CONSTITUTION_KEY,
     version=0,
     mission="",
     principles=(),
@@ -101,6 +103,7 @@ _EMPTY_CONSTITUTION = ConstitutionVersion(
     created_by=None,
 )
 _EMPTY_CHANGES = ChangesSince(
+    constitution_key=DEFAULT_CONSTITUTION_KEY,
     current_version=0,
     changed=False,
     mission="",
@@ -192,6 +195,7 @@ def edit_delta(
     if head is None:
         return (f"Creates '{name}' at version 1.",)
     after = ConstitutionVersion(
+        constitution_key=name,
         version=head.version + 1,
         mission=new_mission,
         declaration=new_declaration,
@@ -244,9 +248,10 @@ class ControlPlane:
         self._subscribers.append(callback)
 
     def current(self, constitution_key: str | None = None) -> ConstitutionVersion:
-        head = self._store.head(check_constitution_key(constitution_key))
+        name = check_constitution_key(constitution_key)
+        head = self._store.head(name)
         if head is None:
-            return _EMPTY_CONSTITUTION
+            return replace(_EMPTY_CONSTITUTION, constitution_key=name)
         return head
 
     def get_constitution(
@@ -261,7 +266,7 @@ class ControlPlane:
             return self.current(name)
         check_version(version)
         if version == 0:
-            return _EMPTY_CONSTITUTION
+            return replace(_EMPTY_CONSTITUTION, constitution_key=name)
         selected = self._store.get(name, version)
         if selected is None:
             raise UnknownVersionError(f"constitution '{name}' version {version} not found")
@@ -277,7 +282,7 @@ class ControlPlane:
             # No HEAD to compare against -- no last_seen_version can be "in the
             # future", so this never raises here (see current()'s docstring
             # note above for the reasoning).
-            return _EMPTY_CHANGES
+            return replace(_EMPTY_CHANGES, constitution_key=name)
         if last_seen_version > head.version:
             raise UnknownVersionError(
                 f"last_seen_version {last_seen_version} > current {head.version}"
@@ -285,6 +290,7 @@ class ControlPlane:
         newer = self._store.versions_after(name, last_seen_version)
         changed = bool(newer)
         return ChangesSince(
+            constitution_key=name,
             current_version=head.version,
             changed=changed,
             mission=head.mission,

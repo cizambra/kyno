@@ -326,6 +326,7 @@ def _sequence(value, field: str) -> tuple:
 
 def _changes(payload: dict) -> ChangesSince:
     return ChangesSince(
+        constitution_key=payload.get("constitution_key"),
         current_version=_version(payload["current_version"]),
         changed=bool(payload["changed"]),
         mission=_text(payload["mission"]),

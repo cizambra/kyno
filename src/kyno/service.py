@@ -37,6 +37,8 @@ from kyno.wire.models import (
 
 _log = logging.getLogger(__name__)
 
+DEFAULT_CONSTITUTION_KEY = "default"
+
 # The size limits for a constitution, checked before anything is written. Large enough for a
 # hand-written document, and a hard stop for a machine-generated payload.
 MAX_MISSION_CHARS = 4_000
@@ -244,13 +246,11 @@ class ControlPlane:
     def __init__(
         self,
         store: ConstitutionStore,
-        constitution: str = "default",
         *,
         delivery_recorder: DeliveryRecorder | None = None,
         delivery_record_store: SqlDeliveryRecordStore | None = None,
     ) -> None:
         self._store = store
-        self._constitution = constitution
         self._subscribers: list[Callable[[ConstitutionVersion], None]] = []
         self.delivery_recorder = delivery_recorder
         self.delivery_record_store = delivery_record_store
@@ -275,11 +275,8 @@ class ControlPlane:
         )
 
     def _name(self, constitution: str | None) -> str:
-        """Resolve which constitution a call is about.
-        The name is per call, never state: naming one here must not redirect
-        later calls. Omitting it falls back to the constructor's name, so a
-        control plane pinned to one constitution behaves as it always has."""
-        return self._constitution if constitution is None else constitution
+        """Resolve a per-call name, using default when omitted or None."""
+        return DEFAULT_CONSTITUTION_KEY if constitution is None else constitution
 
     def on_change(self, callback: Callable[[ConstitutionVersion], None]) -> None:
         self._subscribers.append(callback)

@@ -126,17 +126,17 @@ def test_given_non_json_delta_when_appending_then_no_partial_record_is_written(s
 def test_given_new_version_before_recording_when_saving_delivery_then_served_version_is_kept(
     store,
 ):
-    plane = ControlPlane(store, "missing")
-    plane.apply_direction(mission="Original mission", change_note="initial")
+    plane = ControlPlane(store)
+    plane.apply_direction(mission="Original mission", change_note="initial", constitution="missing")
     response = {"version": 1, "mission": "Original mission"}
-    plane.apply_direction(mission="New mission", change_note="updated")
+    plane.apply_direction(mission="New mission", change_note="updated", constitution="missing")
 
     identifier = append(store, response)
 
     record = SqlDeliveryRecordStore(store.engine).get(identifier)
     assert record["served_version"] == 1
     assert store.get("missing", record["served_version"]).mission == "Original mission"
-    assert plane.current().version == 2
+    assert plane.current("missing").version == 2
 
 
 def test_given_custom_prefix_when_appending_then_only_prefixed_tables_are_used():
@@ -298,9 +298,13 @@ def test_given_migrated_database_when_reopened_then_committed_recording_is_prese
     expected_delta = ["Mission changed."] if served_version else None
     try:
         if served_version:
-            plane = ControlPlane(store, "missing")
-            plane.apply_direction(mission="Initial mission", change_note="initial")
-            plane.apply_direction(mission="Recorded mission", change_note="updated")
+            plane = ControlPlane(store)
+            plane.apply_direction(
+                mission="Initial mission", change_note="initial", constitution="missing"
+            )
+            plane.apply_direction(
+                mission="Recorded mission", change_note="updated", constitution="missing"
+            )
         identifier = append(
             store,
             {"version": served_version, "delta": expected_delta},

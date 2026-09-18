@@ -30,8 +30,8 @@ _request_log = logging.getLogger("kyno.requests")
 TOUCH_EVERY = timedelta(minutes=5)
 
 
-def _tool_calls(body: bytes) -> list[tuple[str, str]]:
-    """List the (tool, constitution_key) pairs a JSON-RPC body asks for.
+def _tool_calls(body: bytes) -> list[tuple[str, object]]:
+    """List the tool names and raw constitution selectors requested by a JSON-RPC body.
 
     Returns an empty list for a body that is not valid JSON, or that
     carries no tool call: rejecting malformed requests is the MCP layer's
@@ -61,7 +61,7 @@ def _tool_calls(body: bytes) -> list[tuple[str, str]]:
             continue
         name = params.get("name")
         if isinstance(name, str):
-            calls.append((name, arguments.get("constitution_key") or "default"))
+            calls.append((name, arguments.get("constitution_key")))
     return calls
 
 
@@ -166,13 +166,13 @@ class McpEndpoint:
             await Response(refusal, status_code=403)(scope, receive, send)
             return
         if token is not None:
-            for name, constitution_key in calls:
+            for name, requested_constitution_key in calls:
                 _request_log.info(
-                    "token=%s name=%s tool=%s constitution_key=%s",
+                    "token=%s name=%s tool=%s requested_constitution_key=%r",
                     token.id,
                     token.name,
                     name,
-                    constitution_key,
+                    requested_constitution_key,
                 )
         await self._manager.handle_request(scope, _replayed(body, receive), send)
 

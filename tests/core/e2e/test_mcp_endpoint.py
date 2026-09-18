@@ -93,7 +93,25 @@ def test_given_a_client_claiming_a_token_id_when_writing_then_the_server_ignores
 
 
 @pytest.mark.e2e
-def test_given_a_tool_call_when_handled_then_the_request_log_carries_the_fields(caplog):
+@pytest.mark.parametrize(
+    "arguments, requested",
+    [
+        ({}, None),
+        ({"constitution_key": None}, None),
+        ({"constitution_key": "main"}, "main"),
+        ({"constitution_key": " main "}, " main "),
+        ({"constitution_key": "\nmain\n"}, "\nmain\n"),
+        ({"constitution_key": "main\ninjected"}, "main\ninjected"),
+        ({"constitution_key": ""}, ""),
+        ({"constitution_key": " "}, " "),
+        ({"constitution_key": []}, []),
+        ({"constitution_key": {}}, {}),
+        ({"constitution_key": 7}, 7),
+    ],
+)
+def test_given_a_tool_selector_when_handled_then_request_log_preserves_the_requested_value(
+    caplog, arguments, requested
+):
     from starlette.testclient import TestClient
 
     store, value, app = gated_http_app()
@@ -101,9 +119,11 @@ def test_given_a_tool_call_when_handled_then_the_request_log_carries_the_fields(
 
     with caplog.at_level(logging.INFO, logger="kyno.requests"), TestClient(app) as client:
         h = drive_session(client, bearer(value))
-        call_tool(client, h, 2, "get_constitution", {"constitution_key": "main"})
+        response = call_tool(client, h, 2, "get_constitution", arguments)
 
+    assert response.status_code == 200
     line = next(r.getMessage() for r in caplog.records if "tool=get_constitution" in r.getMessage())
-    assert f"token={token_id}" in line
-    assert "name=t" in line
-    assert "constitution_key=main" in line
+    assert line == (
+        f"token={token_id} name=t tool=get_constitution requested_constitution_key={requested!r}"
+    )
+    assert "\n" not in line

@@ -253,7 +253,7 @@ binder = DirectionBinder(LocalDirectionSource(control_plane))
 ```
 
 Each control-plane operation selects its own constitution. Omit the name or
-pass `None` to use `default`; pass `constitution="eu"` to select `eu` for
+pass `None` to use `default`; pass `constitution_key="eu"` to select `eu` for
 that operation. Selecting a name never changes subsequent operations.
 
 Constitution keys are unique within a database. Surrounding whitespace is

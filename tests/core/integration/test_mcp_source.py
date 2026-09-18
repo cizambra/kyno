@@ -60,8 +60,8 @@ def test_given_recording_fails_when_sdk_pulls_then_current_direction_and_failed_
 
 def test_given_a_name_when_the_mcp_source_pulls_then_that_constitution_comes(mcp_runner):
     runner, control_plane = mcp_runner
-    control_plane.apply_direction(mission="EU mission", change_note="init", constitution="eu")
-    control_plane.apply_direction(mission="US mission", change_note="init", constitution="us")
+    control_plane.apply_direction(mission="EU mission", change_note="init", constitution_key="eu")
+    control_plane.apply_direction(mission="US mission", change_note="init", constitution_key="us")
     source = McpDirectionSource(runner)
 
     assert source.changes_since(0, "eu").changes.mission == "EU mission"
@@ -91,11 +91,11 @@ def test_given_an_unwritten_name_when_the_mcp_source_reads_then_it_is_version_ze
 
 def test_given_a_binder_over_mcp_when_steps_run_then_each_binds_the_live_version(mcp_runner):
     runner, control_plane = mcp_runner
-    control_plane.apply_direction(mission="M1", change_note="init", constitution="eu")
+    control_plane.apply_direction(mission="M1", change_note="init", constitution_key="eu")
     binder = DirectionBinder(McpDirectionSource(runner), "eu")
 
     first = binder.bind()
-    control_plane.apply_direction(mission="M2", change_note="pivot", constitution="eu")
+    control_plane.apply_direction(mission="M2", change_note="pivot", constitution_key="eu")
     second = binder.bind()
 
     assert (first.version, second.version) == (1, 2)
@@ -122,8 +122,10 @@ def test_given_the_two_sources_when_asking_the_same_question_then_the_answers_ma
 ):
     """The in-process and MCP paths must stay interchangeable for a binder."""
     runner, control_plane = mcp_runner
-    control_plane.apply_direction(mission="M1", change_note="init", constitution="eu")
-    control_plane.apply_direction(principles=("Be honest",), change_note="add", constitution="eu")
+    control_plane.apply_direction(mission="M1", change_note="init", constitution_key="eu")
+    control_plane.apply_direction(
+        principles=("Be honest",), change_note="add", constitution_key="eu"
+    )
 
     over_mcp = McpDirectionSource(runner).changes_since(1, "eu")
     in_process = LocalDirectionSource(control_plane).changes_since(1, "eu")

@@ -36,13 +36,17 @@ def test_given_a_completed_draft_when_direction_is_checked_then_remaining_work_u
     directory = Path(crewai_example.__file__).parent
     initial = yaml.safe_load((directory / "direction-v1.yaml").read_text())
     revised = yaml.safe_load((directory / "direction-v2.yaml").read_text())
-    control_plane.apply_direction(**initial, change_note="initial")
+    control_plane.apply_direction(
+        constitution_key=initial.pop("constitution"), **initial, change_note="initial"
+    )
     events = []
 
     def operator():
         assert len(fake_llm.calls) == 2
         if changed:
-            control_plane.apply_direction(**revised, change_note="new tradeoff")
+            control_plane.apply_direction(
+                constitution_key=revised.pop("constitution"), **revised, change_note="new tradeoff"
+            )
 
     with connect(url=url, token=token) as connection:
         state = crewai_example.run_example(

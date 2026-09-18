@@ -261,7 +261,7 @@ async def test_given_a_named_write_when_reading_the_resource_then_it_stays_the_d
     store = create_memory_store()
     cp = ControlPlane(store)
     cp.apply_direction(mission="M1", change_note="init")
-    cp.apply_direction(mission="EU1", change_note="eu init", constitution="eu")
+    cp.apply_direction(mission="EU1", change_note="eu init", constitution_key="eu")
     server = mcp_server.build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
@@ -371,7 +371,7 @@ async def test_given_the_whole_read_family_when_dispatching_for_real_then_it_wor
 
     store = create_memory_store()
     cp = ControlPlane(store)
-    cp.apply_direction(**RICH, change_note="init", constitution="eu")
+    cp.apply_direction(**RICH, change_note="init", constitution_key="eu")
     server = mcp_server.build_server(cp)
 
     async def call(client, name, arguments):

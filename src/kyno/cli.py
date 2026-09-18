@@ -281,7 +281,7 @@ def apply_direction_cmd(
             )
             return
         plane = _control_plane()
-        head, delta = plane.head_and_delta(**content, constitution=target)
+        head, delta = plane.head_and_delta(**content, constitution_key=target)
         if dry_run:
             _print_delta(delta or ("no field changed",))
             return
@@ -292,7 +292,7 @@ def apply_direction_cmd(
                 **content,
                 change_note=note,
                 created_by=by if by is not None else _system_user(),
-                constitution=target,
+                constitution_key=target,
                 # The write lands on the head the delta described, or not at all.
                 expected_version=head.version if head else 0,
             )
@@ -828,7 +828,9 @@ def _compare_with_store(fields: ConstitutionFile, path: str) -> None:
         typer.echo(f"direction: not compared ({exc})")
         raise typer.Exit(code=1) from None
     try:
-        head, delta = _control_plane().head_and_delta(**_content_of(fields), constitution=target)
+        head, delta = _control_plane().head_and_delta(
+            **_content_of(fields), constitution_key=target
+        )
     except (CoherenceError, SQLAlchemyError) as exc:
         # The cause is the first line. A database error then quotes its SQL, which tells the
         # operator nothing about the file.

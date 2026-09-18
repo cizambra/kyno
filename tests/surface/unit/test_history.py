@@ -133,7 +133,9 @@ def test_given_list_filters_when_querying_the_connection_then_mcp_receives_the_e
 
 
 @pytest.mark.parametrize("constitution_key", ["", "   ", "Upper"])
-def test_given_invalid_key_filter_when_listing_history_then_request_is_not_sent(constitution_key):
+def test_given_invalid_key_filter_when_connection_lists_history_then_request_is_not_sent(
+    constitution_key,
+):
     runner = Mock()
 
     with pytest.raises(ValueError, match="constitution key"):

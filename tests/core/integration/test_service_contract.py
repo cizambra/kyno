@@ -195,11 +195,31 @@ def test_given_a_whitespace_only_change_note_when_calling_apply_direction_then_i
         cp.apply_direction(mission="M1", change_note="   ")
 
 
-def test_given_a_negative_last_seen_version_when_asking_changes_since_then_it_behaves_as_zero(cp):
-    # Deliberate: a negative last_seen_version clamps to the same floor as 0, rather
-    # than being treated as "future".
-    cp.apply_direction(mission="M1", principles=("p1",), change_note="init")
-    assert cp.changes_since(-1) == cp.changes_since(0)
+@pytest.mark.parametrize("last_seen_version", [-1, True, False, 1.0, 1.5, "1", None])
+@pytest.mark.parametrize("initialized", [False, True])
+def test_given_invalid_last_seen_version_when_changes_since_is_called_then_value_error_is_raised(
+    cp, last_seen_version, initialized
+):
+    if initialized:
+        cp.apply_direction(mission="M1", change_note="init")
+
+    with pytest.raises(ValueError, match="last_seen_version must be a non-negative integer"):
+        cp.changes_since(last_seen_version)
+
+
+@pytest.mark.parametrize("expected_version", [-1, True, False, 0.0, 1.0, 1.5, "1"])
+@pytest.mark.parametrize("initialized", [False, True])
+def test_given_invalid_expected_version_when_apply_direction_is_called_then_no_version_is_written(
+    cp, expected_version, initialized
+):
+    if initialized:
+        cp.apply_direction(mission="M1", change_note="init")
+    original = cp.current()
+
+    with pytest.raises(ValueError, match="expected_version must be a non-negative integer"):
+        cp.apply_direction(mission="M2", change_note="update", expected_version=expected_version)
+
+    assert cp.current() == original
 
 
 def test_given_an_empty_principles_tuple_when_calling_apply_direction_then_the_list_clears(cp):

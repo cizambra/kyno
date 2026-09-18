@@ -683,3 +683,31 @@ def test_given_versions_when_delivery_records_migrate_then_upgrade_and_downgrade
         assert (
             connection.exec_driver_sql("SELECT * FROM kyno_constitution_versions").all() == before
         )
+
+
+def test_given_mysql_at_delivery_schema_when_upgrading_then_all_timestamps_gain_microseconds():
+    output = StringIO()
+    config = Config("alembic.ini", output_buffer=output)
+    config.set_main_option("sqlalchemy.url", "mysql+pymysql://")
+    command.upgrade(config, "0007:head", sql=True)
+    statements = output.getvalue()
+    columns = {
+        "constitutions": ("created_at", "published_at"),
+        "constitution_versions": ("created_at",),
+        "tokens": ("created_at", "last_used_at", "expires_at", "revoked_at"),
+    }
+    for table, names in columns.items():
+        for name in names:
+            nullable = "NOT NULL" if name == "created_at" else "NULL"
+            assert (
+                f"ALTER TABLE kyno_{table} CHANGE {name} {name} DATETIME(6) {nullable}"
+                in statements
+            )
+
+
+def test_given_mysql_microsecond_schema_when_downgrading_then_timestamp_precision_returns_to_zero():
+    output = StringIO()
+    config = Config("alembic.ini", output_buffer=output)
+    config.set_main_option("sqlalchemy.url", "mysql+pymysql://")
+    command.downgrade(config, "0008:0007", sql=True)
+    assert output.getvalue().count(" DATETIME ") == 7

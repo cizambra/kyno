@@ -36,7 +36,7 @@ def test_given_invalid_key_when_reading_or_importing_then_no_identity_is_created
 def test_given_padded_key_when_constructing_sdk_values_then_identity_is_normalized():
     assert DirectionBinder(Mock(), " eu-west ").constitution_key == "eu-west"
     assert Direction.empty(" eu-west ").constitution_key == "eu-west"
-    assert DirectionBinder(Mock(), None).constitution_key == "default"
+    assert DirectionBinder(Mock(), None).constitution_key is None
 
 
 def test_given_padded_file_key_when_reading_authoring_then_identity_is_normalized(tmp_path):

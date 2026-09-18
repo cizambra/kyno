@@ -11,7 +11,7 @@ class ScriptedDirectionSource:
     def __init__(self, replies: dict[str, ChangesSince] | None = None):
         self.replies = replies or {}
         self.failure: Exception | None = None
-        self.calls: list[tuple[int, str]] = []
+        self.calls: list[tuple[int, str | None]] = []
         self.details: list[str] = []
 
     def set(self, constitution: str, version: int, mission: str, *principles: str) -> None:
@@ -29,14 +29,14 @@ class ScriptedDirectionSource:
     def changes_since(
         self,
         last_seen_version: int,
-        constitution: str,
+        constitution: str | None,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> DirectionResponse:
         self.calls.append((last_seen_version, constitution))
         self.details.append(detail)
         if self.failure is not None:
             raise self.failure
-        return DirectionResponse(self.replies[constitution])
+        return DirectionResponse(self.replies["default" if constitution is None else constitution])
 
 
 @pytest.fixture

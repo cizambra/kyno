@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from threading import Lock
 
 from kyno.sdk.binding import BindingStatus, DirectionBinding
 from kyno.sdk.cell import Direction, DirectionCell
@@ -31,7 +32,10 @@ class DirectionBinder:
         policy: PullPolicy | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> None:
-        self._constitution_key = check_constitution_key(constitution_key)
+        self._constitution_key = (
+            check_constitution_key(constitution_key) if constitution_key is not None else None
+        )
+        self._resolution_lock = Lock()
         self._source = source
         self._cell = DirectionCell()
         self._policy = policy or PullPolicy()
@@ -45,8 +49,8 @@ class DirectionBinder:
         return self._detail
 
     @property
-    def constitution_key(self) -> str:
-        """The constitution key selected when the binder was constructed."""
+    def constitution_key(self) -> str | None:
+        """The selected key, or None until Core resolves an omitted selection."""
         return self._constitution_key
 
     def bind(self) -> Direction:
@@ -61,19 +65,31 @@ class DirectionBinder:
         older overlapping response. Empty identifies failure without a cached
         value. A fail-closed pull failure raises instead of returning a binding.
         """
+        if self.constitution_key is None:
+            with self._resolution_lock:
+                return self._bind_with_status()
+        return self._bind_with_status()
+
+    def _bind_with_status(self) -> DirectionBinding:
         constitution_key = self.constitution_key
         last_seen_version = self._cell.last_seen_version()
         try:
             response = self._source.changes_since(last_seen_version, constitution_key, self.detail)
+            changes = response.changes
+            if changes.constitution_key is None:
+                raise KynoUnavailableError("direction reply has no resolved constitution key")
+            if constitution_key is not None and changes.constitution_key != constitution_key:
+                raise KynoUnavailableError("direction reply has an unexpected constitution key")
         except (CoherenceError, OSError) as exc:
             # OSError covers the socket family and, since 3.10, TimeoutError;
             # CoherenceError covers everything kyno raises, including the
             # adapters' KynoUnavailableError.
             return self._degrade(constitution_key, exc)
-        changes = response.changes
         direction, recording = self._cell.update_with_recording(
-            Direction.from_changes(changes, constitution_key, self.detail), response.recording
+            Direction.from_changes(changes, changes.constitution_key, self.detail),
+            response.recording,
         )
+        self._constitution_key = direction.constitution_key
         status = (
             BindingStatus.CACHED
             if direction.version > changes.current_version
@@ -81,7 +97,7 @@ class DirectionBinder:
         )
         return DirectionBinding(direction, status, recording)
 
-    def _degrade(self, constitution_key: str, exc: Exception) -> DirectionBinding:
+    def _degrade(self, constitution_key: str | None, exc: Exception) -> DirectionBinding:
         snapshot = self._cell.get_with_recording()
         if self._policy.fail_closed:
             raise KynoUnavailableError(

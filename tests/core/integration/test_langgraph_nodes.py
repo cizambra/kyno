@@ -128,10 +128,11 @@ def test_given_updated_state_when_direction_from_state_runs_then_original_direct
     assert direction_from_state(direction_update(original)) == original
 
 
-def test_given_empty_state_when_direction_from_state_runs_then_default_version_zero_returns():
+def test_given_empty_state_when_direction_from_state_runs_then_unresolved_version_zero_returns():
     direction = direction_from_state({})
-    assert direction.constitution_key == "default" and direction.version == 0
+    assert direction.constitution_key is None and direction.version == 0
     assert direction.mission == "" and direction.principles == ()
+    assert direction_from_state(direction_update(direction)) == direction
 
 
 def test_given_work_returning_none_when_pull_before_runs_then_direction_remains_in_state(
@@ -268,7 +269,7 @@ def test_given_schema_without_KynoState_when_direction_node_runs_then_graph_drop
     graph = _capture_graph(bind, captured, OutputState)
     result = graph.invoke({}, {"configurable": {"thread_id": "missing"}})
     assert "kyno_version" not in result
-    assert captured == [Direction.empty("default")]
+    assert captured == [Direction.empty(None)]
 
 
 @pytest.mark.parametrize("detail", [DetailLevel.COMPACT, DetailLevel.FULL])

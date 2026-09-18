@@ -65,7 +65,7 @@ def test_given_two_histories_when_export_versions_has_no_selection_then_only_def
     assert [version["mission"] for version in versions] == ["Default first", "Default second"]
 
 
-def test_given_current_default_content_when_preview_edit_has_no_selection_then_it_reports_no_change(
+def test_given_unchanged_default_mission_when_preview_edit_omits_constitution_then_delta_is_empty(
     plane, default_selection
 ):
     assert plane.preview_edit(mission="Default second", **default_selection) == ()

@@ -27,4 +27,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     with op.batch_alter_table(f"{PREFIX}constitution_versions") as batch:
+        batch.drop_constraint(f"{PREFIX}fk_versions_token_id", type_="foreignkey")
         batch.drop_column("token_id")

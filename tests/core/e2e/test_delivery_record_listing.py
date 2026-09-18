@@ -76,6 +76,7 @@ async def test_given_delivery_filters_when_reading_next_page_then_only_matching_
     [
         ({"correlation_id": "two"}, [1]),
         ({"constitution_key": "beta"}, [1]),
+        ({"constitution_key": " alpha "}, [0, 2]),
         ({"constitution_key": None}, [0, 1, 2]),
         ({"since": "2026-01-02T00:00:00Z"}, [1, 2]),
         ({"until": "2026-01-02T00:00:00Z"}, [0, 1]),
@@ -148,6 +149,8 @@ async def test_given_no_filters_when_listing_over_mcp_then_all_constitutions_are
 @pytest.mark.parametrize(
     "arguments",
     [
+        {"constitution_key": ""},
+        {"constitution_key": "   "},
         {"limit": 0},
         {"limit": 101},
         {"limit": True},

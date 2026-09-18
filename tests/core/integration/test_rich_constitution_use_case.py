@@ -18,7 +18,7 @@ from tests.workspaces import cli_workspace
 runner = CliRunner()
 
 CONSTITUTION = """
-constitution: acme
+constitution_key: acme
 mission: Ship a lending product people trust with their worst month
 declaration: |
   # What we are for

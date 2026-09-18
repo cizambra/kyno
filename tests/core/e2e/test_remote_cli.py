@@ -81,7 +81,7 @@ def test_given_a_read_token_when_reading_history_over_http_then_full_content_is_
             assert result.exit_code == 0, result.output
         assert json.loads(historical.stdout) == before[0]
         assert yaml.safe_load(authored.stdout) == {
-            "constitution": "support",
+            "constitution_key": "support",
             "mission": "",
             "declaration": "Explain.\nFully.",
             "principles": [{"title": "Trust", "description": "Be honest."}],

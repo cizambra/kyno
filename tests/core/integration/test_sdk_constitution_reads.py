@@ -1,4 +1,4 @@
-"""SDK constitution reads select current or historical agent-detail projections over MCP."""
+"""SDK reads return current or historical constitutions with compact or full detail over MCP."""
 
 from dataclasses import replace
 

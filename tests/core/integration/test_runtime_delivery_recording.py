@@ -57,6 +57,26 @@ def saved_record(store, identifier):
     return SqlDeliveryRecordStore(store.engine).get(identifier)
 
 
+@pytest.mark.parametrize("operation", sorted(DIRECTION_READS))
+@pytest.mark.parametrize("last_seen_version", [-1, True, False, 0.0, 1.0, 1.5, "1", None])
+async def test_given_invalid_last_seen_version_when_call_tool_runs_then_no_delivery_is_recorded(
+    memory_store, operation, last_seen_version
+):
+    server, _, _ = server_with_history(memory_store)
+    response = await server.request_handlers[types.CallToolRequest](
+        types.CallToolRequest(
+            method="tools/call",
+            params=types.CallToolRequestParams(
+                name=operation,
+                arguments={"last_seen_version": last_seen_version, "title": "Be clear"},
+            ),
+        )
+    )
+
+    assert response.root.isError
+    assert records(memory_store) == []
+
+
 @pytest.mark.asyncio
 async def test_given_default_recording_when_reading_direction_then_no_history_is_written(
     memory_store,

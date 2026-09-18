@@ -41,6 +41,21 @@ def test_given_get_constitution_when_inspecting_version_then_nonnegative_integer
     assert "version" not in tool.inputSchema.get("required", [])
 
 
+@pytest.mark.parametrize("tool_name", sorted(mcp_tools.DIRECTION_READS))
+def test_given_direction_read_when_inspecting_last_seen_version_then_minimum_is_zero(tool_name):
+    tool = next(tool for tool in mcp_tools.TOOLS if tool.name == tool_name)
+    schema = tool.inputSchema["properties"]["last_seen_version"]
+    assert schema["type"] == "integer"
+    assert schema["minimum"] == 0
+
+
+def test_given_apply_direction_when_inspecting_expected_version_then_minimum_is_zero():
+    tool = next(tool for tool in mcp_tools.TOOLS if tool.name == "apply_direction")
+    schema = tool.inputSchema["properties"]["expected_version"]
+    assert schema["type"] == ["integer", "null"]
+    assert schema["minimum"] == 0
+
+
 def test_given_a_typed_token_scope_when_asking_whoami_then_a_plain_string_is_returned():
     token = Token(id=7, name="deploy", scope=TokenScope.WRITE, created_at=datetime.now(UTC))
 

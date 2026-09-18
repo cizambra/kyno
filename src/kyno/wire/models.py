@@ -25,6 +25,12 @@ def check_detail(detail: str | DetailLevel, what: str = "detail") -> DetailLevel
         raise ValueError(f"unknown {what} '{detail}': choose one of {choices}") from None
 
 
+def check_version(version: int, what: str = "version") -> int:
+    if type(version) is not int or version < 0:
+        raise ValueError(f"{what} must be a non-negative integer")
+    return version
+
+
 def _text(value, field: str) -> str:
     if value is None:
         return ""

@@ -113,7 +113,7 @@ DECLARATIONS = [
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "last_seen_version": {"type": "integer"},
+                    "last_seen_version": {"type": "integer", "minimum": 0},
                     "constitution": _CONSTITUTION_ARG,
                     "detail": _DETAIL_ARG,
                 },
@@ -219,7 +219,7 @@ DECLARATIONS = [
                     "change_note": {"type": "string"},
                     "created_by": {"type": ["string", "null"]},
                     "constitution": _CONSTITUTION_ARG,
-                    "expected_version": {"type": ["integer", "null"]},
+                    "expected_version": {"type": ["integer", "null"], "minimum": 0},
                     "authorized_by": {
                         "type": ["string", "null"],
                         "enum": [value.value for value in AuthorizationType] + [None],
@@ -261,6 +261,7 @@ for tool, _scope in DECLARATIONS:
             {
                 "last_seen_version": {
                     "type": "integer",
+                    "minimum": 0,
                     "description": (
                         "Version the caller reports having last seen, not the version requested. "
                         "get_changes_since compares it with current direction. "

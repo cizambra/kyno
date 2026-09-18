@@ -31,6 +31,7 @@ from kyno.wire.models import (
     DIRECTION_MARKER,
     ChangesSince,
     Principle,
+    check_version,
     normalize_principles,
 )
 
@@ -298,8 +299,7 @@ class ControlPlane:
         """
         if version is None:
             return self.current(constitution)
-        if type(version) is not int or version < 0:
-            raise ValueError("version must be a non-negative integer")
+        check_version(version)
         if version == 0:
             return _EMPTY_CONSTITUTION
         name = self._name(constitution)
@@ -311,6 +311,7 @@ class ControlPlane:
     def changes_since(
         self, last_seen_version: int, constitution: str | None = None
     ) -> ChangesSince:
+        check_version(last_seen_version, "last_seen_version")
         name = self._name(constitution)
         head = self._store.head(name)
         if head is None:
@@ -322,8 +323,7 @@ class ControlPlane:
             raise UnknownVersionError(
                 f"last_seen_version {last_seen_version} > current {head.version}"
             )
-        floor = last_seen_version if last_seen_version > 0 else 0
-        newer = self._store.versions_after(name, floor)
+        newer = self._store.versions_after(name, last_seen_version)
         changed = bool(newer)
         return ChangesSince(
             current_version=head.version,
@@ -430,6 +430,8 @@ class ControlPlane:
         the head the caller reviewed: if the head has moved since, nothing
         lands and the caller is told to look again. Without it, the edit is
         computed against whatever the head is now."""
+        if expected_version is not None:
+            check_version(expected_version, "expected_version")
         if not change_note or not change_note.strip():
             raise EmptyChangeError("change_note is required")
         if authorized_by is not None:

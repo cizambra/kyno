@@ -22,7 +22,7 @@ from kyno.mcp.request_context import _request_token, record_response
 from kyno.mcp.tools import DIRECTION_READS, TITLES, TOOLS
 from kyno.service import ControlPlane
 from kyno.wire.delivery_context import delivery_context
-from kyno.wire.models import DetailLevel
+from kyno.wire.models import DetailLevel, check_version
 
 
 def register_tools(server: Server, control_plane: ControlPlane, token_store=None) -> None:
@@ -34,6 +34,8 @@ def register_tools(server: Server, control_plane: ControlPlane, token_store=None
     async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         if name in DIRECTION_READS:
             delivery_context(arguments)
+            if "last_seen_version" in arguments:
+                check_version(arguments["last_seen_version"], "last_seen_version")
         match name:
             case "get_delivery_record":
                 _require(arguments, "record_id")
@@ -51,7 +53,7 @@ def register_tools(server: Server, control_plane: ControlPlane, token_store=None
                 _require(arguments, "last_seen_version")
                 result = handle_get_changes_since(
                     control_plane,
-                    int(arguments["last_seen_version"]),
+                    arguments["last_seen_version"],
                     arguments.get("constitution"),
                     arguments.get("detail", DetailLevel.COMPACT),
                 )

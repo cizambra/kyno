@@ -21,6 +21,7 @@ from kyno.sdk import DetailLevel, PullPolicy
 
 connection = kyno.connect()
 binder = connection.binder(
+    "customer-support",
     context=DetailLevel.FULL,
     policy=PullPolicy(fail_closed=True),
 )
@@ -66,7 +67,7 @@ class State(KynoState, total=False):
     output: str
 
 
-@pull_before(binder, constitution="customer-support")
+@pull_before(binder)
 def answer(state):
     if state["kyno_version"] == 0 or state["kyno_delivery_status"] != DeliveryStatus.CURRENT:
         raise ValueError("A current, written constitution is required before calling the model")
@@ -181,6 +182,7 @@ or building the graph:
 from kyno.sdk import DetailLevel, PullPolicy
 
 binder = connection.binder(
+    "customer-support",
     context=DetailLevel.FULL,
     policy=PullPolicy(fail_closed=True),
 )
@@ -237,6 +239,7 @@ For example, replace the binder setup above with:
 
 ```python
 binder = connection.binder(
+    "customer-support",
     context=DetailLevel.FULL,
     policy=PullPolicy(fail_closed=True),
     correlation_id="support-run-123",
@@ -286,7 +289,7 @@ class State(KynoState, total=False):
     needs_review: bool
 
 
-@pull_before(binder, constitution="customer-support")
+@pull_before(binder)
 def answer(state):
     if state["kyno_version"] == 0 or state["kyno_delivery_status"] != DeliveryStatus.CURRENT:
         raise ValueError("A current, written constitution is required before calling the model")

@@ -47,37 +47,32 @@ def test_given_a_direction_when_rendering_then_the_constitution_and_version_are_
     assert "M2" in block and "p1" in block
 
 
-def test_given_two_names_when_using_the_cell_then_it_is_keyed_by_constitution():
+def test_given_empty_cache_when_get_with_recording_runs_then_no_snapshot_is_returned():
     cell = DirectionCell()
-    cell.update(_direction(1, "eu"))
-    cell.update(_direction(7, "us"))
-    assert cell.last_seen_version("eu") == 1
-    assert cell.last_seen_version("us") == 7
-    assert cell.last_seen_version("never-written") == 0
-    assert cell.get("never-written") is None
-    assert cell.names() == ("eu", "us")
+    assert cell.last_seen_version() == 0
+    assert cell.get_with_recording() is None
 
 
 def test_given_an_older_version_when_updating_the_cell_then_it_never_regresses():
     cell = DirectionCell()
-    cell.update(_direction(5))
-    held = cell.update(_direction(2))
-    assert held.version == 5 and cell.get("default").mission == "M5"
+    cell.update_with_recording(_direction(5))
+    held, _recording = cell.update_with_recording(_direction(2))
+    assert held.version == 5 and cell.get_with_recording()[0].mission == "M5"
 
 
 def test_given_concurrent_updates_when_racing_the_cell_then_the_newest_version_holds():
-    # Real concurrency, because monotonicity is the invariant under test. The assertion
-    # holds under every interleaving: update() keeps the max, so whatever
-    # order the threads land in, the cell ends at 20.
     cell = DirectionCell()
-    threads = [threading.Thread(target=cell.update, args=(_direction(v),)) for v in range(1, 21)]
+    threads = [
+        threading.Thread(target=cell.update_with_recording, args=(_direction(version),))
+        for version in range(1, 21)
+    ]
     for t in threads:
         t.start()
     for t in threads:
         t.join()
 
-    assert cell.get("default").version == 20
-    assert cell.get("default").mission == "M20"
+    assert cell.get_with_recording()[0].version == 20
+    assert cell.get_with_recording()[0].mission == "M20"
 
 
 def test_given_the_injected_block_when_reading_then_titles_come_without_descriptions():
@@ -188,16 +183,11 @@ def test_given_an_unknown_context_when_setting_it_then_it_is_refused():
         Direction(**RICH, context="verbose")
 
 
-def test_given_two_constitutions_when_get_with_recording_runs_then_each_has_its_own_receipt():
+def test_given_cached_version_zero_when_get_with_recording_runs_then_empty_direction_is_retained():
     cell = DirectionCell()
-    european_direction = _direction(1, "eu")
-    american_direction = _direction(7, "us")
-    european_receipt = RecordingReceipt("recorded", "eu-record")
-    american_receipt = RecordingReceipt("recorded", "us-record")
+    direction = Direction.empty("support")
+    receipt = RecordingReceipt("recorded", "empty-direction-record")
+    cell.update_with_recording(direction, receipt)
 
-    cell.update_with_recording(european_direction, european_receipt)
-    cell.update_with_recording(american_direction, american_receipt)
-
-    assert cell.get_with_recording("eu") == (european_direction, european_receipt)
-    assert cell.get_with_recording("us") == (american_direction, american_receipt)
-    assert cell.get_with_recording("unwritten") is None
+    assert cell.get_with_recording() == (direction, receipt)
+    assert cell.last_seen_version() == 0

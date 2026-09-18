@@ -111,9 +111,9 @@ def test_given_a_malformed_reply_and_nothing_cached_when_pulling_then_the_empty_
     caplog,
 ):
     source = McpDirectionSource(ScriptedRunner(reply=MALFORMED[shape]))
-    binder = DirectionBinder(source)
+    binder = DirectionBinder(source, "eu")
 
-    direction = binder.bind("eu")
+    direction = binder.bind()
 
     assert direction.version == 0 and direction.constitution == "eu"
     assert "pull_failed_empty" in caplog.text

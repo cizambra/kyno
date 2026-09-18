@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class DirectionBinder:
-    """Bind the next step to the version in force right now.
+    """Pull one constitution's direction for each step.
 
     Shipped adapters pull at every step boundary. The successful response
     becomes the latest-known direction in the cell and remains available as
@@ -25,10 +25,14 @@ class DirectionBinder:
     def __init__(
         self,
         source: DirectionSource,
+        constitution: str = "default",
         *,
         policy: PullPolicy | None = None,
         context: str | DetailLevel = DetailLevel.COMPACT,
     ) -> None:
+        if not isinstance(constitution, str):
+            raise TypeError("constitution name must be a string")
+        self._constitution = constitution
         self._source = source
         self._cell = DirectionCell()
         self._policy = policy or PullPolicy()
@@ -41,11 +45,16 @@ class DirectionBinder:
         """The context level selected when the binder was constructed."""
         return self._context
 
-    def bind(self, constitution: str = "default") -> Direction:
-        """Pull direction, applying the configured failure policy."""
-        return self.bind_with_status(constitution).direction
+    @property
+    def constitution(self) -> str:
+        """The constitution name selected when the binder was constructed."""
+        return self._constitution
 
-    def bind_with_status(self, constitution: str = "default") -> DirectionBinding:
+    def bind(self) -> Direction:
+        """Pull direction, applying the configured failure policy."""
+        return self.bind_with_status().direction
+
+    def bind_with_status(self) -> DirectionBinding:
         """Pull once and return direction with its per-call delivery status.
 
         Current identifies a successful read, including an unchanged or empty
@@ -53,7 +62,8 @@ class DirectionBinder:
         older overlapping response. Empty identifies failure without a cached
         value. A fail-closed pull failure raises instead of returning a binding.
         """
-        last_seen_version = self._cell.last_seen_version(constitution)
+        constitution = self.constitution
+        last_seen_version = self._cell.last_seen_version()
         try:
             response = self._source.changes_since(last_seen_version, constitution, self.context)
         except (CoherenceError, OSError) as exc:
@@ -73,7 +83,7 @@ class DirectionBinder:
         return DirectionBinding(direction, status, recording)
 
     def _degrade(self, constitution: str, exc: Exception) -> DirectionBinding:
-        snapshot = self._cell.get_with_recording(constitution)
+        snapshot = self._cell.get_with_recording()
         if self._policy.fail_closed:
             raise KynoUnavailableError(f"cannot reach kyno for '{constitution}': {exc}") from exc
         if snapshot is not None:
@@ -88,7 +98,7 @@ class DirectionBinder:
         logger.warning("kyno pull_failed_empty constitution=%s version=0 %s", constitution, exc)
         return DirectionBinding(Direction.empty(constitution, self.context), DeliveryStatus.EMPTY)
 
-    def plan(self, constitution: str = "default"):
+    def plan(self):
         from kyno.sdk.plan import PlanTracker
 
-        return PlanTracker(self, constitution)
+        return PlanTracker(self)

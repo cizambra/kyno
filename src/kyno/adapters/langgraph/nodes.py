@@ -73,12 +73,12 @@ def direction_from_state(state: dict) -> Direction:
     )
 
 
-def direction_node(binder: DirectionBinder, constitution: str = "default") -> Callable:
+def direction_node(binder: DirectionBinder) -> Callable:
     """A sentinel node, and the `pre_model_hook` for prebuilt ReAct agents:
     one refresh ahead of a fan-out serves every node downstream."""
 
     def node(state: dict) -> dict:
-        binding = binder.bind_with_status(constitution)
+        binding = binder.bind_with_status()
         return direction_update(
             binding.direction, status=binding.status, recording=binding.recording
         )
@@ -86,11 +86,11 @@ def direction_node(binder: DirectionBinder, constitution: str = "default") -> Ca
     return node
 
 
-def pull_before(binder: DirectionBinder, constitution: str = "default") -> Callable:
+def pull_before(binder: DirectionBinder) -> Callable:
     def decorator(node: Callable) -> Callable:
         @functools.wraps(node)
         def wrapped(state: dict, *args: Any, **kwargs: Any) -> dict:
-            binding = binder.bind_with_status(constitution)
+            binding = binder.bind_with_status()
             update = direction_update(
                 binding.direction, status=binding.status, recording=binding.recording
             )

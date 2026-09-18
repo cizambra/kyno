@@ -62,17 +62,17 @@ def receipt(state):
 def test_given_a_binding_when_work_is_checkpointed_then_its_exact_direction_and_status_survive(
     source, wrapper, status, context
 ):
-    binder = DirectionBinder(source, context=context)
+    binder = DirectionBinder(source, "support", context=context)
     if status is DeliveryStatus.CACHED:
-        binder.bind("support")
+        binder.bind()
     if status is not DeliveryStatus.CURRENT:
         source.changes_since.side_effect = OSError("offline")
     source.changes_since.reset_mock()
     graph = StateGraph(ReceiptState)
     if wrapper:
-        graph.add_node("work", pull_before(binder, "support")(receipt)).add_edge(START, "work")
+        graph.add_node("work", pull_before(binder)(receipt)).add_edge(START, "work")
     else:
-        graph.add_node("pull", direction_node(binder, "support")).add_node("work", receipt)
+        graph.add_node("pull", direction_node(binder)).add_node("work", receipt)
         graph.add_edge(START, "pull").add_edge("pull", "work")
     app = graph.add_edge("work", END).compile(checkpointer=InMemorySaver())
     config = {"configurable": {"thread_id": "delivery"}}
@@ -293,12 +293,12 @@ def test_given_rich_direction_when_fields_are_removed_then_only_new_receipts_cle
         delta=(),
     )
     source.changes_since.side_effect = [DirectionResponse(initial), DirectionResponse(revised)]
-    binder = DirectionBinder(source, context=DetailLevel.FULL)
+    binder = DirectionBinder(source, "support", context=DetailLevel.FULL)
     graph = StateGraph(ReceiptState)
     if use_pull_before:
-        graph.add_node("work", pull_before(binder, "support")(receipt)).add_edge(START, "work")
+        graph.add_node("work", pull_before(binder)(receipt)).add_edge(START, "work")
     else:
-        graph.add_node("pull", direction_node(binder, "support")).add_node("work", receipt)
+        graph.add_node("pull", direction_node(binder)).add_node("work", receipt)
         graph.add_edge(START, "pull").add_edge("pull", "work")
     app = graph.add_edge("work", END).compile(checkpointer=InMemorySaver())
     config = {"configurable": {"thread_id": "removed-fields"}}

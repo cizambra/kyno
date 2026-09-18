@@ -44,17 +44,13 @@ def test_given_receipt_when_direction_node_or_pull_before_runs_then_state_has_re
         captured.append(state["kyno_recording"])
         return {"output": "answer"}
 
-    node = (
-        langgraph.pull_before(binder, "support")(work)
-        if wrapped
-        else langgraph.direction_node(binder, "support")
-    )
+    node = langgraph.pull_before(binder)(work) if wrapped else langgraph.direction_node(binder)
     result = node({"kyno_recording": {"status": "recorded", "record_id": "old"}})
     expected = {"status": status, "record_id": record_id} if status is not None else None
 
     assert result["kyno_recording"] == expected
     assert result["kyno_direction"] == binding.direction.render()
-    binder.bind_with_status.assert_called_once_with("support")
+    binder.bind_with_status.assert_called_once_with()
     if wrapped:
         assert captured == [expected]
     if recording is not None:

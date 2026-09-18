@@ -29,13 +29,13 @@ def test_given_version_and_context_when_get_constitution_is_called_then_requeste
     constitution_connection, context, version
 ):
     connection, control_plane = constitution_connection
-    original = connection.binder(context=context).bind("example")
+    original = connection.binder("example", context=context).bind()
     if version is not None:
         control_plane.set_direction(
             mission="New mission", change_note="Updated", constitution="example"
         )
-    binder = connection.binder(context=context)
-    current = binder.bind("example")
+    binder = connection.binder("example", context=context)
+    current = binder.bind()
 
     direction = connection.get_constitution("example", version=version, context=context)
 
@@ -49,7 +49,7 @@ def test_given_version_and_context_when_get_constitution_is_called_then_requeste
     assert ("Original declaration" in direction.render()) is full
     assert ("State the facts." in direction.render()) is full
     connection.close()
-    assert binder.bind("example") is current
+    assert binder.bind() is current
 
 
 def test_given_updates_when_get_constitution_omits_version_then_current_compact_direction_returns(

@@ -24,8 +24,8 @@ import kyno
 from kyno.adapters.crewai import CrewAiKyno
 
 with kyno.connect() as connection:
-    binder = connection.binder()
-    adapter = CrewAiKyno(binder, constitution="customer-support")
+    binder = connection.binder("customer-support")
+    adapter = CrewAiKyno(binder)
     adapter.register()
     try:
         result = crew.kickoff()
@@ -49,7 +49,7 @@ failure policy, and replaces the previous Kyno direction block in the
 messages. The block names the constitution and version and includes the
 mission, principles, and change context. Other messages are preserved.
 
-Use `connection.binder(context="full")` if the model also needs the
+Use `connection.binder("customer-support", context="full")` if the model also needs the
 declaration and principle descriptions. No callback, receipt storage,
 run ID, or step ID is required for direction injection.
 
@@ -62,7 +62,7 @@ direction if no value was cached. The binder logs a warning through Python's
 ```python
 from kyno.sdk import PullPolicy
 
-binder = connection.binder(policy=PullPolicy(fail_closed=True))
+binder = connection.binder("customer-support", policy=PullPolicy(fail_closed=True))
 ```
 
 Pass this binder to `CrewAiKyno` before registering the hook. See the
@@ -79,7 +79,6 @@ into the messages:
 observed_bindings = []
 adapter = CrewAiKyno(
     binder,
-    constitution="customer-support",
     on_direction=observed_bindings.append,
 )
 ```
@@ -141,7 +140,7 @@ You can group delivery reads with an application-chosen
 For example, replace the binder setup in the required integration with:
 
 ```python
-binder = connection.binder(correlation_id="support-run-123")
+binder = connection.binder("customer-support", correlation_id="support-run-123")
 ```
 
 Every pull through this binder carries the same correlation ID. It groups
@@ -174,9 +173,9 @@ Replace these placeholders with your own functions to run this example.
 
 ```python
 with kyno.connect() as connection:
-    binder = connection.binder()
-    assessment_direction = binder.bind("customer-support")
-    adapter = CrewAiKyno(binder, constitution="customer-support")
+    binder = connection.binder("customer-support")
+    assessment_direction = binder.bind()
+    adapter = CrewAiKyno(binder)
     adapter.register()
     try:
         result = crew.kickoff()

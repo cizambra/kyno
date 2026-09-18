@@ -45,7 +45,8 @@ def test_given_explicit_consent_when_running_then_recording_is_opt_in_and_connec
         def __exit__(self, *args):
             opened.append("closed")
 
-        def binder(self, **kwargs):
+        def binder(self, constitution, **kwargs):
+            assert constitution == "customer-support"
             assert kwargs["context"] is DetailLevel.FULL
             assert kwargs["policy"].fail_closed
             return "binder"

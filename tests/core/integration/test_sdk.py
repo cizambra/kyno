@@ -1,6 +1,9 @@
 """The SDK connection over the real MCP server."""
 
-from kyno.sdk import DeliveryStatus
+import pytest
+
+from kyno.sdk import DeliveryStatus, PullPolicy
+from kyno.sdk.errors import KynoUnavailableError
 from kyno.wire.models import DetailLevel
 
 
@@ -67,3 +70,20 @@ def test_given_a_closed_connection_when_binding_then_it_degrades_instead_of_cras
 
     direction = binder.bind()
     assert direction.version == 0
+
+
+@pytest.mark.parametrize("cached", [False, True], ids=["without-cache", "with-cache"])
+def test_given_fail_closed_support_binder_when_bind_with_status_loses_connection_then_it_raises(
+    mcp_connection, cached
+):
+    connection, control_plane = mcp_connection
+    control_plane.set_direction(
+        mission="Support customers", change_note="initial", constitution="support"
+    )
+    binder = connection.binder("support", policy=PullPolicy(fail_closed=True))
+    if cached:
+        assert binder.bind().constitution == "support"
+    connection.close()
+
+    with pytest.raises(KynoUnavailableError, match="cannot reach kyno for 'support'"):
+        binder.bind_with_status()

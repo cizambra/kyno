@@ -69,16 +69,21 @@ class KynoConnection:
 
     def binder(
         self,
+        constitution: str = "default",
         *,
         policy: PullPolicy | None = None,
         context: str | DetailLevel = DetailLevel.COMPACT,
         correlation_id: str | None = None,
         metadata: dict | None = None,
     ) -> DirectionBinder:
+        """Create a binder with private fallback state for the named constitution.
+
+        Pass the constitution's name, not its content. The default name is "default".
+        """
         source = _client.McpDirectionSource(
             self._runner, correlation_id=correlation_id, metadata=metadata
         )
-        return DirectionBinder(source, policy=policy, context=context)
+        return DirectionBinder(source, constitution, policy=policy, context=context)
 
     def close(self) -> None:
         self._runner.close()

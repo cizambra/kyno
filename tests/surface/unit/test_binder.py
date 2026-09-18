@@ -37,7 +37,7 @@ def test_given_fixed_context_when_assigning_binder_context_then_attribute_error_
 
 
 @pytest.mark.parametrize("constitution_name", [None, 1, True, [], {}])
-def test_given_non_string_constitution_name_when_creating_direction_binder_then_type_error_raises(
+def test_given_non_string_constitution_name_when_creating_direction_binder_then_raises_type_error(
     scripted_source, constitution_name
 ):
     with pytest.raises(TypeError, match="constitution name must be a string"):

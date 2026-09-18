@@ -51,8 +51,14 @@ def _tool_calls(body: bytes) -> list[tuple[str, str]]:
     for item in items:
         if not isinstance(item, dict) or item.get("method") != "tools/call":
             continue
-        params = item.get("params") or {}
-        arguments = params.get("arguments") or {}
+        params = item.get("params")
+        if not isinstance(params, dict):
+            continue
+        arguments = params.get("arguments")
+        if arguments is None:
+            arguments = {}
+        if not isinstance(arguments, dict):
+            continue
         name = params.get("name")
         if isinstance(name, str):
             calls.append((name, arguments.get("constitution") or "default"))

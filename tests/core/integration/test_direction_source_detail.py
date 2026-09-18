@@ -7,7 +7,16 @@ from kyno.sdk.client import LocalDirectionSource, McpDirectionSource
 from kyno.wire.models import DetailLevel
 
 
-@pytest.mark.parametrize("detail", ["compact", DetailLevel.COMPACT, "full", DetailLevel.FULL])
+@pytest.mark.parametrize(
+    "detail",
+    [
+        pytest.param(None, id="default-compact"),
+        "compact",
+        DetailLevel.COMPACT,
+        "full",
+        DetailLevel.FULL,
+    ],
+)
 @pytest.mark.parametrize("last_seen_version", [0, 1, 2])
 def test_given_rich_updates_when_changes_since_is_called_then_local_and_mcp_content_match(
     mcp_runner, detail, last_seen_version
@@ -29,8 +38,13 @@ def test_given_rich_updates_when_changes_since_is_called_then_local_and_mcp_cont
     )
     original = control_plane.changes_since(last_seen_version, "support")
 
-    local = LocalDirectionSource(control_plane).changes_since(last_seen_version, "support", detail)
-    remote = McpDirectionSource(runner).changes_since(last_seen_version, "support", detail)
+    detail_arguments = {} if detail is None else {"detail": detail}
+    local = LocalDirectionSource(control_plane).changes_since(
+        last_seen_version, "support", **detail_arguments
+    )
+    remote = McpDirectionSource(runner).changes_since(
+        last_seen_version, "support", **detail_arguments
+    )
 
     assert local.changes == remote.changes
     assert local.recording is None
@@ -42,8 +56,29 @@ def test_given_rich_updates_when_changes_since_is_called_then_local_and_mcp_cont
     )
     assert local.changes.change_notes == original.change_notes
     assert local.changes.delta == original.delta
-    rendered = Direction.from_changes(local.changes, "support", detail).render()
-    assert rendered == Direction.from_changes(remote.changes, "support", detail).render()
+    selected_detail = DetailLevel.COMPACT if detail is None else detail
+    rendered = Direction.from_changes(local.changes, "support", selected_detail).render()
+    assert rendered == Direction.from_changes(remote.changes, "support", selected_detail).render()
     for item in (*original.change_notes, *original.delta):
         assert item in rendered
     assert control_plane.changes_since(last_seen_version, "support") == original
+
+
+@pytest.mark.parametrize("detail", [DetailLevel.COMPACT, DetailLevel.FULL])
+def test_given_unwritten_direction_when_changes_since_runs_then_both_sources_return_version_zero(
+    mcp_runner, detail
+):
+    runner, control_plane = mcp_runner
+
+    local = LocalDirectionSource(control_plane).changes_since(0, "support", detail)
+    remote = McpDirectionSource(runner).changes_since(0, "support", detail)
+
+    assert local.changes == remote.changes
+    assert local.changes.current_version == 0
+    assert local.changes.changed is False
+    assert local.changes.mission == ""
+    assert local.changes.declaration == ""
+    assert local.changes.principles == ()
+    assert local.changes.change_notes == ()
+    assert local.changes.delta == ()
+    assert local.recording is None

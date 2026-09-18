@@ -5,6 +5,7 @@ from alembic.config import Config
 from sqlalchemy import Integer, create_engine, inspect
 from typer.testing import CliRunner
 
+from tests.mcp_requests import mint
 from tests.workspaces import cli_workspace
 
 TABLES = {
@@ -43,6 +44,57 @@ def test_given_token_attribution_when_generating_mysql_downgrade_then_foreign_ke
     column_drop = "DROP COLUMN token_id"
     assert constraint_drop in statements
     assert statements.index(constraint_drop) < statements.index(column_drop)
+
+
+def test_given_token_linked_history_when_downgrading_attribution_then_tokens_and_direction_survive(
+    tmp_path,
+):
+    from kyno.service import ControlPlane
+    from kyno.store.sql import SqlConstitutionStore
+
+    url = f"sqlite:///{tmp_path / 'attributed_history.sqlite3'}"
+    config = Config("alembic.ini")
+    config.set_main_option("sqlalchemy.url", url)
+    command.upgrade(config, "0006")
+    store = SqlConstitutionStore(url=url)
+    mint(store)
+    token = store.tokens()[0]
+    plane = ControlPlane(store)
+    plane.apply_direction(mission="Initial direction", change_note="local write")
+    plane.apply_direction(
+        mission="Updated direction", change_note="remote write", token_id=token.id
+    )
+    with store.engine.connect() as connection:
+        versions = (
+            connection.exec_driver_sql("SELECT * FROM kyno_constitution_versions ORDER BY version")
+            .mappings()
+            .all()
+        )
+    expected = [{key: value for key, value in row.items() if key != "token_id"} for row in versions]
+    assert [row["token_id"] for row in versions] == [None, token.id]
+
+    command.downgrade(config, "0005")
+
+    with store.engine.connect() as connection:
+        remaining = (
+            connection.exec_driver_sql("SELECT * FROM kyno_constitution_versions ORDER BY version")
+            .mappings()
+            .all()
+        )
+    assert remaining == expected
+    assert store.tokens() == [token]
+
+    command.upgrade(config, "0006")
+
+    assert plane.current().mission == "Updated direction"
+    assert plane.current().version == 2
+    assert plane.current().token_id is None
+    assert store.tokens() == [token]
+    assert any(
+        constraint["constrained_columns"] == ["token_id"]
+        for constraint in inspect(store.engine).get_foreign_keys("kyno_constitution_versions")
+    )
+    store.engine.dispose()
 
 
 def test_given_a_fresh_database_when_alembic_upgrades_then_the_expected_tables_exist(tmp_path):

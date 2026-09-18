@@ -1,3 +1,5 @@
+from io import StringIO
+
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import Integer, create_engine, inspect
@@ -27,6 +29,20 @@ def _has_version_uniqueness(insp, versions_table):
         if ix.get("unique") and set(ix["column_names"]) == cols:
             return True
     return False
+
+
+def test_given_token_attribution_when_generating_mysql_downgrade_then_foreign_key_precedes_column():
+    output = StringIO()
+    config = Config("alembic.ini", output_buffer=output)
+    config.set_main_option("sqlalchemy.url", "mysql+pymysql://localhost/test")
+
+    command.downgrade(config, "0006:0005", sql=True)
+
+    statements = output.getvalue()
+    constraint_drop = "DROP FOREIGN KEY kyno_fk_versions_token_id"
+    column_drop = "DROP COLUMN token_id"
+    assert constraint_drop in statements
+    assert statements.index(constraint_drop) < statements.index(column_drop)
 
 
 def test_given_a_fresh_database_when_alembic_upgrades_then_the_expected_tables_exist(tmp_path):

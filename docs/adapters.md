@@ -32,7 +32,9 @@ an adapter is expected to do falls out of these four behaviors.
   the step raise instead. Each binder keeps its own cached direction and
   recording receipt. Binders can share a connection without sharing their
   cache: a pull by one binder does not change another binder's fallback
-  or last-seen version. Create separate binders for compact and full context.
+  or last-seen version. A binder's context is fixed at construction and
+  readable through `binder.context`. Create another binder to use a different
+  context level; assigning to `binder.context` raises `AttributeError`.
 - **What changed.** A pull includes the operator's change note and a
   computed delta: which principle moved, whether the mission moved, what
   was added or dropped. That's what makes a small change visible.

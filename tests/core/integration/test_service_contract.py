@@ -330,14 +330,16 @@ def test_given_a_per_call_name_when_writing_then_the_control_plane_keeps_its_def
     assert cp.changes_since(0).current_version == 0
 
 
-def test_given_no_name_when_calling_then_the_constructor_name_is_the_fallback(store):
-    """Backward compatibility: a control plane pinned to one constitution keeps
-    behaving as it did before any call took a name."""
-    cp = ControlPlane(store, constitution="eu")
-    cp.apply_direction(mission="EU1", change_note="init")
-    assert cp.current().mission == "EU1"
+def test_given_named_and_default_directions_when_omitting_the_name_then_default_is_selected(store):
+    cp = ControlPlane(store)
+    cp.apply_direction(mission="EU1", change_note="init", constitution="eu")
+    cp.apply_direction(mission="Default1", change_note="init")
+    assert cp.current().mission == "Default1"
+    assert cp.current(None).mission == "Default1"
+    assert cp.get_constitution().mission == "Default1"
+    assert cp.changes_since(0).current_version == 1
     assert store.head("eu").mission == "EU1"
-    assert store.head("default") is None
+    assert store.head("default").mission == "Default1"
 
 
 def test_given_an_unknown_constitution_when_reading_then_the_empty_state_returns(cp):

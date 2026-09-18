@@ -36,8 +36,6 @@ _DETAIL_ARG = {
     ),
 }
 
-# An omitted `constitution` is passed on as None rather than "default", so a
-# control plane pinned to another name keeps serving that one.
 _CONSTITUTION_ARG = {
     "type": "string",
     "description": 'Which named constitution to act on. Defaults to "default".',

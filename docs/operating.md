@@ -252,6 +252,10 @@ control_plane = ControlPlane(store)
 binder = DirectionBinder(LocalDirectionSource(control_plane))
 ```
 
+Each control-plane operation selects its own constitution. Omit the name or
+pass `None` to use `default`; pass `constitution="eu"` to select `eu` for
+that operation. Selecting a name never changes subsequent operations.
+
 The schema has to exist before the first read, so run `kyno db init` once
 against the same database, or call `store.create_all()` from code. From
 here the binder behaves exactly as it does over MCP, and the CLI keeps

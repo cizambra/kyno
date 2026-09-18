@@ -19,7 +19,6 @@ def server_with_history(store, policy="always", constitution="default"):
     history = SqlDeliveryRecordStore(store.engine, recording_url=store.engine.url)
     plane = ControlPlane(
         store,
-        constitution,
         delivery_recorder=DeliveryRecorder(history, policy),
         delivery_record_store=history,
     )
@@ -198,7 +197,7 @@ async def test_given_recording_outcome_when_reading_resource_then_direction_and_
     status,
 ):
     server, history, _ = server_with_history(
-        memory_store, policy="never" if status == "disabled" else "always", constitution="support"
+        memory_store, policy="never" if status == "disabled" else "always"
     )
     append = Mock(wraps=history.append)
     if status == "failed":
@@ -220,7 +219,7 @@ async def test_given_recording_outcome_when_reading_resource_then_direction_and_
         assert records(memory_store) == []
         return
     record = saved_record(memory_store, payload["recording"]["record_id"])
-    assert record["requested_constitution"] == "support"
+    assert record["requested_constitution"] == "default"
     assert record["operation"] == "read_resource"
     assert record["detail_level"] == "compact"
     assert record["correlation_id"] is None

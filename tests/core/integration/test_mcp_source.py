@@ -146,7 +146,7 @@ def test_given_kyno_going_away_when_a_crew_is_running_then_the_last_direction_ca
     direction = binder.bind()
 
     assert direction.version == 1 and direction.mission == "M1"
-    assert "pull_failed_stale" in caplog.text
+    assert "pull_failed_cached" in caplog.text
 
 
 def test_given_no_message_handler_when_the_session_opens_then_it_is_refused(mcp_runner):

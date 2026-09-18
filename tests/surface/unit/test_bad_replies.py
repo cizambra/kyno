@@ -102,7 +102,7 @@ def test_given_a_malformed_reply_when_a_crew_is_running_then_the_last_direction_
     direction = binder.bind()
 
     assert direction.version == 2 and direction.mission == "M2"
-    assert "pull_failed_stale" in caplog.text
+    assert "pull_failed_cached" in caplog.text
 
 
 @pytest.mark.parametrize("shape", sorted(MALFORMED))

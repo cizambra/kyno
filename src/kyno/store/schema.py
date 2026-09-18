@@ -14,7 +14,9 @@ from sqlalchemy import (
     UniqueConstraint,
     false,
 )
-from sqlalchemy.dialects.mysql import LONGTEXT
+from sqlalchemy.dialects.mysql import DATETIME, LONGTEXT
+
+UTC_DATETIME = DateTime(timezone=True).with_variant(DATETIME(fsp=6), "mysql")
 
 
 def build_metadata(prefix: str = "kyno_") -> tuple[MetaData, Table, Table, Table]:
@@ -25,10 +27,10 @@ def build_metadata(prefix: str = "kyno_") -> tuple[MetaData, Table, Table, Table
         Column("id", Integer, primary_key=True, autoincrement=True),
         Column("name", String(255), nullable=False, unique=True),
         Column("current_version", Integer, nullable=False),
-        Column("created_at", DateTime(timezone=True), nullable=False),
+        Column("created_at", UTC_DATETIME, nullable=False),
         # Private until someone publishes: a null stamp is the default state,
         # and history stays off even then until it is opted into separately.
-        Column("published_at", DateTime(timezone=True), nullable=True),
+        Column("published_at", UTC_DATETIME, nullable=True),
         Column("history_public", Boolean, nullable=False, default=False, server_default=false()),
     )
     versions = Table(
@@ -44,7 +46,7 @@ def build_metadata(prefix: str = "kyno_") -> tuple[MetaData, Table, Table, Table
         Column("change_note", Text, nullable=False),
         Column("changed_mission", Boolean, nullable=False),
         Column("changed_principles", Boolean, nullable=False),
-        Column("created_at", DateTime(timezone=True), nullable=False),
+        Column("created_at", UTC_DATETIME, nullable=False),
         Column("created_by", String(255), nullable=True),
         # Nullable: local and direct writes have no questions to record.
         Column("authorized_by", String(32), nullable=True),
@@ -62,14 +64,14 @@ def build_metadata(prefix: str = "kyno_") -> tuple[MetaData, Table, Table, Table
         Column("scope", String(16), nullable=False),
         # Unique: the hash is how a request finds its row.
         Column("token_hash", String(64), nullable=False, unique=True),
-        Column("created_at", DateTime(timezone=True), nullable=False),
+        Column("created_at", UTC_DATETIME, nullable=False),
         # Null until first use.
-        Column("last_used_at", DateTime(timezone=True), nullable=True),
+        Column("last_used_at", UTC_DATETIME, nullable=True),
         # Null unless minted with --ttl.
-        Column("expires_at", DateTime(timezone=True), nullable=True),
+        Column("expires_at", UTC_DATETIME, nullable=True),
         # Null until revoked. Rows are never deleted: versions reference
         # token ids, and those must resolve forever.
-        Column("revoked_at", DateTime(timezone=True), nullable=True),
+        Column("revoked_at", UTC_DATETIME, nullable=True),
     )
     build_delivery_record_table(metadata, prefix)
     return metadata, constitutions, versions, tokens

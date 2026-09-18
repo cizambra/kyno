@@ -1,5 +1,6 @@
 from io import StringIO
 
+import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import Integer, create_engine, inspect
@@ -683,3 +684,42 @@ def test_given_versions_when_delivery_records_migrate_then_upgrade_and_downgrade
         assert (
             connection.exec_driver_sql("SELECT * FROM kyno_constitution_versions").all() == before
         )
+
+
+@pytest.mark.parametrize(
+    "migration, revision, sql_type",
+    [(command.upgrade, "0007:0008", "DATETIME(6)"), (command.downgrade, "0008:0007", "DATETIME")],
+)
+def test_given_mysql_when_changing_timestamp_precision_then_each_column_retains_nullability(
+    migration, revision, sql_type
+):
+    output = StringIO()
+    config = Config("alembic.ini", output_buffer=output)
+    config.set_main_option("sqlalchemy.url", "mysql+pymysql://")
+    migration(config, revision, sql=True)
+    statements = output.getvalue()
+    columns = {
+        "constitutions": ("created_at", "published_at"),
+        "constitution_versions": ("created_at",),
+        "tokens": ("created_at", "last_used_at", "expires_at", "revoked_at"),
+    }
+    for table, names in columns.items():
+        for name in names:
+            nullable = "NOT NULL" if name == "created_at" else "NULL"
+            assert (
+                f"ALTER TABLE kyno_{table} CHANGE {name} {name} {sql_type} {nullable}" in statements
+            )
+
+
+@pytest.mark.parametrize("url", ["sqlite://", "postgresql://"])
+@pytest.mark.parametrize(
+    "migration, revision", [(command.upgrade, "0007:0008"), (command.downgrade, "0008:0007")]
+)
+def test_given_other_databases_when_timestamp_precision_migrates_then_no_table_is_altered(
+    url, migration, revision
+):
+    output = StringIO()
+    config = Config("alembic.ini", output_buffer=output)
+    config.set_main_option("sqlalchemy.url", url)
+    migration(config, revision, sql=True)
+    assert "ALTER TABLE" not in output.getvalue()

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 from kyno.wire.errors import MalformedPrincipleError
@@ -100,6 +100,7 @@ class HoldsPrinciples:
 
 @dataclass(frozen=True)
 class ChangesSince(HoldsPrinciples):
+    constitution_key: str = field(kw_only=True)
     current_version: int
     changed: bool
     mission: str
@@ -112,6 +113,7 @@ class ChangesSince(HoldsPrinciples):
 
     def to_dict(self, detail: str | DetailLevel = DetailLevel.FULL) -> dict:
         payload = {
+            "constitution_key": self.constitution_key,
             "current_version": self.current_version,
             "changed": self.changed,
             "mission": self.mission,

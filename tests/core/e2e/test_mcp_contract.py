@@ -385,6 +385,7 @@ async def test_given_the_whole_read_family_when_dispatching_for_real_then_it_wor
         )
 
     assert mission == {
+        "constitution_key": "eu",
         "version": 1,
         "mission": "Ship trustworthy lending",
         "recording": {"status": "disabled", "record_id": None},

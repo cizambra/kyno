@@ -267,6 +267,10 @@ trimmed; the remaining 1–200 characters must be lowercase ASCII letters or
 digits separated by single hyphens, such as `eu-west`. Blank keys are invalid.
 For delivery-history filters, an omitted key or `None` selects all constitutions.
 
+Embedded direction and publication results expose `constitution_key`, including
+empty direction reads. This is the resolved key, so callers can identify what
+Core selected even when the request omitted it.
+
 The schema has to exist before the first read, so run `kyno db init` once
 against the same database, or call `store.create_all()` from code. From
 here the binder behaves exactly as it does over MCP, and the CLI keeps

@@ -290,6 +290,7 @@ def test_given_a_full_range_when_exporting_versions_then_plain_dicts_come_back_a
 
     assert [r["version"] for r in rows] == [1, 2, 3]
     assert rows[0] == {
+        "constitution_key": "default",
         "version": 1,
         "mission": "M1",
         "declaration": "",

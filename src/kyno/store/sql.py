@@ -93,13 +93,14 @@ class SqlConstitutionStore:
     def create_all(self) -> None:
         self.metadata.create_all(self.engine)
 
-    def _row_to_version(self, row) -> ConstitutionVersion:
+    def _row_to_version(self, row, constitution: str) -> ConstitutionVersion:
         created_at = row.created_at
         # SQLite stores timestamps but returns them without the timezone. Everything this store
         # writes is UTC (see append()), so the UTC marker is added back on read.
         if created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=UTC)
         return ConstitutionVersion(
+            constitution_key=constitution,
             version=row.version,
             mission=row.mission,
             declaration=row.declaration or "",
@@ -139,7 +140,7 @@ class SqlConstitutionStore:
                     f"constitution '{constitution}' has HEAD pointing at version "
                     f"{cur.current_version}, but that version row is missing"
                 )
-            return self._row_to_version(row)
+            return self._row_to_version(row, constitution)
 
     def get(self, constitution: str, version: int) -> ConstitutionVersion | None:
         constitution = check_constitution_key(constitution)
@@ -152,7 +153,7 @@ class SqlConstitutionStore:
                 .where(self._versions.c.constitution_id == cid)
                 .where(self._versions.c.version == version)
             ).first()
-            return self._row_to_version(row) if row else None
+            return self._row_to_version(row, constitution) if row else None
 
     def versions_after(
         self, constitution: str, last_seen_version: int
@@ -168,7 +169,7 @@ class SqlConstitutionStore:
                 .where(self._versions.c.version > last_seen_version)
                 .order_by(self._versions.c.version.asc())
             ).all()
-            return [self._row_to_version(r) for r in rows]
+            return [self._row_to_version(r, constitution) for r in rows]
 
     def export_versions(
         self,
@@ -193,9 +194,10 @@ class SqlConstitutionStore:
                 query = query.where(self._versions.c.version <= to_version)
             query = query.order_by(self._versions.c.version.asc())
             rows = conn.execute(query).all()
-            versions = [self._row_to_version(r) for r in rows]
+            versions = [self._row_to_version(r, constitution) for r in rows]
         return [
             {
+                "constitution_key": v.constitution_key,
                 "version": v.version,
                 "mission": v.mission,
                 "declaration": v.declaration,
@@ -306,12 +308,18 @@ class SqlConstitutionStore:
                 ).where(self._constitutions.c.name == constitution)
             ).first()
         if row is None:
-            return Publication(published_at=None, history_public=False)
+            return Publication(
+                constitution_key=constitution, published_at=None, history_public=False
+            )
         published_at = row.published_at
         # SQLite returns timestamps without the timezone they were written with.
         if published_at is not None and published_at.tzinfo is None:
             published_at = published_at.replace(tzinfo=UTC)
-        return Publication(published_at=published_at, history_public=bool(row.history_public))
+        return Publication(
+            constitution_key=constitution,
+            published_at=published_at,
+            history_public=bool(row.history_public),
+        )
 
     def published_names(self) -> list[str]:
         with self.engine.connect() as conn:
@@ -378,6 +386,7 @@ class SqlConstitutionStore:
                 f"version {version} of '{constitution}' already exists"
             ) from exc
         return ConstitutionVersion(
+            constitution_key=constitution,
             version=version,
             mission=mission,
             declaration=declaration,

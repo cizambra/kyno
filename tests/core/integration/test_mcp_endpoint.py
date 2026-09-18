@@ -190,6 +190,7 @@ def test_given_a_read_token_when_calling_a_read_tool_then_it_answers():
     assert response.status_code == 200
     payload = json.loads(sse_json(response.text)["result"]["content"][0]["text"])
     assert payload == {
+        "constitution_key": "default",
         "version": 0,
         "mission": "",
         "recording": {"status": "disabled", "record_id": None},

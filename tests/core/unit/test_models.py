@@ -19,6 +19,7 @@ def test_given_an_unknown_token_scope_when_parsing_then_it_is_refused():
 
 def test_given_an_authorization_string_when_constructing_a_version_then_it_becomes_the_enum():
     version = ConstitutionVersion(
+        constitution_key="default",
         version=1,
         mission="M",
         principles=(),
@@ -36,6 +37,7 @@ def test_given_an_authorization_string_when_constructing_a_version_then_it_becom
 def test_given_an_unknown_authorization_when_constructing_a_version_then_it_is_refused():
     with pytest.raises(ValueError, match="sudo"):
         ConstitutionVersion(
+            constitution_key="default",
             version=1,
             mission="M",
             principles=(),
@@ -50,6 +52,7 @@ def test_given_an_unknown_authorization_when_constructing_a_version_then_it_is_r
 
 def test_given_a_version_when_assigning_a_field_then_it_is_frozen_and_still_serializes():
     v = ConstitutionVersion(
+        constitution_key="default",
         version=1,
         mission="Serve customers",
         principles=(Principle("Be honest"),),
@@ -67,6 +70,7 @@ def test_given_a_version_when_assigning_a_field_then_it_is_frozen_and_still_seri
 
 def test_given_changes_since_when_serializing_then_the_notes_are_a_list():
     c = ChangesSince(
+        constitution_key="default",
         current_version=3,
         changed=True,
         mission="M",
@@ -146,6 +150,7 @@ def test_given_none_when_normalizing_then_it_stays_none_so_carry_forward_is_unto
 
 def test_given_a_version_without_a_declaration_when_reading_then_it_carries_an_empty_one():
     v = ConstitutionVersion(
+        constitution_key="default",
         version=1,
         mission="M",
         principles=(),
@@ -161,6 +166,7 @@ def test_given_a_version_without_a_declaration_when_reading_then_it_carries_an_e
 
 def test_given_a_declaration_when_serializing_then_it_sits_beside_the_mission_it_expands():
     v = ConstitutionVersion(
+        constitution_key="default",
         version=1,
         mission="M",
         principles=(),

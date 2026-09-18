@@ -37,6 +37,7 @@ def source():
         changes_since=Mock(
             return_value=DirectionResponse(
                 ChangesSince(
+                    constitution_key="default",
                     current_version=2,
                     changed=True,
                     mission="Help customers",

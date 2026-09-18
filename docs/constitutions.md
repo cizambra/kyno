@@ -101,13 +101,23 @@ kyno apply eu.yaml --note "the EU edit"
 kyno current --constitution eu
 ```
 
-Reads take the name as an option, over MCP and on the CLI, and default to
-`"default"`, so a single-constitution setup only ever names it in the
-file. Each name has its own version sequence: bumping `eu` to v2 leaves
+Named operations over Python, MCP, and the CLI default to the literal name
+`"default"` when the name is omitted or null. A supplied name must be a
+non-blank string of at most 200 characters. Names are preserved exactly,
+including surrounding spaces: `" eu "` and `"eu"` are different constitutions.
+Private names need not be URL slugs; publishing still requires a slug.
+Authoring files must name their constitution explicitly.
+
+Each name has its own version sequence: bumping `eu` to v2 leaves
 `default` at whatever version it was. A name you have never written to
 reads as the same version-0 empty state an untouched store does. The
 subscribable resource is the default constitution's; agents on another
 one pull it by name with `get_changes_since`.
+
+In embedded Python, construct `ControlPlane(store)` and pass `constitution`
+to each operation. A named call does not change the default for later calls.
+Delivery-history listing is a filter query: an omitted or null `constitution`
+includes every constitution, rather than selecting `"default"`.
 
 ## Reading a version
 

@@ -9,11 +9,14 @@ from __future__ import annotations
 
 import json
 import logging
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 
 from kyno.mcp.tools import TOOL_SCOPES
 from kyno.models import Token, TokenScope
 from kyno.tokens import hash_value
+from kyno.wire.constitution import check_constitution
+from kyno.wire.errors import InvalidConstitutionNameError
 
 # A JSON-RPC request is small. The largest legitimate one carries a full constitution, and the
 # field size limits keep that well under this cap.
@@ -30,7 +33,7 @@ _request_log = logging.getLogger("kyno.requests")
 TOUCH_EVERY = timedelta(minutes=5)
 
 
-def _tool_calls(body: bytes) -> list[tuple[str, str]]:
+def _tool_calls(body: bytes) -> list[tuple[str, object]]:
     """List the (tool, constitution) pairs a JSON-RPC body asks for.
 
     Returns an empty list for a body that is not valid JSON, or that
@@ -55,7 +58,11 @@ def _tool_calls(body: bytes) -> list[tuple[str, str]]:
         arguments = params.get("arguments") or {}
         name = params.get("name")
         if isinstance(name, str):
-            calls.append((name, arguments.get("constitution") or "default"))
+            constitution = arguments.get("constitution")
+            if constitution is not None or name != "list_delivery_records":
+                with suppress(InvalidConstitutionNameError):
+                    constitution = check_constitution(constitution)
+            calls.append((name, constitution))
     return calls
 
 

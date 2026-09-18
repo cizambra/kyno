@@ -26,6 +26,7 @@ from kyno.models import (
 )
 from kyno.store.base import ConstitutionStore
 from kyno.store.delivery_record import SqlDeliveryRecordStore
+from kyno.wire.constitution import check_constitution
 from kyno.wire.delivery import RecordingStatus, recording_result
 from kyno.wire.models import (
     DIRECTION_MARKER,
@@ -44,7 +45,6 @@ MAX_CHANGE_NOTE_CHARS = 2_000
 MAX_PRINCIPLES = 100
 MAX_PRINCIPLE_TITLE_CHARS = 300
 MAX_PRINCIPLE_DESCRIPTION_CHARS = 4_000
-MAX_CONSTITUTION_NAME_CHARS = 200
 
 # The public page's contract: it and its .json serve at most this many
 # versions, newest first. The full history stays readable to authenticated
@@ -70,16 +70,10 @@ def _check_fields(
     declaration: str | None,
     principles: tuple[Principle, ...] | None,
     change_note: str,
-    name: str,
 ) -> None:
     _check_text("mission", mission, MAX_MISSION_CHARS)
     _check_text("declaration", declaration, MAX_DECLARATION_CHARS)
     _check_text("change_note", change_note, MAX_CHANGE_NOTE_CHARS)
-    if len(name) > MAX_CONSTITUTION_NAME_CHARS:
-        raise FieldTooLargeError(
-            f"the constitution name is {len(name)} characters, "
-            f"over the cap of {MAX_CONSTITUTION_NAME_CHARS}"
-        )
     if principles is None:
         return
     if len(principles) > MAX_PRINCIPLES:
@@ -243,13 +237,11 @@ class ControlPlane:
     def __init__(
         self,
         store: ConstitutionStore,
-        constitution: str = "default",
         *,
         delivery_recorder: DeliveryRecorder | None = None,
         delivery_record_store: SqlDeliveryRecordStore | None = None,
     ) -> None:
         self._store = store
-        self._constitution = constitution
         self._subscribers: list[Callable[[ConstitutionVersion], None]] = []
         self.delivery_recorder = delivery_recorder
         self.delivery_record_store = delivery_record_store
@@ -263,28 +255,22 @@ class ControlPlane:
         requester: dict | None = None,
     ) -> dict:
         """Record the served direction against the resolved constitution name."""
+        name = check_constitution(arguments.get("constitution"))
         if self.delivery_recorder is None:
             return recording_result(RecordingStatus.DISABLED)
         return self.delivery_recorder.record(
             direction,
             operation=operation,
-            constitution=self._name(arguments.get("constitution")),
+            constitution=name,
             arguments=arguments,
             requester=requester,
         )
-
-    def _name(self, constitution: str | None) -> str:
-        """Resolve which constitution a call is about.
-        The name is per call, never state: naming one here must not redirect
-        later calls. Omitting it falls back to the constructor's name, so a
-        control plane pinned to one constitution behaves as it always has."""
-        return self._constitution if constitution is None else constitution
 
     def on_change(self, callback: Callable[[ConstitutionVersion], None]) -> None:
         self._subscribers.append(callback)
 
     def current(self, constitution: str | None = None) -> ConstitutionVersion:
-        head = self._store.head(self._name(constitution))
+        head = self._store.head(check_constitution(constitution))
         if head is None:
             return _EMPTY_CONSTITUTION
         return head
@@ -296,13 +282,13 @@ class ControlPlane:
 
         An absent positive version raises UnknownVersionError.
         """
+        name = check_constitution(constitution)
         if version is None:
             return self.current(constitution)
         if type(version) is not int or version < 0:
             raise ValueError("version must be a non-negative integer")
         if version == 0:
             return _EMPTY_CONSTITUTION
-        name = self._name(constitution)
         selected = self._store.get(name, version)
         if selected is None:
             raise UnknownVersionError(f"constitution '{name}' version {version} not found")
@@ -311,7 +297,7 @@ class ControlPlane:
     def changes_since(
         self, last_seen_version: int, constitution: str | None = None
     ) -> ChangesSince:
-        name = self._name(constitution)
+        name = check_constitution(constitution)
         head = self._store.head(name)
         if head is None:
             # No HEAD to compare against -- no last_seen_version can be "in the
@@ -340,14 +326,14 @@ class ControlPlane:
         )
 
     def publication(self, constitution: str | None = None) -> Publication:
-        return self._store.publication(self._name(constitution))
+        return self._store.publication(check_constitution(constitution))
 
     def publish(
         self, constitution: str | None = None, *, with_history: bool = False
     ) -> Publication:
         """Serve this constitution publicly. History (and the change notes in
         it) stays private unless `with_history` opens it as a separate act."""
-        name = self._name(constitution)
+        name = check_constitution(constitution)
         if self._store.head(name) is None:
             raise UnknownConstitutionError(
                 f"'{name}' has no direction set, so there is nothing to publish"
@@ -361,7 +347,7 @@ class ControlPlane:
         return self._store.publication(name)
 
     def unpublish(self, constitution: str | None = None) -> Publication:
-        name = self._name(constitution)
+        name = check_constitution(constitution)
         if not self._store.set_publication(name, published_at=None, history_public=False):
             raise UnknownConstitutionError(f"no constitution named '{name}'")
         return self._store.publication(name)
@@ -370,7 +356,7 @@ class ControlPlane:
         """The public view of one constitution, or None if it is not published.
         Unknown and unpublished are the same answer on purpose: whether a name
         exists is not something an anonymous caller gets to learn."""
-        name = self._name(constitution)
+        name = check_constitution(constitution)
         pub = self._store.publication(name)
         if not pub.published:
             return None
@@ -410,7 +396,7 @@ class ControlPlane:
         """The version history as plain dicts, ascending, bounds inclusive.
         What `kyno export` prints locally, and what a remote client reads."""
         return self._store.export_versions(
-            self._name(constitution), from_version=from_version, to_version=to_version
+            check_constitution(constitution), from_version=from_version, to_version=to_version
         )
 
     def apply_direction(
@@ -443,13 +429,12 @@ class ControlPlane:
         # Checked before the retry loop: a malformed principle is the caller's mistake, and re-
         # checking it on every attempt adds nothing.
         principles = normalize_principles(principles)
-        name = self._name(constitution)
+        name = check_constitution(constitution)
         _check_fields(
             mission=mission,
             declaration=declaration,
             principles=principles,
             change_note=change_note,
-            name=name,
         )
         head, effective = self._effective(
             name, mission=mission, declaration=declaration, principles=principles
@@ -534,7 +519,7 @@ class ControlPlane:
         """The head and what an apply with these fields would change, from
         one read of the store, so the version and the delta can never
         describe two different moments. The head is None on an empty store."""
-        name = self._name(constitution)
+        name = check_constitution(constitution)
         head = self._store.head(name)
         return head, edit_delta(
             head, name, mission=mission, declaration=declaration, principles=principles

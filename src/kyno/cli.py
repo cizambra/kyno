@@ -32,6 +32,7 @@ from kyno.remote import RemoteError, dial, version_from_payload
 from kyno.server_config import Settings, control_plane_from_settings, store_from_settings
 from kyno.service import ControlPlane, edit_delta, effective_content
 from kyno.tokens import age, generate_value, hash_value, parse_ttl
+from kyno.wire.constitution import check_constitution
 from kyno.wire.errors import CoherenceError
 from kyno.wire.models import normalize_principles
 from kyno.workspace import create_workspace
@@ -766,6 +767,7 @@ def _read_direction_version(
     token_env: str | None,
 ) -> dict:
     """Read a numbered version or the current head from the selected local or remote instance."""
+    constitution = check_constitution(constitution)
     if number is not None:
         if remote:
             rows = _fetch_remote_rows(profile, credentials, token_env, constitution, version=number)
@@ -925,6 +927,7 @@ def history(
     author, and the change note. `kyno export` has the full content."""
     _remote_options_guard(remote, profile, credentials, token_env)
     try:
+        constitution = check_constitution(constitution)
         if remote:
             rows = _fetch_remote_rows(profile, credentials, token_env, constitution)
         else:
@@ -960,6 +963,7 @@ def export(
     with no versions is refused, the same as `kyno current --yaml`."""
     _remote_options_guard(remote, profile, credentials, token_env)
     try:
+        constitution = check_constitution(constitution)
         if remote:
             rows = _fetch_remote_rows(profile, credentials, token_env, constitution)
         else:
@@ -991,6 +995,7 @@ def import_ledger(
     every version's number, dates and authors. Local only: it writes
     straight to the workspace's database, and there is no --remote."""
     with _clean_errors():
+        as_name = check_constitution(as_name)
         count = _store().import_versions(as_name, _read_export(file))
     word = "version" if count == 1 else "versions"
     typer.echo(f"imported {count} {word} into '{as_name}'")

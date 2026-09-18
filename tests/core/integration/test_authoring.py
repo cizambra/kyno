@@ -82,6 +82,37 @@ def test_given_a_full_file_when_reading_then_every_field_a_constitution_has_is_c
     )
 
 
+def test_given_spaced_name_when_cli_apply_runs_then_the_exact_constitution_is_written(db, tmp_path):
+    name = " Team / Support "
+    path = write(tmp_path, json.dumps({"constitution": name, "mission": "Help"}))
+
+    result = runner.invoke(app, ["apply", path, "--note", "initial"])
+
+    assert result.exit_code == 0, result.output
+    assert plane(db).current(name).mission == "Help"
+    assert plane(db).current(name.strip()).version == 0
+
+
+@pytest.mark.parametrize("name", ["", " \t", "x" * 201])
+@pytest.mark.parametrize("command", [["current"], ["get-version", "1"], ["history"], ["export"]])
+def test_given_invalid_name_when_cli_read_runs_then_a_readable_error_is_printed(db, name, command):
+    result = runner.invoke(app, [*command, "--constitution", name])
+
+    assert result.exit_code == 1
+    assert "error:" in result.output
+    assert "constitution" in result.output
+    assert "Traceback" not in result.output
+
+
+@pytest.mark.parametrize("name", ["", " \t", "x" * 201])
+def test_given_invalid_name_when_cli_import_runs_then_name_is_refused_before_reading_file(db, name):
+    result = runner.invoke(app, ["import", "missing.json", "--as", name])
+
+    assert result.exit_code == 1
+    assert "constitution name" in result.output
+    assert "Traceback" not in result.output
+
+
 def test_given_a_block_of_prose_when_reading_then_its_paragraphs_are_kept(tmp_path):
     # The reason the file exists: this is unwritable as a flag.
     declaration = read_constitution_file(write(tmp_path, FULL_FILE)).declaration

@@ -6,6 +6,10 @@ class CoherenceError(Exception):
     """Base class for errors represented by the Kyno contract."""
 
 
+class InvalidConstitutionNameError(CoherenceError, ValueError):
+    """A supplied constitution name is not a non-blank string within its size cap."""
+
+
 class UnknownPrincipleError(CoherenceError):
     """No principle in the current version carries that title."""
 

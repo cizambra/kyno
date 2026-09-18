@@ -5,6 +5,7 @@ from kyno.mcp.endpoint import MAX_MCP_BODY_BYTES, McpEndpoint
 from kyno.mcp.server import build_server
 from kyno.public_page import PageConfig
 from kyno.service import ControlPlane
+from kyno.wire.errors import InvalidConstitutionNameError
 
 # Sent on every public response, including 404s. The pages carry one inline <style> block and
 # nothing that runs, loads, or frames.
@@ -68,14 +69,20 @@ def build_http_app(
     # anonymous caller that a name they guessed is real. These are sync on purpose -- Starlette
     # runs a plain `def` endpoint in a threadpool, so their blocking store reads stay off the
     # event loop.
+    def public_view(name):
+        try:
+            return control_plane.public_constitution(name)
+        except InvalidConstitutionNameError:
+            return None
+
     def constitution_page(request):
-        view = control_plane.public_constitution(request.path_params["name"])
+        view = public_view(request.path_params["name"])
         if view is None:
             return HTMLResponse(render_not_found(page), status_code=404, headers=PUBLIC_HEADERS)
         return HTMLResponse(render_constitution(view, page), headers=PUBLIC_HEADERS)
 
     def constitution_json(request):
-        view = control_plane.public_constitution(request.path_params["name"])
+        view = public_view(request.path_params["name"])
         if view is None:
             return JSONResponse({"error": "not found"}, status_code=404, headers=PUBLIC_HEADERS)
         return JSONResponse(view.to_dict(), headers=PUBLIC_HEADERS)

@@ -6,7 +6,7 @@ import json
 import pytest
 
 from kyno.authoring import read_constitution_file
-from kyno.conformance import SEPARATOR, check_log
+from kyno.conformance import MARKER, SEPARATOR, check_log
 from kyno.sdk.cell import Direction
 from kyno.wire.models import DetailLevel
 from tests.paths import REPO_ROOT
@@ -22,6 +22,21 @@ def plane(control_plane):
 
 def expected(name: str) -> str:
     return (CONFORMANCE / "expected" / name).read_text()
+
+
+@pytest.mark.parametrize("constitution", [" Team / Support ", "Team\nSupport", "Team\tSupport"])
+@pytest.mark.parametrize("version", [0, 1])
+def test_given_whitespace_in_name_when_check_log_reads_rendered_direction_then_identity_is_exact(
+    constitution, version
+):
+    direction = Direction(constitution=constitution, version=version, mission="Help", principles=())
+    block = direction.render()
+
+    report = check_log(block + f"\n{SEPARATOR}\n")
+
+    assert report.ok, report.problems
+    assert report.versions == [version]
+    assert MARKER.match(block).group(1) == constitution
 
 
 def test_given_the_example_files_when_replayed_then_they_match_what_kyno_produces(plane):

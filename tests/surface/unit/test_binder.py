@@ -36,13 +36,27 @@ def test_given_fixed_detail_when_assigning_binder_detail_then_attribute_error_pr
     assert all(requested_detail is detail for requested_detail in scripted_source.details)
 
 
-@pytest.mark.parametrize("constitution_name", [None, 1, True, [], {}])
-def test_given_non_string_constitution_name_when_creating_direction_binder_then_raises_type_error(
+@pytest.mark.parametrize("constitution_name", [1, True, [], {}, "", " \t", "x" * 201])
+def test_given_invalid_constitution_when_creating_direction_binder_then_name_is_rejected(
     scripted_source, constitution_name
 ):
-    with pytest.raises(TypeError, match="constitution name must be a string"):
+    with pytest.raises(ValueError, match="constitution"):
         DirectionBinder(scripted_source, constitution_name)
     assert scripted_source.calls == []
+
+
+@pytest.mark.parametrize("constitution", [None, "default", " Team / Support ", "x" * 200])
+def test_given_valid_constitution_when_direction_binder_binds_then_the_exact_name_is_used(
+    scripted_source, constitution
+):
+    expected = "default" if constitution is None else constitution
+    scripted_source.set(expected, 1, "Help customers")
+
+    binder = DirectionBinder(scripted_source, constitution)
+
+    assert binder.constitution == expected
+    assert binder.bind().constitution == expected
+    assert scripted_source.calls == [(0, expected)]
 
 
 def test_given_support_binder_when_bind_runs_then_every_pull_uses_support(scripted_source):

@@ -178,12 +178,33 @@ def test_given_malformed_reply_when_get_constitution_is_called_then_unavailable_
         history.get_constitution(runner, version=1)
 
 
-@pytest.mark.parametrize("constitution", [None, 1, "", "   "])
-def test_given_invalid_name_when_get_constitution_is_called_then_request_is_not_sent(constitution):
+@pytest.mark.parametrize("constitution", [1, True, [], {}, "", "   ", "x" * 201])
+@pytest.mark.parametrize("operation", ["get_constitution", "list_delivery_records"])
+def test_given_invalid_name_when_history_operation_is_called_then_request_is_not_sent(
+    constitution, operation
+):
     runner = Mock()
     with pytest.raises(ValueError, match="constitution"):
-        history.get_constitution(runner, constitution, version=1)
+        getattr(history, operation)(runner, constitution=constitution)
     runner.call.assert_not_called()
+
+
+@pytest.mark.parametrize("constitution", [None, "default", " Team / Support ", "x" * 200])
+def test_given_valid_name_when_get_constitution_is_called_then_exact_identity_is_returned(
+    constitution,
+):
+    expected = "default" if constitution is None else constitution
+    payload = {"version": 1, "mission": "Help", "principles": []}
+    session = SimpleNamespace(call_tool=AsyncMock(return_value=reply(payload)))
+    runner = Mock()
+    runner.call.side_effect = lambda callback: asyncio.run(callback(session))
+
+    direction = KynoConnection(runner).get_constitution(constitution)
+
+    assert direction.constitution == expected
+    session.call_tool.assert_awaited_once_with(
+        "get_constitution", {"constitution": expected, "detail": "compact"}
+    )
 
 
 @pytest.mark.parametrize("detail", ["unknown", None, 1])

@@ -69,7 +69,7 @@ class KynoConnection:
 
     def binder(
         self,
-        constitution: str = "default",
+        constitution: str | None = None,
         *,
         policy: PullPolicy | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,
@@ -98,7 +98,7 @@ class KynoConnection:
 
     def get_constitution(
         self,
-        constitution: str = "default",
+        constitution: str | None = None,
         *,
         version: int | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,

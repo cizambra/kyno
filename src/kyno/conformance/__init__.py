@@ -4,7 +4,7 @@
 An adapter under test appends every block it injects to a log file, followed
 by a line containing only ``---end---``. `check_log` reads that file back and
 verifies the parts a correct adapter cannot get wrong: every block starts
-with the marker line, version-0 blocks have the exact empty-state text, and
+with the marker, version-0 blocks have the exact empty-state text, and
 the version number never goes backwards.
 """
 
@@ -13,7 +13,10 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-MARKER = re.compile(r"^\[kyno:direction constitution=(\S+) version=(\d+)\]$")
+from kyno.wire.constitution import check_constitution
+from kyno.wire.errors import InvalidConstitutionNameError
+
+MARKER = re.compile(r"^\[kyno:direction constitution=(.+?) version=(\d+)\](?:\n|$)", re.DOTALL)
 SEPARATOR = "---end---"
 EMPTY_STATE_LINE = "No direction has been set yet."
 
@@ -49,23 +52,28 @@ def check_log(text: str) -> Report:
         return report
 
     for i, block in enumerate(blocks, start=1):
-        lines = block.split("\n")
-        m = MARKER.match(lines[0])
+        m = MARKER.match(block)
         if not m:
             report.problems.append(
-                f"block {i}: the first line must be the marker "
-                f"[kyno:direction constitution=... version=...], got: {lines[0]!r}"
+                f"block {i}: the block must start with the marker "
+                f"[kyno:direction constitution=... version=...], got: {block.splitlines()[0]!r}"
             )
             continue
+        try:
+            check_constitution(m.group(1))
+        except InvalidConstitutionNameError as exc:
+            report.problems.append(f"block {i}: {exc}")
+            continue
+        lines = block[m.end() :].split("\n")
         version = int(m.group(2))
         report.versions.append(version)
         if version == 0:
-            if lines[1:] != [EMPTY_STATE_LINE]:
+            if lines != [EMPTY_STATE_LINE]:
                 report.problems.append(
                     f"block {i}: a version-0 block must be the marker plus "
                     f"exactly one line: {EMPTY_STATE_LINE!r}"
                 )
-        elif not any(line.startswith("Mission: ") for line in lines[1:]):
+        elif not any(line.startswith("Mission: ") for line in lines):
             report.problems.append(f"block {i}: no 'Mission: ' line — the block body is missing")
 
     for i in range(1, len(report.versions)):

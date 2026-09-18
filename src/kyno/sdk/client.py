@@ -13,6 +13,7 @@ from typing import Any, Protocol, runtime_checkable
 from kyno.sdk.errors import KynoRefusedError, KynoUnavailableError
 from kyno.sdk.recording import RecordingReceipt
 from kyno.wire import RESOURCE_URI as RESOURCE_URI
+from kyno.wire.constitution import check_constitution
 from kyno.wire.delivery_context import delivery_context
 from kyno.wire.models import ChangesSince, DetailLevel, check_detail
 
@@ -31,7 +32,7 @@ class DirectionSource(Protocol):
     def changes_since(
         self,
         last_seen_version: int,
-        constitution: str,
+        constitution: str | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> DirectionResponse: ...
 
@@ -68,11 +69,12 @@ class LocalDirectionSource:
     def changes_since(
         self,
         last_seen_version: int,
-        constitution: str,
+        constitution: str | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> DirectionResponse:
         # `detail` exists to save bytes on the wire, and there is no wire here: the control
         # plane returns the whole version either way.
+        constitution = check_constitution(constitution)
         return DirectionResponse(self._control_plane.changes_since(last_seen_version, constitution))
 
 
@@ -363,14 +365,17 @@ class McpDirectionSource:
     def changes_since(
         self,
         last_seen_version: int,
-        constitution: str,
+        constitution: str | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> DirectionResponse:
-        """Every way this can fail arrives as KynoUnavailableError, because
-        that is what the binder's policy degrades on. A reply we cannot read
-        is the control plane being unreachable as far as the next step is
-        concerned, and it must cost freshness rather than the step itself."""
+        """Pull changes for the exact name, defaulting None to "default".
+
+        Invalid names or detail levels raise ValueError before the request.
+        Transport and reply failures raise KynoUnavailableError for the binder's
+        configured failure policy.
+        """
         detail = check_detail(detail)
+        constitution = check_constitution(constitution)
 
         async def call(session):
             return await session.call_tool(

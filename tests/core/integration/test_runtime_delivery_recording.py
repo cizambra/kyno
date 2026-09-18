@@ -19,7 +19,6 @@ def server_with_history(store, policy="always", constitution="default"):
     history = SqlDeliveryRecordStore(store.engine, recording_url=store.engine.url)
     plane = ControlPlane(
         store,
-        constitution,
         delivery_recorder=DeliveryRecorder(history, policy),
         delivery_record_store=history,
     )
@@ -55,6 +54,41 @@ def records(store):
 
 def saved_record(store, identifier):
     return SqlDeliveryRecordStore(store.engine).get(identifier)
+
+
+@pytest.mark.parametrize("constitution", [None, " Team / Support ", "x" * 200])
+async def test_given_valid_name_when_get_constitution_runs_then_recording_uses_exact_identity(
+    memory_store, constitution
+):
+    server, history, plane = server_with_history(memory_store)
+    expected = "default" if constitution is None else constitution
+    if expected != "default":
+        plane.apply_direction(mission="Selected", change_note="initial", constitution=expected)
+
+    response = await invoke(server, "get_constitution", {"constitution": constitution})
+
+    record = history.get(response["recording"]["record_id"])
+    assert response["mission"] == plane.current(expected).mission
+    assert record["requested_constitution"] == expected
+    assert memory_store.get(expected, record["served_version"]).mission == response["mission"]
+
+
+@pytest.mark.parametrize("constitution", ["", " \t", "x" * 201, 1, True, [], {}])
+async def test_given_invalid_name_when_get_constitution_runs_then_no_delivery_is_recorded(
+    memory_store, constitution
+):
+    server, _, _ = server_with_history(memory_store)
+    response = await server.request_handlers[types.CallToolRequest](
+        types.CallToolRequest(
+            method="tools/call",
+            params=types.CallToolRequestParams(
+                name="get_constitution", arguments={"constitution": constitution, "version": 0}
+            ),
+        )
+    )
+
+    assert response.root.isError
+    assert records(memory_store) == []
 
 
 @pytest.mark.asyncio
@@ -177,9 +211,10 @@ async def test_given_recording_outcome_when_reading_resource_then_direction_and_
     monkeypatch,
     status,
 ):
-    server, history, _ = server_with_history(
+    server, history, plane = server_with_history(
         memory_store, policy="never" if status == "disabled" else "always", constitution="support"
     )
+    plane.apply_direction(mission="Default customers", change_note="initial")
     append = Mock(wraps=history.append)
     if status == "failed":
         append.side_effect = RuntimeError("database unavailable")
@@ -191,7 +226,7 @@ async def test_given_recording_outcome_when_reading_resource_then_direction_and_
         )
     )
     payload = json.loads(result.root.contents[0].text)
-    assert payload["mission"] == "Help customers"
+    assert payload["mission"] == "Default customers"
     assert payload["version"] == 1
     assert payload["recording"]["status"] == status
     assert append.call_count == (0 if status == "disabled" else 1)
@@ -200,7 +235,7 @@ async def test_given_recording_outcome_when_reading_resource_then_direction_and_
         assert records(memory_store) == []
         return
     record = saved_record(memory_store, payload["recording"]["record_id"])
-    assert record["requested_constitution"] == "support"
+    assert record["requested_constitution"] == "default"
     assert record["operation"] == "read_resource"
     assert record["detail_level"] == "compact"
     assert record["correlation_id"] is None

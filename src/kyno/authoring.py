@@ -16,6 +16,7 @@ from pathlib import Path
 
 from kyno.errors import AuthoringError
 from kyno.models import ConstitutionVersion
+from kyno.wire.constitution import check_constitution
 from kyno.wire.errors import CoherenceError
 from kyno.wire.models import Principle, normalize_principles
 
@@ -39,8 +40,11 @@ def read_constitution_file(path: str) -> ConstitutionFile:
     document = _load(path)
     if not isinstance(document, Mapping):
         raise AuthoringError(f"{path}: a constitution file must be a mapping of fields")
+    constitution = document.get("constitution")
+    if constitution is not None:
+        constitution = check_constitution(constitution)
     return ConstitutionFile(
-        constitution=_text(document, "constitution", path),
+        constitution=constitution,
         mission=_text(document, "mission", path),
         declaration=_text(document, "declaration", path),
         principles=_principles(document, path),

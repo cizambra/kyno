@@ -70,6 +70,18 @@ def test_given_an_unknown_name_when_requesting_its_page_then_it_answers_like_unp
     assert unpublished.text == unknown.text
 
 
+@pytest.mark.parametrize("name", ["%20", "x" * 201])
+@pytest.mark.parametrize("suffix", ["", ".json"])
+def test_given_invalid_name_when_public_constitution_is_requested_then_unknown_404_is_returned(
+    client, name, suffix
+):
+    response = client.get(f"/constitutions/{name}{suffix}")
+    unknown = client.get(f"/constitutions/unknown{suffix}")
+
+    assert response.status_code == unknown.status_code == 404
+    assert response.content == unknown.content
+
+
 def test_given_no_token_when_requesting_the_public_page_then_it_serves_while_mcp_refuses(
     plane, client
 ):

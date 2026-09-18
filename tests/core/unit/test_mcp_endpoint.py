@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -67,6 +68,35 @@ def test_given_bodies_of_every_shape_when_listing_tool_calls_then_only_real_call
         b'{"method": "tools/call", "params": {"name": "apply_direction", '
         b'"arguments": {"mission": "M1"}}}]'
     ) == [("get_constitution", "main"), ("apply_direction", "default")]
+
+
+@pytest.mark.parametrize("constitution", [None, "", "  ", " Team / Support ", 0, False, []])
+def test_given_explicit_constitution_when_tool_calls_are_logged_then_only_none_means_default(
+    constitution,
+):
+    body = json.dumps(
+        {
+            "method": "tools/call",
+            "params": {"name": "get_constitution", "arguments": {"constitution": constitution}},
+        }
+    ).encode()
+
+    expected = "default" if constitution is None else constitution
+    assert _tool_calls(body) == [("get_constitution", expected)]
+
+
+@pytest.mark.parametrize("arguments", [{}, {"constitution": None}])
+def test_given_no_filter_when_list_delivery_records_is_logged_then_constitution_is_unspecified(
+    arguments,
+):
+    body = json.dumps(
+        {
+            "method": "tools/call",
+            "params": {"name": "list_delivery_records", "arguments": arguments},
+        }
+    ).encode()
+
+    assert _tool_calls(body) == [("list_delivery_records", None)]
 
 
 @pytest.mark.asyncio

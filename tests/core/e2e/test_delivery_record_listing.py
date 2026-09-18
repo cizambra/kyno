@@ -74,6 +74,8 @@ async def test_given_delivery_filters_when_reading_next_page_then_only_matching_
 @pytest.mark.parametrize(
     ("filters", "positions"),
     [
+        ({}, [0, 1, 2]),
+        ({"constitution": None}, [0, 1, 2]),
         ({"correlation_id": "two"}, [1]),
         ({"constitution": "beta"}, [1]),
         ({"since": "2026-01-02T00:00:00Z"}, [1, 2]),

@@ -7,6 +7,7 @@ from __future__ import annotations
 import mcp.types as types
 
 from kyno.models import AuthorizationType, TokenScope
+from kyno.wire.constitution import MAX_CONSTITUTION_NAME_CHARS
 from kyno.wire.delivery_context import MAX_CORRELATION_CHARS, MAX_METADATA_BYTES
 from kyno.wire.models import DetailLevel
 
@@ -36,11 +37,14 @@ _DETAIL_ARG = {
     ),
 }
 
-# An omitted `constitution` is passed on as None rather than "default", so a
-# control plane pinned to another name keeps serving that one.
 _CONSTITUTION_ARG = {
-    "type": "string",
-    "description": 'Which named constitution to act on. Defaults to "default".',
+    "type": ["string", "null"],
+    "minLength": 1,
+    "maxLength": MAX_CONSTITUTION_NAME_CHARS,
+    "pattern": r"\S",
+    "description": (
+        'Exact constitution name, including surrounding spaces. Omitted or null means "default".'
+    ),
 }
 
 # Either shape a principle comes in: a bare title, or a title with the
@@ -299,8 +303,8 @@ DECLARATIONS.append(
                 "properties": {
                     "correlation_id": {"type": "string"},
                     "constitution": {
-                        "type": "string",
-                        "description": "Filter by named constitution; omitted means all.",
+                        **_CONSTITUTION_ARG,
+                        "description": "Filter by exact constitution; omitted or null means all.",
                     },
                     "since": {
                         "type": "string",

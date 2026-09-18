@@ -310,14 +310,50 @@ def test_given_a_per_call_name_when_writing_then_the_control_plane_keeps_its_def
     assert cp.changes_since(0).current_version == 0
 
 
-def test_given_no_name_when_calling_then_the_constructor_name_is_the_fallback(store):
-    """Backward compatibility: a control plane pinned to one constitution keeps
-    behaving as it did before any call took a name."""
-    cp = ControlPlane(store, constitution="eu")
-    cp.apply_direction(mission="EU1", change_note="init")
-    assert cp.current().mission == "EU1"
-    assert store.head("eu").mission == "EU1"
-    assert store.head("default") is None
+@pytest.mark.parametrize("arguments", [{}, {"constitution": None}])
+def test_given_no_name_when_apply_direction_runs_then_current_reads_literal_default(cp, arguments):
+    cp.apply_direction(mission="EU1", change_note="init", constitution="eu")
+    cp.apply_direction(mission="Default", change_note="init", **arguments)
+
+    assert cp.current(**arguments).mission == "Default"
+    assert cp.current("eu").mission == "EU1"
+
+
+@pytest.mark.parametrize("constitution", ["", " \t", "x" * 201, 1, True, [], {}])
+@pytest.mark.parametrize(
+    "operation, arguments",
+    [
+        ("current", {}),
+        ("get_constitution", {"version": 0}),
+        ("get_constitution", {"version": 1}),
+        ("changes_since", {"last_seen_version": 0}),
+        ("publication", {}),
+        ("publish", {}),
+        ("unpublish", {}),
+        ("public_constitution", {}),
+        ("export_versions", {}),
+        ("apply_direction", {"mission": "Help", "change_note": "initial"}),
+        ("preview_edit", {"mission": "Help"}),
+        ("head_and_delta", {"mission": "Help"}),
+    ],
+)
+def test_given_invalid_constitution_when_named_operation_runs_then_name_is_rejected(
+    cp, constitution, operation, arguments
+):
+    with pytest.raises(ValueError, match="constitution"):
+        getattr(cp, operation)(constitution=constitution, **arguments)
+
+
+@pytest.mark.parametrize("constitution", [" Team / Support ", "x" * 200])
+def test_given_private_name_when_apply_direction_runs_then_current_preserves_exact_identity(
+    cp, constitution
+):
+    cp.apply_direction(mission="Help", change_note="initial", constitution=constitution)
+
+    assert cp.current(constitution).mission == "Help"
+    assert cp.current().version == 0
+    if constitution != constitution.strip():
+        assert cp.current(constitution.strip()).version == 0
 
 
 def test_given_an_unknown_constitution_when_reading_then_the_empty_state_returns(cp):
@@ -516,7 +552,6 @@ def test_given_a_slug_name_when_publishing_then_it_is_accepted(name, cp):
         "acme--eu",  # doubled separator
         "acme_eu",  # underscore
         "acme\n",  # a trailing newline is not the end of the name
-        "",
     ],
 )
 def test_given_a_name_that_is_not_a_slug_when_publishing_then_it_is_refused(name, cp):

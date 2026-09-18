@@ -144,7 +144,8 @@ def test_given_the_tool_schemas_when_inspecting_then_constitution_is_an_optional
             assert tool.inputSchema["properties"] == {}
             continue
         props = tool.inputSchema["properties"]
-        assert props["constitution"]["type"] == "string"
+        assert props["constitution"]["type"] == ["string", "null"]
+        assert props["constitution"]["maxLength"] == 200
         assert "constitution" not in tool.inputSchema.get("required", [])
 
 

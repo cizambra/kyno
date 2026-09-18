@@ -3,10 +3,11 @@ import json
 import threading
 from contextlib import asynccontextmanager, suppress
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
-from kyno.sdk.client import KynoBinding, McpDirectionSource, SessionRunner
+from kyno.sdk.client import KynoBinding, LocalDirectionSource, McpDirectionSource, SessionRunner
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.wire.models import DetailLevel
 
@@ -24,6 +25,19 @@ def receipt_source(recording):
     }
     reply = SimpleNamespace(content=[SimpleNamespace(text=json.dumps(payload))])
     return McpDirectionSource(SimpleNamespace(call=lambda operation: reply))
+
+
+@pytest.mark.parametrize("source_type", [LocalDirectionSource, McpDirectionSource])
+@pytest.mark.parametrize("constitution", ["", " \t", "x" * 201, 1, True, [], {}])
+def test_given_invalid_name_when_source_changes_since_runs_then_no_backend_call_occurs(
+    source_type, constitution
+):
+    backend = Mock()
+
+    with pytest.raises(ValueError, match="constitution"):
+        source_type(backend).changes_since(0, constitution)
+
+    assert backend.mock_calls == []
 
 
 @pytest.mark.parametrize(

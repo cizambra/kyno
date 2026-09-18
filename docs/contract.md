@@ -4,6 +4,12 @@ This is everything an agent or client can ask Kyno, over MCP or Python.
 
 ## The tools
 
+Direction operations accept an optional `constitution` name. Omitted or null
+means the literal `"default"`. Supplied names must be non-blank strings of at
+most 200 characters and are preserved exactly, including surrounding spaces.
+The `list_delivery_records` constitution filter is different: omitted or null
+includes all constitutions.
+
 - `get_constitution(version?, detail?)`: current direction by default, or the
   exact nonnegative version requested. Version zero is empty direction; a
   missing positive version returns an error. Compact detail includes the mission

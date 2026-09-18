@@ -12,6 +12,22 @@ from kyno.wire.delivery import RecordingStatus
 from kyno.wire.models import DetailLevel
 
 
+@pytest.mark.parametrize("arguments", [{}, {"constitution": None}, {"constitution": " Team / "}])
+@pytest.mark.parametrize("source_type", [LocalDirectionSource, McpDirectionSource])
+def test_given_a_name_when_source_changes_since_runs_then_local_and_mcp_select_the_same_direction(
+    mcp_runner, source_type, arguments
+):
+    runner, control_plane = mcp_runner
+    control_plane.apply_direction(mission="Default", change_note="initial")
+    control_plane.apply_direction(mission="Spaced", change_note="initial", constitution=" Team / ")
+    backend = control_plane if source_type is LocalDirectionSource else runner
+
+    response = source_type(backend).changes_since(0, **arguments)
+
+    assert response.changes.mission == ("Spaced" if arguments.get("constitution") else "Default")
+    assert response.recording is None or source_type is McpDirectionSource
+
+
 def test_given_recording_enabled_when_sdk_pulls_twice_then_each_receipt_identifies_its_own_record(
     mcp_runner,
 ):

@@ -95,6 +95,11 @@ Each binding contains `direction`, `status`, and `recording`. The status is a
 the selected compact/full detail, change notes, and delta. Later pulls
 do not change previously received bindings.
 
+Read `binding.direction.constitution_key` and `binding.direction.version`
+to identify the direction supplied to that call. For example, an observer can
+append `(binding.direction.constitution_key, binding.direction.version)`
+to an application-owned list.
+
 `binding.recording` is the server's immutable recording receipt, or `None`
 when the source supplied no receipt. Its `status` is a `RecordingStatus`:
 `recorded`, `disabled`, or `failed`. A recorded receipt has a `record_id`

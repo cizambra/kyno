@@ -83,7 +83,7 @@ def list_delivery_records(
 
 def get_constitution(
     runner: SessionRunner,
-    constitution: str = "default",
+    constitution_key: str | None = None,
     *,
     version: int | None = None,
     detail: str | DetailLevel = DetailLevel.COMPACT,
@@ -91,8 +91,8 @@ def get_constitution(
     detail = check_detail(detail)
     if version is not None and (type(version) is not int or version < 0):
         raise ValueError("version must be a non-negative integer")
-    constitution = check_constitution_key(constitution)
-    arguments: dict[str, object] = {"constitution_key": constitution, "detail": detail.value}
+    constitution_key = check_constitution_key(constitution_key)
+    arguments: dict[str, object] = {"constitution_key": constitution_key, "detail": detail.value}
     if version is not None:
         arguments["version"] = version
     row = _query(runner, "get_constitution", arguments, _constitution)
@@ -100,7 +100,7 @@ def get_constitution(
         raise KynoUnavailableError("bad reply from kyno: unexpected constitution version")
     try:
         return Direction(
-            constitution=constitution,
+            constitution_key=constitution_key,
             version=row["version"],
             mission=row["mission"],
             declaration=row.get("declaration", ""),

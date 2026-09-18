@@ -196,7 +196,7 @@ The "block" is the text your adapter puts in front of each step. Write a
 function that takes the response from stage 1 and produces this:
 
 ```
-[kyno:direction constitution=default version=1]
+[kyno:direction constitution_key=default version=1]
 Mission: Ship a lending product people trust
 Principles:
 - Approve in minutes, not days
@@ -209,7 +209,7 @@ Recent changes:
 The rules:
 
 - The first line is always
-  `[kyno:direction constitution=<name> version=<number>]`. This line is how
+  `[kyno:direction constitution_key=<name> version=<number>]`. This line is how
   anyone reading a transcript later can tell which version of the direction
   the step ran under.
 - If `current_version` is `0`, the block is the marker line plus exactly
@@ -227,7 +227,7 @@ language:
 
 ```typescript
 export function buildBlock(response, constitution = "default", detail = "compact") {
-  const marker = `[kyno:direction constitution=${constitution} version=${response.current_version}]`;
+  const marker = `[kyno:direction constitution_key=${constitution} version=${response.current_version}]`;
   if (response.current_version === 0) {
     return `${marker}\nNo direction has been set yet.`;
   }
@@ -293,7 +293,7 @@ fetch reuses the last block instead of crashing the step:
 
 ```typescript
 let lastSeenVersion = 0;
-let lastBlock = "[kyno:direction constitution=default version=0]\nNo direction has been set yet.";
+let lastBlock = "[kyno:direction constitution_key=default version=0]\nNo direction has been set yet.";
 
 async function fetchBlock() {
   try {
@@ -479,6 +479,9 @@ an exact historical version. Both default to the same compact detail agents
 read: mission and principle titles. Set `detail="full"` to include the
 declaration and principle descriptions.
 
+Select a constitution with `constitution_key="customer-support"`.
+The returned `Direction.constitution_key` identifies the selected constitution.
+
 ```python
 with kyno.connect() as connection:
     current = connection.get_constitution()
@@ -496,12 +499,12 @@ For an example constitution updated from version 1 to version 2, the output is:
 ```text
 Current: 2 Protect customer trust.
 Version 1, compact:
-[kyno:direction constitution=default version=1]
+[kyno:direction constitution_key=default version=1]
 Mission: Resolve customer problems.
 Principles:
 - Be honest
 Version 1, full:
-[kyno:direction constitution=default version=1]
+[kyno:direction constitution_key=default version=1]
 Mission: Resolve customer problems.
 Declaration:
 Explain the options before making a recommendation.

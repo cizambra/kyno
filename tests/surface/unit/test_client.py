@@ -39,7 +39,7 @@ def test_given_server_recording_when_pulling_with_recording_then_the_receipt_is_
     recording,
 ):
     result = receipt_source({"recording": recording}).changes_since(
-        last_seen_version=0, constitution="default"
+        last_seen_version=0, constitution_key="default"
     )
 
     assert result.recording.status.value == recording["status"]

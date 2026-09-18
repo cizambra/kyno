@@ -19,7 +19,7 @@ async def test_given_a_subscribed_session_when_the_version_bumps_then_it_is_noti
             received.append(str(uri))
 
     server._kyno_subscribers.add(FakeSession())
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by=None
     )
     await asyncio.gather(*server._kyno_pending)
@@ -43,7 +43,7 @@ async def test_given_an_mcp_subscriber_raises_when_notifying_then_another_receiv
     healthy = HealthySession()
     server._kyno_subscribers.update((broken, healthy))
 
-    result = mcp_handlers.handle_set_direction(
+    result = mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by=None
     )
     await asyncio.gather(*server._kyno_pending)
@@ -58,7 +58,7 @@ def test_given_no_running_loop_when_notifying_then_it_is_a_noop(cp):
     # the notify hook must not raise anyway.
     server = mcp_server.build_server(cp)
     server._kyno_subscribers.add(object())
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by=None
     )
 
@@ -73,7 +73,7 @@ async def test_given_missing_required_args_when_dispatching_a_tool_call_then_the
     server = mcp_server.build_server(cp)
     handler = server.request_handlers[types.CallToolRequest]
 
-    for tool_name in ("get_changes_since", "set_direction"):
+    for tool_name in ("get_changes_since", "apply_direction"):
         req = types.CallToolRequest(
             method="tools/call",
             params=types.CallToolRequestParams(name=tool_name, arguments={}),

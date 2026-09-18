@@ -20,7 +20,7 @@ class AuthorizationType(StrEnum):
 
 
 class TokenScope(StrEnum):
-    """What a token may do. Read covers every tool except set_direction;
+    """What a token may do. Read covers every tool except apply_direction;
     write covers every tool."""
 
     READ = "read"

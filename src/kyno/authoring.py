@@ -26,7 +26,7 @@ FIELDS = ("constitution", "mission", "declaration", "principles")
 
 @dataclass(frozen=True)
 class ConstitutionFile:
-    """What the file said. None means the key was absent, which set_direction
+    """What the file said. None means the key was absent, which apply_direction
     treats as "keep the current value". To clear a field, write ""."""
 
     constitution: str | None = None

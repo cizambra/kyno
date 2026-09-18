@@ -17,7 +17,7 @@ def test_given_a_write_token_when_driving_an_http_session_then_the_written_missi
     with TestClient(app) as client:
         h = drive_session(client, bearer(value))
         set_resp = call_tool(
-            client, h, 2, "set_direction", {"mission": "M1", "change_note": "init"}
+            client, h, 2, "apply_direction", {"mission": "M1", "change_note": "init"}
         )
         assert set_resp.status_code == 200
         get_resp = call_tool(client, h, 3, "get_constitution", {})
@@ -42,7 +42,7 @@ def test_given_two_live_tokens_when_writing_with_the_second_then_that_one_is_rec
 
     with TestClient(app) as client:
         h = drive_session(client, bearer(writer))
-        resp = call_tool(client, h, 2, "set_direction", {"mission": "M1", "change_note": "init"})
+        resp = call_tool(client, h, 2, "apply_direction", {"mission": "M1", "change_note": "init"})
 
     assert resp.status_code == 200
     second = next(t for t in store.tokens() if t.name == "second")
@@ -83,7 +83,7 @@ def test_given_a_client_claiming_a_token_id_when_writing_then_the_server_ignores
             client,
             h,
             2,
-            "set_direction",
+            "apply_direction",
             {"mission": "M1", "change_note": "init", "token_id": 999},
         )
 

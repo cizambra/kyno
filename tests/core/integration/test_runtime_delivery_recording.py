@@ -23,7 +23,7 @@ def server_with_history(store, policy="always", constitution="default"):
         delivery_recorder=DeliveryRecorder(history, policy),
         delivery_record_store=history,
     )
-    plane.set_direction(
+    plane.apply_direction(
         mission="Help customers",
         principles=["Be clear"],
         declaration="Explain the options",
@@ -131,7 +131,7 @@ async def test_given_later_direction_when_getting_delivery_then_original_version
 ):
     server, history, plane = server_with_history(memory_store)
     response = await invoke(server, "get_constitution")
-    plane.set_direction(mission="Resolve complaints", change_note="new priority")
+    plane.apply_direction(mission="Resolve complaints", change_note="new priority")
     record = saved_record(memory_store, response["recording"]["record_id"])
     assert memory_store.get("default", record["served_version"]).mission == "Help customers"
     assert "direction" not in record
@@ -143,11 +143,11 @@ async def test_given_last_seen_version_when_recording_changes_then_the_returned_
     memory_store,
 ):
     server, history, plane = server_with_history(memory_store)
-    plane.set_direction(mission="Resolve complaints", change_note="new priority")
+    plane.apply_direction(mission="Resolve complaints", change_note="new priority")
     response = await invoke(server, "get_changes_since", {"last_seen_version": 1, "detail": "full"})
     record_id = response["recording"]["record_id"]
     assert response["delta"]
-    plane.set_direction(mission="Prevent complaints", change_note="next priority")
+    plane.apply_direction(mission="Prevent complaints", change_note="next priority")
     record = history.get(record_id)
     assert record["last_seen_version"] == 1
     assert record["served_version"] == 2
@@ -412,7 +412,7 @@ async def test_given_locked_recording_database_when_reading_over_mcp_then_direct
     store.create_all()
     try:
         plane = control_plane_from_settings(settings, store)
-        plane.set_direction(mission="Help customers", change_note="initial")
+        plane.apply_direction(mission="Help customers", change_note="initial")
         server = build_server(plane)
         with store.engine.connect() as lock:
             lock.exec_driver_sql("BEGIN IMMEDIATE")
@@ -468,7 +468,7 @@ async def test_given_last_seen_version_when_get_constitution_runs_then_it_is_rec
     memory_store, version, served_version
 ):
     server, _, plane = server_with_history(memory_store)
-    plane.set_direction(mission="Current", change_note="Updated")
+    plane.apply_direction(mission="Current", change_note="Updated")
     arguments = {"last_seen_version": 2}
     if version is not None:
         arguments["version"] = version

@@ -23,7 +23,7 @@ def test_given_new_direction_when_pull_before_runs_again_then_prior_record_keeps
     control_plane, url, token = live_server
     history = SqlDeliveryRecordStore(server_store.engine)
     control_plane.delivery_recorder = DeliveryRecorder(history, RecordingPolicy.ALWAYS)
-    control_plane.set_direction(mission="Resolve delivery complaints", change_note="initial")
+    control_plane.apply_direction(mission="Resolve delivery complaints", change_note="initial")
 
     with connect(url=url, token=token) as connection:
         binder = connection.binder(correlation_id="support-run", metadata={"step": "answer"})
@@ -46,7 +46,7 @@ def test_given_new_direction_when_pull_before_runs_again_then_prior_record_keeps
             .compile()
         )
         original = graph.invoke({})["answer_record"]
-        control_plane.set_direction(mission="Route billing disputes", change_note="new priority")
+        control_plane.apply_direction(mission="Route billing disputes", change_note="new priority")
         newer = graph.invoke({})["answer_record"]
 
     record = history.get(original["record_id"])

@@ -34,7 +34,7 @@ def test_given_the_example_files_when_replayed_then_they_match_what_kyno_produce
     )
 
     f1 = read_constitution_file(CONFORMANCE / "v1.yaml")
-    plane.set_direction(
+    plane.apply_direction(
         mission=f1.mission,
         declaration=f1.declaration,
         principles=f1.principles,
@@ -53,7 +53,7 @@ def test_given_the_example_files_when_replayed_then_they_match_what_kyno_produce
     )
 
     f2 = read_constitution_file(CONFORMANCE / "v2.yaml")
-    plane.set_direction(
+    plane.apply_direction(
         mission=f2.mission,
         declaration=f2.declaration,
         principles=f2.principles,

@@ -26,7 +26,7 @@ def plane(store):
 
 
 def direction(plane, constitution="default", mission="M1", principles=("p1", "p2"), note="init"):
-    return plane.set_direction(
+    return plane.apply_direction(
         mission=mission, principles=principles, change_note=note, constitution=constitution
     )
 
@@ -354,7 +354,7 @@ def test_given_a_declaration_when_a_template_renders_then_it_arrives_rendered_an
 ):
     path = tmp_path / "constitution.html"
     path.write_text("<html><body><article>$declaration</article></body></html>")
-    plane.set_direction(
+    plane.apply_direction(
         mission="M",
         declaration=f"First paragraph.\n\n{HOSTILE}",
         change_note="init",
@@ -383,7 +383,7 @@ def test_given_a_markdown_declaration_when_a_template_renders_then_it_arrives_as
     # ours to interpret, and their file is markup around the result.
     path = tmp_path / "constitution.html"
     path.write_text("<html><body><article>$declaration</article></body></html>")
-    plane.set_direction(mission="M", declaration="## Why\n\n- one\n", change_note="init")
+    plane.apply_direction(mission="M", declaration="## Why\n\n- one\n", change_note="init")
     plane.publish()
 
     page = render_constitution(

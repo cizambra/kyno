@@ -22,7 +22,7 @@ def test_given_new_direction_when_before_llm_call_runs_again_then_prior_record_k
     control_plane, url, token = live_server
     history = SqlDeliveryRecordStore(server_store.engine)
     control_plane.delivery_recorder = DeliveryRecorder(history, RecordingPolicy.ALWAYS)
-    control_plane.set_direction(mission="Resolve delivery complaints", change_note="initial")
+    control_plane.apply_direction(mission="Resolve delivery complaints", change_note="initial")
     executor = SimpleNamespace(
         messages=[], llm=None, iterations=0, agent=None, task=None, crew=None
     )
@@ -40,7 +40,7 @@ def test_given_new_direction_when_before_llm_call_runs_again_then_prior_record_k
             "supplied_message": context.messages[0]["content"],
             "output": "We will review the delayed delivery.",
         }
-        control_plane.set_direction(mission="Route billing disputes", change_note="new priority")
+        control_plane.apply_direction(mission="Route billing disputes", change_note="new priority")
         adapter.before_llm_call(context)
 
     record = history.get(answer_record["record_id"])

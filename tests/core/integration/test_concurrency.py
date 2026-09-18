@@ -56,7 +56,7 @@ def test_given_contending_writers_when_applying_then_conflicts_surface_and_nothi
 
     def writer(i):
         try:
-            landed.append(cp.set_direction(mission=f"M{i}", change_note=f"note{i}").version)
+            landed.append(cp.apply_direction(mission=f"M{i}", change_note=f"note{i}").version)
         except VersionConflictError:
             refused.append(i)
 

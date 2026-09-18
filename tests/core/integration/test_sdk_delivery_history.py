@@ -120,7 +120,7 @@ def test_given_a_version_one_record_when_direction_advances_then_sdk_returns_the
     connection, control_plane = mcp_connection
     history = SqlDeliveryRecordStore(control_plane._store.engine)
     control_plane.delivery_record_store = history
-    control_plane.set_direction(mission="Help customers.", change_note="Initial direction")
+    control_plane.apply_direction(mission="Help customers.", change_note="Initial direction")
     identifier = history.append(
         {"version": 1},
         operation="get_mission",
@@ -129,7 +129,7 @@ def test_given_a_version_one_record_when_direction_advances_then_sdk_returns_the
         context={"correlation_id": None, "metadata": {}},
     )
     saved_record = history.get(identifier)
-    control_plane.set_direction(mission="Protect trust.", change_note="New priority")
+    control_plane.apply_direction(mission="Protect trust.", change_note="New priority")
 
     record = connection.get_delivery_record(identifier)
 

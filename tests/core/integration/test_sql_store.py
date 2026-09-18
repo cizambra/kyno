@@ -154,9 +154,9 @@ def test_given_both_an_engine_and_a_url_when_building_the_store_then_it_is_refus
 
 def test_given_the_control_plane_when_writing_then_the_ledger_is_append_only(store):
     cp = ControlPlane(store)
-    cp.set_direction(mission="M1", principles=("p1",), change_note="init")
-    cp.set_direction(mission="M2", change_note="pivot")
-    cp.set_direction(principles=("p1", "p2"), change_note="add p2")
+    cp.apply_direction(mission="M1", principles=("p1",), change_note="init")
+    cp.apply_direction(mission="M2", change_note="pivot")
+    cp.apply_direction(principles=("p1", "p2"), change_note="add p2")
 
     v1 = store.get("default", 1)
     assert v1.mission == "M1"
@@ -282,9 +282,9 @@ def test_given_an_empty_store_when_exporting_versions_then_the_list_is_empty(sto
 
 def test_given_a_full_range_when_exporting_versions_then_plain_dicts_come_back_ascending(store):
     cp = ControlPlane(store)
-    cp.set_direction(mission="M1", principles=("p1",), change_note="init", created_by="alice")
-    cp.set_direction(mission="M2", change_note="pivot", created_by="bob")
-    cp.set_direction(principles=("p1", "p2"), change_note="add p2", created_by="alice")
+    cp.apply_direction(mission="M1", principles=("p1",), change_note="init", created_by="alice")
+    cp.apply_direction(mission="M2", change_note="pivot", created_by="bob")
+    cp.apply_direction(principles=("p1", "p2"), change_note="add p2", created_by="alice")
 
     rows = store.export_versions()
 
@@ -310,9 +310,9 @@ def test_given_a_full_range_when_exporting_versions_then_plain_dicts_come_back_a
 
 def test_given_range_bounds_when_exporting_versions_then_they_are_inclusive(store):
     cp = ControlPlane(store)
-    cp.set_direction(mission="M1", change_note="v1")
-    cp.set_direction(mission="M2", change_note="v2")
-    cp.set_direction(mission="M3", change_note="v3")
+    cp.apply_direction(mission="M1", change_note="v1")
+    cp.apply_direction(mission="M2", change_note="v2")
+    cp.apply_direction(mission="M3", change_note="v3")
 
     assert [r["version"] for r in store.export_versions(from_version=2)] == [2, 3]
     assert [r["version"] for r in store.export_versions(to_version=2)] == [1, 2]
@@ -321,7 +321,7 @@ def test_given_range_bounds_when_exporting_versions_then_they_are_inclusive(stor
 
 def test_given_out_of_range_bounds_when_exporting_versions_then_the_list_is_empty(store):
     cp = ControlPlane(store)
-    cp.set_direction(mission="M1", change_note="v1")
+    cp.apply_direction(mission="M1", change_note="v1")
 
     assert store.export_versions(from_version=5) == []
 
@@ -538,7 +538,7 @@ def test_given_a_row_of_plain_strings_when_reading_then_they_are_title_only_prin
 
 
 def test_given_described_principles_when_exporting_then_each_description_is_carried(store):
-    ControlPlane(store).set_direction(
+    ControlPlane(store).apply_direction(
         mission="M1",
         principles=("p1", {"title": "p2", "description": "why p2"}),
         change_note="init",
@@ -584,7 +584,7 @@ def test_given_a_version_without_a_declaration_when_reading_then_it_is_an_empty_
 
 
 def test_given_a_declaration_when_exporting_then_it_is_carried(store):
-    ControlPlane(store).set_direction(
+    ControlPlane(store).apply_direction(
         mission="M1", declaration="The long form.", change_note="init"
     )
     assert store.export_versions()[0]["declaration"] == "The long form."

@@ -130,7 +130,7 @@ def handle_whoami(token: Token | None) -> dict:
     return {"id": token.id, "name": token.name, "scope": token.scope.value}
 
 
-def handle_set_direction(
+def handle_apply_direction(
     cp: ControlPlane,
     *,
     mission,
@@ -144,7 +144,7 @@ def handle_set_direction(
     token_id: int | None = None,
 ) -> dict:
     return _guard(
-        lambda: cp.set_direction(
+        lambda: cp.apply_direction(
             mission=mission,
             declaration=declaration,
             principles=tuple(principles) if principles is not None else None,

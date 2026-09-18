@@ -154,7 +154,7 @@ async def test_given_recorded_direction_when_updated_and_restarted_then_lookup_k
     )
     async with create_connected_server_and_client_session(build_server(core)) as client:
         await client.call_tool(
-            "set_direction",
+            "apply_direction",
             {
                 "mission": "Original mission",
                 "declaration": "Original declaration",
@@ -173,7 +173,7 @@ async def test_given_recorded_direction_when_updated_and_restarted_then_lookup_k
         original = json.loads(result.content[0].text)
         identifier = original.pop("recording")["record_id"]
         await client.call_tool(
-            "set_direction",
+            "apply_direction",
             {
                 "mission": "New mission",
                 "declaration": "New declaration",

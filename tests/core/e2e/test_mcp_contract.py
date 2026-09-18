@@ -30,7 +30,7 @@ RICH = dict(
 
 @pytest.mark.asyncio
 @pytest.mark.e2e
-async def test_given_a_real_subscription_when_setting_direction_then_the_server_run_notifies():
+async def test_given_a_subscription_when_calling_apply_direction_then_the_server_run_notifies():
     # Unlike test_version_bump_notifies_subscribed_session (FakeSession injected
     # directly), this drives the real subscribe handler and server.run().
     from mcp.shared.memory import create_connected_server_and_client_session
@@ -51,7 +51,7 @@ async def test_given_a_real_subscription_when_setting_direction_then_the_server_
         server, message_handler=message_handler
     ) as client:
         await client.subscribe_resource(RESOURCE_URI)
-        await client.call_tool("set_direction", {"mission": "M1", "change_note": "init"})
+        await client.call_tool("apply_direction", {"mission": "M1", "change_note": "init"})
         await asyncio.gather(*server._kyno_pending)
 
     assert received == [RESOURCE_URI]
@@ -123,7 +123,7 @@ async def test_given_a_non_integer_version_when_calling_get_changes_since_then_t
 
     store = create_memory_store()
     cp = ControlPlane(store)
-    cp.set_direction(mission="M1", change_note="init")
+    cp.apply_direction(mission="M1", change_note="init")
     server = mcp_server.build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
@@ -140,7 +140,7 @@ async def test_given_stdio_and_http_sessions_when_getting_the_constitution_then_
 
     store = create_memory_store()
     cp = ControlPlane(store)
-    cp.set_direction(mission="M1", principles=["p1"], change_note="init", created_by="op")
+    cp.apply_direction(mission="M1", principles=["p1"], change_note="init", created_by="op")
     server = mcp_server.build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
@@ -237,12 +237,12 @@ async def test_given_named_constitutions_when_dispatching_writes_then_sequences_
     server = mcp_server.build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
-        await client.call_tool("set_direction", {"mission": "M1", "change_note": "init"})
+        await client.call_tool("apply_direction", {"mission": "M1", "change_note": "init"})
         await client.call_tool(
-            "set_direction", {"mission": "EU1", "change_note": "init", "constitution": "eu"}
+            "apply_direction", {"mission": "EU1", "change_note": "init", "constitution": "eu"}
         )
         await client.call_tool(
-            "set_direction", {"mission": "EU2", "change_note": "pivot", "constitution": "eu"}
+            "apply_direction", {"mission": "EU2", "change_note": "pivot", "constitution": "eu"}
         )
         default = json.loads((await client.call_tool("get_constitution", {})).content[0].text)
         eu = json.loads(
@@ -260,8 +260,8 @@ async def test_given_a_named_write_when_reading_the_resource_then_it_stays_the_d
 
     store = create_memory_store()
     cp = ControlPlane(store)
-    cp.set_direction(mission="M1", change_note="init")
-    cp.set_direction(mission="EU1", change_note="eu init", constitution="eu")
+    cp.apply_direction(mission="M1", change_note="init")
+    cp.apply_direction(mission="EU1", change_note="eu init", constitution="eu")
     server = mcp_server.build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
@@ -280,7 +280,7 @@ async def test_given_the_subscribable_resource_when_reading_then_it_serves_the_c
 
     store = create_memory_store()
     cp = ControlPlane(store)
-    cp.set_direction(**RICH, change_note="init")
+    cp.apply_direction(**RICH, change_note="init")
     server = mcp_server.build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
@@ -299,7 +299,7 @@ async def test_given_a_detail_argument_when_dispatching_for_real_then_it_travels
 
     store = create_memory_store()
     cp = ControlPlane(store)
-    cp.set_direction(**RICH, change_note="init")
+    cp.apply_direction(**RICH, change_note="init")
     server = mcp_server.build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
@@ -319,7 +319,7 @@ async def test_given_the_targeted_reads_when_dispatching_for_real_then_they_work
 
     store = create_memory_store()
     cp = ControlPlane(store)
-    cp.set_direction(**RICH, change_note="init")
+    cp.apply_direction(**RICH, change_note="init")
     server = mcp_server.build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
@@ -346,7 +346,7 @@ async def test_given_a_compact_pull_when_an_agent_needs_more_then_it_asks_for_th
 
     store = create_memory_store()
     cp = ControlPlane(store)
-    cp.set_direction(**RICH, change_note="init")
+    cp.apply_direction(**RICH, change_note="init")
     server = mcp_server.build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
@@ -371,7 +371,7 @@ async def test_given_the_whole_read_family_when_dispatching_for_real_then_it_wor
 
     store = create_memory_store()
     cp = ControlPlane(store)
-    cp.set_direction(**RICH, change_note="init", constitution="eu")
+    cp.apply_direction(**RICH, change_note="init", constitution="eu")
     server = mcp_server.build_server(cp)
 
     async def call(client, name, arguments):
@@ -399,7 +399,7 @@ async def test_given_a_connected_client_when_calling_export_versions_then_it_is_
     carries the rows as JSON text. One version in, the same version out."""
     from mcp.shared.memory import create_connected_server_and_client_session
 
-    mcp_handlers.handle_set_direction(
+    mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=None, change_note="init", created_by=None
     )
     async with create_connected_server_and_client_session(mcp_server.build_server(cp)) as client:
@@ -427,8 +427,8 @@ async def test_given_two_servers_when_reading_direction_then_each_serves_its_own
     from mcp.shared.memory import create_connected_server_and_client_session
 
     other_plane = ControlPlane(store)
-    cp.set_direction(mission="Support customers", change_note="initial")
-    other_plane.set_direction(mission="Improve reliability", change_note="initial")
+    cp.apply_direction(mission="Support customers", change_note="initial")
+    other_plane.apply_direction(mission="Improve reliability", change_note="initial")
     servers = [mcp_server.build_server(cp), mcp_server.build_server(other_plane)]
     async with (
         create_connected_server_and_client_session(servers[0]) as first_client,

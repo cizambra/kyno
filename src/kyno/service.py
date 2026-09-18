@@ -413,7 +413,7 @@ class ControlPlane:
             self._name(constitution), from_version=from_version, to_version=to_version
         )
 
-    def set_direction(
+    def apply_direction(
         self,
         *,
         mission: str | None = None,

@@ -49,13 +49,13 @@ def test_given_a_403_on_a_tool_call_when_calling_it_then_the_error_names_the_ref
         Resolved(profile="ops", url="https://kyno.example", token="t", chain="ops -> ...")
     )
     client._runner = _RunnerThatRefuses(
-        "forbidden: this token's scope does not cover 'set_direction'"
+        "forbidden: this token's scope does not cover 'apply_direction'"
     )
 
     with pytest.raises(RemoteError) as seen:
-        client.call_tool("set_direction", {})
+        client.call_tool("apply_direction", {})
 
-    assert "the server refused set_direction: forbidden" in str(seen.value)
+    assert "the server refused apply_direction: forbidden" in str(seen.value)
 
 
 def test_given_an_error_reply_when_decoding_then_the_servers_words_come_back():
@@ -68,7 +68,7 @@ def test_given_an_error_reply_when_decoding_then_the_servers_words_come_back():
     reply = SimpleNamespace(content=[SimpleNamespace(text="no field changed")], isError=True)
     client._runner = SimpleNamespace(call=lambda fn: reply)
     with pytest.raises(RemoteError, match="no field changed"):
-        client.call_tool("set_direction", {})
+        client.call_tool("apply_direction", {})
 
 
 def test_given_an_error_reply_with_no_text_when_decoding_then_the_tool_is_named():
@@ -80,8 +80,8 @@ def test_given_an_error_reply_with_no_text_when_decoding_then_the_tool_is_named(
     client = RemoteClient(Resolved(profile="p", url="http://x", token="t", chain="c"))
     reply = SimpleNamespace(content=[], isError=True)
     client._runner = SimpleNamespace(call=lambda fn: reply)
-    with pytest.raises(RemoteError, match="the server refused set_direction"):
-        client.call_tool("set_direction", {})
+    with pytest.raises(RemoteError, match="the server refused apply_direction"):
+        client.call_tool("apply_direction", {})
 
 
 @pytest.mark.parametrize("raw", [None, "not-a-date"])

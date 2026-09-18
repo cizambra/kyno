@@ -21,7 +21,7 @@ async def test_given_an_in_process_session_when_calling_tools_then_the_written_m
 
     async with create_connected_server_and_client_session(server) as client:
         await client.call_tool(
-            "set_direction", {"mission": "M1", "principles": ["p1"], "change_note": "init"}
+            "apply_direction", {"mission": "M1", "principles": ["p1"], "change_note": "init"}
         )
         res = await client.call_tool("get_constitution", {})
         payload = json.loads(res.content[0].text)

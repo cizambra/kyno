@@ -204,11 +204,11 @@ DECLARATIONS = [
     ),
     (
         types.Tool(
-            name="set_direction",
+            name="apply_direction",
             description=(
-                "Append a new constitution version, with a mission, a declaration "
-                "and/or principles. Omitted fields carry forward from the current "
-                'version; "" clears one.'
+                "Apply a change to authoritative direction by appending a new constitution "
+                "version. Omitted fields carry forward from the current "
+                'version; "" clears mission or declaration, and [] clears principles.'
             ),
             inputSchema={
                 "type": "object",

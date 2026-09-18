@@ -23,7 +23,7 @@ def plane(control_plane):
 
 
 def published(plane, **kwargs):
-    plane.set_direction(change_note="init", **kwargs)
+    plane.apply_direction(change_note="init", **kwargs)
     plane.publish()
     return plane.public_constitution()
 
@@ -74,7 +74,7 @@ def test_given_the_packaged_template_when_rendering_then_the_built_in_page_match
 def test_given_the_packaged_index_template_when_rendering_then_the_built_in_index_matches_it(
     plane, tmp_path
 ):
-    plane.set_direction(mission="Product mission", change_note="init", constitution="product")
+    plane.apply_direction(mission="Product mission", change_note="init", constitution="product")
     plane.publish(constitution="product")
     views = plane.published_constitutions()
     copy = tmp_path / "index.html"

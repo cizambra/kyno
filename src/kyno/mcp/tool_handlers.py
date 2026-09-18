@@ -8,6 +8,7 @@ from mcp.server import Server
 from kyno.mcp.handlers import (
     _delivery_query,
     _require,
+    handle_apply_direction,
     handle_export_versions,
     handle_get_changes_since,
     handle_get_constitution,
@@ -15,7 +16,6 @@ from kyno.mcp.handlers import (
     handle_get_mission,
     handle_get_principle,
     handle_get_principles,
-    handle_set_direction,
     handle_whoami,
 )
 from kyno.mcp.request_context import _request_token, record_response
@@ -77,10 +77,10 @@ def register_tools(server: Server, control_plane: ControlPlane, token_store=None
                     from_version=arguments.get("from_version"),
                     to_version=arguments.get("to_version"),
                 )
-            case "set_direction":
+            case "apply_direction":
                 _require(arguments, "change_note")
                 requester = _request_token(server, token_store)
-                result = handle_set_direction(
+                result = handle_apply_direction(
                     control_plane,
                     mission=arguments.get("mission"),
                     declaration=arguments.get("declaration"),

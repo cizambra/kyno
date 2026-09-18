@@ -13,7 +13,7 @@ from kyno.wire.models import DetailLevel
 @pytest.fixture
 def constitution_connection(mcp_connection):
     connection, control_plane = mcp_connection
-    control_plane.set_direction(
+    control_plane.apply_direction(
         mission="Original mission",
         declaration="Original declaration",
         principles=[{"title": "Honesty", "description": "State the facts."}],
@@ -31,7 +31,7 @@ def test_given_version_and_context_when_get_constitution_is_called_then_requeste
     connection, control_plane = constitution_connection
     original = connection.binder("example", context=context).bind()
     if version is not None:
-        control_plane.set_direction(
+        control_plane.apply_direction(
             mission="New mission", change_note="Updated", constitution="example"
         )
     binder = connection.binder("example", context=context)
@@ -56,7 +56,7 @@ def test_given_updates_when_get_constitution_omits_version_then_current_compact_
     constitution_connection,
 ):
     connection, control_plane = constitution_connection
-    control_plane.set_direction(
+    control_plane.apply_direction(
         mission="Current mission", change_note="Updated", constitution="example"
     )
     direction = connection.get_constitution("example")
@@ -71,7 +71,7 @@ def test_given_two_constitutions_when_get_constitution_is_called_then_requested_
     constitution_connection, version
 ):
     connection, control_plane = constitution_connection
-    control_plane.set_direction(
+    control_plane.apply_direction(
         mission="Default mission", change_note="Initial", constitution="default"
     )
 
@@ -128,7 +128,7 @@ def test_given_recording_enabled_when_get_constitution_is_called_then_selected_v
     connection, control_plane = constitution_connection
     history = SqlDeliveryRecordStore(memory_store.engine)
     control_plane.delivery_recorder = DeliveryRecorder(history, "always")
-    control_plane.set_direction(
+    control_plane.apply_direction(
         mission="Current mission", change_note="Updated", constitution="example"
     )
 

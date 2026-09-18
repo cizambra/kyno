@@ -30,7 +30,7 @@ class GraphState(KynoState, total=False):
 
 @pytest.fixture
 def binder(control_plane):
-    control_plane.set_direction(mission="M1", principles=("Be honest",), change_note="init")
+    control_plane.apply_direction(mission="M1", principles=("Be honest",), change_note="init")
     return DirectionBinder(LocalDirectionSource(control_plane)), control_plane
 
 
@@ -71,7 +71,7 @@ def test_given_new_direction_when_direction_node_runs_again_then_state_has_new_v
     node = direction_node(bind)
 
     first = node({})
-    control_plane.set_direction(mission="M2", change_note="pivot")
+    control_plane.apply_direction(mission="M2", change_note="pivot")
     second = node(first)
 
     assert (first["kyno_version"], second["kyno_version"]) == (1, 2)
@@ -97,7 +97,7 @@ def test_given_new_direction_when_pull_before_runs_in_graph_then_work_uses_new_m
     )
 
     first = graph.invoke({})
-    control_plane.set_direction(mission="M2", change_note="pivot")
+    control_plane.apply_direction(mission="M2", change_note="pivot")
     second = graph.invoke({})
 
     assert first["output"] == "work on M1"
@@ -172,7 +172,7 @@ def test_given_principle_description_when_direction_from_state_runs_then_descrip
 def test_given_full_context_when_direction_node_runs_then_block_has_declaration_and_descriptions(
     control_plane,
 ):
-    control_plane.set_direction(
+    control_plane.apply_direction(
         mission="M1",
         declaration="The long form.",
         principles=({"title": "Be honest", "description": "Say the hard number first."},),
@@ -189,7 +189,7 @@ def test_given_full_context_when_direction_node_runs_then_block_has_declaration_
 
 def test_given_default_context_when_direction_node_runs_then_block_omits_declaration(binder):
     bind, control_plane = binder
-    control_plane.set_direction(declaration="The long form.", change_note="add the long form")
+    control_plane.apply_direction(declaration="The long form.", change_note="add the long form")
 
     update = direction_node(bind)({})
 
@@ -283,7 +283,7 @@ def test_given_direction_node_refresh_when_review_resumes_then_saved_answer_keep
     bind, control_plane = binder
     bind = DirectionBinder(LocalDirectionSource(control_plane), context=context)
     bind.bind()
-    control_plane.set_direction(
+    control_plane.apply_direction(
         declaration="Explain the support decision.",
         principles=("Be honest", "Explain the decision"),
         change_note="Add explanation",
@@ -305,7 +305,7 @@ def test_given_direction_node_refresh_when_review_resumes_then_saved_answer_keep
         }
 
     def refresh(state):
-        control_plane.set_direction(mission="M2", change_note="pivot")
+        control_plane.apply_direction(mission="M2", change_note="pivot")
         return direction_node(bind)(state)
 
     def review(state):

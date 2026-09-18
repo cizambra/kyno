@@ -14,7 +14,7 @@ from kyno.wire.delivery import RecordingStatus, recording_result
 def _request_token(server: Server, token_store) -> Token | None:
     """The token that authenticated the current request, or None.
 
-    Called by the set_direction case so the version records which
+    Called by the apply_direction case so the version records which
     credential wrote it, and by the whoami case to answer with the
     token's name and scope. Resolved from the request's own Authorization
     header -- never from tool arguments, so a client cannot claim another

@@ -115,7 +115,9 @@ def test_given_an_exported_template_when_rendering_then_it_matches_the_page_it_w
 
     store = create_memory_store()
     plane = ControlPlane(store)
-    plane.set_direction(mission="Ship trust", declaration="## Why\n\nBecause.", change_note="init")
+    plane.apply_direction(
+        mission="Ship trust", declaration="## Why\n\nBecause.", change_note="init"
+    )
     plane.publish()
     view = plane.public_constitution()
 
@@ -131,7 +133,7 @@ def test_given_an_edited_export_when_serving_then_the_edit_is_what_gets_served(t
 
     store = create_memory_store()
     plane = ControlPlane(store)
-    plane.set_direction(mission="Ship trust", change_note="init")
+    plane.apply_direction(mission="Ship trust", change_note="init")
     plane.publish()
 
     served = render(plane.public_constitution(), PageConfig(constitution_template=str(page)))

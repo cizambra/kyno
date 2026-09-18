@@ -23,7 +23,7 @@ class FakeCtx:
 
 @pytest.fixture
 def crew_kyno(control_plane):
-    control_plane.set_direction(mission="M1", principles=("Be honest",), change_note="init")
+    control_plane.apply_direction(mission="M1", principles=("Be honest",), change_note="init")
     binder = DirectionBinder(LocalDirectionSource(control_plane))
     adapter = CrewAiKyno(binder)
     binder.bind()
@@ -48,7 +48,7 @@ def test_given_new_direction_when_before_llm_call_runs_again_then_old_block_is_r
     adapter, control_plane = crew_kyno
     ctx = FakeCtx(messages=[{"role": "user", "content": "go"}])
     adapter.before_llm_call(ctx)
-    control_plane.set_direction(mission="M2", change_note="pivot")
+    control_plane.apply_direction(mission="M2", change_note="pivot")
 
     adapter.before_llm_call(ctx)
 
@@ -61,7 +61,7 @@ def test_given_european_binder_when_before_llm_call_runs_then_european_direction
     control_plane,
 ):
     binder = DirectionBinder(LocalDirectionSource(control_plane), "eu")
-    control_plane.set_direction(
+    control_plane.apply_direction(
         mission="European mission", change_note="Initial", constitution="eu"
     )
     context = FakeCtx()
@@ -73,7 +73,7 @@ def test_given_european_binder_when_before_llm_call_runs_then_european_direction
 def test_given_full_context_when_before_llm_call_runs_then_declaration_and_descriptions_are_added(
     control_plane,
 ):
-    control_plane.set_direction(
+    control_plane.apply_direction(
         mission="M1",
         declaration="The long form.",
         principles=({"title": "Be honest", "description": "Say the hard number first."},),
@@ -93,7 +93,7 @@ def test_given_full_context_when_before_llm_call_runs_then_declaration_and_descr
 def test_given_default_context_when_before_llm_call_runs_then_only_mission_and_titles_are_added(
     control_plane,
 ):
-    control_plane.set_direction(
+    control_plane.apply_direction(
         mission="M1",
         declaration="The long form.",
         principles=({"title": "Be honest", "description": "Say the hard number first."},),

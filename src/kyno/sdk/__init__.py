@@ -108,7 +108,7 @@ class KynoConnection:
         Compact detail is the default. It retains the mission and principle
         titles, omitting declaration and principle descriptions as agent reads do.
         Version zero reads the empty direction. Reads use Core's recording policy
-        and never update binder cells. Returned direction has no per-delivery
+        and do not update binder fallback state. Returned direction has no per-delivery
         delta or recent change notes. Raises ValueError for invalid arguments,
         KynoHistoryError for absent exact versions or rejected queries, and
         KynoUnavailableError for transport or reply failures.

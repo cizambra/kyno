@@ -36,7 +36,7 @@ from kyno.wire.errors import CoherenceError
 from kyno.wire.models import normalize_principles
 from kyno.workspace import create_workspace
 
-app = typer.Typer(help="Coherence engine control plane.")
+app = typer.Typer(help="Coherence control plane.")
 
 
 def _control_plane() -> ControlPlane:

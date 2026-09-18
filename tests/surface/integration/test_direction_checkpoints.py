@@ -88,7 +88,7 @@ def test_given_a_binding_when_work_is_checkpointed_then_its_exact_direction_and_
     assert serialized["kyno_binding_status"] == status.value
     assert type(serialized["kyno_binding_status"]) is str
     assert restored["receipts"][0]["kyno_direction"] == restored["kyno_direction"]
-    assert restored["kyno_constitution"] == "support"
+    assert restored["kyno_constitution_key"] == "support"
     if status is BindingStatus.EMPTY:
         expected = Direction.empty("support", detail)
     else:

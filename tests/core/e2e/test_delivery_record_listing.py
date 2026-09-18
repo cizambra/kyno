@@ -50,7 +50,7 @@ async def test_given_delivery_filters_when_reading_next_page_then_only_matching_
     _store, control_plane, identifiers = configured
     filters = {
         "correlation_id": "one",
-        "constitution": "alpha",
+        "constitution_key": "alpha",
         "since": "2000-01-01T00:00:00Z",
         "until": "9998-01-01T00:00:00Z",
         "limit": 1,
@@ -75,10 +75,11 @@ async def test_given_delivery_filters_when_reading_next_page_then_only_matching_
     ("filters", "positions"),
     [
         ({"correlation_id": "two"}, [1]),
-        ({"constitution": "beta"}, [1]),
+        ({"constitution_key": "beta"}, [1]),
+        ({"constitution_key": None}, [0, 1, 2]),
         ({"since": "2026-01-02T00:00:00Z"}, [1, 2]),
         ({"until": "2026-01-02T00:00:00Z"}, [0, 1]),
-        ({"constitution": "missing"}, []),
+        ({"constitution_key": "missing"}, []),
     ],
 )
 async def test_given_one_history_filter_when_listing_then_only_matching_deliveries_return(

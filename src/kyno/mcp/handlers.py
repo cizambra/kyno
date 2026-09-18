@@ -44,23 +44,23 @@ def _delivery_query(cp: ControlPlane, read) -> dict:
 # that pulls before every step would pay for them every time. One argument asks for them.
 def handle_get_constitution(
     cp: ControlPlane,
-    constitution: str | None = None,
+    constitution_key: str | None = None,
     detail: str | DetailLevel = DetailLevel.COMPACT,
     *,
     version: int | None = None,
 ) -> dict:
     check_detail(detail)
-    return _guard(lambda: cp.get_constitution(constitution, version=version).to_dict(detail))
+    return _guard(lambda: cp.get_constitution(constitution_key, version=version).to_dict(detail))
 
 
 def handle_get_changes_since(
     cp: ControlPlane,
     last_seen_version: int,
-    constitution: str | None = None,
+    constitution_key: str | None = None,
     detail: str | DetailLevel = DetailLevel.COMPACT,
 ) -> dict:
     check_detail(detail)
-    return _guard(lambda: cp.changes_since(last_seen_version, constitution).to_dict(detail))
+    return _guard(lambda: cp.changes_since(last_seen_version, constitution_key).to_dict(detail))
 
 
 # The targeted reads: after pulling the titles, fetch the one piece that matters instead of the
@@ -68,38 +68,40 @@ def handle_get_changes_since(
 # two answers on the same version describe the same document.
 def handle_export_versions(
     cp: ControlPlane,
-    constitution: str | None = None,
+    constitution_key: str | None = None,
     from_version: int | None = None,
     to_version: int | None = None,
 ) -> list[dict]:
     return _guard(
-        lambda: cp.export_versions(constitution, from_version=from_version, to_version=to_version)
+        lambda: cp.export_versions(
+            constitution_key, from_version=from_version, to_version=to_version
+        )
     )
 
 
-def handle_get_mission(cp: ControlPlane, constitution: str | None = None) -> dict:
+def handle_get_mission(cp: ControlPlane, constitution_key: str | None = None) -> dict:
     def read() -> dict:
-        head = cp.current(constitution)
+        head = cp.current(constitution_key)
         return {"version": head.version, "mission": head.mission}
 
     return _guard(read)
 
 
-def handle_get_declaration(cp: ControlPlane, constitution: str | None = None) -> dict:
+def handle_get_declaration(cp: ControlPlane, constitution_key: str | None = None) -> dict:
     def read() -> dict:
-        head = cp.current(constitution)
+        head = cp.current(constitution_key)
         return {"version": head.version, "declaration": head.declaration}
 
     return _guard(read)
 
 
 def handle_get_principles(
-    cp: ControlPlane, constitution: str | None = None, detail: str = TITLES
+    cp: ControlPlane, constitution_key: str | None = None, detail: str = TITLES
 ) -> dict:
     check_principles_detail(detail)
 
     def read() -> dict:
-        head = cp.current(constitution)
+        head = cp.current(constitution_key)
         shape = DetailLevel.COMPACT if detail == TITLES else DetailLevel.FULL
         return {
             "version": head.version,
@@ -109,9 +111,9 @@ def handle_get_principles(
     return _guard(read)
 
 
-def handle_get_principle(cp: ControlPlane, title: str, constitution: str | None = None) -> dict:
+def handle_get_principle(cp: ControlPlane, title: str, constitution_key: str | None = None) -> dict:
     def read() -> dict:
-        head = cp.current(constitution)
+        head = cp.current(constitution_key)
         return {**head.principle(title).to_dict(), "version": head.version}
 
     return _guard(read)
@@ -138,7 +140,7 @@ def handle_apply_direction(
     change_note,
     created_by,
     declaration=None,
-    constitution: str | None = None,
+    constitution_key: str | None = None,
     expected_version: int | None = None,
     authorized_by: str | None = None,
     token_id: int | None = None,
@@ -150,7 +152,7 @@ def handle_apply_direction(
             principles=tuple(principles) if principles is not None else None,
             change_note=change_note,
             created_by=created_by,
-            constitution_key=constitution,
+            constitution_key=constitution_key,
             expected_version=expected_version,
             authorized_by=authorized_by,
             token_id=token_id,

@@ -101,9 +101,9 @@ def test_given_a_tool_call_when_handled_then_the_request_log_carries_the_fields(
 
     with caplog.at_level(logging.INFO, logger="kyno.requests"), TestClient(app) as client:
         h = drive_session(client, bearer(value))
-        call_tool(client, h, 2, "get_constitution", {"constitution": "main"})
+        call_tool(client, h, 2, "get_constitution", {"constitution_key": "main"})
 
     line = next(r.getMessage() for r in caplog.records if "tool=get_constitution" in r.getMessage())
     assert f"token={token_id}" in line
     assert "name=t" in line
-    assert "constitution=main" in line
+    assert "constitution_key=main" in line

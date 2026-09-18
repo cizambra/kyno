@@ -239,14 +239,14 @@ async def test_given_named_constitutions_when_dispatching_writes_then_sequences_
     async with create_connected_server_and_client_session(server) as client:
         await client.call_tool("apply_direction", {"mission": "M1", "change_note": "init"})
         await client.call_tool(
-            "apply_direction", {"mission": "EU1", "change_note": "init", "constitution": "eu"}
+            "apply_direction", {"mission": "EU1", "change_note": "init", "constitution_key": "eu"}
         )
         await client.call_tool(
-            "apply_direction", {"mission": "EU2", "change_note": "pivot", "constitution": "eu"}
+            "apply_direction", {"mission": "EU2", "change_note": "pivot", "constitution_key": "eu"}
         )
         default = json.loads((await client.call_tool("get_constitution", {})).content[0].text)
         eu = json.loads(
-            (await client.call_tool("get_constitution", {"constitution": "eu"})).content[0].text
+            (await client.call_tool("get_constitution", {"constitution_key": "eu"})).content[0].text
         )
 
     assert default["version"] == 1 and default["mission"] == "M1"
@@ -378,9 +378,11 @@ async def test_given_the_whole_read_family_when_dispatching_for_real_then_it_wor
         return json.loads((await client.call_tool(name, arguments)).content[0].text)
 
     async with create_connected_server_and_client_session(server) as client:
-        mission = await call(client, "get_mission", {"constitution": "eu"})
-        titles = await call(client, "get_principles", {"constitution": "eu"})
-        explained = await call(client, "get_principles", {"constitution": "eu", "detail": "full"})
+        mission = await call(client, "get_mission", {"constitution_key": "eu"})
+        titles = await call(client, "get_principles", {"constitution_key": "eu"})
+        explained = await call(
+            client, "get_principles", {"constitution_key": "eu", "detail": "full"}
+        )
 
     assert mission == {
         "version": 1,

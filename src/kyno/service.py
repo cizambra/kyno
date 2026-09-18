@@ -233,7 +233,7 @@ class ControlPlane:
         return self.delivery_recorder.record(
             direction,
             operation=operation,
-            constitution=check_constitution_key(arguments.get("constitution")),
+            constitution=check_constitution_key(arguments.get("constitution_key")),
             arguments=arguments,
             requester=requester,
         )

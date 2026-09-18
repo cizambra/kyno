@@ -379,7 +379,7 @@ class McpDirectionSource:
                 "get_changes_since",
                 {
                     "last_seen_version": last_seen_version,
-                    "constitution": constitution,
+                    "constitution_key": constitution,
                     "detail": detail.value,
                     **self._context,
                 },

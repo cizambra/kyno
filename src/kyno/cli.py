@@ -343,7 +343,7 @@ def _remote_apply(
             ),
             "change_note": note,
             "created_by": by if by is not None else _system_user(),
-            "constitution": target,
+            "constitution_key": target,
             # The write lands on the head the delta described, or not at all.
             "expected_version": head.version if head else 0,
             # Who stood behind this write, recorded on the version: an
@@ -422,7 +422,7 @@ def _answer_revert_signature(client, target: str, head, content: dict) -> None:
 def _matching_older_version(client, target: str, head, content: dict) -> int | None:
     """The newest version below the head whose content is the same as what
     this apply would write, or None when there is no match."""
-    rows = client.call_tool("export_versions", {"constitution": target})
+    rows = client.call_tool("export_versions", {"constitution_key": target})
     incoming = effective_content(head, **content)
     match = None
     for row in rows:
@@ -489,7 +489,9 @@ def _remote_options_guard(
 
 
 def _fetch_remote_head(client, constitution: str) -> dict:
-    return client.call_tool("get_constitution", {"constitution": constitution, "detail": "full"})
+    return client.call_tool(
+        "get_constitution", {"constitution_key": constitution, "detail": "full"}
+    )
 
 
 def _system_user() -> str | None:
@@ -1025,7 +1027,7 @@ def _fetch_remote_rows(
     *,
     version: int | None = None,
 ) -> list[dict]:
-    arguments = {"constitution": constitution}
+    arguments = {"constitution_key": constitution}
     if version is not None:
         arguments.update(from_version=version, to_version=version)
     client = dial(profile, credentials_profile=credentials, token_env=token_env)

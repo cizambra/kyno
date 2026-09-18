@@ -90,7 +90,7 @@ def test_given_bodies_of_every_shape_when_listing_tool_calls_then_only_real_call
     # The HTTP behavior is covered by the batched-body integration test.
     assert _tool_calls(
         b'[{"method": "tools/call", "params": {"name": "get_constitution", '
-        b'"arguments": {"constitution": "main"}}},'
+        b'"arguments": {"constitution_key": "main"}}},'
         b'{"method": "notifications/initialized"},'
         b'{"method": "tools/call", "params": {"name": "apply_direction", '
         b'"arguments": {"mission": "M1"}}}]'

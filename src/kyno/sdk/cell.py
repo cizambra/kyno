@@ -106,6 +106,7 @@ class Direction(HoldsPrinciples):
             "declaration": self.declaration,
             "principles": [p.to_dict() for p in self.principles],
             "change_notes": list(self.change_notes),
+            "delta": list(self.delta),
             "detail": self.detail.value,
         }
 

@@ -1,3 +1,4 @@
+import json
 import threading
 
 import pytest
@@ -94,6 +95,38 @@ def test_given_plain_strings_when_building_a_direction_then_principles_still_hol
     # Every caller that passed strings before keeps working; they become titles.
     d = Direction(constitution="eu", version=1, mission="M", principles=("p1",))
     assert d.principles == (Principle("p1"),)
+
+
+@pytest.mark.parametrize("delta", [(), ("Mission changed.", "Principle added.")])
+@pytest.mark.parametrize("detail", list(DetailLevel))
+def test_given_direction_with_changes_when_to_dict_runs_then_all_fields_are_json_serializable(
+    delta, detail
+):
+    direction = Direction(
+        constitution="support",
+        version=3,
+        mission="Help customers",
+        declaration="Explain resolutions.",
+        principles=(Principle("Be clear", "Use plain language."),),
+        change_notes=("Prioritize support",),
+        delta=delta,
+        detail=detail,
+    )
+
+    payload = direction.to_dict()
+
+    assert json.loads(json.dumps(payload)) == {
+        "constitution": "support",
+        "version": 3,
+        "mission": "Help customers",
+        "declaration": "Explain resolutions.",
+        "principles": [{"title": "Be clear", "description": "Use plain language."}],
+        "change_notes": ["Prioritize support"],
+        "delta": list(delta),
+        "detail": detail.value,
+    }
+    payload["delta"].append("Caller annotation")
+    assert direction.delta == delta
 
 
 def test_given_a_direction_when_serializing_then_principles_come_in_full():

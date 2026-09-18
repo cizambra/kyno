@@ -6,21 +6,21 @@ from kyno.sdk.cell import Direction
 from kyno.sdk.recording import RecordingReceipt
 
 
-class DeliveryStatus(StrEnum):
+class BindingStatus(StrEnum):
     """How a binding obtained its direction, not whether it is still the newest version."""
 
-    CURRENT = "current"
+    PULLED = "pulled"
     CACHED = "cached"
     EMPTY = "empty"
 
 
 @dataclass(frozen=True)
 class DirectionBinding:
-    """A direction snapshot and its delivery status for one binding operation."""
+    """A direction snapshot and its binding status for one binding operation."""
 
     direction: Direction
-    status: DeliveryStatus
+    status: BindingStatus
     recording: RecordingReceipt | None = None
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "status", DeliveryStatus(self.status))
+        object.__setattr__(self, "status", BindingStatus(self.status))

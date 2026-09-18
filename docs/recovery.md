@@ -104,7 +104,7 @@ kyno history --remote --profile ops --constitution support
 Verify the full content and the new version number. Confirm the incorrect
 version is still present in history. Then allow consumers to reach their
 next direction boundary and inspect their bindings: the expected new
-version with delivery status `current` records a successful read at that
+version with binding status `pulled` records a successful read at that
 boundary. `cached` or `empty` does not confirm a successful read of the
 correction. Existing in-flight steps are not rewritten by recovery.
 

@@ -3,7 +3,7 @@
 import pytest
 
 from kyno.sdk.binder import DirectionBinder
-from kyno.sdk.binding import DeliveryStatus
+from kyno.sdk.binding import BindingStatus
 from kyno.sdk.client import LocalDirectionSource
 from kyno.wire.models import DetailLevel
 
@@ -59,7 +59,7 @@ def test_given_a_context_choice_when_binding_then_only_the_injected_block_change
     assert compact.principles == full.principles
 
 
-def test_given_an_unchanged_version_when_binding_again_then_the_successful_read_is_current(
+def test_given_an_unchanged_version_when_binding_again_then_the_successful_read_is_pulled(
     control_plane,
 ):
     control_plane.set_direction(mission="Mission", change_note="initial", constitution="sales")
@@ -67,7 +67,7 @@ def test_given_an_unchanged_version_when_binding_again_then_the_successful_read_
     first = binder.bind_with_status()
     second = binder.bind_with_status()
     assert first.direction.version == second.direction.version == 1
-    assert first.status is second.status is DeliveryStatus.CURRENT
+    assert first.status is second.status is BindingStatus.PULLED
 
 
 def test_given_a_direction_change_when_binding_again_then_the_prior_result_stays_unchanged(
@@ -82,4 +82,4 @@ def test_given_a_direction_change_when_binding_again_then_the_prior_result_stays
     assert (second.direction.version, second.direction.mission) == (2, "New")
     assert second.direction.change_notes == ("pivot",)
     assert second.direction.delta
-    assert first.status is second.status is DeliveryStatus.CURRENT
+    assert first.status is second.status is BindingStatus.PULLED

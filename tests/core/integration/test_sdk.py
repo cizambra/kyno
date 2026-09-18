@@ -2,7 +2,7 @@
 
 import pytest
 
-from kyno.sdk import DeliveryStatus, PullPolicy
+from kyno.sdk import BindingStatus, PullPolicy
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.wire.models import DetailLevel
 
@@ -39,8 +39,8 @@ def test_given_binders_sharing_a_session_when_connection_closes_then_each_uses_i
     empty_fallback = empty.bind_with_status()
     assert first_fallback.direction.version == 1
     assert second_fallback.direction.version == 2
-    assert first_fallback.status is second_fallback.status is DeliveryStatus.CACHED
-    assert empty_fallback.status is DeliveryStatus.EMPTY
+    assert first_fallback.status is second_fallback.status is BindingStatus.CACHED
+    assert empty_fallback.status is BindingStatus.EMPTY
     assert empty_fallback.direction.version == 0
 
 

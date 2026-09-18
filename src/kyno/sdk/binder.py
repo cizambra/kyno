@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 
-from kyno.sdk.binding import DeliveryStatus, DirectionBinding
+from kyno.sdk.binding import BindingStatus, DirectionBinding
 from kyno.sdk.cell import Direction, DirectionCell, check_context
 from kyno.sdk.client import DirectionSource
 from kyno.sdk.errors import KynoUnavailableError
@@ -55,9 +55,9 @@ class DirectionBinder:
         return self.bind_with_status().direction
 
     def bind_with_status(self) -> DirectionBinding:
-        """Pull once and return direction with its per-call delivery status.
+        """Pull once and return direction with its per-call binding status.
 
-        Current identifies a successful read, including an unchanged or empty
+        Pulled identifies a successful read, including an unchanged or empty
         constitution. Cached identifies a retained value after failure or an
         older overlapping response. Empty identifies failure without a cached
         value. A fail-closed pull failure raises instead of returning a binding.
@@ -76,9 +76,9 @@ class DirectionBinder:
             Direction.from_changes(changes, constitution, self.context), response.recording
         )
         status = (
-            DeliveryStatus.CACHED
+            BindingStatus.CACHED
             if direction.version > changes.current_version
-            else DeliveryStatus.CURRENT
+            else BindingStatus.PULLED
         )
         return DirectionBinding(direction, status, recording)
 
@@ -94,9 +94,9 @@ class DirectionBinder:
                 last.version,
                 exc,
             )
-            return DirectionBinding(last, DeliveryStatus.CACHED, recording)
+            return DirectionBinding(last, BindingStatus.CACHED, recording)
         logger.warning("kyno pull_failed_empty constitution=%s version=0 %s", constitution, exc)
-        return DirectionBinding(Direction.empty(constitution, self.context), DeliveryStatus.EMPTY)
+        return DirectionBinding(Direction.empty(constitution, self.context), BindingStatus.EMPTY)
 
     def plan(self):
         from kyno.sdk.plan import PlanTracker

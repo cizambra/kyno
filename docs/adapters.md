@@ -9,7 +9,7 @@ On this page:
 
 - [The loop](#the-loop)
 - [The integration](#the-integration)
-- [Inspecting delivery status](#inspecting-delivery-status)
+- [Inspecting binding status](#inspecting-binding-status)
 - [Acting on a change](#acting-on-a-change)
 - [Application-owned verification](#application-owned-verification)
 
@@ -64,7 +64,7 @@ flowchart LR
 
 
 
-## Inspecting delivery status
+## Inspecting binding status
 
 Applications own their model inputs, outputs, reasoning records, and execution
 traces. Use whichever storage or tracing tools suit your application. Kyno's
@@ -100,20 +100,20 @@ direction. When a record was saved, `binding.recording.record_id` identifies it.
 
 Custom integrations can use `binder.bind_with_status()` to distinguish a
 successful read from fallback. It returns an immutable `DirectionBinding`
-containing `direction` and a `DeliveryStatus` enum, both exported from
+containing `direction` and a `BindingStatus` enum, both exported from
 `kyno.sdk`:
 
 ```python
-from kyno.sdk import DeliveryStatus
+from kyno.sdk import BindingStatus
 
 binder = connection.binder("customer-support")
 binding = binder.bind_with_status()
-if binding.status is DeliveryStatus.CACHED:
+if binding.status is BindingStatus.CACHED:
     print("Using retained direction", binding.direction.version)
 block = binding.direction.render()
 ```
 
-- `current`: this successful read confirmed the returned direction, even
+- `pulled`: this successful read confirmed the returned direction, even
   if its version did not change. It does not mean the version stays current
   after the read.
 - `cached`: the binder retained a value after a pull failure, or kept a
@@ -122,7 +122,7 @@ block = binding.direction.render()
 - `empty`: the pull failed before any direction was cached. The direction
   is the existing empty version-0 fallback.
 
-A successful read of an unwritten constitution is `current` at version 0.
+A successful read of an unwritten constitution is `pulled` at version 0.
 If a later read fails, that cached version 0 is `cached`, not `empty`.
 Fail-closed still raises `KynoUnavailableError` rather than returning a
 binding. Unexpected programming errors still propagate.

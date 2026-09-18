@@ -98,13 +98,13 @@ def test_given_server_read_failure_when_langgraph_pulls_over_http_then_fallback_
         unavailable.clear()
         recovered = refresh(fallback)
 
-    assert fallback["kyno_delivery_status"] == ("cached" if cached else "empty")
+    assert fallback["kyno_binding_status"] == ("cached" if cached else "empty")
     assert fallback["kyno_version"] == (1 if cached else 0)
     assert fallback["kyno_constitution"] == "support"
     if cached:
-        assert first["kyno_delivery_status"] == "current"
+        assert first["kyno_binding_status"] == "pulled"
         assert fallback["kyno_direction"] == first["kyno_direction"]
-    assert recovered["kyno_delivery_status"] == "current"
+    assert recovered["kyno_binding_status"] == "pulled"
     assert recovered["kyno_version"] == 2
     assert "Mission: M2" in recovered["kyno_direction"]
     if wrapper:
@@ -113,7 +113,7 @@ def test_given_server_read_failure_when_langgraph_pulls_over_http_then_fallback_
 
 @pytest.mark.e2e
 @pytest.mark.parametrize("cached", [False, True], ids=["empty", "cached"])
-def test_given_failed_reads_when_crewai_calls_again_then_observed_fallback_recovers_to_current(
+def test_given_failed_reads_when_crewai_calls_again_then_observed_fallback_recovers_to_pulled(
     live_server, read_failure, cached
 ):
     control_plane, url, token = live_server
@@ -141,13 +141,13 @@ def test_given_failed_reads_when_crewai_calls_again_then_observed_fallback_recov
     fallback, recovered = [binding for binding, _block in observed[-2:]]
     assert fallback.status == ("cached" if cached else "empty")
     assert fallback.direction.version == (2 if cached else 0)
-    assert recovered.status == "current"
+    assert recovered.status == "pulled"
     assert recovered.direction.version == (3 if cached else 2)
     assert recovered.direction.mission == "Recovered"
     if cached:
         first, second = [binding for binding, _block in observed[:2]]
         assert (first.direction.version, second.direction.version) == (1, 2)
-        assert first.status == second.status == "current"
+        assert first.status == second.status == "pulled"
     for binding, block in observed:
         assert binding.direction.constitution == "support"
         assert binding.direction.render() == block

@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import Any, TypedDict
 
 from kyno.sdk.binder import DirectionBinder
-from kyno.sdk.binding import DeliveryStatus
+from kyno.sdk.binding import BindingStatus
 from kyno.sdk.cell import Direction
 from kyno.sdk.recording import RecordingReceipt
 from kyno.wire.models import DetailLevel
@@ -27,14 +27,14 @@ class KynoState(TypedDict, total=False):
     kyno_principles: list[dict]
     kyno_context: DetailLevel
     kyno_direction: str
-    kyno_delivery_status: DeliveryStatus | None
+    kyno_binding_status: BindingStatus | None
     kyno_recording: dict[str, str | None] | None
 
 
 def direction_update(
     direction: Direction,
     *,
-    status: DeliveryStatus | str | None = None,
+    status: BindingStatus | str | None = None,
     recording: RecordingReceipt | None = None,
 ) -> dict:
     """Direction travels in graph state so a persisted checkpoint says which
@@ -51,7 +51,7 @@ def direction_update(
         "kyno_principles": [p.to_dict() for p in direction.principles],
         "kyno_direction": direction.render(),
         "kyno_context": direction.context,
-        "kyno_delivery_status": DeliveryStatus(status) if status is not None else None,
+        "kyno_binding_status": BindingStatus(status) if status is not None else None,
         "kyno_recording": (
             {"status": recording.status.value, "record_id": recording.record_id}
             if recording is not None

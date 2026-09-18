@@ -26,7 +26,7 @@ EXPECTED = {
     "LocalDirectionSource",
     "DirectionBinder",
     "DirectionBinding",
-    "DeliveryStatus",
+    "BindingStatus",
     "PullPolicy",
 }
 

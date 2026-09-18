@@ -122,7 +122,7 @@ python examples/customer_support/run.py --url http://127.0.0.1:2256 --model "$MO
 ```
 
 The script prints the plan and first draft, each with its run ID, step ID,
-constitution, direction version, and delivery status. It then waits for your input.
+constitution, direction version, and binding status. It then waits for your input.
 This is an ordinary
 input pause inside the same graph invocation, not checkpoint persistence or
 a Kyno orchestration feature. Do not press Enter until the next apply succeeds.
@@ -171,7 +171,7 @@ still apply.
 Each call produces two separate events:
 
 - `direction_supplied`: run/call/step IDs, model ID, constitution, version,
-  delivery status, context level, exact rendered direction, fixed scenario,
+  binding status, context level, exact rendered direction, fixed scenario,
   task prompt (including the plan and draft when applicable),
   and the time immediately before the model call.
 - `model_output`: the same call identity, capture time, and the full serialized

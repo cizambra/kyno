@@ -17,7 +17,7 @@ from kyno.adapters.langgraph.nodes import (  # noqa: E402
     pull_before,
 )
 from kyno.sdk.binder import DirectionBinder  # noqa: E402
-from kyno.sdk.binding import DeliveryStatus  # noqa: E402
+from kyno.sdk.binding import BindingStatus  # noqa: E402
 from kyno.sdk.cell import DIRECTION_MARKER, Direction  # noqa: E402
 from kyno.sdk.client import LocalDirectionSource  # noqa: E402
 from kyno.wire.models import DetailLevel  # noqa: E402
@@ -299,7 +299,7 @@ def test_given_direction_node_refresh_when_review_resumes_then_saved_answer_keep
             "answer_record": {
                 "direction": direction,
                 "supplied_message": supplied_message,
-                "delivery_status": state["kyno_delivery_status"],
+                "binding_status": state["kyno_binding_status"],
                 "output": output,
             }
         }
@@ -343,5 +343,5 @@ def test_given_direction_node_refresh_when_review_resumes_then_saved_answer_keep
     assert reviewed[0]["direction"].context == context
     assert reviewed[0]["supplied_message"] == reviewed[0]["direction"].render()
     assert reviewed[0]["output"] == "Answer for M1"
-    assert reviewed[0]["delivery_status"] is DeliveryStatus.CURRENT
+    assert reviewed[0]["binding_status"] is BindingStatus.PULLED
     assert result["needs_review"] is False

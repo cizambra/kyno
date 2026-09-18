@@ -109,7 +109,7 @@ def test_given_an_operator_update_when_the_graph_continues_then_each_call_record
     outputs = [event for event in events if event["event"] == "model_output"]
     assert len(reads) == 5
     assert [event["version"] for event in receipts] == [1, 1, 2, 2]
-    assert all(event["status"] == "current" for event in receipts)
+    assert all(event["status"] == "pulled" for event in receipts)
     assert len({event["run_id"] for event in events}) == 1
     assert [event["step_id"] for event in receipts] == [
         "plan",

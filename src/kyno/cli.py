@@ -739,12 +739,11 @@ def get_version(
         payload = _read_direction_version(
             number, constitution, remote, profile, credentials, token_env
         )
+        resolved_key = check_constitution_key(payload.get("constitution_key") or "")
         head = version_from_payload(payload)
         if head is None:
             if as_yaml:
-                raise CoherenceError(
-                    f"nothing to read: '{payload['constitution_key']}' has no versions"
-                )
+                raise CoherenceError(f"nothing to read: '{resolved_key}' has no versions")
             typer.echo("no constitution set (version 0)")
         elif as_yaml:
             typer.echo(render_constitution_yaml(head, head.constitution_key), nl=False)
@@ -1003,7 +1002,7 @@ def export(
         # On stderr so stdout stays the JSON alone. Naming the one
         # constitution keeps a scheduled `kyno export > backup.json` from
         # passing as a full instance backup.
-        constitution = rows[0]["constitution_key"]
+        constitution = check_constitution_key(rows[0].get("constitution_key") or "")
         typer.echo(f"Constitution '{constitution}' exported", err=True)
         typer.echo(json.dumps(rows, indent=2))
     except (CoherenceError, SQLAlchemyError) as exc:

@@ -100,7 +100,7 @@ def test_given_server_read_failure_when_langgraph_pulls_over_http_then_fallback_
 
     assert fallback["kyno_binding_status"] == ("cached" if cached else "empty")
     assert fallback["kyno_version"] == (1 if cached else 0)
-    assert fallback["kyno_constitution"] == "support"
+    assert fallback["kyno_constitution_key"] == "support"
     if cached:
         assert first["kyno_binding_status"] == "pulled"
         assert fallback["kyno_direction"] == first["kyno_direction"]

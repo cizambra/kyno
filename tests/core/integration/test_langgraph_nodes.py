@@ -63,7 +63,7 @@ def test_given_direction_when_pull_before_runs_then_work_receives_current_direct
     update = node({})
 
     assert update["output"] == "served M1"
-    assert update["kyno_constitution"] == "default" and update["kyno_version"] == 1
+    assert update["kyno_constitution_key"] == "default" and update["kyno_version"] == 1
 
 
 def test_given_new_direction_when_direction_node_runs_again_then_state_has_new_version(binder):
@@ -119,7 +119,7 @@ def test_given_direction_when_direction_update_runs_then_keys_exist_in_KynoState
         Direction(constitution_key="eu", version=4, mission="M", principles=("P",))
     )
     assert set(update) <= set(KynoState.__annotations__)
-    assert update["kyno_constitution"] == "eu"
+    assert update["kyno_constitution_key"] == "eu"
     assert update["kyno_principles"] == [{"title": "P", "description": ""}]
 
 
@@ -216,7 +216,7 @@ def test_given_json_state_when_direction_from_state_runs_then_all_fields_are_res
 
 def test_given_missing_optional_fields_when_direction_from_state_runs_then_empty_defaults_apply():
     state = {
-        "kyno_constitution": "support",
+        "kyno_constitution_key": "support",
         "kyno_version": 3,
         "kyno_mission": "Resolve issues",
         "kyno_principles": [{"title": "Be honest", "description": "Explain the outcome"}],

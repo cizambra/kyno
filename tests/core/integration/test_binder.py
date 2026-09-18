@@ -40,9 +40,9 @@ def test_given_a_direction_change_between_steps_when_binding_the_second_then_it_
     assert (second.version, second.mission) == (2, "M2")
 
 
-def test_given_a_detail_choice_when_binding_then_only_the_injected_block_changes(control_plane):
-    # The knob is about what an agent is sent at every step, never about what
-    # the control plane holds or answers.
+def test_given_rich_direction_when_bind_is_called_then_content_matches_selected_detail(
+    control_plane,
+):
     control_plane.apply_direction(
         mission="M1",
         declaration="The long form.",
@@ -55,8 +55,9 @@ def test_given_a_detail_choice_when_binding_then_only_the_injected_block_changes
 
     assert "The long form." not in compact.render()
     assert "The long form." in full.render()
-    assert compact.declaration == full.declaration == "The long form."
-    assert compact.principles == full.principles
+    assert compact.declaration == compact.principles[0].description == ""
+    assert full.declaration == "The long form."
+    assert full.principles[0].description == "Say the hard number first."
 
 
 def test_given_an_unchanged_version_when_binding_again_then_the_successful_read_is_pulled(

@@ -72,7 +72,7 @@ class KynoConnection:
         constitution: str = "default",
         *,
         policy: PullPolicy | None = None,
-        context: str | DetailLevel = DetailLevel.COMPACT,
+        detail: str | DetailLevel = DetailLevel.COMPACT,
         correlation_id: str | None = None,
         metadata: dict | None = None,
     ) -> DirectionBinder:
@@ -83,7 +83,7 @@ class KynoConnection:
         source = _client.McpDirectionSource(
             self._runner, correlation_id=correlation_id, metadata=metadata
         )
-        return DirectionBinder(source, constitution, policy=policy, context=context)
+        return DirectionBinder(source, constitution, policy=policy, detail=detail)
 
     def close(self) -> None:
         self._runner.close()
@@ -101,11 +101,11 @@ class KynoConnection:
         constitution: str = "default",
         *,
         version: int | None = None,
-        context: str | DetailLevel = DetailLevel.COMPACT,
+        detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> Direction:
-        """Return current direction or an exact version in the requested context.
+        """Return current direction or an exact version in the requested detail.
 
-        Compact context is the default. It retains the mission and principle
+        Compact detail is the default. It retains the mission and principle
         titles, omitting declaration and principle descriptions as agent reads do.
         Version zero reads the empty direction. Reads use Core's recording policy
         and never update binder cells. Returned direction has no per-delivery
@@ -113,9 +113,7 @@ class KynoConnection:
         KynoHistoryError for absent exact versions or rejected queries, and
         KynoUnavailableError for transport or reply failures.
         """
-        return _history.get_constitution(
-            self._runner, constitution, version=version, context=context
-        )
+        return _history.get_constitution(self._runner, constitution, version=version, detail=detail)
 
     def list_delivery_records(
         self,

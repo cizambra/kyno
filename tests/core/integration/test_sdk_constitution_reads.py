@@ -1,4 +1,4 @@
-"""SDK constitution reads select current or historical agent-context projections over MCP."""
+"""SDK constitution reads select current or historical agent-detail projections over MCP."""
 
 from dataclasses import replace
 
@@ -23,27 +23,27 @@ def constitution_connection(mcp_connection):
     return connection, control_plane
 
 
-@pytest.mark.parametrize("context", ["compact", DetailLevel.COMPACT, "full", DetailLevel.FULL])
+@pytest.mark.parametrize("detail", ["compact", DetailLevel.COMPACT, "full", DetailLevel.FULL])
 @pytest.mark.parametrize("version", [None, 1])
-def test_given_version_and_context_when_get_constitution_is_called_then_requested_content_returns(
-    constitution_connection, context, version
+def test_given_version_and_detail_when_get_constitution_is_called_then_requested_content_returns(
+    constitution_connection, detail, version
 ):
     connection, control_plane = constitution_connection
-    original = connection.binder("example", context=context).bind()
+    original = connection.binder("example", detail=detail).bind()
     if version is not None:
         control_plane.apply_direction(
             mission="New mission", change_note="Updated", constitution="example"
         )
-    binder = connection.binder("example", context=context)
+    binder = connection.binder("example", detail=detail)
     current = binder.bind()
 
-    direction = connection.get_constitution("example", version=version, context=context)
+    direction = connection.get_constitution("example", version=version, detail=detail)
 
     assert direction == replace(original, change_notes=(), delta=())
-    assert direction.context is DetailLevel(context)
+    assert direction.detail is DetailLevel(detail)
     assert direction.version == 1
     assert direction.mission == "Original mission"
-    full = context == DetailLevel.FULL
+    full = detail == DetailLevel.FULL
     assert direction.declaration == ("Original declaration" if full else "")
     assert direction.principles[0].description == ("State the facts." if full else "")
     assert ("Original declaration" in direction.render()) is full
@@ -62,7 +62,7 @@ def test_given_updates_when_get_constitution_omits_version_then_current_compact_
     direction = connection.get_constitution("example")
     assert direction.version == 2
     assert direction.mission == "Current mission"
-    assert direction.context is DetailLevel.COMPACT
+    assert direction.detail is DetailLevel.COMPACT
     assert direction.declaration == direction.principles[0].description == ""
 
 
@@ -85,19 +85,19 @@ def test_given_two_constitutions_when_get_constitution_is_called_then_requested_
     assert direction.version == default_direction.version == 1
 
 
-@pytest.mark.parametrize("context", list(DetailLevel))
+@pytest.mark.parametrize("detail", list(DetailLevel))
 def test_given_unwritten_constitution_when_get_constitution_is_called_then_empty_direction_returns(
-    constitution_connection, context
+    constitution_connection, detail
 ):
     connection, _ = constitution_connection
 
-    direction = connection.get_constitution("unwritten", context=context)
+    direction = connection.get_constitution("unwritten", detail=detail)
 
     assert direction.constitution == "unwritten"
     assert direction.version == 0
     assert direction.mission == direction.declaration == ""
     assert direction.principles == direction.change_notes == direction.delta == ()
-    assert direction.context is context
+    assert direction.detail is detail
 
 
 @pytest.mark.parametrize("constitution, version", [("example", 2), ("unknown", 1)])
@@ -109,16 +109,16 @@ def test_given_missing_version_when_get_constitution_is_called_then_version_not_
         connection.get_constitution(constitution, version=version)
 
 
-@pytest.mark.parametrize("context", list(DetailLevel))
+@pytest.mark.parametrize("detail", list(DetailLevel))
 def test_given_live_direction_when_get_constitution_requests_zero_then_empty_direction_returns(
-    constitution_connection, context
+    constitution_connection, detail
 ):
     connection, _ = constitution_connection
-    direction = connection.get_constitution("example", version=0, context=context)
+    direction = connection.get_constitution("example", version=0, detail=detail)
     assert direction.version == 0
     assert direction.mission == direction.declaration == ""
     assert direction.principles == ()
-    assert direction.context is context
+    assert direction.detail is detail
 
 
 @pytest.mark.parametrize("version, served_version", [(None, 2), (1, 1), (0, 0)])

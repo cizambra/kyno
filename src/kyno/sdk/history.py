@@ -83,14 +83,14 @@ def get_constitution(
     constitution: str = "default",
     *,
     version: int | None = None,
-    context: str | DetailLevel = DetailLevel.COMPACT,
+    detail: str | DetailLevel = DetailLevel.COMPACT,
 ) -> Direction:
-    context = check_detail(context, "context")
+    detail = check_detail(detail)
     if version is not None and (type(version) is not int or version < 0):
         raise ValueError("version must be a non-negative integer")
     if not isinstance(constitution, str) or not constitution.strip():
         raise ValueError("constitution must be a non-empty string")
-    arguments: dict[str, object] = {"constitution": constitution, "detail": context.value}
+    arguments: dict[str, object] = {"constitution": constitution, "detail": detail.value}
     if version is not None:
         arguments["version"] = version
     row = _query(runner, "get_constitution", arguments, _constitution)
@@ -103,7 +103,7 @@ def get_constitution(
             mission=row["mission"],
             declaration=row.get("declaration", ""),
             principles=tuple(row["principles"]),
-            context=context,
+            detail=detail,
         )
     except Exception as exc:
         raise KynoUnavailableError(f"bad reply from kyno: {exc}") from exc

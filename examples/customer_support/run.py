@@ -49,7 +49,7 @@ def supplied_direction_event(state, identity, messages):
         "constitution": state["kyno_constitution"],
         "version": state["kyno_version"],
         "status": state["kyno_binding_status"],
-        "context": state["kyno_context"],
+        "detail": state["kyno_detail"],
         "direction": messages[0]["content"],
         "scenario": SCENARIO,
         "task": messages[1]["content"],
@@ -141,7 +141,7 @@ def run_live(args, token):
         model = ChatOpenAI(model=args.model, max_retries=0, timeout=60)
         connection = stack.enter_context(kyno.connect(url=args.url, token=token))
         binder = connection.binder(
-            args.constitution, context=DetailLevel.FULL, policy=PullPolicy(fail_closed=True)
+            args.constitution, detail=DetailLevel.FULL, policy=PullPolicy(fail_closed=True)
         )
         run_example(
             model,

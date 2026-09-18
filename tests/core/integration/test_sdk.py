@@ -51,11 +51,11 @@ def test_given_one_connection_when_binders_pull_compact_and_full_then_each_recei
     control_plane.apply_direction(
         mission="Help customers", declaration="Explain each decision", change_note="init"
     )
-    compact = connection.binder(context=DetailLevel.COMPACT).bind()
-    full = connection.binder(context=DetailLevel.FULL).bind()
+    compact = connection.binder(detail=DetailLevel.COMPACT).bind()
+    full = connection.binder(detail=DetailLevel.FULL).bind()
 
-    assert compact.context is DetailLevel.COMPACT
-    assert full.context is DetailLevel.FULL
+    assert compact.detail is DetailLevel.COMPACT
+    assert full.detail is DetailLevel.FULL
     assert compact.version == full.version == 1
     assert "Explain each decision" not in compact.render()
     assert "Explain each decision" in full.render()

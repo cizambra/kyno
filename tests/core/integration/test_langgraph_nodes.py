@@ -169,7 +169,7 @@ def test_given_principle_description_when_direction_from_state_runs_then_descrip
     assert direction_from_state(direction_update(original)) == original
 
 
-def test_given_full_context_when_direction_node_runs_then_block_has_declaration_and_descriptions(
+def test_given_full_detail_when_direction_node_runs_then_block_has_declaration_and_descriptions(
     control_plane,
 ):
     control_plane.apply_direction(
@@ -178,23 +178,23 @@ def test_given_full_context_when_direction_node_runs_then_block_has_declaration_
         principles=({"title": "Be honest", "description": "Say the hard number first."},),
         change_note="init",
     )
-    binder = DirectionBinder(LocalDirectionSource(control_plane), context=DetailLevel.FULL)
+    binder = DirectionBinder(LocalDirectionSource(control_plane), detail=DetailLevel.FULL)
 
     update = direction_node(binder)({})
 
     assert "The long form." in update["kyno_direction"]
     assert "Say the hard number first." in update["kyno_direction"]
-    assert update["kyno_context"] == DetailLevel.FULL
+    assert update["kyno_detail"] == DetailLevel.FULL
 
 
-def test_given_default_context_when_direction_node_runs_then_block_omits_declaration(binder):
+def test_given_default_detail_when_direction_node_runs_then_block_omits_declaration(binder):
     bind, control_plane = binder
     control_plane.apply_direction(declaration="The long form.", change_note="add the long form")
 
     update = direction_node(bind)({})
 
     assert "The long form." not in update["kyno_direction"]
-    assert update["kyno_context"] == DetailLevel.COMPACT
+    assert update["kyno_detail"] == DetailLevel.COMPACT
 
 
 def test_given_json_state_when_direction_from_state_runs_then_all_fields_are_restored():
@@ -206,11 +206,11 @@ def test_given_json_state_when_direction_from_state_runs_then_all_fields_are_res
         declaration="Long form",
         change_notes=("Changed support priority",),
         delta=("Mission changed.",),
-        context=DetailLevel.FULL,
+        detail=DetailLevel.FULL,
     )
     update = direction_update(original)
 
-    assert update["kyno_context"] is DetailLevel.FULL
+    assert update["kyno_detail"] is DetailLevel.FULL
     assert direction_from_state(json.loads(json.dumps(update))) == original
 
 
@@ -220,7 +220,7 @@ def test_given_missing_optional_fields_when_direction_from_state_runs_then_empty
         "kyno_version": 3,
         "kyno_mission": "Resolve issues",
         "kyno_principles": [{"title": "Be honest", "description": "Explain the outcome"}],
-        "kyno_context": "full",
+        "kyno_detail": "full",
     }
 
     assert direction_from_state(state) == Direction(
@@ -228,7 +228,7 @@ def test_given_missing_optional_fields_when_direction_from_state_runs_then_empty
         version=3,
         mission="Resolve issues",
         principles=({"title": "Be honest", "description": "Explain the outcome"},),
-        context=DetailLevel.FULL,
+        detail=DetailLevel.FULL,
     )
 
 
@@ -271,17 +271,17 @@ def test_given_schema_without_KynoState_when_direction_node_runs_then_graph_drop
     assert captured == [Direction.empty("default")]
 
 
-@pytest.mark.parametrize("context", [DetailLevel.COMPACT, DetailLevel.FULL])
+@pytest.mark.parametrize("detail", [DetailLevel.COMPACT, DetailLevel.FULL])
 def test_given_direction_node_refresh_when_review_resumes_then_saved_answer_keeps_prior_direction(
     binder,
-    context,
+    detail,
 ):
     class ReviewState(KynoState, total=False):
         answer_record: dict
         needs_review: bool
 
     bind, control_plane = binder
-    bind = DirectionBinder(LocalDirectionSource(control_plane), context=context)
+    bind = DirectionBinder(LocalDirectionSource(control_plane), detail=detail)
     bind.bind()
     control_plane.apply_direction(
         declaration="Explain the support decision.",
@@ -326,7 +326,7 @@ def test_given_direction_node_refresh_when_review_resumes_then_saved_answer_keep
         .compile(checkpointer=InMemorySaver(), interrupt_before=["review"])
     )
 
-    config = {"configurable": {"thread_id": f"review-{context.value}"}}
+    config = {"configurable": {"thread_id": f"review-{detail.value}"}}
     graph.invoke({}, config)
     saved = graph.get_state(config).values
     original = saved["answer_record"]
@@ -340,7 +340,7 @@ def test_given_direction_node_refresh_when_review_resumes_then_saved_answer_keep
     assert reviewed[0]["direction"].declaration == "Explain the support decision."
     assert tuple(reviewed[0]["direction"].change_notes) == ("Add explanation",)
     assert reviewed[0]["direction"].delta
-    assert reviewed[0]["direction"].context == context
+    assert reviewed[0]["direction"].detail == detail
     assert reviewed[0]["supplied_message"] == reviewed[0]["direction"].render()
     assert reviewed[0]["output"] == "Answer for M1"
     assert reviewed[0]["binding_status"] is BindingStatus.PULLED

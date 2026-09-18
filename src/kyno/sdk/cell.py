@@ -33,12 +33,6 @@ def refresh(items, block, *, text_of=None, make=None):
     return [make(block), *kept]
 
 
-def check_context(context: str | DetailLevel) -> DetailLevel:
-    """The injected block carries the same two levels a read asks Kyno for,
-    so an organization has one word for how much context it wants."""
-    return check_detail(context, "injection context")
-
-
 @dataclass(frozen=True)
 class Direction(HoldsPrinciples):
     constitution: str
@@ -48,24 +42,22 @@ class Direction(HoldsPrinciples):
     change_notes: tuple[str, ...] = ()
     delta: tuple[str, ...] = ()
     declaration: str = ""
-    context: DetailLevel = DetailLevel.COMPACT
+    detail: DetailLevel = DetailLevel.COMPACT
 
     def __post_init__(self) -> None:
         super().__post_init__()
-        object.__setattr__(self, "context", check_context(self.context))
+        object.__setattr__(self, "detail", check_detail(self.detail))
 
     @classmethod
-    def empty(
-        cls, constitution: str, context: str | DetailLevel = DetailLevel.COMPACT
-    ) -> Direction:
-        return cls(constitution=constitution, version=0, mission="", principles=(), context=context)
+    def empty(cls, constitution: str, detail: str | DetailLevel = DetailLevel.COMPACT) -> Direction:
+        return cls(constitution=constitution, version=0, mission="", principles=(), detail=detail)
 
     @classmethod
     def from_changes(
         cls,
         changes: ChangesSince,
         constitution: str,
-        context: str | DetailLevel = DetailLevel.COMPACT,
+        detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> Direction:
         return cls(
             constitution=constitution,
@@ -75,7 +67,7 @@ class Direction(HoldsPrinciples):
             change_notes=tuple(changes.change_notes),
             delta=tuple(changes.delta),
             declaration=changes.declaration,
-            context=context,
+            detail=detail,
         )
 
     def render(self) -> str:
@@ -87,7 +79,7 @@ class Direction(HoldsPrinciples):
         header = f"{DIRECTION_MARKER} constitution={self.constitution} version={self.version}]"
         if self.version == 0:
             return f"{header}\nNo direction has been set yet."
-        full = self.context is DetailLevel.FULL
+        full = self.detail is DetailLevel.FULL
         lines = [header, f"Mission: {self.mission}"]
         if full and self.declaration:
             lines.append("Declaration:")
@@ -114,7 +106,7 @@ class Direction(HoldsPrinciples):
             "declaration": self.declaration,
             "principles": [p.to_dict() for p in self.principles],
             "change_notes": list(self.change_notes),
-            "context": self.context.value,
+            "detail": self.detail.value,
         }
 
 

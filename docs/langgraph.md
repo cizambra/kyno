@@ -22,7 +22,7 @@ from kyno.sdk import DetailLevel, PullPolicy
 connection = kyno.connect()
 binder = connection.binder(
     "customer-support",
-    context=DetailLevel.FULL,
+    detail=DetailLevel.FULL,
     policy=PullPolicy(fail_closed=True),
 )
 ```
@@ -186,7 +186,7 @@ from kyno.sdk import DetailLevel, PullPolicy
 
 binder = connection.binder(
     "customer-support",
-    context=DetailLevel.FULL,
+    detail=DetailLevel.FULL,
     policy=PullPolicy(fail_closed=True),
 )
 ```
@@ -243,7 +243,7 @@ For example, replace the binder setup above with:
 ```python
 binder = connection.binder(
     "customer-support",
-    context=DetailLevel.FULL,
+    detail=DetailLevel.FULL,
     policy=PullPolicy(fail_closed=True),
     correlation_id="support-run-123",
 )

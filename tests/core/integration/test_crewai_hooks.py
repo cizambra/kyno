@@ -70,7 +70,7 @@ def test_given_european_binder_when_before_llm_call_runs_then_european_direction
     assert "European mission" in context.messages[0]["content"]
 
 
-def test_given_full_context_when_before_llm_call_runs_then_declaration_and_descriptions_are_added(
+def test_given_full_detail_when_before_llm_call_runs_then_declaration_and_descriptions_are_added(
     control_plane,
 ):
     control_plane.apply_direction(
@@ -79,7 +79,7 @@ def test_given_full_context_when_before_llm_call_runs_then_declaration_and_descr
         principles=({"title": "Be honest", "description": "Say the hard number first."},),
         change_note="init",
     )
-    binder = DirectionBinder(LocalDirectionSource(control_plane), context=DetailLevel.FULL)
+    binder = DirectionBinder(LocalDirectionSource(control_plane), detail=DetailLevel.FULL)
     adapter = CrewAiKyno(binder)
     ctx = FakeCtx(messages=[{"role": "user", "content": "go"}])
 
@@ -90,7 +90,7 @@ def test_given_full_context_when_before_llm_call_runs_then_declaration_and_descr
     assert "Say the hard number first." in injected
 
 
-def test_given_default_context_when_before_llm_call_runs_then_only_mission_and_titles_are_added(
+def test_given_default_detail_when_before_llm_call_runs_then_only_mission_and_titles_are_added(
     control_plane,
 ):
     control_plane.apply_direction(

@@ -22,8 +22,9 @@ def test_given_no_model_consent_when_starting_then_no_connection_is_opened(examp
 @pytest.mark.parametrize("record", [False, True])
 @pytest.mark.parametrize("failure", [False, True])
 @pytest.mark.parametrize("token_env", ["KYNO_READ_TOKEN", "SUPPORT_READ_TOKEN"])
+@pytest.mark.parametrize("constitution_key", [None, "billing"])
 def test_given_explicit_consent_when_running_then_recording_is_opt_in_and_connections_close(
-    example, monkeypatch, tmp_path, record, failure, token_env, capsys
+    example, monkeypatch, tmp_path, record, failure, token_env, capsys, constitution_key
 ):
     events = [
         {
@@ -46,7 +47,7 @@ def test_given_explicit_consent_when_running_then_recording_is_opt_in_and_connec
             opened.append("closed")
 
         def binder(self, constitution, **kwargs):
-            assert constitution == "customer-support"
+            assert constitution == (constitution_key or "customer-support")
             assert kwargs["detail"] is DetailLevel.FULL
             assert kwargs["policy"].fail_closed
             return "binder"
@@ -83,6 +84,7 @@ def test_given_explicit_consent_when_running_then_recording_is_opt_in_and_connec
             "--allow-model-calls",
             "--token-env",
             token_env,
+            *(["--constitution-key", constitution_key] if constitution_key else []),
             *options,
         ]
     ) == (1 if failure else 0)

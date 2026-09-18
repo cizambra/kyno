@@ -47,7 +47,7 @@ def test_given_no_constitution_when_get_constitution_requests_v1_then_default_v1
     assert direction.mission == "Default first"
 
 
-def test_given_distinct_histories_when_changes_since_has_no_selection_then_default_changes_return(
+def test_given_no_constitution_when_changes_since_reads_after_v1_then_default_v2_changes_return(
     plane, default_selection
 ):
     changes = plane.changes_since(1, **default_selection)

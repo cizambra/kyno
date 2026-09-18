@@ -40,14 +40,15 @@ def test_given_rich_updates_when_changes_since_is_called_then_local_and_mcp_cont
 
     detail_arguments = {} if detail is None else {"detail": detail}
     local = LocalDirectionSource(control_plane).changes_since(
-        last_seen_version, "support", **detail_arguments
+        last_seen_version, constitution_key="support", **detail_arguments
     )
     remote = McpDirectionSource(runner).changes_since(
-        last_seen_version, "support", **detail_arguments
+        last_seen_version, constitution_key="support", **detail_arguments
     )
 
     assert local.changes == remote.changes
     assert local.recording is None
+
     assert local.changes.declaration == (
         "Explain support decisions." if detail == DetailLevel.FULL else ""
     )
@@ -82,3 +83,17 @@ def test_given_unwritten_direction_when_changes_since_runs_then_both_sources_ret
     assert local.changes.change_notes == ()
     assert local.changes.delta == ()
     assert local.recording is None
+
+
+@pytest.mark.parametrize("selection", [{}, {"constitution_key": None}])
+def test_given_default_selection_when_direction_sources_pull_then_default_direction_is_returned(
+    mcp_runner, selection
+):
+    runner, control_plane = mcp_runner
+    control_plane.apply_direction(mission="Default mission", change_note="Initial")
+
+    local = LocalDirectionSource(control_plane).changes_since(0, **selection)
+    remote = McpDirectionSource(runner).changes_since(0, **selection)
+
+    assert local.changes == remote.changes
+    assert local.changes.mission == "Default mission"

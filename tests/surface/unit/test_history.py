@@ -148,7 +148,9 @@ def test_given_version_selection_when_get_constitution_is_called_then_exact_tool
     session = SimpleNamespace(call_tool=AsyncMock(return_value=reply(payload)))
     runner = Mock()
     runner.call.side_effect = lambda callback: asyncio.run(callback(session))
-    result = KynoConnection(runner).get_constitution("example", version=version, detail=detail)
+    result = KynoConnection(runner).get_constitution(
+        constitution_key="example", version=version, detail=detail
+    )
     assert result.version == returned_version
     assert result.detail is detail
     expected = {"constitution_key": "example", "detail": detail.value}
@@ -211,7 +213,7 @@ def test_given_normalizable_key_when_get_constitution_runs_then_request_uses_nor
     runner = Mock()
     runner.call.side_effect = lambda operation: asyncio.run(operation(session))
     direction = history.get_constitution(runner, key)
-    assert direction.constitution == expected
+    assert direction.constitution_key == expected
     session.call_tool.assert_awaited_once_with(
         "get_constitution", {"constitution_key": expected, "detail": "compact"}
     )

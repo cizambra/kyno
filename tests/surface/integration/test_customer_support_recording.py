@@ -30,7 +30,7 @@ def test_given_explicit_consent_when_running_then_recording_is_opt_in_and_connec
             "event": "direction_supplied",
             "run_id": "run",
             "step_id": "first_answer",
-            "constitution": "support",
+            "constitution_key": "support",
             "version": 1,
             "status": "pulled",
         },

@@ -1,4 +1,4 @@
-[kyno:direction constitution=default version=2]
+[kyno:direction constitution_key=default version=2]
 Mission: Ship a lending product people trust
 Principles:
 - Approve in minutes, not days

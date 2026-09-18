@@ -1,11 +1,62 @@
 """MCP protocol behavior at the server boundary."""
 
 import asyncio
+import json
 
 import pytest
 
 from kyno.mcp import handlers as mcp_handlers, server as mcp_server
 from kyno.wire import RESOURCE_URI
+
+
+@pytest.mark.parametrize("arguments", [{}, {"constitution_key": None}])
+def test_given_default_direction_when_mcp_selector_is_omitted_or_null_then_default_is_read(
+    mcp_runner, arguments
+):
+    runner, control_plane = mcp_runner
+    control_plane.apply_direction(mission="Default direction", change_note="initial")
+
+    result = runner.call(lambda session: session.call_tool("get_constitution", arguments))
+
+    assert not result.isError
+    assert json.loads(result.content[0].text)["mission"] == "Default direction"
+
+
+def test_given_padded_key_when_mcp_writes_then_trimmed_key_reads_the_same_direction(mcp_runner):
+    runner, control_plane = mcp_runner
+    written = runner.call(
+        lambda session: session.call_tool(
+            "apply_direction",
+            {
+                "constitution_key": " support ",
+                "mission": "Help customers",
+                "change_note": "initial",
+            },
+        )
+    )
+    assert not written.isError
+
+    result = runner.call(
+        lambda session: session.call_tool("get_constitution", {"constitution_key": "support"})
+    )
+
+    assert not result.isError
+    assert json.loads(result.content[0].text)["mission"] == "Help customers"
+    assert control_plane.current().version == 0
+
+
+def test_given_blank_key_when_mcp_writes_then_default_direction_is_unchanged(mcp_runner):
+    runner, control_plane = mcp_runner
+
+    result = runner.call(
+        lambda session: session.call_tool(
+            "apply_direction",
+            {"constitution_key": " ", "mission": "Help customers", "change_note": "initial"},
+        )
+    )
+
+    assert result.isError
+    assert control_plane.current().version == 0
 
 
 @pytest.mark.parametrize("version", [-1, True, False, 0.0, 1.0, 1.5, "1"])

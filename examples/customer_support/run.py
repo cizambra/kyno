@@ -11,7 +11,7 @@ from support import SCENARIO, parse_arguments, report, task_prompt, wait_for_ope
 
 import kyno
 from kyno.adapters.langgraph import KynoState, pull_before
-from kyno.sdk import DeliveryStatus, DetailLevel, PullPolicy
+from kyno.sdk import BindingStatus, DetailLevel, PullPolicy
 
 
 class State(KynoState):
@@ -26,7 +26,7 @@ class State(KynoState):
 
 def require_current_direction(state):
     """Refuse empty or fallback direction before planning or inference."""
-    if state["kyno_version"] == 0 or state["kyno_delivery_status"] != DeliveryStatus.CURRENT:
+    if state["kyno_version"] == 0 or state["kyno_binding_status"] != BindingStatus.PULLED:
         raise ValueError("A current, written constitution is required before calling the model")
 
 
@@ -48,7 +48,7 @@ def supplied_direction_event(state, identity, messages):
         "boundary": "before_model_call",
         "constitution": state["kyno_constitution"],
         "version": state["kyno_version"],
-        "status": state["kyno_delivery_status"],
+        "status": state["kyno_binding_status"],
         "context": state["kyno_context"],
         "direction": messages[0]["content"],
         "scenario": SCENARIO,

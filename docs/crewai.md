@@ -66,7 +66,7 @@ binder = connection.binder("customer-support", policy=PullPolicy(fail_closed=Tru
 ```
 
 Pass this binder to `CrewAiKyno` before registering the hook. See the
-[shared failure and status reference](adapters.md#inspecting-delivery-status).
+[shared failure and status reference](adapters.md#inspecting-binding-status).
 
 ## Optional recording
 
@@ -89,8 +89,8 @@ application-owned list, not storage Kyno creates. Its `append` method
 is the observer; you do not need to override an adapter method.
 
 Each binding contains `direction`, `status`, and `recording`. The status is a
-`DeliveryStatus` enum: `current`, `cached`, or `empty`, with the
-[shared meanings](adapters.md#inspecting-delivery-status). Use
+`BindingStatus` enum: `pulled`, `cached`, or `empty`, with the
+[shared meanings](adapters.md#inspecting-binding-status). Use
 `binding.direction.render()` for the exact direction block, including
 the selected compact/full context, change notes, and delta. Later pulls
 do not change previously received bindings.

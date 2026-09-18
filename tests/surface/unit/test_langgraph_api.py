@@ -5,7 +5,7 @@ import pytest
 pytest.importorskip("langgraph")
 
 from kyno.adapters import langgraph  # noqa: E402
-from kyno.sdk.binding import DeliveryStatus, DirectionBinding  # noqa: E402
+from kyno.sdk.binding import BindingStatus, DirectionBinding  # noqa: E402
 from kyno.sdk.cell import Direction  # noqa: E402
 from kyno.sdk.recording import RecordingReceipt  # noqa: E402
 
@@ -34,7 +34,7 @@ def test_given_receipt_when_direction_node_or_pull_before_runs_then_state_has_re
     recording = RecordingReceipt(status=status, record_id=record_id) if status is not None else None
     binding = DirectionBinding(
         direction=Direction.empty("support"),
-        status=DeliveryStatus.CURRENT,
+        status=BindingStatus.PULLED,
         recording=recording,
     )
     binder = Mock(bind_with_status=Mock(return_value=binding))

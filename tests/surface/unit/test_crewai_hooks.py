@@ -7,7 +7,7 @@ pytest.importorskip("crewai")
 
 from kyno.adapters.crewai.hooks import CrewAiKyno  # noqa: E402
 from kyno.sdk.binder import DirectionBinder  # noqa: E402
-from kyno.sdk.binding import DeliveryStatus  # noqa: E402
+from kyno.sdk.binding import BindingStatus  # noqa: E402
 from kyno.sdk.cell import DIRECTION_MARKER  # noqa: E402
 from kyno.sdk.errors import KynoUnavailableError  # noqa: E402
 from kyno.sdk.policy import PullPolicy  # noqa: E402
@@ -112,7 +112,7 @@ def test_given_non_dict_message_when_before_llm_call_runs_then_message_is_kept(
     assert ctx.messages[0]["content"].startswith(DIRECTION_MARKER)
 
 
-@pytest.mark.parametrize("status", list(DeliveryStatus))
+@pytest.mark.parametrize("status", list(BindingStatus))
 @pytest.mark.parametrize("context", list(DetailLevel))
 def test_given_observer_when_before_llm_call_runs_then_binding_is_reported_after_injection(
     scripted_source, status, context
@@ -124,9 +124,9 @@ def test_given_observer_when_before_llm_call_runs_then_binding_is_reported_after
         delta=("Mission changed.",),
     )
     binder = DirectionBinder(scripted_source, "support", context=context)
-    if status is DeliveryStatus.CACHED:
+    if status is BindingStatus.CACHED:
         binder.bind()
-    if status is not DeliveryStatus.CURRENT:
+    if status is not BindingStatus.PULLED:
         scripted_source.failure = OSError("offline")
     scripted_source.calls.clear()
     messages = [{"role": "user", "content": "Help"}]
@@ -144,7 +144,7 @@ def test_given_observer_when_before_llm_call_runs_then_binding_is_reported_after
     assert binding.status is status
     assert binding.direction.constitution == "support"
     assert binding.direction.context is context
-    assert binding.direction.version == (0 if status is DeliveryStatus.EMPTY else 2)
+    assert binding.direction.version == (0 if status is BindingStatus.EMPTY else 2)
     assert captured_messages == messages
     assert messages[0]["content"] == binding.direction.render()
     assert ctx.messages is messages
@@ -182,7 +182,7 @@ def test_given_new_direction_when_before_llm_call_runs_again_then_prior_binding_
     assert first.direction.render() == first_block
     assert second.direction.version == 2
     assert second.direction.render() == ctx.messages[0]["content"]
-    assert first.status is second.status is DeliveryStatus.CURRENT
+    assert first.status is second.status is BindingStatus.PULLED
     assert len(ctx.messages) == 1
 
 
@@ -261,7 +261,7 @@ def test_given_same_version_when_before_llm_call_runs_twice_then_observer_is_not
 
     first, second = observed
     assert first.direction.version == second.direction.version == 2
-    assert first.status is second.status is DeliveryStatus.CURRENT
+    assert first.status is second.status is BindingStatus.PULLED
     assert first.direction.render() == first_block
     assert second.direction.render() == ctx.messages[0]["content"]
     assert second.direction.change_notes == ()
@@ -284,7 +284,7 @@ def test_given_prior_observer_error_when_before_llm_call_runs_again_then_observe
     first, second = [call.args[0] for call in observer.call_args_list]
     assert (first.direction.version, second.direction.version) == (1, 2)
     assert second.direction.render() == ctx.messages[0]["content"]
-    assert second.status is DeliveryStatus.CURRENT
+    assert second.status is BindingStatus.PULLED
     assert sum("direction observer failed" in record.message for record in caplog.records) == 1
 
 

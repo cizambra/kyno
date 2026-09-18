@@ -13,7 +13,7 @@ from crewai.hooks import LLMCallHookContext, get_before_llm_call_hooks  # noqa: 
 
 from kyno.adapters.crewai import CrewAiKyno  # noqa: E402
 from kyno.sdk import (  # noqa: E402
-    DeliveryStatus,
+    BindingStatus,
     DirectionBinder,
     DirectionResponse,
     RecordingReceipt,
@@ -67,7 +67,7 @@ def test_given_registered_hook_when_before_llm_call_runs_then_observer_sees_inje
     binding, captured = observed[0]
     assert captured == messages
     assert binding.direction.render() == messages[0]["content"]
-    assert binding.status == "current"
+    assert binding.status == "pulled"
     assert source.changes_since.call_count == 1
 
 
@@ -124,9 +124,9 @@ def test_given_saved_direction_when_before_llm_call_refreshes_then_app_can_asses
 
 
 @pytest.mark.parametrize("recording_status", ["recorded", "disabled", "failed", None])
-@pytest.mark.parametrize("delivery_status", list(DeliveryStatus))
+@pytest.mark.parametrize("binding_status", list(BindingStatus))
 def test_given_receipt_when_before_llm_call_runs_then_observer_receives_injected_direction_receipt(
-    recording_status, delivery_status
+    recording_status, binding_status
 ):
     receipt = (
         RecordingReceipt(
@@ -145,9 +145,9 @@ def test_given_receipt_when_before_llm_call_runs_then_observer_receives_injected
         )
     )
     binder = DirectionBinder(source)
-    if delivery_status is DeliveryStatus.CACHED:
+    if binding_status is BindingStatus.CACHED:
         binder.bind()
-    if delivery_status is not DeliveryStatus.CURRENT:
+    if binding_status is not BindingStatus.PULLED:
         source.changes_since.side_effect = OSError("offline")
     source.changes_since.reset_mock()
     executor = SimpleNamespace(
@@ -164,8 +164,8 @@ def test_given_receipt_when_before_llm_call_runs_then_observer_receives_injected
     assert adapter.before_llm_call(context) is None
 
     assert len(observed) == 1
-    assert observed[0].status is delivery_status
-    assert observed[0].recording is (None if delivery_status is DeliveryStatus.EMPTY else receipt)
+    assert observed[0].status is binding_status
+    assert observed[0].recording is (None if binding_status is BindingStatus.EMPTY else receipt)
     assert source.changes_since.call_count == 1
 
 

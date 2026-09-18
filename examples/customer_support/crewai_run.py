@@ -10,14 +10,14 @@ from support import SCENARIO, parse_arguments, report, task_prompt, wait_for_ope
 
 import kyno
 from kyno.adapters.crewai import CrewAiKyno
-from kyno.sdk import DeliveryStatus, DetailLevel, PullPolicy
+from kyno.sdk import BindingStatus, DetailLevel, PullPolicy
 
 os.environ["PYTHON_DOTENV_DISABLED"] = "1"
 
 
 def require_current_direction(binding):
     """Reject empty or fallback direction before inference or reviewing a plan."""
-    if binding.direction.version == 0 or binding.status != DeliveryStatus.CURRENT:
+    if binding.direction.version == 0 or binding.status != BindingStatus.PULLED:
         raise ValueError("A current, written constitution is required before calling the model")
 
 

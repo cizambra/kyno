@@ -18,7 +18,7 @@ import kyno.config as _config
 import kyno.sdk.client as _client
 import kyno.sdk.history as _history
 from kyno.sdk.binder import DirectionBinder
-from kyno.sdk.binding import DeliveryStatus, DirectionBinding
+from kyno.sdk.binding import BindingStatus, DirectionBinding
 from kyno.sdk.cell import (
     DIRECTION_MARKER,
     Direction,
@@ -41,7 +41,7 @@ __all__ = [
     "DeliveryPage",
     "DeliveryRecord",
     "DeliverySummary",
-    "DeliveryStatus",
+    "BindingStatus",
     "DirectionBinding",
     "DIRECTION_MARKER",
     "Direction",

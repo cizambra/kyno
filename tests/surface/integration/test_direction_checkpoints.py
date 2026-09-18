@@ -1,4 +1,4 @@
-"""LangGraph preserves the direction and delivery status supplied to each work node."""
+"""LangGraph preserves the direction and binding status supplied to each work node."""
 
 import json
 from dataclasses import replace
@@ -21,7 +21,7 @@ from kyno.adapters.langgraph import (  # noqa: E402
     direction_update,
     pull_before,
 )
-from kyno.sdk import DeliveryStatus, DirectionBinder, DirectionResponse, PullPolicy  # noqa: E402
+from kyno.sdk import BindingStatus, DirectionBinder, DirectionResponse, PullPolicy  # noqa: E402
 from kyno.sdk.cell import Direction  # noqa: E402
 from kyno.sdk.errors import KynoUnavailableError  # noqa: E402
 from kyno.wire.models import ChangesSince, DetailLevel  # noqa: E402
@@ -57,15 +57,15 @@ def receipt(state):
 
 
 @pytest.mark.parametrize("wrapper", [False, True], ids=["direction-node", "pull-before"])
-@pytest.mark.parametrize("status", list(DeliveryStatus))
+@pytest.mark.parametrize("status", list(BindingStatus))
 @pytest.mark.parametrize("context", list(DetailLevel))
 def test_given_a_binding_when_work_is_checkpointed_then_its_exact_direction_and_status_survive(
     source, wrapper, status, context
 ):
     binder = DirectionBinder(source, "support", context=context)
-    if status is DeliveryStatus.CACHED:
+    if status is BindingStatus.CACHED:
         binder.bind()
-    if status is not DeliveryStatus.CURRENT:
+    if status is not BindingStatus.PULLED:
         source.changes_since.side_effect = OSError("offline")
     source.changes_since.reset_mock()
     graph = StateGraph(ReceiptState)
@@ -82,14 +82,14 @@ def test_given_a_binding_when_work_is_checkpointed_then_its_exact_direction_and_
 
     assert source.changes_since.call_count == 1
     assert restored == result
-    assert restored["kyno_delivery_status"] is status
-    assert restored["receipts"][0]["kyno_delivery_status"] is status
+    assert restored["kyno_binding_status"] is status
+    assert restored["receipts"][0]["kyno_binding_status"] is status
     serialized = json.loads(json.dumps(restored))
-    assert serialized["kyno_delivery_status"] == status.value
-    assert type(serialized["kyno_delivery_status"]) is str
+    assert serialized["kyno_binding_status"] == status.value
+    assert type(serialized["kyno_binding_status"]) is str
     assert restored["receipts"][0]["kyno_direction"] == restored["kyno_direction"]
     assert restored["kyno_constitution"] == "support"
-    if status is DeliveryStatus.EMPTY:
+    if status is BindingStatus.EMPTY:
         expected = Direction.empty("support", context)
     else:
         expected = Direction.from_changes(
@@ -99,9 +99,9 @@ def test_given_a_binding_when_work_is_checkpointed_then_its_exact_direction_and_
     assert direction_from_state(restored) == expected
     assert direction_from_state(restored["receipts"][0]) == expected
     normalized = direction_update(
-        direction_from_state(serialized), status=serialized["kyno_delivery_status"]
+        direction_from_state(serialized), status=serialized["kyno_binding_status"]
     )
-    assert normalized["kyno_delivery_status"] is status
+    assert normalized["kyno_binding_status"] is status
 
 
 def test_given_checkpointed_direction_when_resuming_without_a_pull_then_its_status_is_unchanged(
@@ -124,7 +124,7 @@ def test_given_checkpointed_direction_when_resuming_without_a_pull_then_its_stat
     resumed = app.invoke(None, config)
 
     assert source.changes_since.call_count == 1
-    assert resumed["receipts"][0]["kyno_delivery_status"] is DeliveryStatus.CURRENT
+    assert resumed["receipts"][0]["kyno_binding_status"] is BindingStatus.PULLED
     assert resumed["receipts"][0]["kyno_direction"] == paused["kyno_direction"]
 
 
@@ -157,8 +157,8 @@ def test_given_two_current_step_receipts_when_next_pull_fails_then_only_new_rece
 
     first, second, fallback = result["receipts"]
     assert first == second
-    assert first["kyno_delivery_status"] == "current"
-    assert fallback["kyno_delivery_status"] == "cached"
+    assert first["kyno_binding_status"] == "pulled"
+    assert fallback["kyno_binding_status"] == "cached"
     assert fallback["kyno_direction"] == first["kyno_direction"]
     assert source.changes_since.call_count == 2
 
@@ -178,12 +178,12 @@ def test_given_current_status_when_direction_lacks_metadata_then_checkpoint_stat
     )
     config = {"configurable": {"thread_id": "unknown"}}
 
-    app.invoke({"kyno_delivery_status": "current"}, config)
+    app.invoke({"kyno_binding_status": "pulled"}, config)
 
-    assert app.get_state(config).values["kyno_delivery_status"] is None
+    assert app.get_state(config).values["kyno_binding_status"] is None
 
 
-def test_given_state_without_delivery_metadata_when_work_runs_then_no_current_status_is_invented():
+def test_given_state_without_binding_metadata_when_work_runs_then_no_pulled_status_is_invented():
     app = (
         StateGraph(ReceiptState)
         .add_node("work", receipt)
@@ -194,8 +194,8 @@ def test_given_state_without_delivery_metadata_when_work_runs_then_no_current_st
 
     result = app.invoke({}, {"configurable": {"thread_id": "missing"}})
 
-    assert "kyno_delivery_status" not in result
-    assert "kyno_delivery_status" not in result["receipts"][0]
+    assert "kyno_binding_status" not in result
+    assert "kyno_binding_status" not in result["receipts"][0]
 
 
 @pytest.mark.parametrize("cached", [False, True])
@@ -224,7 +224,7 @@ def test_given_fail_closed_when_the_pull_fails_then_downstream_work_does_not_run
 
 @pytest.mark.parametrize("wrapper", [False, True], ids=["direction-node", "pull-before"])
 @pytest.mark.parametrize("failed_read", [False, True], ids=["unchanged", "recovered"])
-def test_given_the_same_version_when_read_succeeds_then_new_step_status_is_saved_as_current(
+def test_given_the_same_version_when_read_succeeds_then_new_step_status_is_saved_as_pulled(
     source, wrapper, failed_read
 ):
     initial = source.changes_since.return_value.changes
@@ -253,25 +253,25 @@ def test_given_the_same_version_when_read_succeeds_then_new_step_status_is_saved
     first_block = first["kyno_direction"]
     if failed_read:
         fallback = app.invoke({}, config)
-        assert fallback["kyno_delivery_status"] == "cached"
+        assert fallback["kyno_binding_status"] == "cached"
 
     result = app.invoke({}, config)
     saved = app.get_state(config).values
 
     assert saved == result
     assert saved["kyno_version"] == 2
-    assert saved["kyno_delivery_status"] == "current"
+    assert saved["kyno_binding_status"] == "pulled"
     assert saved["kyno_direction"] == Direction.from_changes(unchanged, "default").render()
     assert direction_from_state(saved) == Direction.from_changes(unchanged, "default")
     assert direction_from_state(saved["receipts"][0]) == Direction.from_changes(initial, "default")
     assert saved["receipts"][0]["kyno_direction"] == first_block
-    assert saved["receipts"][0]["kyno_delivery_status"] == "current"
+    assert saved["receipts"][0]["kyno_binding_status"] == "pulled"
     assert saved["receipts"][-1]["kyno_direction"] == saved["kyno_direction"]
-    assert saved["receipts"][-1]["kyno_delivery_status"] == "current"
+    assert saved["receipts"][-1]["kyno_binding_status"] == "pulled"
     if failed_read:
-        assert saved["receipts"][1]["kyno_delivery_status"] == "cached"
+        assert saved["receipts"][1]["kyno_binding_status"] == "cached"
         assert saved["receipts"][1]["kyno_direction"] == first_block
-        assert fallback["kyno_delivery_status"] == "cached"
+        assert fallback["kyno_binding_status"] == "cached"
     assert len(saved["receipts"]) == len(replies)
     assert source.changes_since.call_count == len(replies)
 
@@ -317,5 +317,5 @@ def test_given_rich_direction_when_fields_are_removed_then_only_new_receipts_cle
     assert (
         saved_state_after_second_run["receipts"][1]["kyno_direction"] == revised_direction.render()
     )
-    assert saved_state_after_second_run["kyno_delivery_status"] == "current"
+    assert saved_state_after_second_run["kyno_binding_status"] == "pulled"
     assert source.changes_since.call_count == 2

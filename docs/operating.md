@@ -370,7 +370,7 @@ can be distinguished.
 Revoking a token stops subsequent authenticated requests using it. It
 does not remove direction already cached by agents, cancel running work,
 or undo completed actions. A read failure may still use cached direction
-under the application's [configured failure policy](adapters.md#inspecting-delivery-status).
+under the application's [configured failure policy](adapters.md#inspecting-binding-status).
 
 ### Minting and revoking tokens
 

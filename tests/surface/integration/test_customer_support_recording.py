@@ -32,7 +32,7 @@ def test_given_explicit_consent_when_running_then_recording_is_opt_in_and_connec
             "step_id": "first_answer",
             "constitution": "support",
             "version": 1,
-            "status": "current",
+            "status": "pulled",
         },
         {"event": "model_output", "response": {"content": "Unmodified output"}},
     ]

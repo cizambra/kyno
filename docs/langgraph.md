@@ -52,7 +52,7 @@ and your configured chat model:
 
 ```python
 from kyno.adapters.langgraph import KynoState, pull_before
-from kyno.sdk import DeliveryStatus
+from kyno.sdk import BindingStatus
 
 SCENARIO = (
     "A customer paid $40 for express delivery. The package arrived two days late. "
@@ -69,7 +69,7 @@ class State(KynoState, total=False):
 
 @pull_before(binder)
 def answer(state):
-    if state["kyno_version"] == 0 or state["kyno_delivery_status"] != DeliveryStatus.CURRENT:
+    if state["kyno_version"] == 0 or state["kyno_binding_status"] != BindingStatus.PULLED:
         raise ValueError("A current, written constitution is required before calling the model")
     messages = [
         {"role": "system", "content": state["kyno_direction"]},
@@ -90,16 +90,19 @@ receipt storage, run IDs, or step IDs for this integration to work.
 ## What Kyno provides
 
 Before your work node runs, `direction_node` or `pull_before` supplies the
-direction and sets `state["kyno_delivery_status"]` automatically. Your application
+direction and sets `state["kyno_binding_status"]` automatically. Your application
 does not need to set or convert this value. It is one of three named values
-from `DeliveryStatus`, imported from `kyno.sdk`:
+from `BindingStatus`, imported from `kyno.sdk`:
 
-- `DeliveryStatus.CURRENT`: the read succeeded at this step's direction boundary.
-- `DeliveryStatus.CACHED`: the read failed, so Kyno supplied previously read direction.
-- `DeliveryStatus.EMPTY`: the read failed and no cached direction was available.
+- `BindingStatus.PULLED`: this binding uses direction from a successful read,
+  including an unchanged or unwritten constitution.
+- `BindingStatus.CACHED`: the binder retained direction after a failed read,
+  or kept a newer cached version when an older overlapping response arrived.
+- `BindingStatus.EMPTY`: the read failed and no cached direction was available.
 
-The status describes how this step received its direction, not whether the
-model followed it. See the [shared status reference](adapters.md#inspecting-delivery-status).
+The status describes how this step received its direction. It does not establish
+that the version is still the newest or that the model followed it. See the
+[shared status reference](adapters.md#inspecting-binding-status).
 
 ### Optional: LangGraph checkpoints
 
@@ -107,9 +110,9 @@ A checkpoint is a saved snapshot of a workflow's state that LangGraph can use to
 the workflow later. A checkpointer is the component that saves and loads
 those snapshots. See [LangGraph's persistence documentation](https://docs.langchain.com/oss/python/langgraph/persistence).
 
-Kyno adds direction and delivery status to graph state. If your graph uses
+Kyno adds direction and binding status to graph state. If your graph uses
 a LangGraph checkpointer, it saves those fields alongside the rest of the
-workflow's state. LangGraph's default serializer restores the `DeliveryStatus`
+workflow's state. LangGraph's default serializer restores the `BindingStatus`
 enum when you load that checkpoint; no manual conversion is needed.
 Kyno does not configure checkpoint storage for you. You do not need
 checkpointing just to give your agents direction.
@@ -140,7 +143,7 @@ graph.invoke({}, config)
 checkpoint = graph.get_state(config)
 saved = checkpoint.values
 print("Saved direction version:", saved["kyno_version"])
-print("Delivery status at that step:", saved["kyno_delivery_status"].value)
+print("Binding status at that step:", saved["kyno_binding_status"].value)
 print("Saved answer:", saved["output"])
 ```
 
@@ -151,9 +154,9 @@ that thread's latest checkpoint; `checkpoint.values` is the dictionary of
 saved state fields.
 
 The first printed line identifies the direction version supplied to that
-step. The second says how it was obtained: for example, `current` means the
+step. The second says how it was obtained: for example, `pulled` means the
 read succeeded at that step. `.value` gets this text from the saved
-`DeliveryStatus` enum. Reading the checkpoint does not contact Kyno, so it
+`BindingStatus` enum. Reading the checkpoint does not contact Kyno, so it
 cannot tell you whether a newer direction version has since been applied.
 
 `InMemorySaver` keeps checkpoints only in this Python process. To retain
@@ -163,7 +166,7 @@ JSONL recording is a separate feature.
 
 A direction node before a fan-out supplies the same snapshot to its branches.
 Later pulls do not change earlier receipts. Resuming a checkpoint without
-another pull preserves the original delivery status; it does not establish
+another pull preserves the original binding status; it does not establish
 that the saved version is still current. Work nodes should leave the
 `kyno_` direction keys unchanged so the checkpoint describes their input.
 
@@ -190,7 +193,7 @@ binder = connection.binder(
 
 This is the same binder configuration used in the setup section; you do not need
 to create it a second time.
-See the [shared failure and status reference](adapters.md#inspecting-delivery-status).
+See the [shared failure and status reference](adapters.md#inspecting-binding-status).
 
 ## Optional recording
 
@@ -200,7 +203,7 @@ the direction through graph state and checkpoints; it is not added to the
 model's direction text. A `recorded` receipt contains a `record_id` that
 identifies a stored Kyno delivery record. A `disabled` or `failed` receipt
 has no record ID. These recording statuses are separate from
-`kyno_delivery_status`, which describes whether direction was read or cached.
+`kyno_binding_status`, which describes whether direction was read or cached.
 
 Recording is disabled by default. When recording succeeds, the record
 describes Core's direction response before your graph uses it. That record
@@ -291,7 +294,7 @@ class State(KynoState, total=False):
 
 @pull_before(binder)
 def answer(state):
-    if state["kyno_version"] == 0 or state["kyno_delivery_status"] != DeliveryStatus.CURRENT:
+    if state["kyno_version"] == 0 or state["kyno_binding_status"] != BindingStatus.PULLED:
         raise ValueError("A current, written constitution is required before calling the model")
     direction = direction_from_state(state)
     supplied_message = state["kyno_direction"]

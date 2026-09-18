@@ -7,7 +7,7 @@ import pytest
 
 from kyno.errors import UnknownVersionError
 from kyno.sdk.binder import DirectionBinder
-from kyno.sdk.binding import DeliveryStatus
+from kyno.sdk.binding import BindingStatus
 from kyno.sdk.cell import Direction
 from kyno.sdk.client import DirectionResponse
 from kyno.sdk.errors import KynoUnavailableError
@@ -159,7 +159,7 @@ def test_given_current_direction_when_bind_with_status_succeeds_then_no_fallback
 
     binding = DirectionBinder(scripted_source).bind_with_status()
 
-    assert binding.status is DeliveryStatus.CURRENT
+    assert binding.status is BindingStatus.PULLED
     assert caplog.record_tuples == []
 
 
@@ -173,7 +173,7 @@ def test_given_error_log_level_when_bind_with_status_falls_back_then_warning_is_
     with caplog.at_level(logging.ERROR, logger="kyno.sdk.binder"):
         binding = binder.bind_with_status()
 
-    assert binding.status is DeliveryStatus.EMPTY
+    assert binding.status is BindingStatus.EMPTY
     assert caplog.record_tuples == []
 
 
@@ -208,8 +208,8 @@ def test_given_binders_when_bind_with_status_fails_then_logs_name_each_constitut
     support_binding = support.bind_with_status()
     sales_binding = sales.bind_with_status()
 
-    assert support_binding.status is DeliveryStatus.CACHED
-    assert sales_binding.status is DeliveryStatus.EMPTY
+    assert support_binding.status is BindingStatus.CACHED
+    assert sales_binding.status is BindingStatus.EMPTY
     records = [record for record in caplog.records if record.name == "kyno.sdk.binder"]
     assert [record.levelno for record in records] == [logging.WARNING, logging.WARNING]
     assert [record.getMessage() for record in records] == [
@@ -346,13 +346,13 @@ def test_given_a_compact_binding_when_pulling_then_kyno_is_asked_for_the_compact
 
 
 @pytest.mark.parametrize("version", [0, 3])
-def test_given_an_authoritative_reply_when_binding_with_status_then_it_is_current(
+def test_given_an_authoritative_reply_when_binding_with_status_then_it_is_pulled(
     scripted_source, version
 ):
     scripted_source.set("sales", version, "Mission" if version else "")
     binder = DirectionBinder(scripted_source, "sales")
     binding = binder.bind_with_status()
-    assert binding.status is DeliveryStatus.CURRENT
+    assert binding.status == "pulled"
     assert binding.direction.version == version
     assert binding.direction.constitution == "sales"
     assert scripted_source.calls == [(0, "sales")]
@@ -368,16 +368,16 @@ def test_given_a_cached_version_when_the_pull_fails_then_the_binding_is_cached(
     first = binder.bind_with_status()
     scripted_source.failure = failure
     fallback = binder.bind_with_status()
-    assert fallback.status is DeliveryStatus.CACHED
+    assert fallback.status is BindingStatus.CACHED
     assert fallback.direction is first.direction
-    assert first.status is DeliveryStatus.CURRENT
+    assert first.status is BindingStatus.PULLED
 
 
 def test_given_no_cached_direction_when_the_pull_fails_then_the_binding_is_empty(scripted_source):
     scripted_source.failure = OSError("offline")
     binder = DirectionBinder(scripted_source, "sales", context=DetailLevel.FULL)
     binding = binder.bind_with_status()
-    assert binding.status is DeliveryStatus.EMPTY
+    assert binding.status is BindingStatus.EMPTY
     assert binding.direction == Direction.empty("sales", DetailLevel.FULL)
 
 
@@ -399,7 +399,7 @@ def test_given_an_unexpected_error_when_binding_with_status_then_it_propagates(s
 
 
 @pytest.mark.parametrize("cached", [False, True])
-def test_given_a_failed_pull_when_the_source_recovers_then_a_new_binding_is_current(
+def test_given_a_failed_pull_when_the_source_recovers_then_a_new_binding_is_pulled(
     scripted_source, cached
 ):
     binder = DirectionBinder(scripted_source, "sales")
@@ -411,9 +411,9 @@ def test_given_a_failed_pull_when_the_source_recovers_then_a_new_binding_is_curr
     scripted_source.failure = None
     scripted_source.set("sales", 2, "New")
     recovered = binder.bind_with_status()
-    assert recovered.status is DeliveryStatus.CURRENT
+    assert recovered.status is BindingStatus.PULLED
     assert recovered.direction.version == 2
-    assert fallback.status is (DeliveryStatus.CACHED if cached else DeliveryStatus.EMPTY)
+    assert fallback.status is (BindingStatus.CACHED if cached else BindingStatus.EMPTY)
 
 
 def test_given_only_sales_cached_when_support_pull_fails_then_support_binding_is_empty(
@@ -424,9 +424,9 @@ def test_given_only_sales_cached_when_support_pull_fails_then_support_binding_is
     scripted_source.set("sales", 3, "Sales")
     sales.bind_with_status()
     scripted_source.failure = OSError("offline")
-    assert sales.bind_with_status().status is DeliveryStatus.CACHED
+    assert sales.bind_with_status().status is BindingStatus.CACHED
     support = support_binder.bind_with_status()
-    assert support.status is DeliveryStatus.EMPTY
+    assert support.status is BindingStatus.EMPTY
     assert support.direction.constitution == "support"
 
 
@@ -439,8 +439,8 @@ def test_given_an_older_reply_when_the_cell_holds_newer_direction_then_the_bindi
     scripted_source.set("sales", 4, "Old")
     retained = binder.bind_with_status()
     assert retained.direction is first.direction
-    assert retained.status is DeliveryStatus.CACHED
-    assert first.status is DeliveryStatus.CURRENT
+    assert retained.status is BindingStatus.CACHED
+    assert first.status is BindingStatus.PULLED
 
 
 def test_given_uncached_sales_when_bind_is_called_then_it_returns_direction_after_one_pull(
@@ -466,9 +466,9 @@ def test_given_two_binders_when_only_one_has_cached_direction_then_failed_pulls_
     populated = first.bind_with_status()
     empty = second.bind_with_status()
 
-    assert populated.status is DeliveryStatus.CACHED
+    assert populated.status is BindingStatus.CACHED
     assert populated.direction is original
-    assert empty.status is DeliveryStatus.EMPTY
+    assert empty.status is BindingStatus.EMPTY
     assert empty.direction == Direction.empty("default", context)
     assert empty.recording is None
 
@@ -502,7 +502,7 @@ def test_given_server_receipt_when_bind_with_status_runs_then_recording_is_separ
     binding = DirectionBinder(source, "sales").bind_with_status()
 
     assert binding.recording is receipt
-    assert binding.status is DeliveryStatus.CURRENT
+    assert binding.status is BindingStatus.PULLED
     assert "recording" not in binding.direction.to_dict()
     assert "record-1" not in binding.direction.render()
 
@@ -544,13 +544,13 @@ def test_given_later_response_when_bind_with_status_runs_then_cached_receipt_is_
     assert first.direction.version == 3
     assert second.recording is recording
     assert second.direction.version == version
-    assert second.status is DeliveryStatus.CURRENT
+    assert second.status is BindingStatus.PULLED
 
     scripted_source.failure = OSError("offline")
     fallback = binder.bind_with_status()
     assert fallback.recording is recording
     assert fallback.direction is second.direction
-    assert fallback.status is DeliveryStatus.CACHED
+    assert fallback.status is BindingStatus.CACHED
 
 
 @pytest.mark.parametrize(
@@ -594,7 +594,7 @@ def test_given_two_binders_when_pulls_fail_then_each_returns_its_own_direction_a
     assert first_fallback.recording is recording
     assert second_fallback.direction is other.direction
     assert second_fallback.recording is other.recording
-    assert first_fallback.status is second_fallback.status is DeliveryStatus.CACHED
+    assert first_fallback.status is second_fallback.status is BindingStatus.CACHED
 
 
 def test_given_empty_cache_when_bind_with_status_cannot_pull_then_recording_is_none(
@@ -643,7 +643,7 @@ def test_given_two_binders_when_pulls_overlap_then_each_caches_its_own_direction
     assert first_binding.recording is first_response.recording
     assert second_binding.direction.version == 5
     assert second_binding.recording is second_response.recording
-    assert first_binding.status is second_binding.status is DeliveryStatus.CURRENT
+    assert first_binding.status is second_binding.status is BindingStatus.PULLED
 
     scripted_source.failure = OSError("offline")
     first_fallback = first.bind_with_status()
@@ -652,7 +652,7 @@ def test_given_two_binders_when_pulls_overlap_then_each_caches_its_own_direction
     assert first_fallback.recording is first_binding.recording
     assert second_fallback.direction is second_binding.direction
     assert second_fallback.recording is second_binding.recording
-    assert first_fallback.status is second_fallback.status is DeliveryStatus.CACHED
+    assert first_fallback.status is second_fallback.status is BindingStatus.CACHED
 
 
 @pytest.mark.parametrize(
@@ -696,7 +696,7 @@ def test_given_late_reply_when_bind_with_status_runs_then_only_older_versions_ke
     if older_version < 5:
         assert retained.recording is newer.recording
         assert retained.direction is current.direction
-        assert retained.status is DeliveryStatus.CACHED
+        assert retained.status is BindingStatus.CACHED
     else:
         assert retained.recording is older.recording
-        assert retained.status is DeliveryStatus.CURRENT
+        assert retained.status is BindingStatus.PULLED

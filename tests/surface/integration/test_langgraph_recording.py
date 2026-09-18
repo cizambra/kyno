@@ -12,7 +12,7 @@ from langgraph.graph import END, START, StateGraph  # noqa: E402
 
 from kyno.adapters.langgraph import KynoState, direction_node  # noqa: E402
 from kyno.sdk import (  # noqa: E402
-    DeliveryStatus,
+    BindingStatus,
     DirectionBinder,
     DirectionResponse,
     RecordingReceipt,
@@ -25,9 +25,9 @@ class RecordedState(KynoState, total=False):
 
 
 @pytest.mark.parametrize("recording_status", ["recorded", "disabled", "failed", None])
-@pytest.mark.parametrize("delivery_status", list(DeliveryStatus))
+@pytest.mark.parametrize("binding_status", list(BindingStatus))
 def test_given_direction_node_checkpoint_when_graph_resumes_then_receipt_is_kept_without_repulling(
-    recording_status, delivery_status
+    recording_status, binding_status
 ):
     receipt = (
         RecordingReceipt(
@@ -46,9 +46,9 @@ def test_given_direction_node_checkpoint_when_graph_resumes_then_receipt_is_kept
         )
     )
     binder = DirectionBinder(source)
-    if delivery_status is DeliveryStatus.CACHED:
+    if binding_status is BindingStatus.CACHED:
         binder.bind()
-    if delivery_status is not DeliveryStatus.CURRENT:
+    if binding_status is not BindingStatus.PULLED:
         source.changes_since.side_effect = OSError("offline")
     source.changes_since.reset_mock()
 
@@ -75,12 +75,12 @@ def test_given_direction_node_checkpoint_when_graph_resumes_then_receipt_is_kept
     saved = graph.get_state(config).values
     expected = (
         {"status": receipt.status.value, "record_id": receipt.record_id}
-        if receipt is not None and delivery_status is not DeliveryStatus.EMPTY
+        if receipt is not None and binding_status is not BindingStatus.EMPTY
         else None
     )
 
     assert saved["kyno_recording"] == expected
-    assert saved["kyno_delivery_status"] is delivery_status
+    assert saved["kyno_binding_status"] is binding_status
     result = graph.invoke(None, config)
 
     assert result["answer_record"] == {

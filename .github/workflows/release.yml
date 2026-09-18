@@ -25,6 +25,25 @@ jobs:
       - run: python -m ruff format --check .
       - run: python -m pip install build
       - run: python -m build
+      - name: Accept the built wheel outside the checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          wheels=("$GITHUB_WORKSPACE"/dist/*.whl)
+          test "${#wheels[@]}" -eq 1
+          acceptance="$RUNNER_TEMP/kyno-wheel-acceptance"
+          python -m venv "$acceptance/venv"
+          "$acceptance/venv/bin/python" -m pip install "${wheels[0]}[dev,crewai,langgraph]"
+          mkdir "$acceptance/run"
+          cp -R tests "$acceptance/run/tests"
+          cp pyproject.toml "$acceptance/run/"
+          cd "$acceptance/run"
+          unset PYTHONPATH
+          "$acceptance/venv/bin/python" -c 'import sys, kyno, kyno.sdk, crewai.hooks, langgraph.graph; from pathlib import Path; assert Path(kyno.__file__).resolve().is_relative_to(Path(sys.prefix).resolve()), kyno.__file__; print(kyno.__file__)'
+          "$acceptance/venv/bin/kyno" --help
+          "$acceptance/venv/bin/python" -m pytest -q \
+            tests/core/e2e/test_deployment_e2e.py \
+            tests/surface/e2e/test_adapter_server_roundtrip.py
       - uses: actions/upload-artifact@v4
         with:
           name: dist

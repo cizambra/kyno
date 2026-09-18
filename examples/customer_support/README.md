@@ -30,7 +30,7 @@ sequenceDiagram
     Operator->>Kyno: Apply direction v1
     Graph->>Kyno: Pull before planning
     Kyno-->>Graph: v1
-    Graph->>Model: Direction and complaint; create a plan
+    Graph->>Model: Create a plan using direction and complaint
     Model-->>Graph: Plan
     Graph->>Kyno: Pull before drafting
     Kyno-->>Graph: Current direction
@@ -44,7 +44,7 @@ sequenceDiagram
     alt Direction is newer than the plan
         Graph->>Kyno: Pull before replanning
         Kyno-->>Graph: Current direction
-        Graph->>Model: Revise remaining plan; keep completed draft
+        Graph->>Model: Revise remaining plan using completed draft
         Model-->>Graph: Revised plan
     else Direction has not changed
         Graph->>Graph: Keep the plan

@@ -70,7 +70,7 @@ def test_given_a_read_token_when_reading_history_over_http_then_full_content_is_
             ).exit_code
             == 0
         )
-        options = ["--remote", "--token-env", "READER_TOKEN", "--constitution", "support"]
+        options = ["--remote", "--token-env", "READER_TOKEN", "--constitution-key", "support"]
 
         historical = runner.invoke(app, ["get-version", "1", *options])
         authored = runner.invoke(app, ["get-version", "1", "--yaml", *options])

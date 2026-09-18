@@ -141,7 +141,7 @@ def run_live(args, token):
         model = ChatOpenAI(model=args.model, max_retries=0, timeout=60)
         connection = stack.enter_context(kyno.connect(url=args.url, token=token))
         binder = connection.binder(
-            args.constitution, detail=DetailLevel.FULL, policy=PullPolicy(fail_closed=True)
+            args.constitution_key, detail=DetailLevel.FULL, policy=PullPolicy(fail_closed=True)
         )
         run_example(
             model,

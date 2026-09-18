@@ -99,7 +99,7 @@ mission: Lend in the EU the way the EU expects
 
 ```bash
 kyno apply eu.yaml --note "the EU edit"
-kyno current --constitution eu
+kyno current --constitution-key eu
 ```
 
 Reads take the name as an option, over MCP and on the CLI, and default to
@@ -117,10 +117,10 @@ direction currently in force. A number selects an earlier version without
 changing the current direction:
 
 ```bash
-kyno current --constitution eu
-kyno get-version latest --constitution eu
-kyno get-version 2 --constitution eu
-kyno get-version 2 --constitution eu --yaml > reviewed-v2.yaml
+kyno current --constitution-key eu
+kyno get-version latest --constitution-key eu
+kyno get-version 2 --constitution-key eu
+kyno get-version 2 --constitution-key eu --yaml > reviewed-v2.yaml
 ```
 
 Both commands accept `--remote`, `--profile`, `--credentials`, and
@@ -141,15 +141,15 @@ the existing ledger as JSON, preserving its version numbers, dates and
 authors:
 
 ```bash
-kyno export --constitution eu > eu-history.json
+kyno export --constitution-key eu > eu-history.json
 kyno import eu-history.json --as restored-eu
-kyno history --constitution restored-eu
+kyno history --constitution-key restored-eu
 ```
 
 Run `import` in a workspace whose database has been initialized with
 `kyno db init`. It writes directly to that local database and has no
 `--remote` option. An export can come from a remote instance:
-`kyno export --remote --constitution eu > eu-history.json`.
+`kyno export --remote --constitution-key eu > eu-history.json`.
 
 The export contains versions, not a constitution name or database ids
 for the constitution. `--as` chooses the target name; without it, import

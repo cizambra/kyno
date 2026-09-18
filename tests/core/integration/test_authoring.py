@@ -224,7 +224,9 @@ def test_given_a_named_file_when_applying_then_the_name_in_the_file_routes_it(db
     assert plane(db).current("default").version == 0
 
 
-@pytest.mark.parametrize("flag", ["--mission", "--declaration", "--principle", "--constitution"])
+@pytest.mark.parametrize(
+    "flag", ["--mission", "--declaration", "--principle", "--constitution-key"]
+)
 def test_given_a_content_or_name_flag_when_running_apply_then_it_is_rejected_as_unknown(
     db, tmp_path, flag
 ):

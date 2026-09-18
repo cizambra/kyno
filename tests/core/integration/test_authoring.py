@@ -5,6 +5,7 @@ import json
 import re
 
 import pytest
+import yaml
 from typer.testing import CliRunner
 
 from kyno.authoring import read_constitution_file
@@ -120,6 +121,29 @@ def test_given_a_json_file_when_reading_then_it_is_read_as_valid_yaml(tmp_path):
     body = json.dumps({"mission": "M", "principles": ["p1"]})
     read = read_constitution_file(write(tmp_path, body, "constitution.json"))
     assert read.mission == "M" and read.principles == (Principle("p1"),)
+
+
+@pytest.mark.parametrize("encode", [json.dumps, yaml.safe_dump], ids=["json", "yaml"])
+def test_given_a_padded_key_when_read_constitution_file_runs_then_it_returns_the_normalized_key(
+    tmp_path, encode
+):
+    body = encode({"constitution_key": " support-eu ", "mission": "Help customers"})
+
+    direction = read_constitution_file(write(tmp_path, body))
+
+    assert direction.constitution_key == "support-eu"
+    assert direction.mission == "Help customers"
+
+
+@pytest.mark.parametrize("key", [123, True, ["support"], {"key": "support"}])
+@pytest.mark.parametrize("encode", [json.dumps, yaml.safe_dump], ids=["json", "yaml"])
+def test_given_a_nontext_key_when_read_constitution_file_runs_then_it_rejects_the_key_field(
+    tmp_path, encode, key
+):
+    body = encode({"constitution_key": key, "mission": "Help customers"})
+
+    with pytest.raises(AuthoringError, match="constitution_key"):
+        read_constitution_file(write(tmp_path, body))
 
 
 def test_given_a_misspelled_field_when_reading_a_file_then_it_counts_as_custom(tmp_path):

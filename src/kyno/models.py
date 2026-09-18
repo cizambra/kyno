@@ -104,7 +104,7 @@ class PublicVersion:
 class PublicConstitution(HoldsPrinciples):
     """What an anonymous visitor is allowed to see of one constitution."""
 
-    name: str
+    constitution_key: str
     mission: str
     principles: tuple[Principle, ...]
     version: int
@@ -114,7 +114,7 @@ class PublicConstitution(HoldsPrinciples):
 
     def to_dict(self) -> dict:
         payload = {
-            "constitution": self.name,
+            "constitution_key": self.constitution_key,
             "mission": self.mission,
             "declaration": self.declaration,
             "principles": [p.to_dict() for p in self.principles],
@@ -130,7 +130,7 @@ class PublicConstitution(HoldsPrinciples):
     def to_summary(self) -> dict:
         """The index entry: enough to choose a constitution, not its full text."""
         return {
-            "constitution": self.name,
+            "constitution_key": self.constitution_key,
             "mission": self.mission,
             "version": self.version,
             "last_changed_at": self.last_changed_at.isoformat(),

@@ -5,9 +5,9 @@ from kyno.models import PublicConstitution
 from kyno.public_page import render_constitution, render_index
 
 
-def view(name, mission=""):
+def view(constitution_key, mission=""):
     return PublicConstitution(
-        name=name,
+        constitution_key=constitution_key,
         mission=mission,
         principles=(),
         version=1,

@@ -46,7 +46,13 @@ def test_given_the_package_when_inspecting_then_default_pages_ship_as_templates_
 
 def test_given_the_packaged_template_when_inspecting_then_it_uses_the_placeholders_it_documents():
     text = packaged_template("constitution.html")
-    for placeholder in ("$stylesheet", "$name", "$mission", "$declaration", "$principles"):
+    for placeholder in (
+        "$stylesheet",
+        "$constitution_key",
+        "$mission",
+        "$declaration",
+        "$principles",
+    ):
         assert placeholder in text, placeholder
 
 

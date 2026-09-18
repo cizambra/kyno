@@ -21,7 +21,7 @@ def test_given_padded_key_when_writing_direction_then_reads_and_history_share_on
     assert memory_store.head(" eu-west ").mission == "EU mission"
     assert memory_store.export_versions(" eu-west ")[0]["mission"] == "EU mission"
     assert plane.publish(" eu-west ").published
-    assert plane.public_constitution("eu-west").name == "eu-west"
+    assert plane.public_constitution("eu-west").constitution_key == "eu-west"
 
 
 @pytest.mark.parametrize("key", ["", " ", "Upper", "bad/name", "a" * 201])

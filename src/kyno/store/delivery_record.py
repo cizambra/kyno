@@ -9,6 +9,7 @@ from sqlalchemy import URL, Engine, insert, select
 
 from kyno.store.recording_connection import recording_transaction
 from kyno.store.schema import build_metadata
+from kyno.wire.constitution import check_constitution_key
 from kyno.wire.delivery_record import DeliveryRecord, DeliverySummary
 
 
@@ -45,6 +46,7 @@ class SqlDeliveryRecordStore:
         timeout_seconds: float | None = None,
     ) -> str:
         """Record the served version reference and returned delta atomically."""
+        constitution = check_constitution_key(constitution)
         identifier = str(uuid4())
         values = {
             "record_id": identifier,
@@ -123,6 +125,8 @@ class SqlDeliveryRecordStore:
         Time bounds are inclusive. Continue with the same filters and the returned
         cursor as after; records appended between pages can appear on later pages.
         """
+        if constitution is not None:
+            constitution = check_constitution_key(constitution)
         if type(limit) is not int or not 1 <= limit <= 100:
             raise ValueError("limit must be an integer from 1 to 100")
         if type(after) is not int or after < 0:

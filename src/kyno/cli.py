@@ -32,6 +32,7 @@ from kyno.remote import RemoteError, dial, version_from_payload
 from kyno.server_config import Settings, control_plane_from_settings, store_from_settings
 from kyno.service import ControlPlane, edit_delta, effective_content
 from kyno.tokens import age, generate_value, hash_value, parse_ttl
+from kyno.wire.constitution import check_constitution_key
 from kyno.wire.errors import CoherenceError
 from kyno.wire.models import normalize_principles
 from kyno.workspace import create_workspace
@@ -730,6 +731,7 @@ def get_version(
     number = _parse_version_selector(version)
     _remote_options_guard(remote, profile, credentials, token_env)
     with _clean_errors():
+        constitution = check_constitution_key(constitution)
         payload = _read_direction_version(
             number, constitution, remote, profile, credentials, token_env
         )
@@ -888,6 +890,7 @@ def publish(
     """Serve a constitution publicly. Without --with-history only the current
     mission, principles, version and last-changed date are exposed."""
     try:
+        constitution = check_constitution_key(constitution)
         pub = _control_plane().publish(constitution, with_history=with_history)
         history = "public" if pub.history_public else "hidden"
         typer.echo(f"published '{constitution}' (history: {history})")
@@ -902,6 +905,7 @@ def publish(
 def unpublish(constitution: str = _CONSTITUTION_OPTION) -> None:
     """Take a constitution's public page down. History goes private too."""
     try:
+        constitution = check_constitution_key(constitution)
         _control_plane().unpublish(constitution)
         typer.echo(f"unpublished '{constitution}'")
     except (CoherenceError, SQLAlchemyError) as exc:
@@ -925,6 +929,7 @@ def history(
     author, and the change note. `kyno export` has the full content."""
     _remote_options_guard(remote, profile, credentials, token_env)
     try:
+        constitution = check_constitution_key(constitution)
         if remote:
             rows = _fetch_remote_rows(profile, credentials, token_env, constitution)
         else:
@@ -960,6 +965,7 @@ def export(
     with no versions is refused, the same as `kyno current --yaml`."""
     _remote_options_guard(remote, profile, credentials, token_env)
     try:
+        constitution = check_constitution_key(constitution)
         if remote:
             rows = _fetch_remote_rows(profile, credentials, token_env, constitution)
         else:
@@ -991,6 +997,7 @@ def import_ledger(
     every version's number, dates and authors. Local only: it writes
     straight to the workspace's database, and there is no --remote."""
     with _clean_errors():
+        as_name = check_constitution_key(as_name)
         count = _store().import_versions(as_name, _read_export(file))
     word = "version" if count == 1 else "versions"
     typer.echo(f"imported {count} {word} into '{as_name}'")

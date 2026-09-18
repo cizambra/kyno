@@ -8,6 +8,7 @@ from kyno.sdk.cell import Direction, DirectionCell
 from kyno.sdk.client import DirectionSource
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.policy import PullPolicy
+from kyno.wire.constitution import check_constitution_key
 from kyno.wire.errors import CoherenceError
 from kyno.wire.models import DetailLevel, check_detail
 
@@ -30,9 +31,7 @@ class DirectionBinder:
         policy: PullPolicy | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> None:
-        if not isinstance(constitution, str):
-            raise TypeError("constitution name must be a string")
-        self._constitution = constitution
+        self._constitution = check_constitution_key(constitution)
         self._source = source
         self._cell = DirectionCell()
         self._policy = policy or PullPolicy()

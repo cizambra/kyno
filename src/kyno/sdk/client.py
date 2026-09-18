@@ -13,6 +13,7 @@ from typing import Any, Protocol, runtime_checkable
 from kyno.sdk.errors import KynoRefusedError, KynoUnavailableError
 from kyno.sdk.recording import RecordingReceipt
 from kyno.wire import RESOURCE_URI as RESOURCE_URI
+from kyno.wire.constitution import check_constitution_key
 from kyno.wire.delivery_context import delivery_context
 from kyno.wire.models import ChangesSince, DetailLevel, check_detail
 
@@ -70,6 +71,7 @@ class LocalDirectionSource:
         constitution: str,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> DirectionResponse:
+        constitution = check_constitution_key(constitution)
         detail = check_detail(detail)
         changes = self._control_plane.changes_since(last_seen_version, constitution)
         return DirectionResponse(_changes(changes.to_dict(detail)))
@@ -369,6 +371,7 @@ class McpDirectionSource:
         that is what the binder's policy degrades on. A reply we cannot read
         is the control plane being unreachable as far as the next step is
         concerned, and it must cost freshness rather than the step itself."""
+        constitution = check_constitution_key(constitution)
         detail = check_detail(detail)
 
         async def call(session):

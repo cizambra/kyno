@@ -41,10 +41,12 @@ rendered document.
 
 Three things worth knowing:
 
-- **A published name has to be a slug**: lowercase letters, digits and
+- **Every constitution key has to be a slug**: lowercase ASCII letters, digits and
   single hyphens (`acme`, `acme-eu`). It's both the URL and the name your
   agents use, so Kyno refuses anything else rather than quietly rewriting it.
-  Names you never publish are unrestricted.
+  Surrounding whitespace is trimmed. Keys contain 1–200 characters after
+  trimming, whether or not you publish them. Capitalization and punctuation
+  are never changed automatically.
 - **Nothing is public until you publish it**, and publication is per name.
   One Kyno can hold your internal constitution and your public one side by
   side; publishing the second does nothing to the first.

@@ -76,15 +76,21 @@ def test_given_optional_arguments_when_tool_calls_parses_then_apply_direction_re
         {"method": "tools/call", "params": {"name": "apply_direction", **arguments}}
     ).encode()
 
-    assert _tool_calls(body) == [("apply_direction", "default")]
+    assert _tool_calls(body) == [("apply_direction", None)]
 
 
 def test_given_bodies_of_every_shape_when_listing_tool_calls_then_only_real_calls_count():
     assert _tool_calls(b"not json") == []
     assert _tool_calls(b'{"method": "initialize"}') == []
+    assert (
+        _tool_calls(
+            b'{"method": "resources/read", "params": {"uri": "kyno://constitution/current"}}'
+        )
+        == []
+    )
     assert _tool_calls(
         b'{"method": "tools/call", "params": {"name": "apply_direction", "arguments": {}}}'
-    ) == [("apply_direction", "default")]
+    ) == [("apply_direction", None)]
     # A batch (JSON array) is read by this check, one pair per item, in
     # order -- but the MCP SDK rejects arrays, so a batch never executes.
     # The HTTP behavior is covered by the batched-body integration test.
@@ -94,7 +100,7 @@ def test_given_bodies_of_every_shape_when_listing_tool_calls_then_only_real_call
         b'{"method": "notifications/initialized"},'
         b'{"method": "tools/call", "params": {"name": "apply_direction", '
         b'"arguments": {"mission": "M1"}}}]'
-    ) == [("get_constitution", "main"), ("apply_direction", "default")]
+    ) == [("get_constitution", "main"), ("apply_direction", None)]
 
 
 @pytest.mark.asyncio

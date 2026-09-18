@@ -87,6 +87,7 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
     "filters, expected_arguments",
     [
         ({}, {"limit": 50}),
+        ({"constitution": " support "}, {"constitution": "support", "limit": 50}),
         (
             {
                 "correlation_id": "run-42",
@@ -106,7 +107,11 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
             },
         ),
     ],
-    ids=["default-limit-without-filters", "all-filters-including-zero-cursor"],
+    ids=[
+        "default-limit-without-filters",
+        "normalized-key-filter",
+        "all-filters-including-zero-cursor",
+    ],
 )
 def test_given_list_filters_when_querying_the_connection_then_mcp_receives_the_exact_arguments(
     filters, expected_arguments
@@ -183,6 +188,14 @@ def test_given_invalid_name_when_get_constitution_is_called_then_request_is_not_
     runner = Mock()
     with pytest.raises(ValueError, match="constitution"):
         history.get_constitution(runner, constitution, version=1)
+    runner.call.assert_not_called()
+
+
+@pytest.mark.parametrize("key", ["", " ", "Upper", "a" * 201])
+def test_given_invalid_key_filter_when_listing_history_then_request_is_not_sent(key):
+    runner = Mock()
+    with pytest.raises(ValueError, match="constitution key"):
+        history.list_delivery_records(runner, constitution=key)
     runner.call.assert_not_called()
 
 

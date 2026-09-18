@@ -69,3 +69,61 @@ def test_given_delivery_filters_when_listing_then_none_means_all_and_padded_key_
     assert len(history.list(constitution=" eu-west ")["items"]) == 1
     with pytest.raises(ValueError, match="constitution key"):
         history.list(constitution=" ")
+
+
+@pytest.mark.parametrize(
+    "operation, arguments",
+    [
+        ("head", {}),
+        ("get", {"version": 1}),
+        ("versions_after", {"last_seen_version": 0}),
+        ("export_versions", {}),
+        ("import_versions", {"rows": []}),
+        ("publication", {}),
+        ("set_publication", {"published_at": None, "history_public": False}),
+        (
+            "append",
+            {
+                "version": 1,
+                "mission": "Help",
+                "principles": (),
+                "change_note": "init",
+                "changed_mission": True,
+                "changed_principles": False,
+                "created_by": None,
+            },
+        ),
+    ],
+)
+@pytest.mark.parametrize("key", [" ", "Upper", "a" * 201])
+def test_given_invalid_key_when_using_storage_directly_then_boundary_refuses_it(
+    memory_store, operation, arguments, key
+):
+    with pytest.raises(ValueError, match="constitution key"):
+        getattr(memory_store, operation)(key, **arguments)
+
+
+def test_given_padded_maximum_key_when_using_storage_directly_then_one_identity_is_preserved(
+    memory_store,
+):
+    key = "a" * 200
+    padded = f" \n{key}\t "
+    stored = memory_store.append(
+        padded,
+        1,
+        mission="Help",
+        principles=(),
+        change_note="init",
+        changed_mission=True,
+        changed_principles=False,
+        created_by=None,
+    )
+    assert memory_store.head(key) == stored
+    assert memory_store.get(padded, 1) == stored
+    assert memory_store.versions_after(padded, 0) == [stored]
+    assert memory_store.export_versions(padded)[0]["mission"] == "Help"
+    memory_store.import_versions(" copy ", memory_store.export_versions(key))
+    assert memory_store.head("copy").mission == "Help"
+    assert memory_store.set_publication(padded, published_at=stored.created_at, history_public=True)
+    assert memory_store.publication(key).published
+    assert memory_store.publication(padded).history_public

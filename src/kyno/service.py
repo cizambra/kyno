@@ -37,6 +37,8 @@ from kyno.wire.models import (
 
 _log = logging.getLogger(__name__)
 
+DEFAULT_CONSTITUTION_KEY = "default"
+
 # The size limits for a constitution, checked before anything is written. Large enough for a
 # hand-written document, and a hard stop for a machine-generated payload.
 MAX_MISSION_CHARS = 4_000
@@ -274,7 +276,7 @@ class ControlPlane:
 
     def _name(self, constitution: str | None) -> str:
         """Resolve a per-call name, using default when omitted or None."""
-        return "default" if constitution is None else constitution
+        return DEFAULT_CONSTITUTION_KEY if constitution is None else constitution
 
     def on_change(self, callback: Callable[[ConstitutionVersion], None]) -> None:
         self._subscribers.append(callback)

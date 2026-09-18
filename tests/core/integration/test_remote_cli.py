@@ -120,7 +120,7 @@ def test_given_remote_history_when_reading_a_numbered_version_then_only_that_ver
         [
             "get-version",
             str(version),
-            "--constitution",
+            "--constitution-key",
             "support",
             "--remote",
             "--profile",
@@ -154,7 +154,7 @@ def test_given_remote_direction_when_reading_current_or_latest_then_output_and_e
         remote_cp.apply_direction(
             mission="Second", change_note="second", constitution_key="support"
         )
-    options = ["--remote", "--constitution", "support", *options]
+    options = ["--remote", "--constitution-key", "support", *options]
     current = runner.invoke(app, ["current", *options])
     latest = runner.invoke(app, ["get-version", "latest", *options])
     assert (latest.exit_code, latest.stdout, latest.stderr) == (

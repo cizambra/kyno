@@ -78,7 +78,7 @@ def test_given_fail_closed_support_binder_when_bind_with_status_loses_connection
 ):
     connection, control_plane = mcp_connection
     control_plane.apply_direction(
-        mission="Support customers", change_note="initial", constitution="support"
+        mission="Support customers", change_note="initial", constitution_key="support"
     )
     binder = connection.binder("support", policy=PullPolicy(fail_closed=True))
     if cached:

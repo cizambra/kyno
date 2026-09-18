@@ -233,32 +233,28 @@ class ControlPlane:
         return self.delivery_recorder.record(
             direction,
             operation=operation,
-            constitution=self._name(arguments.get("constitution")),
+            constitution=check_constitution_key(arguments.get("constitution")),
             arguments=arguments,
             requester=requester,
         )
 
-    def _name(self, constitution: str | None) -> str:
-        """Resolve a per-call name, using default when omitted or None."""
-        return check_constitution_key(constitution)
-
     def on_change(self, callback: Callable[[ConstitutionVersion], None]) -> None:
         self._subscribers.append(callback)
 
-    def current(self, constitution: str | None = None) -> ConstitutionVersion:
-        head = self._store.head(self._name(constitution))
+    def current(self, constitution_key: str | None = None) -> ConstitutionVersion:
+        head = self._store.head(check_constitution_key(constitution_key))
         if head is None:
             return _EMPTY_CONSTITUTION
         return head
 
     def get_constitution(
-        self, constitution: str | None = None, *, version: int | None = None
+        self, constitution_key: str | None = None, *, version: int | None = None
     ) -> ConstitutionVersion:
         """Return current direction, or one exact version including the empty version zero.
 
         An absent positive version raises UnknownVersionError.
         """
-        name = self._name(constitution)
+        name = check_constitution_key(constitution_key)
         if version is None:
             return self.current(name)
         check_version(version)
@@ -270,10 +266,10 @@ class ControlPlane:
         return selected
 
     def changes_since(
-        self, last_seen_version: int, constitution: str | None = None
+        self, last_seen_version: int, constitution_key: str | None = None
     ) -> ChangesSince:
         check_version(last_seen_version, "last_seen_version")
-        name = self._name(constitution)
+        name = check_constitution_key(constitution_key)
         head = self._store.head(name)
         if head is None:
             # No HEAD to compare against -- no last_seen_version can be "in the
@@ -300,15 +296,15 @@ class ControlPlane:
             ),
         )
 
-    def publication(self, constitution: str | None = None) -> Publication:
-        return self._store.publication(self._name(constitution))
+    def publication(self, constitution_key: str | None = None) -> Publication:
+        return self._store.publication(check_constitution_key(constitution_key))
 
     def publish(
-        self, constitution: str | None = None, *, with_history: bool = False
+        self, constitution_key: str | None = None, *, with_history: bool = False
     ) -> Publication:
         """Serve this constitution publicly. History (and the change notes in
         it) stays private unless `with_history` opens it as a separate act."""
-        name = self._name(constitution)
+        name = check_constitution_key(constitution_key)
         if self._store.head(name) is None:
             raise UnknownConstitutionError(
                 f"'{name}' has no direction set, so there is nothing to publish"
@@ -320,17 +316,17 @@ class ControlPlane:
         self._store.set_publication(name, published_at=stamp, history_public=with_history)
         return self._store.publication(name)
 
-    def unpublish(self, constitution: str | None = None) -> Publication:
-        name = self._name(constitution)
+    def unpublish(self, constitution_key: str | None = None) -> Publication:
+        name = check_constitution_key(constitution_key)
         if not self._store.set_publication(name, published_at=None, history_public=False):
             raise UnknownConstitutionError(f"no constitution named '{name}'")
         return self._store.publication(name)
 
-    def public_constitution(self, constitution: str | None = None) -> PublicConstitution | None:
+    def public_constitution(self, constitution_key: str | None = None) -> PublicConstitution | None:
         """The public view of one constitution, or None if it is not published.
         Unknown and unpublished are the same answer on purpose: whether a name
         exists is not something an anonymous caller gets to learn."""
-        name = self._name(constitution)
+        name = check_constitution_key(constitution_key)
         pub = self._store.publication(name)
         if not pub.published:
             return None
@@ -362,7 +358,7 @@ class ControlPlane:
 
     def export_versions(
         self,
-        constitution: str | None = None,
+        constitution_key: str | None = None,
         *,
         from_version: int | None = None,
         to_version: int | None = None,
@@ -370,7 +366,9 @@ class ControlPlane:
         """The version history as plain dicts, ascending, bounds inclusive.
         What `kyno export` prints locally, and what a remote client reads."""
         return self._store.export_versions(
-            self._name(constitution), from_version=from_version, to_version=to_version
+            check_constitution_key(constitution_key),
+            from_version=from_version,
+            to_version=to_version,
         )
 
     def apply_direction(
@@ -381,7 +379,7 @@ class ControlPlane:
         principles: tuple[Principle | str, ...] | None = None,
         change_note: str,
         created_by: str | None = None,
-        constitution: str | None = None,
+        constitution_key: str | None = None,
         expected_version: int | None = None,
         authorized_by: AuthorizationType | str | None = None,
         token_id: int | None = None,
@@ -405,7 +403,7 @@ class ControlPlane:
         # Checked before the retry loop: a malformed principle is the caller's mistake, and re-
         # checking it on every attempt adds nothing.
         principles = normalize_principles(principles)
-        name = self._name(constitution)
+        name = check_constitution_key(constitution_key)
         _check_fields(
             mission=mission,
             declaration=declaration,
@@ -473,7 +471,7 @@ class ControlPlane:
         mission: str | None = None,
         declaration: str | None = None,
         principles: tuple[Principle | str, ...] | None = None,
-        constitution: str | None = None,
+        constitution_key: str | None = None,
     ) -> tuple[str, ...]:
         """What an apply with these fields would change, as plain sentences.
         Empty means the apply would be refused as no field changed."""
@@ -481,7 +479,7 @@ class ControlPlane:
             mission=mission,
             declaration=declaration,
             principles=principles,
-            constitution=constitution,
+            constitution_key=constitution_key,
         )[1]
 
     def head_and_delta(
@@ -490,12 +488,12 @@ class ControlPlane:
         mission: str | None = None,
         declaration: str | None = None,
         principles: tuple[Principle | str, ...] | None = None,
-        constitution: str | None = None,
+        constitution_key: str | None = None,
     ) -> tuple[ConstitutionVersion | None, tuple[str, ...]]:
         """The head and what an apply with these fields would change, from
         one read of the store, so the version and the delta can never
         describe two different moments. The head is None on an empty store."""
-        name = self._name(constitution)
+        name = check_constitution_key(constitution_key)
         head = self._store.head(name)
         return head, edit_delta(
             head, name, mission=mission, declaration=declaration, principles=principles

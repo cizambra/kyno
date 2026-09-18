@@ -17,7 +17,7 @@ def test_given_distinct_binders_when_bind_runs_then_records_keep_each_constituti
     control_plane.apply_direction(mission="Support customers", change_note="initial")
     if constitution != "default":
         control_plane.apply_direction(
-            mission="Support customers", change_note="initial", constitution=constitution
+            mission="Support customers", change_note="initial", constitution_key=constitution
         )
     metadata = {"experiment": {"variant": "A"}}
     first = connection.binder(constitution, correlation_id="workflow-one", metadata=metadata)

@@ -15,7 +15,7 @@ def test_given_padded_key_when_writing_direction_then_reads_and_history_share_on
     memory_store,
 ):
     plane = ControlPlane(memory_store)
-    plane.apply_direction(mission="EU mission", change_note="init", constitution=" eu-west ")
+    plane.apply_direction(mission="EU mission", change_note="init", constitution_key=" eu-west ")
     assert plane.current("eu-west").mission == "EU mission"
     assert memory_store.head(" eu-west ").mission == "EU mission"
     assert memory_store.export_versions(" eu-west ")[0]["mission"] == "EU mission"

@@ -74,8 +74,8 @@ def test_given_the_packaged_template_when_rendering_then_the_built_in_page_match
 def test_given_the_packaged_index_template_when_rendering_then_the_built_in_index_matches_it(
     plane, tmp_path
 ):
-    plane.apply_direction(mission="Product mission", change_note="init", constitution="product")
-    plane.publish(constitution="product")
+    plane.apply_direction(mission="Product mission", change_note="init", constitution_key="product")
+    plane.publish(constitution_key="product")
     views = plane.published_constitutions()
     copy = tmp_path / "index.html"
     copy.write_text(packaged_template("index.html"), encoding="utf-8")

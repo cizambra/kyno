@@ -27,7 +27,7 @@ def plane(store):
 
 def direction(plane, constitution="default", mission="M1", principles=("p1", "p2"), note="init"):
     return plane.apply_direction(
-        mission=mission, principles=principles, change_note=note, constitution=constitution
+        mission=mission, principles=principles, change_note=note, constitution_key=constitution
     )
 
 
@@ -84,7 +84,7 @@ def test_given_only_a_font_when_rendering_then_the_automatic_dark_swap_stays(pla
 
 def test_given_a_theme_when_rendering_the_index_then_it_uses_the_same_theme(plane):
     direction(plane, "product", mission="Product mission")
-    plane.publish(constitution="product")
+    plane.publish(constitution_key="product")
     page = render_index(plane.published_constitutions(), PageConfig(theme=PageTheme(accent="#b45")))
     assert "--accent: #b45" in page
 
@@ -212,7 +212,7 @@ def test_given_a_custom_index_template_when_rendering_then_it_replaces_the_built
     path = tmp_path / "index.html"
     path.write_text('<html><body><ul class="ours">$items</ul></body></html>')
     direction(plane, "product", mission="Product mission")
-    plane.publish(constitution="product")
+    plane.publish(constitution_key="product")
 
     page = render_index(plane.published_constitutions(), PageConfig(index_template=str(path)))
     assert '<ul class="ours">' in page
@@ -225,7 +225,7 @@ def test_given_a_broken_index_template_when_rendering_then_the_built_in_index_se
     plane, tmp_path, caplog
 ):
     direction(plane, "product", mission="Product mission")
-    plane.publish(constitution="product")
+    plane.publish(constitution_key="product")
     with caplog.at_level("WARNING"):
         page = render_index(
             plane.published_constitutions(), PageConfig(index_template=str(tmp_path / "gone.html"))
@@ -298,7 +298,7 @@ def test_given_the_index_template_when_rendering_then_it_can_report_how_many_are
     path.write_text("<html><body><p>$count published</p>$items</body></html>")
     for name in ("alpha", "beta"):
         direction(plane, name, mission=f"{name} mission")
-        plane.publish(constitution=name)
+        plane.publish(constitution_key=name)
 
     page = render_index(plane.published_constitutions(), PageConfig(index_template=str(path)))
     assert "<p>2 published</p>" in page

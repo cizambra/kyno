@@ -3,6 +3,8 @@
 import json
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from kyno.service import ControlPlane
 from tests.mcp_requests import (
     MCP_HEADERS,
@@ -15,6 +17,36 @@ from tests.mcp_requests import (
     sse_json,
 )
 from tests.stores import create_memory_store
+
+
+@pytest.mark.parametrize("field", ["params", "arguments"])
+@pytest.mark.parametrize("invalid", [[1], "bad", 1, True])
+def test_given_malformed_tool_call_when_authenticated_post_runs_then_mcp_rejects_without_writing(
+    field, invalid
+):
+    from starlette.testclient import TestClient
+
+    store, value, app = gated_http_app()
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {"name": "apply_direction", "arguments": {}},
+    }
+    if field == "params":
+        payload["params"] = invalid
+    else:
+        payload["params"]["arguments"] = invalid
+    with TestClient(app) as client:
+        headers = drive_session(client, bearer(value))
+        response = client.post("/mcp", json=payload, headers=headers)
+
+    if field == "params":
+        assert response.status_code == 400
+    else:
+        assert response.status_code == 200
+        assert sse_json(response.text)["error"]["code"] == -32602
+    assert store.head("default") is None
 
 
 def test_given_no_bearer_when_posting_to_the_http_app_then_it_is_401():

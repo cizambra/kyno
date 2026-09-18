@@ -3,10 +3,11 @@ import json
 import threading
 from contextlib import asynccontextmanager, suppress
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
-from kyno.sdk.client import KynoBinding, McpDirectionSource, SessionRunner
+from kyno.sdk.client import KynoBinding, LocalDirectionSource, McpDirectionSource, SessionRunner
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.wire.models import DetailLevel
 
@@ -273,10 +274,14 @@ def test_given_a_typed_detail_when_pulling_over_mcp_then_the_argument_is_a_plain
     assert type(seen["detail"]) is str
 
 
-def test_given_an_unknown_detail_when_pulling_over_mcp_then_it_is_refused_before_the_call():
-    class Runner:
-        def call(self, operation):
-            raise AssertionError("MCP must not be called")
+@pytest.mark.parametrize("source_type", [LocalDirectionSource, McpDirectionSource])
+@pytest.mark.parametrize("detail", ["verbose", None, 7, True])
+def test_given_invalid_detail_when_changes_since_is_called_then_source_dependency_is_not_called(
+    source_type, detail
+):
+    dependency = Mock()
 
-    with pytest.raises(ValueError, match="verbose"):
-        McpDirectionSource(Runner()).changes_since(0, "default", "verbose")
+    with pytest.raises(ValueError, match="detail"):
+        source_type(dependency).changes_since(0, "default", detail)
+
+    assert dependency.mock_calls == []

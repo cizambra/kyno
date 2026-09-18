@@ -59,8 +59,7 @@ class ControlPlaneProjection(Protocol):
 
 
 class LocalDirectionSource:
-    """The control plane running in this process, used by an embedding host
-    and by the tests."""
+    """Read an in-process control plane with the same detail selection as MCP."""
 
     def __init__(self, control_plane: ControlPlaneProjection) -> None:
         self._control_plane = control_plane
@@ -71,9 +70,9 @@ class LocalDirectionSource:
         constitution: str,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> DirectionResponse:
-        # `detail` exists to save bytes on the wire, and there is no wire here: the control
-        # plane returns the whole version either way.
-        return DirectionResponse(self._control_plane.changes_since(last_seen_version, constitution))
+        detail = check_detail(detail)
+        changes = self._control_plane.changes_since(last_seen_version, constitution)
+        return DirectionResponse(_changes(changes.to_dict(detail)))
 
 
 def _leaves(exc: BaseException) -> list[BaseException]:

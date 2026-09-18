@@ -337,7 +337,9 @@ def test_given_direction_node_refresh_when_review_resumes_then_saved_answer_keep
     assert reviewed[0] == original
     assert reviewed[0]["direction"].version == 2
     assert reviewed[0]["direction"].mission == "M1"
-    assert reviewed[0]["direction"].declaration == "Explain the support decision."
+    assert reviewed[0]["direction"].declaration == (
+        "Explain the support decision." if detail is DetailLevel.FULL else ""
+    )
     assert tuple(reviewed[0]["direction"].change_notes) == ("Add explanation",)
     assert reviewed[0]["direction"].delta
     assert reviewed[0]["direction"].detail == detail

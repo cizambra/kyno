@@ -261,6 +261,7 @@ def test_given_prose_content_when_rendered_to_yaml_then_reading_it_back_round_tr
     from kyno.models import ConstitutionVersion
 
     version = ConstitutionVersion(
+        constitution_key="default",
         version=3,
         mission="Ship a lending product people trust",
         declaration="## What we are for\n\nLending is a promise.",

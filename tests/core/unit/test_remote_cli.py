@@ -90,7 +90,7 @@ def test_given_a_payload_without_a_usable_created_at_then_the_version_still_buil
 
     from kyno.remote import version_from_payload
 
-    payload = {"version": 1, "mission": "M"}
+    payload = {"constitution_key": "default", "version": 1, "mission": "M"}
     if raw is not None:
         payload["created_at"] = raw
     version = version_from_payload(payload)

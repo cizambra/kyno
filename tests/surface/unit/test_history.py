@@ -158,7 +158,12 @@ def test_given_version_selection_when_get_constitution_is_called_then_exact_tool
     version, detail
 ):
     returned_version = 3 if version is None else version
-    payload = {"version": returned_version, "mission": "", "principles": []}
+    payload = {
+        "constitution_key": "example",
+        "version": returned_version,
+        "mission": "",
+        "principles": [],
+    }
     session = SimpleNamespace(call_tool=AsyncMock(return_value=reply(payload)))
     runner = Mock()
     runner.call.side_effect = lambda callback: asyncio.run(callback(session))
@@ -215,6 +220,16 @@ def test_given_invalid_key_filter_when_listing_history_then_request_is_not_sent(
     runner.call.assert_not_called()
 
 
+@pytest.mark.parametrize("key", [None, "", " ", "Upper", 1])
+def test_given_invalid_response_key_when_get_constitution_runs_then_reply_is_unavailable(key):
+    runner = Mock()
+    runner.call.return_value = reply(
+        {"constitution_key": key, "version": 0, "mission": "", "principles": []}
+    )
+    with pytest.raises(KynoUnavailableError, match="bad reply"):
+        history.get_constitution(runner)
+
+
 @pytest.mark.parametrize(
     "key, expected", [(None, "default"), (" a" + "b" * 199 + " ", "a" + "b" * 199)]
 )
@@ -222,7 +237,11 @@ def test_given_normalizable_key_when_get_constitution_runs_then_request_uses_nor
     key, expected
 ):
     session = SimpleNamespace(
-        call_tool=AsyncMock(return_value=reply({"version": 0, "mission": "", "principles": []}))
+        call_tool=AsyncMock(
+            return_value=reply(
+                {"constitution_key": expected, "version": 0, "mission": "", "principles": []}
+            )
+        )
     )
     runner = Mock()
     runner.call.side_effect = lambda operation: asyncio.run(operation(session))

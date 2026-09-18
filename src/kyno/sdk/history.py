@@ -18,6 +18,7 @@ class _ConstitutionPrinciple(TypedDict):
 
 
 class _Constitution(TypedDict):
+    constitution_key: str
     version: int
     mission: str
     declaration: NotRequired[str]
@@ -99,6 +100,7 @@ def get_constitution(
     if row["version"] < 0 or (version is not None and row["version"] != version):
         raise KynoUnavailableError("bad reply from kyno: unexpected constitution version")
     try:
+        row["constitution_key"] = check_constitution_key(row["constitution_key"])
         return Direction(
             constitution_key=constitution_key,
             version=row["version"],

@@ -40,10 +40,7 @@ _DETAIL_ARG = {
 # control plane pinned to another name keeps serving that one.
 _CONSTITUTION_ARG = {
     "type": "string",
-    "description": (
-        "Which named constitution to act on. When omitted, uses the control plane's "
-        "configured constitution."
-    ),
+    "description": 'Which named constitution to act on. Defaults to "default".',
 }
 
 # Either shape a principle comes in: a bare title, or a title with the

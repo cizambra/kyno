@@ -52,13 +52,13 @@ def test_given_a_non_ascii_bearer_value_when_resolving_then_it_fails_closed_not_
     assert _endpoint(create_memory_store())._authenticate({"authorization": "Bearer café"}) is None
 
 
-@pytest.mark.parametrize("invalid", [None, [], [1], "bad", 1, True])
+@pytest.mark.parametrize("invalid", [None, [], [1], "", "bad", 0, 1, False, True])
 def test_given_non_object_params_when_tool_calls_parses_then_it_defers_to_mcp_validation(invalid):
     body = json.dumps({"method": "tools/call", "params": invalid}).encode()
     assert _tool_calls(body) == []
 
 
-@pytest.mark.parametrize("invalid", [[], [1], "bad", 1, True])
+@pytest.mark.parametrize("invalid", [[], [1], "", "bad", 0, 1, False, True])
 def test_given_non_object_arguments_when_tool_calls_parses_then_it_defers_to_mcp_validation(
     invalid,
 ):
@@ -66,6 +66,17 @@ def test_given_non_object_arguments_when_tool_calls_parses_then_it_defers_to_mcp
         {"method": "tools/call", "params": {"name": "apply_direction", "arguments": invalid}}
     ).encode()
     assert _tool_calls(body) == []
+
+
+@pytest.mark.parametrize("arguments", [{}, {"arguments": None}, {"arguments": {}}])
+def test_given_optional_arguments_when_tool_calls_parses_then_apply_direction_remains_visible(
+    arguments,
+):
+    body = json.dumps(
+        {"method": "tools/call", "params": {"name": "apply_direction", **arguments}}
+    ).encode()
+
+    assert _tool_calls(body) == [("apply_direction", "default")]
 
 
 def test_given_bodies_of_every_shape_when_listing_tool_calls_then_only_real_calls_count():

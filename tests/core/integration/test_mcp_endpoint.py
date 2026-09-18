@@ -20,7 +20,7 @@ from tests.stores import create_memory_store
 
 
 @pytest.mark.parametrize("field", ["params", "arguments"])
-@pytest.mark.parametrize("invalid", [[1], "bad", 1, True])
+@pytest.mark.parametrize("invalid", [[], [1], "", "bad", 0, 1, False, True])
 def test_given_malformed_tool_call_when_authenticated_post_runs_then_mcp_rejects_without_writing(
     field, invalid
 ):
@@ -196,7 +196,12 @@ def test_given_a_read_token_when_calling_a_read_tool_then_it_answers():
     }
 
 
-def test_given_a_batched_body_when_posting_then_the_scope_check_reads_it_and_the_sdk_rejects_it():
+@pytest.mark.parametrize(
+    "malformed_params", [None, [1], {"name": "get_constitution", "arguments": [1]}]
+)
+def test_given_a_batched_body_when_posting_then_the_scope_check_reads_it_and_the_sdk_rejects_it(
+    malformed_params,
+):
     # Batches (JSON arrays) never execute. This test proves both layers:
     #
     # With a read token: our scope check reads every item in the array,
@@ -233,12 +238,41 @@ def test_given_a_batched_body_when_posting_then_the_scope_check_reads_it_and_the
         },
     ]
 
+    if malformed_params is not None:
+        batch.insert(
+            0, {"jsonrpc": "2.0", "id": 0, "method": "tools/call", "params": malformed_params}
+        )
+
     with TestClient(app) as client:
         refused = client.post("/mcp", json=batch, headers=bearer(read_value))
         rejected = client.post("/mcp", json=batch, headers=bearer(write_value))
 
     assert refused.status_code == 403
     assert rejected.status_code == 400
+    assert store.head("default") is None
+
+
+@pytest.mark.parametrize("arguments", [{}, {"arguments": None}])
+def test_given_read_token_when_apply_direction_has_no_arguments_then_scope_check_returns_403(
+    arguments,
+):
+    from starlette.testclient import TestClient
+
+    store, _write_value, app = gated_http_app()
+    read_value = mint(store, scope="read", name="crew")
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {"name": "apply_direction", **arguments},
+    }
+
+    with TestClient(app) as client:
+        headers = drive_session(client, bearer(read_value))
+        refused = client.post("/mcp", json=payload, headers=headers)
+
+    assert refused.status_code == 403
+    assert "scope does not cover" in refused.text
     assert store.head("default") is None
 
 

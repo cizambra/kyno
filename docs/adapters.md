@@ -152,9 +152,9 @@ report local failures and fallback even when no delivery record exists.
 
 ### One binder reads one constitution
 
-Select the constitution when creating a binder. It stays fixed for that
-binder's lifetime; `bind()`, `bind_with_status()`, and `plan()` use that selection.
-The default constitution is `"default"`.
+Pass the constitution's name when creating a binder, not its content.
+The name stays fixed for that binder's lifetime; `bind()`, `bind_with_status()`,
+and `plan()` use that selection. If omitted, the name is `"default"`.
 
 ```python
 support = connection.binder("customer-support")

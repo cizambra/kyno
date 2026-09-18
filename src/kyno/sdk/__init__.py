@@ -76,7 +76,10 @@ class KynoConnection:
         correlation_id: str | None = None,
         metadata: dict | None = None,
     ) -> DirectionBinder:
-        """Create a binder for one constitution with its own fallback state."""
+        """Create a binder with private fallback state for the named constitution.
+
+        Pass the constitution's name, not its content. The default name is "default".
+        """
         source = _client.McpDirectionSource(
             self._runner, correlation_id=correlation_id, metadata=metadata
         )

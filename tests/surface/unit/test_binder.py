@@ -36,12 +36,12 @@ def test_given_fixed_context_when_assigning_binder_context_then_attribute_error_
     assert all(detail is context for detail in scripted_source.details)
 
 
-@pytest.mark.parametrize("constitution", [None, 1, True, [], {}])
-def test_given_non_string_constitution_when_constructing_direction_binder_then_type_error_is_raised(
-    scripted_source, constitution
+@pytest.mark.parametrize("constitution_name", [None, 1, True, [], {}])
+def test_given_non_string_constitution_name_when_creating_direction_binder_then_type_error_raises(
+    scripted_source, constitution_name
 ):
-    with pytest.raises(TypeError, match="constitution must be a string"):
-        DirectionBinder(scripted_source, constitution)
+    with pytest.raises(TypeError, match="constitution name must be a string"):
+        DirectionBinder(scripted_source, constitution_name)
     assert scripted_source.calls == []
 
 

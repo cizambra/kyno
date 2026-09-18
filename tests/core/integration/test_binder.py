@@ -8,13 +8,13 @@ from kyno.sdk.client import LocalDirectionSource
 from kyno.wire.models import DetailLevel
 
 
-@pytest.mark.parametrize("constitution", [None, 1, True, [], {}])
-def test_given_non_string_constitution_when_connection_binder_runs_then_type_error_is_raised(
-    mcp_connection, constitution
+@pytest.mark.parametrize("constitution_name", [None, 1, True, [], {}])
+def test_given_non_string_constitution_name_when_connection_binder_runs_then_type_error_is_raised(
+    mcp_connection, constitution_name
 ):
     connection, _control_plane = mcp_connection
-    with pytest.raises(TypeError, match="constitution must be a string"):
-        connection.binder(constitution)
+    with pytest.raises(TypeError, match="constitution name must be a string"):
+        connection.binder(constitution_name)
 
 
 def test_given_a_step_when_binding_then_the_current_version_is_bound(control_plane):

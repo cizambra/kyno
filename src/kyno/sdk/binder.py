@@ -31,7 +31,7 @@ class DirectionBinder:
         context: str | DetailLevel = DetailLevel.COMPACT,
     ) -> None:
         if not isinstance(constitution, str):
-            raise TypeError("constitution must be a string")
+            raise TypeError("constitution name must be a string")
         self._constitution = constitution
         self._source = source
         self._cell = DirectionCell()
@@ -47,6 +47,7 @@ class DirectionBinder:
 
     @property
     def constitution(self) -> str:
+        """The constitution name selected when the binder was constructed."""
         return self._constitution
 
     def bind(self) -> Direction:

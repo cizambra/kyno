@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import re
 from collections.abc import Callable
 from datetime import UTC, datetime
 
@@ -14,7 +13,6 @@ from kyno.errors import (
     ReservedMarkerError,
     UnknownConstitutionError,
     UnknownVersionError,
-    UnpublishableNameError,
     VersionConflictError,
 )
 from kyno.models import (
@@ -26,6 +24,7 @@ from kyno.models import (
 )
 from kyno.store.base import ConstitutionStore
 from kyno.store.delivery_record import SqlDeliveryRecordStore
+from kyno.wire.constitution import check_constitution_key
 from kyno.wire.delivery import RecordingStatus, recording_result
 from kyno.wire.models import (
     DIRECTION_MARKER,
@@ -45,7 +44,6 @@ MAX_CHANGE_NOTE_CHARS = 2_000
 MAX_PRINCIPLES = 100
 MAX_PRINCIPLE_TITLE_CHARS = 300
 MAX_PRINCIPLE_DESCRIPTION_CHARS = 4_000
-MAX_CONSTITUTION_NAME_CHARS = 200
 
 # The public page's contract: it and its .json serve at most this many
 # versions, newest first. The full history stays readable to authenticated
@@ -71,16 +69,10 @@ def _check_fields(
     declaration: str | None,
     principles: tuple[Principle, ...] | None,
     change_note: str,
-    name: str,
 ) -> None:
     _check_text("mission", mission, MAX_MISSION_CHARS)
     _check_text("declaration", declaration, MAX_DECLARATION_CHARS)
     _check_text("change_note", change_note, MAX_CHANGE_NOTE_CHARS)
-    if len(name) > MAX_CONSTITUTION_NAME_CHARS:
-        raise FieldTooLargeError(
-            f"the constitution name is {len(name)} characters, "
-            f"over the cap of {MAX_CONSTITUTION_NAME_CHARS}"
-        )
     if principles is None:
         return
     if len(principles) > MAX_PRINCIPLES:
@@ -117,11 +109,6 @@ _EMPTY_CHANGES = ChangesSince(
 )
 
 
-# Lowercase letters and digits, single hyphens between them: the slug shape
-# every publishing platform settled on.
-_SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
-
-
 def _delta(before, after) -> tuple[str, ...]:
     """What moved between two versions, in the wording of both.
 
@@ -143,27 +130,6 @@ def _delta(before, after) -> tuple[str, ...]:
     for i in range(len(new), len(old)):
         lines.append(f'Principle {i + 1} was dropped: "{old[i]}".')
     return tuple(lines)
-
-
-def _slugged(name: str) -> str:
-    """The name the caller probably meant, used only in the error message.
-    Publishing never transforms a name, because the name in the URL has to
-    be the one agents pass over MCP."""
-    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
-
-
-def _check_publishable(name: str) -> None:
-    """A published name is a URL and an identity at once: it is what
-    /constitutions/<name> serves and what agents pass over MCP. Slugs are what
-    survive being pasted into a chat, a slide, or an address bar unmangled, so
-    a name that is not one is refused rather than quietly rewritten."""
-    if _SLUG.fullmatch(name):
-        return
-    suggestion = _slugged(name)
-    hint = f" like '{suggestion}'" if suggestion else ""
-    raise UnpublishableNameError(
-        f"'{name}' cannot be published: use a lowercase-and-hyphens name{hint}"
-    )
 
 
 def _carry_forward(head, *, mission, declaration, principles):
@@ -274,7 +240,7 @@ class ControlPlane:
 
     def _name(self, constitution: str | None) -> str:
         """Resolve a per-call name, using default when omitted or None."""
-        return "default" if constitution is None else constitution
+        return check_constitution_key(constitution)
 
     def on_change(self, callback: Callable[[ConstitutionVersion], None]) -> None:
         self._subscribers.append(callback)
@@ -292,12 +258,12 @@ class ControlPlane:
 
         An absent positive version raises UnknownVersionError.
         """
+        name = self._name(constitution)
         if version is None:
-            return self.current(constitution)
+            return self.current(name)
         check_version(version)
         if version == 0:
             return _EMPTY_CONSTITUTION
-        name = self._name(constitution)
         selected = self._store.get(name, version)
         if selected is None:
             raise UnknownVersionError(f"constitution '{name}' version {version} not found")
@@ -347,7 +313,6 @@ class ControlPlane:
             raise UnknownConstitutionError(
                 f"'{name}' has no direction set, so there is nothing to publish"
             )
-        _check_publishable(name)
         already = self._store.publication(name)
         # The stamp records when this constitution went public; turning
         # history on later is not a new publication.
@@ -446,7 +411,6 @@ class ControlPlane:
             declaration=declaration,
             principles=principles,
             change_note=change_note,
-            name=name,
         )
         head, effective = self._effective(
             name, mission=mission, declaration=declaration, principles=principles

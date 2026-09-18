@@ -7,6 +7,7 @@ from typing_extensions import TypedDict
 from kyno.sdk.cell import Direction
 from kyno.sdk.client import SessionRunner, _payload
 from kyno.sdk.errors import KynoHistoryError, KynoUnavailableError
+from kyno.wire.constitution import check_constitution_key
 from kyno.wire.delivery_record import DeliveryPage, DeliveryRecord
 from kyno.wire.models import DetailLevel, check_detail
 
@@ -62,6 +63,8 @@ def list_delivery_records(
     after: int | None = None,
     limit: int = 50,
 ) -> DeliveryPage:
+    if constitution is not None:
+        constitution = check_constitution_key(constitution)
     filters = {
         "correlation_id": correlation_id,
         "constitution": constitution,
@@ -88,8 +91,7 @@ def get_constitution(
     detail = check_detail(detail)
     if version is not None and (type(version) is not int or version < 0):
         raise ValueError("version must be a non-negative integer")
-    if not isinstance(constitution, str) or not constitution.strip():
-        raise ValueError("constitution must be a non-empty string")
+    constitution = check_constitution_key(constitution)
     arguments: dict[str, object] = {"constitution": constitution, "detail": detail.value}
     if version is not None:
         arguments["version"] = version

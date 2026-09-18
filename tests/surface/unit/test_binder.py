@@ -36,11 +36,11 @@ def test_given_fixed_detail_when_assigning_binder_detail_then_attribute_error_pr
     assert all(requested_detail is detail for requested_detail in scripted_source.details)
 
 
-@pytest.mark.parametrize("constitution_name", [None, 1, True, [], {}])
-def test_given_non_string_constitution_name_when_creating_direction_binder_then_raises_type_error(
+@pytest.mark.parametrize("constitution_name", [1, True, [], {}])
+def test_given_non_string_key_when_creating_direction_binder_then_invalid_key_is_refused(
     scripted_source, constitution_name
 ):
-    with pytest.raises(TypeError, match="constitution name must be a string"):
+    with pytest.raises(ValueError, match="constitution key must be a string"):
         DirectionBinder(scripted_source, constitution_name)
     assert scripted_source.calls == []
 

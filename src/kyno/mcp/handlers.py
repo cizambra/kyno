@@ -150,7 +150,7 @@ def handle_apply_direction(
             principles=tuple(principles) if principles is not None else None,
             change_note=change_note,
             created_by=created_by,
-            constitution=constitution,
+            constitution_key=constitution,
             expected_version=expected_version,
             authorized_by=authorized_by,
             token_id=token_id,

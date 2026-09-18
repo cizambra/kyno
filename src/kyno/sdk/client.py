@@ -55,7 +55,7 @@ class ControlPlaneProjection(Protocol):
     it, no inheritance needed."""
 
     def changes_since(
-        self, last_seen_version: int, constitution: str | None = None
+        self, last_seen_version: int, constitution_key: str | None = None
     ) -> ChangesSince: ...
 
 

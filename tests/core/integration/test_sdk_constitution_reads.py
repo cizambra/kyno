@@ -18,7 +18,7 @@ def constitution_connection(mcp_connection):
         declaration="Original declaration",
         principles=[{"title": "Honesty", "description": "State the facts."}],
         change_note="Initial version",
-        constitution="example",
+        constitution_key="example",
     )
     return connection, control_plane
 
@@ -32,7 +32,7 @@ def test_given_version_and_detail_when_get_constitution_is_called_then_requested
     original = connection.binder("example", detail=detail).bind()
     if version is not None:
         control_plane.apply_direction(
-            mission="New mission", change_note="Updated", constitution="example"
+            mission="New mission", change_note="Updated", constitution_key="example"
         )
     binder = connection.binder("example", detail=detail)
     current = binder.bind()
@@ -57,7 +57,7 @@ def test_given_updates_when_get_constitution_omits_version_then_current_compact_
 ):
     connection, control_plane = constitution_connection
     control_plane.apply_direction(
-        mission="Current mission", change_note="Updated", constitution="example"
+        mission="Current mission", change_note="Updated", constitution_key="example"
     )
     direction = connection.get_constitution("example")
     assert direction.version == 2
@@ -72,7 +72,7 @@ def test_given_two_constitutions_when_get_constitution_is_called_then_requested_
 ):
     connection, control_plane = constitution_connection
     control_plane.apply_direction(
-        mission="Default mission", change_note="Initial", constitution="default"
+        mission="Default mission", change_note="Initial", constitution_key="default"
     )
 
     direction = connection.get_constitution("example", version=version)
@@ -129,7 +129,7 @@ def test_given_recording_enabled_when_get_constitution_is_called_then_selected_v
     history = SqlDeliveryRecordStore(memory_store.engine)
     control_plane.delivery_recorder = DeliveryRecorder(history, "always")
     control_plane.apply_direction(
-        mission="Current mission", change_note="Updated", constitution="example"
+        mission="Current mission", change_note="Updated", constitution_key="example"
     )
 
     direction = connection.get_constitution("example", version=version)

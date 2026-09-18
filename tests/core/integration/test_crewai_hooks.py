@@ -62,7 +62,7 @@ def test_given_european_binder_when_before_llm_call_runs_then_european_direction
 ):
     binder = DirectionBinder(LocalDirectionSource(control_plane), "eu")
     control_plane.apply_direction(
-        mission="European mission", change_note="Initial", constitution="eu"
+        mission="European mission", change_note="Initial", constitution_key="eu"
     )
     context = FakeCtx()
     CrewAiKyno(binder).before_llm_call(context)

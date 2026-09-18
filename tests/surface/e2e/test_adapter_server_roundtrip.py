@@ -81,7 +81,7 @@ def test_given_server_read_failure_when_langgraph_pulls_over_http_then_fallback_
 
     control_plane, url, token = live_server
     unavailable = read_failure
-    control_plane.apply_direction(mission="M1", change_note="init", constitution="support")
+    control_plane.apply_direction(mission="M1", change_note="init", constitution_key="support")
     supplied = []
 
     def work(state):
@@ -94,7 +94,7 @@ def test_given_server_read_failure_when_langgraph_pulls_over_http_then_fallback_
         first = refresh({}) if cached else {}
         unavailable.set()
         fallback = refresh(first)
-        control_plane.apply_direction(mission="M2", change_note="pivot", constitution="support")
+        control_plane.apply_direction(mission="M2", change_note="pivot", constitution_key="support")
         unavailable.clear()
         recovered = refresh(fallback)
 
@@ -117,7 +117,7 @@ def test_given_failed_reads_when_crewai_calls_again_then_observed_fallback_recov
     live_server, read_failure, cached
 ):
     control_plane, url, token = live_server
-    control_plane.apply_direction(mission="M1", change_note="init", constitution="support")
+    control_plane.apply_direction(mission="M1", change_note="init", constitution_key="support")
     observed = []
     context = FakeCtx()
 
@@ -128,12 +128,14 @@ def test_given_failed_reads_when_crewai_calls_again_then_observed_fallback_recov
         adapter = CrewAiKyno(connection.binder("support"), on_direction=observe)
         if cached:
             adapter.before_llm_call(context)
-            control_plane.apply_direction(mission="M2", change_note="pivot", constitution="support")
+            control_plane.apply_direction(
+                mission="M2", change_note="pivot", constitution_key="support"
+            )
             adapter.before_llm_call(context)
         read_failure.set()
         adapter.before_llm_call(context)
         control_plane.apply_direction(
-            mission="Recovered", change_note="restore", constitution="support"
+            mission="Recovered", change_note="restore", constitution_key="support"
         )
         read_failure.clear()
         adapter.before_llm_call(context)

@@ -27,7 +27,7 @@ def server_with_history(store, policy="always", constitution="default"):
         principles=["Be clear"],
         declaration="Explain the options",
         change_note="initial",
-        constitution=constitution,
+        constitution_key=constitution,
     )
     return build_server(plane), history, plane
 

@@ -1,5 +1,7 @@
 # Direction changes during a customer-support run
 
+For the same cycle using CrewAI, see the [CrewAI walkthrough](CREWAI.md).
+
 Run the full planning and response cycle in one LangGraph workflow:
 
 1. Pull direction and ask the model to make a response plan.

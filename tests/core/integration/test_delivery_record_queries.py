@@ -38,13 +38,15 @@ def history():
     "filters, expected",
     [
         ({}, ["1", "2", "3", "4"]),
+        ({"constitution_key": None}, ["1", "2", "3", "4"]),
         ({"correlation_id": "one"}, ["1", "3"]),
-        ({"constitution": "alpha"}, ["1", "2", "4"]),
-        ({"correlation_id": "one", "constitution": "beta"}, ["3"]),
+        ({"constitution_key": "alpha"}, ["1", "2", "4"]),
+        ({"constitution_key": " alpha "}, ["1", "2", "4"]),
+        ({"correlation_id": "one", "constitution_key": "beta"}, ["3"]),
         ({"correlation_id": ""}, ["4"]),
-        ({"constitution": "absent"}, []),
+        ({"constitution_key": "absent"}, []),
         ({"correlation_id": "absent"}, []),
-        ({"correlation_id": "one", "constitution": "beta", "limit": 1}, ["3"]),
+        ({"correlation_id": "one", "constitution_key": "beta", "limit": 1}, ["3"]),
         ({"since": "2026-01-01T03:00:00Z", "limit": 1}, ["3"]),
         ({"correlation_id": "one", "until": "2026-01-01T02:00:00Z"}, ["1"]),
         ({"since": "2026-01-01T02:00:00Z"}, ["2", "3", "4"]),
@@ -53,7 +55,7 @@ def history():
         (
             {
                 "correlation_id": "one",
-                "constitution": "beta",
+                "constitution_key": "beta",
                 "since": "2026-01-01T02:00:00Z",
                 "until": "2026-01-01T04:00:00Z",
             },
@@ -69,6 +71,8 @@ def test_given_history_when_filtering_then_matching_records_are_oldest_first(
 
 def test_given_stored_json_when_listing_then_values_are_decoded_without_sequence(history):
     record = history.list(limit=1)["items"][0]
+    assert record["constitution_key"] == "alpha"
+    assert record["constitution_id"] is None
     assert "delta" not in record
     assert record["selection"] == {"title": "Example"}
     assert record["requester"] is None
@@ -185,7 +189,7 @@ def test_given_filtered_sequence_gaps_when_paging_then_cursor_tracks_the_last_ma
     assert last["next_cursor"] is None
 
 
-@pytest.mark.parametrize("filters", [{"after": 4}, {"after": 500}, {"constitution": "absent"}])
+@pytest.mark.parametrize("filters", [{"after": 4}, {"after": 500}, {"constitution_key": "absent"}])
 def test_given_no_remaining_matches_when_paging_then_empty_page_has_no_cursor(history, filters):
     assert history.list(**filters) == {"items": [], "next_cursor": None}
 

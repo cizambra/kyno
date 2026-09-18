@@ -235,6 +235,12 @@ cursor means the current results are exhausted. Events are ordered by insertion,
 and new events can appear between pages. Read and write tokens may browse history.
 Listing never creates another delivery record.
 
+Both summaries and individual records expose the string `constitution_key` and
+the numeric `constitution_id`. The numeric ID is null when no stored version was
+served. Existing delivery records remain readable without a database migration.
+Omitting the key filter or passing null includes every constitution; a blank key
+is invalid.
+
 ## Running Kyno embedded
 
 When your orchestrator is itself a Python app, you can run the control

@@ -101,7 +101,7 @@ def register_tools(server: Server, control_plane: ControlPlane, token_store=None
                     control_plane,
                     lambda store: store.list(
                         **{
-                            ("constitution" if key == "constitution_key" else key): arguments[key]
+                            key: arguments[key]
                             for key in (
                                 "correlation_id",
                                 "constitution_key",

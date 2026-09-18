@@ -192,7 +192,7 @@ async def test_given_recorded_direction_when_updated_and_restarted_then_lookup_k
     assert "direction" not in record
     assert record["delta"] is None
     assert record["served_version"] == original["version"] == 1
-    historical = restarted_store.get(record["requested_constitution"], record["served_version"])
+    historical = restarted_store.get(record["constitution_key"], record["served_version"])
     assert historical.mission == original["mission"]
     assert historical.declaration == original["declaration"]
     assert historical.principles[0].title == "Honesty"

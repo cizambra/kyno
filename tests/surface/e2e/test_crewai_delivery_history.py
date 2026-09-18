@@ -44,7 +44,7 @@ def test_given_new_direction_when_before_llm_call_runs_again_then_prior_record_k
         adapter.before_llm_call(context)
 
     record = history.get(answer_record["record_id"])
-    version = server_store.get(record["requested_constitution"], record["served_version"])
+    version = server_store.get(record["constitution_key"], record["served_version"])
 
     assert record["served_version"] == observed[0].direction.version == 1
     assert version.mission == "Resolve delivery complaints"

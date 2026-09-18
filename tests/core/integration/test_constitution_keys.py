@@ -82,9 +82,9 @@ def test_given_delivery_filters_when_listing_then_none_means_all_and_padded_key_
             context={"correlation_id": None, "metadata": {}},
         )
     assert len(history.list()["items"]) == 2
-    assert len(history.list(constitution=" eu-west ")["items"]) == 1
+    assert len(history.list(constitution_key=" eu-west ")["items"]) == 1
     with pytest.raises(ValueError, match="constitution key"):
-        history.list(constitution=" ")
+        history.list(constitution_key=" ")
 
 
 @pytest.mark.parametrize(

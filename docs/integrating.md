@@ -412,7 +412,7 @@ A record printed by this example looks like this:
   "record_id": "0a166028-9315-4f6d-a8bc-d11fc564ed2b",
   "recorded_at": "2026-09-16T21:06:18.156619+00:00",
   "constitution_id": 1,
-  "requested_constitution": "default",
+  "constitution_key": "default",
   "served_version": 2,
   "operation": "get_changes_since",
   "last_seen_version": 1,
@@ -520,7 +520,7 @@ To inspect the direction associated with a delivery ID saved by your application
 ```python
 delivery = connection.get_delivery_record(record_id)
 direction = connection.get_constitution(
-    delivery["requested_constitution"],
+    delivery["constitution_key"],
     version=delivery["served_version"],
     detail="full",
 )

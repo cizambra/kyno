@@ -210,6 +210,11 @@ def edit_delta(
     return tuple(lines)
 
 
+def _resolve_constitution_key(value: str | None) -> str:
+    """Resolve an omitted selection to Core's default and validate the key."""
+    return check_constitution_key("default" if value is None else value)
+
+
 class ControlPlane:
     def __init__(
         self,
@@ -237,7 +242,7 @@ class ControlPlane:
         return self.delivery_recorder.record(
             direction,
             operation=operation,
-            constitution=check_constitution_key(arguments.get("constitution_key")),
+            constitution=_resolve_constitution_key(arguments.get("constitution_key")),
             arguments=arguments,
             requester=requester,
         )
@@ -246,7 +251,7 @@ class ControlPlane:
         self._subscribers.append(callback)
 
     def current(self, constitution_key: str | None = None) -> ConstitutionVersion:
-        name = check_constitution_key(constitution_key)
+        name = _resolve_constitution_key(constitution_key)
         head = self._store.head(name)
         if head is None:
             return replace(_EMPTY_CONSTITUTION, constitution_key=name)
@@ -259,7 +264,7 @@ class ControlPlane:
 
         An absent positive version raises UnknownVersionError.
         """
-        name = check_constitution_key(constitution_key)
+        name = _resolve_constitution_key(constitution_key)
         if version is None:
             return self.current(name)
         check_version(version)
@@ -274,7 +279,7 @@ class ControlPlane:
         self, last_seen_version: int, constitution_key: str | None = None
     ) -> ChangesSince:
         check_version(last_seen_version, "last_seen_version")
-        name = check_constitution_key(constitution_key)
+        name = _resolve_constitution_key(constitution_key)
         head = self._store.head(name)
         if head is None:
             # No HEAD to compare against -- no last_seen_version can be "in the
@@ -303,14 +308,14 @@ class ControlPlane:
         )
 
     def publication(self, constitution_key: str | None = None) -> Publication:
-        return self._store.publication(check_constitution_key(constitution_key))
+        return self._store.publication(_resolve_constitution_key(constitution_key))
 
     def publish(
         self, constitution_key: str | None = None, *, with_history: bool = False
     ) -> Publication:
         """Serve this constitution publicly. History (and the change notes in
         it) stays private unless `with_history` opens it as a separate act."""
-        name = check_constitution_key(constitution_key)
+        name = _resolve_constitution_key(constitution_key)
         if self._store.head(name) is None:
             raise UnknownConstitutionError(
                 f"'{name}' has no direction set, so there is nothing to publish"
@@ -323,7 +328,7 @@ class ControlPlane:
         return self._store.publication(name)
 
     def unpublish(self, constitution_key: str | None = None) -> Publication:
-        name = check_constitution_key(constitution_key)
+        name = _resolve_constitution_key(constitution_key)
         if not self._store.set_publication(name, published_at=None, history_public=False):
             raise UnknownConstitutionError(f"no constitution named '{name}'")
         return self._store.publication(name)
@@ -332,7 +337,7 @@ class ControlPlane:
         """The public view of one constitution, or None if it is not published.
         Unknown and unpublished are the same answer on purpose: whether a name
         exists is not something an anonymous caller gets to learn."""
-        name = check_constitution_key(constitution_key)
+        name = _resolve_constitution_key(constitution_key)
         pub = self._store.publication(name)
         if not pub.published:
             return None
@@ -372,7 +377,7 @@ class ControlPlane:
         """The version history as plain dicts, ascending, bounds inclusive.
         What `kyno export` prints locally, and what a remote client reads."""
         return self._store.export_versions(
-            check_constitution_key(constitution_key),
+            _resolve_constitution_key(constitution_key),
             from_version=from_version,
             to_version=to_version,
         )
@@ -409,7 +414,7 @@ class ControlPlane:
         # Checked before the retry loop: a malformed principle is the caller's mistake, and re-
         # checking it on every attempt adds nothing.
         principles = normalize_principles(principles)
-        name = check_constitution_key(constitution_key)
+        name = _resolve_constitution_key(constitution_key)
         _check_fields(
             mission=mission,
             declaration=declaration,
@@ -499,7 +504,7 @@ class ControlPlane:
         """The head and what an apply with these fields would change, from
         one read of the store, so the version and the delta can never
         describe two different moments. The head is None on an empty store."""
-        name = check_constitution_key(constitution_key)
+        name = _resolve_constitution_key(constitution_key)
         head = self._store.head(name)
         return head, edit_delta(
             head, name, mission=mission, declaration=declaration, principles=principles

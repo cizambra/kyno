@@ -11,10 +11,8 @@ class InvalidConstitutionKeyError(CoherenceError, ValueError):
     """A constitution key does not satisfy the shared identifier contract."""
 
 
-def check_constitution_key(value: str | None = None) -> str:
-    """Trim and validate a constitution key, resolving None to default."""
-    if value is None:
-        return "default"
+def check_constitution_key(value: str) -> str:
+    """Trim and validate an explicitly selected constitution key."""
     if not isinstance(value, str):
         raise InvalidConstitutionKeyError("constitution key must be a string")
     key = value.strip()

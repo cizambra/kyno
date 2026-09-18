@@ -38,6 +38,12 @@ def apply_yaml(
     return runner.invoke(app, args)
 
 
+def test_given_the_cli_when_requesting_root_help_then_it_describes_a_coherence_control_plane():
+    result = runner.invoke(app, ["--help"])
+    assert result.exit_code == 0
+    assert "Coherence control plane." in plain(result.stdout)
+
+
 @pytest.mark.parametrize("command", ["apply", "history", "get-version"])
 def test_given_a_direction_command_when_requesting_help_then_it_is_available(command):
     result = runner.invoke(app, [command, "--help"])

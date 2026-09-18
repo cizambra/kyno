@@ -18,7 +18,7 @@ class DirectionBinder:
     """Pull one constitution's direction for each step.
 
     Shipped adapters pull at every step boundary. The successful response
-    becomes the latest-known direction in the cell and remains available as
+    becomes the binder's latest-known direction and remains available as
     the fallback if a later pull cannot reach Kyno.
     """
 

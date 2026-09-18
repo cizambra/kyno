@@ -29,11 +29,10 @@ an adapter is expected to do falls out of these four behaviors.
   the last direction the binder holds. The `kyno.sdk.binder` Python logger
   emits a warning naming the constitution, fallback version, and failure
   reason. `PullPolicy(fail_closed=True)` makes
-  the step raise instead. Binders may share a `DirectionCell` only when
-  they use the same context level. The first binder or direct cell update
-  selects that level; a different level raises `ValueError`. Use separate
-  cells for compact and full context so fallback cannot return the wrong
-  amount of direction.
+  the step raise instead. Each binder keeps its own cached direction and
+  recording receipt. Binders can share a connection without sharing their
+  cache: a pull by one binder does not change another binder's fallback
+  or last-seen version. Create separate binders for compact and full context.
 - **What changed.** A pull includes the operator's change note and a
   computed delta: which principle moved, whether the mission moved, what
   was added or dropped. That's what makes a small change visible.

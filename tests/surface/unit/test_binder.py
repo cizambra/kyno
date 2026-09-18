@@ -8,7 +8,7 @@ import pytest
 from kyno.errors import UnknownVersionError
 from kyno.sdk.binder import DirectionBinder
 from kyno.sdk.binding import DeliveryStatus
-from kyno.sdk.cell import Direction, DirectionCell
+from kyno.sdk.cell import Direction
 from kyno.sdk.client import DirectionResponse
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.policy import PullPolicy
@@ -39,8 +39,9 @@ def test_given_bindings_to_different_constitutions_when_binding_then_they_do_not
 
     assert binder.bind("eu").mission == "EU"
     assert binder.bind("us").mission == "US"
-    assert binder.cell.last_seen_version("eu") == 2
-    assert binder.cell.last_seen_version("us") == 9
+    binder.bind("eu")
+    binder.bind("us")
+    assert scripted_source.calls == [(0, "eu"), (0, "us"), (2, "eu"), (9, "us")]
 
 
 @pytest.mark.parametrize("version", [0, 3], ids=["unwritten-constitution", "written-direction"])
@@ -164,16 +165,17 @@ def test_given_binders_when_bind_with_status_fails_then_logs_name_each_constitut
     ]
 
 
-def test_given_a_shared_cell_when_binding_then_the_binder_and_caller_see_the_same_direction(
+def test_given_one_binder_has_pulled_when_another_calls_bind_then_it_sends_last_seen_version_zero(
     scripted_source,
 ):
-    cell = DirectionCell()
     scripted_source.set("default", 2, "M2")
-    binder = DirectionBinder(scripted_source, cell=cell)
+    first = DirectionBinder(scripted_source)
+    second = DirectionBinder(scripted_source)
 
-    binder.bind()
+    first.bind()
+    second.bind()
 
-    assert cell.get("default").version == 2 and binder.cell is cell
+    assert scripted_source.calls == [(0, "default"), (0, "default")]
 
 
 def test_given_a_fail_closed_policy_when_a_last_direction_exists_then_it_still_refuses(
@@ -397,91 +399,40 @@ def test_given_uncached_sales_when_bind_is_called_then_it_returns_direction_afte
     assert scripted_source.calls == [(0, "sales")]
 
 
-def test_given_overlapping_pulls_when_the_older_reply_finishes_last_then_it_returns_cached(
-    scripted_source,
-):
-    scripted_source.set("sales", 4, "Old")
-    old_reply = scripted_source.replies["sales"]
-    started = Event()
-    release = Event()
-    cell = DirectionCell()
-
-    def delayed_changes(last_seen_version, constitution, context):
-        started.set()
-        assert release.wait(timeout=10)
-        return DirectionResponse(old_reply)
-
-    slower = DirectionBinder(SimpleNamespace(changes_since=delayed_changes), cell=cell)
-    faster = DirectionBinder(scripted_source, cell=cell)
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        pending = executor.submit(slower.bind_with_status, "sales")
-        try:
-            assert started.wait(timeout=10)
-            scripted_source.set("sales", 5, "New")
-            current = faster.bind_with_status("sales")
-        finally:
-            release.set()
-        retained = pending.result(timeout=10)
-
-    assert current.status is DeliveryStatus.CURRENT
-    assert retained.status is DeliveryStatus.CACHED
-    assert retained.direction is current.direction
-    assert retained.direction.version == cell.last_seen_version("sales") == 5
-
-
-@pytest.mark.parametrize("first_context", list(DetailLevel))
-@pytest.mark.parametrize("populated", [False, True], ids=["empty-cell", "cached-direction"])
-def test_given_a_shared_cell_when_a_binder_requests_another_context_then_setup_is_rejected(
-    scripted_source, first_context, populated
-):
-    cell = DirectionCell()
-    scripted_source.set("default", 2, "M2")
-    first = DirectionBinder(scripted_source, cell=cell, context=first_context)
-    if populated:
-        first.bind()
-    other_context = (
-        DetailLevel.FULL if first_context is DetailLevel.COMPACT else DetailLevel.COMPACT
-    )
-    calls_before = list(scripted_source.calls)
-
-    with pytest.raises(ValueError, match="separate cell"):
-        DirectionBinder(scripted_source, cell=cell, context=other_context)
-
-    assert scripted_source.calls == calls_before
-    assert cell.last_seen_version("default") == (2 if populated else 0)
-
-
 @pytest.mark.parametrize("context", list(DetailLevel))
-def test_given_same_context_binders_when_a_shared_cache_is_used_after_failure_then_context_is_kept(
+def test_given_two_binders_when_only_one_has_cached_direction_then_failed_pulls_use_own_state(
     scripted_source, context
 ):
-    cell = DirectionCell()
-    first = DirectionBinder(scripted_source, cell=cell, context=context)
-    second = DirectionBinder(scripted_source, cell=cell, context=context.value)
+    first = DirectionBinder(scripted_source, context=context)
+    second = DirectionBinder(scripted_source, context=context)
     scripted_source.set("default", 2, "M2")
     original = first.bind()
     scripted_source.failure = OSError("offline")
 
-    fallback = second.bind_with_status()
+    populated = first.bind_with_status()
+    empty = second.bind_with_status()
 
-    assert fallback.status is DeliveryStatus.CACHED
-    assert fallback.direction is original
-    assert fallback.direction.context is context
+    assert populated.status is DeliveryStatus.CACHED
+    assert populated.direction is original
+    assert empty.status is DeliveryStatus.EMPTY
+    assert empty.direction == Direction.empty("default", context)
+    assert empty.recording is None
 
 
-@pytest.mark.parametrize("context", list(DetailLevel))
-def test_given_a_preloaded_cell_when_a_binder_requests_another_context_then_setup_is_rejected(
-    scripted_source, context
+def test_given_compact_and_full_binders_when_pulls_fail_then_each_retains_its_requested_context(
+    scripted_source,
 ):
-    cell = DirectionCell()
-    original = cell.update(Direction("default", 2, "M2", (), context=context))
-    other_context = DetailLevel.FULL if context is DetailLevel.COMPACT else DetailLevel.COMPACT
+    compact = DirectionBinder(scripted_source, context=DetailLevel.COMPACT)
+    full = DirectionBinder(scripted_source, context=DetailLevel.FULL)
+    scripted_source.set("default", 2, "M2")
+    compact_direction = compact.bind()
+    full_direction = full.bind()
+    scripted_source.failure = OSError("offline")
 
-    with pytest.raises(ValueError, match="separate cell"):
-        DirectionBinder(scripted_source, cell=cell, context=other_context)
-
-    assert cell.get("default") is original
-    assert scripted_source.calls == []
+    assert compact.bind() is compact_direction
+    assert full.bind() is full_direction
+    assert compact_direction.context is DetailLevel.COMPACT
+    assert full_direction.context is DetailLevel.FULL
 
 
 @pytest.mark.parametrize("status", list(RecordingStatus))
@@ -524,10 +475,13 @@ def test_given_later_response_when_bind_with_status_runs_then_cached_receipt_is_
     scripted_source.set("sales", version, "Latest sales")
     latest_response = DirectionResponse(scripted_source.replies["sales"], recording)
     responses = iter([original_response, latest_response])
-    cell = DirectionCell()
-    binder = DirectionBinder(
-        SimpleNamespace(changes_since=lambda *args: next(responses)), cell=cell
-    )
+
+    def changes_since(*args):
+        if scripted_source.failure:
+            raise scripted_source.failure
+        return next(responses)
+
+    binder = DirectionBinder(SimpleNamespace(changes_since=changes_since))
 
     first = binder.bind_with_status("sales")
     second = binder.bind_with_status("sales")
@@ -539,7 +493,7 @@ def test_given_later_response_when_bind_with_status_runs_then_cached_receipt_is_
     assert second.status is DeliveryStatus.CURRENT
 
     scripted_source.failure = OSError("offline")
-    fallback = DirectionBinder(scripted_source, cell=cell).bind_with_status("sales")
+    fallback = binder.bind_with_status("sales")
     assert fallback.recording is recording
     assert fallback.direction is second.direction
     assert fallback.status is DeliveryStatus.CACHED
@@ -554,21 +508,39 @@ def test_given_later_response_when_bind_with_status_runs_then_cached_receipt_is_
         RecordingReceipt("failed"),
     ],
 )
-def test_given_shared_cache_when_bind_with_status_cannot_pull_then_cached_receipt_is_returned(
+def test_given_two_binders_when_pulls_fail_then_each_returns_its_own_direction_and_receipt(
     scripted_source, recording
 ):
     scripted_source.set("sales", 3, "Sales")
-    source = SimpleNamespace(
-        changes_since=lambda *args: DirectionResponse(scripted_source.replies["sales"], recording)
+    replies = iter(
+        [
+            DirectionResponse(scripted_source.replies["sales"], recording),
+            DirectionResponse(
+                scripted_source.replies["sales"], RecordingReceipt("recorded", "other")
+            ),
+        ]
     )
-    cell = DirectionCell()
-    original = DirectionBinder(source, cell=cell).bind_with_status("sales")
-    scripted_source.failure = OSError("offline")
-    fallback = DirectionBinder(scripted_source, cell=cell).bind_with_status("sales")
 
-    assert fallback.recording is recording
-    assert fallback.direction is original.direction
-    assert fallback.status is DeliveryStatus.CACHED
+    def changes_since(*args):
+        if scripted_source.failure:
+            raise scripted_source.failure
+        return next(replies)
+
+    source = SimpleNamespace(changes_since=changes_since)
+    first = DirectionBinder(source)
+    second = DirectionBinder(source)
+    original = first.bind_with_status("sales")
+    other = second.bind_with_status("sales")
+    scripted_source.failure = OSError("offline")
+
+    first_fallback = first.bind_with_status("sales")
+    second_fallback = second.bind_with_status("sales")
+
+    assert first_fallback.direction is original.direction
+    assert first_fallback.recording is recording
+    assert second_fallback.direction is other.direction
+    assert second_fallback.recording is other.recording
+    assert first_fallback.status is second_fallback.status is DeliveryStatus.CACHED
 
 
 def test_given_empty_cache_when_bind_with_status_cannot_pull_then_recording_is_none(
@@ -576,6 +548,57 @@ def test_given_empty_cache_when_bind_with_status_cannot_pull_then_recording_is_n
 ):
     scripted_source.failure = OSError("offline")
     assert DirectionBinder(scripted_source).bind_with_status().recording is None
+
+
+def test_given_two_binders_when_pulls_overlap_then_each_caches_its_own_direction_and_receipt(
+    scripted_source,
+):
+    scripted_source.set("sales", 4, "First consumer")
+    first_response = DirectionResponse(
+        scripted_source.replies["sales"], RecordingReceipt("recorded", "first")
+    )
+    scripted_source.set("sales", 5, "Second consumer")
+    second_response = DirectionResponse(
+        scripted_source.replies["sales"], RecordingReceipt("recorded", "second")
+    )
+    started = Event()
+    release = Event()
+
+    def changes_since(*args):
+        if scripted_source.failure:
+            raise scripted_source.failure
+        if started.is_set():
+            return second_response
+        started.set()
+        assert release.wait(timeout=10)
+        return first_response
+
+    source = SimpleNamespace(changes_since=changes_since)
+    first = DirectionBinder(source)
+    second = DirectionBinder(source)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        pending = executor.submit(first.bind_with_status, "sales")
+        try:
+            assert started.wait(timeout=10)
+            second_binding = second.bind_with_status("sales")
+        finally:
+            release.set()
+        first_binding = pending.result(timeout=10)
+
+    assert first_binding.direction.version == 4
+    assert first_binding.recording is first_response.recording
+    assert second_binding.direction.version == 5
+    assert second_binding.recording is second_response.recording
+    assert first_binding.status is second_binding.status is DeliveryStatus.CURRENT
+
+    scripted_source.failure = OSError("offline")
+    first_fallback = first.bind_with_status("sales")
+    second_fallback = second.bind_with_status("sales")
+    assert first_fallback.direction is first_binding.direction
+    assert first_fallback.recording is first_binding.recording
+    assert second_fallback.direction is second_binding.direction
+    assert second_fallback.recording is second_binding.recording
+    assert first_fallback.status is second_fallback.status is DeliveryStatus.CACHED
 
 
 @pytest.mark.parametrize(
@@ -597,20 +620,20 @@ def test_given_late_reply_when_bind_with_status_runs_then_only_older_versions_ke
     )
     started = Event()
     release = Event()
-    cell = DirectionCell()
 
     def delayed_changes(*args):
+        if started.is_set():
+            return newer
         started.set()
         assert release.wait(timeout=10)
         return older
 
-    slower = DirectionBinder(SimpleNamespace(changes_since=delayed_changes), cell=cell)
-    faster = DirectionBinder(SimpleNamespace(changes_since=lambda *args: newer), cell=cell)
+    binder = DirectionBinder(SimpleNamespace(changes_since=delayed_changes))
     with ThreadPoolExecutor(max_workers=1) as executor:
-        pending = executor.submit(slower.bind_with_status, "sales")
+        pending = executor.submit(binder.bind_with_status, "sales")
         try:
             assert started.wait(timeout=10)
-            current = faster.bind_with_status("sales")
+            current = binder.bind_with_status("sales")
         finally:
             release.set()
         retained = pending.result(timeout=10)
@@ -623,23 +646,3 @@ def test_given_late_reply_when_bind_with_status_runs_then_only_older_versions_ke
     else:
         assert retained.recording is older.recording
         assert retained.status is DeliveryStatus.CURRENT
-
-
-def test_given_manual_cache_update_when_bind_with_status_cannot_pull_then_recording_is_none(
-    scripted_source,
-):
-    scripted_source.set("sales", 3, "Sales")
-    source = SimpleNamespace(
-        changes_since=lambda *args: DirectionResponse(
-            scripted_source.replies["sales"], RecordingReceipt("recorded", "origin")
-        )
-    )
-    cell = DirectionCell()
-    DirectionBinder(source, cell=cell).bind("sales")
-    cell.update(Direction("sales", 3, "Manual", ()))
-    scripted_source.failure = OSError("offline")
-
-    fallback = DirectionBinder(scripted_source, cell=cell).bind_with_status("sales")
-
-    assert fallback.recording is None
-    assert fallback.direction.mission == "Manual"

@@ -48,7 +48,8 @@ def test_given_version_and_context_when_get_constitution_is_called_then_requeste
     assert direction.principles[0].description == ("State the facts." if full else "")
     assert ("Original declaration" in direction.render()) is full
     assert ("State the facts." in direction.render()) is full
-    assert binder.cell.get("example") is current
+    connection.close()
+    assert binder.bind("example") is current
 
 
 def test_given_updates_when_get_constitution_omits_version_then_current_compact_direction_returns(

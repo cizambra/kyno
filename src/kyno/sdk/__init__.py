@@ -69,7 +69,7 @@ class KynoConnection:
 
     def binder(
         self,
-        constitution: str = "default",
+        constitution_key: str | None = None,
         *,
         policy: PullPolicy | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,
@@ -78,12 +78,12 @@ class KynoConnection:
     ) -> DirectionBinder:
         """Create a binder with private fallback state for the named constitution.
 
-        Pass the constitution's name, not its content. The default name is "default".
+        Pass the constitution's key, not its content. The default key is "default".
         """
         source = _client.McpDirectionSource(
             self._runner, correlation_id=correlation_id, metadata=metadata
         )
-        return DirectionBinder(source, constitution, policy=policy, detail=detail)
+        return DirectionBinder(source, constitution_key, policy=policy, detail=detail)
 
     def close(self) -> None:
         self._runner.close()
@@ -98,7 +98,7 @@ class KynoConnection:
 
     def get_constitution(
         self,
-        constitution: str = "default",
+        constitution_key: str | None = None,
         *,
         version: int | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,
@@ -113,7 +113,9 @@ class KynoConnection:
         KynoHistoryError for absent exact versions or rejected queries, and
         KynoUnavailableError for transport or reply failures.
         """
-        return _history.get_constitution(self._runner, constitution, version=version, detail=detail)
+        return _history.get_constitution(
+            self._runner, constitution_key, version=version, detail=detail
+        )
 
     def list_delivery_records(
         self,

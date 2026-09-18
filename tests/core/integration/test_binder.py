@@ -23,7 +23,7 @@ def test_given_a_step_when_binding_then_the_current_version_is_bound(control_pla
 
     direction = binder.bind()
     assert direction.version == 1 and direction.mission == "M1"
-    assert direction.constitution == "default"
+    assert direction.constitution_key == "default"
 
 
 def test_given_a_direction_change_between_steps_when_binding_the_second_then_it_sees_the_change(

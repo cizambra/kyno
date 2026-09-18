@@ -32,7 +32,7 @@ class DirectionSource(Protocol):
     def changes_since(
         self,
         last_seen_version: int,
-        constitution: str,
+        constitution_key: str | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> DirectionResponse: ...
 
@@ -68,12 +68,12 @@ class LocalDirectionSource:
     def changes_since(
         self,
         last_seen_version: int,
-        constitution: str,
+        constitution_key: str | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> DirectionResponse:
-        constitution = check_constitution_key(constitution)
+        constitution_key = check_constitution_key(constitution_key)
         detail = check_detail(detail)
-        changes = self._control_plane.changes_since(last_seen_version, constitution)
+        changes = self._control_plane.changes_since(last_seen_version, constitution_key)
         return DirectionResponse(_changes(changes.to_dict(detail)))
 
 
@@ -345,7 +345,7 @@ def _changes(payload: dict) -> ChangesSince:
 
 
 class McpDirectionSource:
-    """Pulls direction over MCP, by constitution name."""
+    """Pulls direction over MCP, by constitution key."""
 
     def __init__(
         self,
@@ -364,14 +364,14 @@ class McpDirectionSource:
     def changes_since(
         self,
         last_seen_version: int,
-        constitution: str,
+        constitution_key: str | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> DirectionResponse:
         """Every way this can fail arrives as KynoUnavailableError, because
         that is what the binder's policy degrades on. A reply we cannot read
         is the control plane being unreachable as far as the next step is
         concerned, and it must cost freshness rather than the step itself."""
-        constitution = check_constitution_key(constitution)
+        constitution_key = check_constitution_key(constitution_key)
         detail = check_detail(detail)
 
         async def call(session):
@@ -379,7 +379,7 @@ class McpDirectionSource:
                 "get_changes_since",
                 {
                     "last_seen_version": last_seen_version,
-                    "constitution_key": constitution,
+                    "constitution_key": constitution_key,
                     "detail": detail.value,
                     **self._context,
                 },

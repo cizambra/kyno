@@ -14,7 +14,7 @@ from kyno.wire.models import ChangesSince, DetailLevel, Principle
 
 def _direction(version: int, constitution: str = "default") -> Direction:
     return Direction(
-        constitution=constitution,
+        constitution_key=constitution,
         version=version,
         mission=f"M{version}",
         principles=("p1",),
@@ -31,20 +31,21 @@ def test_given_changes_when_building_a_direction_then_the_constitution_name_is_c
         changed_principles=False,
         change_notes=("pivot",),
     )
-    d = Direction.from_changes(changes, "eu")
-    assert d.constitution == "eu" and d.version == 3
+    d = Direction.from_changes(changes, constitution_key="eu")
+    assert d.constitution_key == "eu" and d.version == 3
     assert d.principles == (Principle("Be honest"),) and d.change_notes == ("pivot",)
 
 
 def test_given_the_empty_direction_when_comparing_then_it_matches_version_zero():
-    d = Direction.empty("eu")
+    d = Direction.empty(constitution_key="eu")
+    assert d.constitution_key == "eu"
     assert (d.version, d.mission, d.principles) == (0, "", ())
 
 
 def test_given_a_direction_when_rendering_then_the_constitution_and_version_are_named():
     block = _direction(2, "eu").render()
     assert block.startswith(DIRECTION_MARKER)
-    assert "constitution=eu" in block and "version=2" in block
+    assert "constitution_key=eu" in block and "version=2" in block
     assert "M2" in block and "p1" in block
 
 
@@ -81,7 +82,7 @@ def test_given_the_injected_block_when_reading_then_titles_come_without_descript
     # every step boundary, so the paragraphs stay out of it. An agent that needs
     # the full text reads get_constitution or the published page.
     direction = Direction(
-        constitution="eu",
+        constitution_key="eu",
         version=2,
         mission="Ship trustworthy lending",
         principles=(Principle("Say the hard number first", "Before any softening story."),),
@@ -93,7 +94,7 @@ def test_given_the_injected_block_when_reading_then_titles_come_without_descript
 
 def test_given_plain_strings_when_building_a_direction_then_principles_still_hold():
     # Every caller that passed strings before keeps working; they become titles.
-    d = Direction(constitution="eu", version=1, mission="M", principles=("p1",))
+    d = Direction(constitution_key="eu", version=1, mission="M", principles=("p1",))
     assert d.principles == (Principle("p1"),)
 
 
@@ -103,7 +104,7 @@ def test_given_direction_with_changes_when_to_dict_runs_then_all_fields_are_json
     delta, detail
 ):
     direction = Direction(
-        constitution="support",
+        constitution_key="support",
         version=3,
         mission="Help customers",
         declaration="Explain resolutions.",
@@ -116,7 +117,7 @@ def test_given_direction_with_changes_when_to_dict_runs_then_all_fields_are_json
     payload = direction.to_dict()
 
     assert json.loads(json.dumps(payload)) == {
-        "constitution": "support",
+        "constitution_key": "support",
         "version": 3,
         "mission": "Help customers",
         "declaration": "Explain resolutions.",
@@ -131,7 +132,7 @@ def test_given_direction_with_changes_when_to_dict_runs_then_all_fields_are_json
 
 def test_given_a_direction_when_serializing_then_principles_come_in_full():
     d = Direction(
-        constitution="eu",
+        constitution_key="eu",
         version=1,
         mission="M",
         principles=(Principle("t", "d"),),
@@ -143,7 +144,7 @@ def test_given_the_injected_block_when_reading_then_the_declaration_is_left_out(
     # Same cost rule as leaving descriptions out: a declaration is a document,
     # and a document has no business in a block re-sent at every step boundary.
     direction = Direction(
-        constitution="eu",
+        constitution_key="eu",
         version=2,
         mission="Ship trustworthy lending",
         principles=(Principle("Be honest"),),
@@ -172,7 +173,7 @@ def test_given_a_direction_when_reading_then_the_declaration_is_there_for_the_fu
 # --- how much detail the injected block carries ---------------------------
 
 RICH = dict(
-    constitution="eu",
+    constitution_key="eu",
     version=2,
     mission="Ship trustworthy lending",
     declaration="# Our declaration\n\nThe long form of what that means.",

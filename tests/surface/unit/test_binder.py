@@ -47,11 +47,11 @@ def test_given_non_string_key_when_creating_direction_binder_then_invalid_key_is
 
 def test_given_support_binder_when_bind_runs_then_every_pull_uses_support(scripted_source):
     scripted_source.set("support", 3, "Help customers")
-    binder = DirectionBinder(scripted_source, "support")
+    binder = DirectionBinder(scripted_source, constitution_key="support")
 
-    assert binder.constitution == "support"
-    assert binder.bind().constitution == "support"
-    assert binder.bind_with_status().direction.constitution == "support"
+    assert binder.constitution_key == "support"
+    assert binder.bind().constitution_key == "support"
+    assert binder.bind_with_status().direction.constitution_key == "support"
     assert scripted_source.calls == [(0, "support"), (3, "support")]
 
 
@@ -62,10 +62,10 @@ def test_given_support_binder_when_assigning_constitution_then_attribute_error_k
     binder = DirectionBinder(scripted_source, "support")
 
     with pytest.raises(AttributeError):
-        binder.constitution = "sales"
+        binder.constitution_key = "sales"
 
-    assert binder.constitution == "support"
-    assert binder.bind().constitution == "support"
+    assert binder.constitution_key == "support"
+    assert binder.bind().constitution_key == "support"
     assert scripted_source.calls == [(0, "support")]
 
 
@@ -114,7 +114,8 @@ def test_given_cached_direction_when_bind_fails_then_warning_reports_cached_fall
         (
             "kyno.sdk.binder",
             logging.WARNING,
-            f"kyno pull_failed_cached constitution=default version={version} connection refused",
+            f"kyno pull_failed_cached constitution_key=default version={version} "
+            "connection refused",
         )
     ]
 
@@ -128,12 +129,12 @@ def test_given_a_pull_failure_and_an_empty_cell_when_binding_then_the_empty_dire
 
     direction = binder.bind()
 
-    assert direction.version == 0 and direction.constitution == "eu"
+    assert direction.version == 0 and direction.constitution_key == "eu"
     assert caplog.record_tuples == [
         (
             "kyno.sdk.binder",
             logging.WARNING,
-            "kyno pull_failed_empty constitution=eu version=0 connection refused",
+            "kyno pull_failed_empty constitution_key=eu version=0 connection refused",
         )
     ]
 
@@ -213,8 +214,8 @@ def test_given_binders_when_bind_with_status_fails_then_logs_name_each_constitut
     records = [record for record in caplog.records if record.name == "kyno.sdk.binder"]
     assert [record.levelno for record in records] == [logging.WARNING, logging.WARNING]
     assert [record.getMessage() for record in records] == [
-        "kyno pull_failed_cached constitution=support version=3 connection refused",
-        "kyno pull_failed_empty constitution=sales version=0 connection refused",
+        "kyno pull_failed_cached constitution_key=support version=3 connection refused",
+        "kyno pull_failed_empty constitution_key=sales version=0 connection refused",
     ]
 
 
@@ -281,7 +282,7 @@ def test_given_cached_direction_when_bind_fails_then_warning_names_constitution_
         (
             "kyno.sdk.binder",
             logging.WARNING,
-            "kyno pull_failed_cached constitution=eu version=7 connection refused",
+            "kyno pull_failed_cached constitution_key=eu version=7 connection refused",
         )
     ]
 
@@ -358,7 +359,7 @@ def test_given_an_authoritative_reply_when_binding_with_status_then_it_is_pulled
     binding = binder.bind_with_status()
     assert binding.status == "pulled"
     assert binding.direction.version == version
-    assert binding.direction.constitution == "sales"
+    assert binding.direction.constitution_key == "sales"
     assert scripted_source.calls == [(0, "sales")]
 
 
@@ -431,7 +432,7 @@ def test_given_only_sales_cached_when_support_pull_fails_then_support_binding_is
     assert sales.bind_with_status().status is BindingStatus.CACHED
     support = support_binder.bind_with_status()
     assert support.status is BindingStatus.EMPTY
-    assert support.direction.constitution == "support"
+    assert support.direction.constitution_key == "support"
 
 
 def test_given_an_older_reply_when_the_cell_holds_newer_direction_then_the_binding_is_cached(

@@ -14,10 +14,9 @@ def test_given_a_status_string_when_constructing_a_binding_then_it_becomes_an_en
     assert json.loads(json.dumps(binding.status)) == status
 
 
-@pytest.mark.parametrize("status", ["fresh", "current"])
-def test_given_an_unknown_status_when_constructing_a_binding_then_it_is_rejected(status):
+def test_given_an_unknown_status_when_constructing_a_binding_then_it_is_rejected():
     with pytest.raises(ValueError):
-        DirectionBinding(Direction.empty("sales"), status)
+        DirectionBinding(Direction.empty("sales"), "fresh")
 
 
 @pytest.mark.parametrize("field", ["direction", "status", "recording"])

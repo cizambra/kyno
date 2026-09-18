@@ -25,7 +25,7 @@ def default_selection(request):
     return request.param
 
 
-def test_given_a_named_write_when_applying_without_a_selection_then_only_default_advances(
+def test_given_omitted_constitution_when_apply_direction_runs_then_only_default_gets_a_new_version(
     plane, default_selection
 ):
     written = plane.apply_direction(
@@ -38,7 +38,7 @@ def test_given_a_named_write_when_applying_without_a_selection_then_only_default
     assert plane.current("support").mission == "Support first"
 
 
-def test_given_no_constitution_when_get_constitution_requests_v1_then_default_v1_is_returned(
+def test_given_omitted_constitution_when_get_constitution_requests_v1_then_default_v1_is_returned(
     plane, default_selection
 ):
     direction = plane.get_constitution(version=1, **default_selection)
@@ -47,7 +47,7 @@ def test_given_no_constitution_when_get_constitution_requests_v1_then_default_v1
     assert direction.mission == "Default first"
 
 
-def test_given_no_constitution_when_changes_since_reads_after_v1_then_default_v2_changes_return(
+def test_given_omitted_constitution_when_changes_since_uses_v1_then_default_v2_changes_return(
     plane, default_selection
 ):
     changes = plane.changes_since(1, **default_selection)
@@ -57,7 +57,7 @@ def test_given_no_constitution_when_changes_since_reads_after_v1_then_default_v2
     assert changes.change_notes == ("Updated",)
 
 
-def test_given_two_histories_when_export_versions_has_no_selection_then_only_default_is_exported(
+def test_given_omitted_constitution_when_export_versions_runs_then_only_default_history_is_returned(
     plane, default_selection
 ):
     versions = plane.export_versions(**default_selection)
@@ -65,13 +65,13 @@ def test_given_two_histories_when_export_versions_has_no_selection_then_only_def
     assert [version["mission"] for version in versions] == ["Default first", "Default second"]
 
 
-def test_given_unchanged_default_mission_when_preview_edit_omits_constitution_then_delta_is_empty(
+def test_given_default_mission_when_preview_edit_omits_constitution_then_no_change_is_reported(
     plane, default_selection
 ):
     assert plane.preview_edit(mission="Default second", **default_selection) == ()
 
 
-def test_given_default_content_when_head_and_delta_has_no_selection_then_default_head_returns(
+def test_given_omitted_constitution_when_head_and_delta_runs_then_default_head_and_no_delta_return(
     plane, default_selection
 ):
     head, delta = plane.head_and_delta(mission="Default second", **default_selection)
@@ -81,7 +81,7 @@ def test_given_default_content_when_head_and_delta_has_no_selection_then_default
     assert delta == ()
 
 
-def test_given_two_private_constitutions_when_publish_has_no_selection_then_only_default_is_public(
+def test_given_omitted_constitution_when_publish_runs_then_only_default_becomes_public(
     plane, default_selection
 ):
     plane.publish(**default_selection)
@@ -91,7 +91,7 @@ def test_given_two_private_constitutions_when_publish_has_no_selection_then_only
     assert not plane.publication("support").published
 
 
-def test_given_two_public_constitutions_when_unpublish_has_no_selection_then_support_stays_public(
+def test_given_omitted_constitution_when_unpublish_runs_then_only_default_becomes_private(
     plane, default_selection
 ):
     plane.publish("default")

@@ -13,6 +13,15 @@ def test_given_invalid_format_when_is_constitution_key_runs_then_false_is_return
     assert is_constitution_key(key) is False
 
 
+@pytest.mark.parametrize("key", ["équipe", "support-٢", "support-２"])
+def test_given_non_ascii_letters_or_digits_when_checking_key_format_then_it_is_rejected(key):
+    assert is_constitution_key(key) is False
+
+
+def test_given_a_key_longer_than_200_characters_when_checking_format_then_it_is_accepted():
+    assert is_constitution_key("a" * 201) is True
+
+
 @pytest.mark.parametrize("text, expected", [("Acme EU", "acme-eu"), ("///", "")])
 def test_given_display_text_when_suggest_constitution_key_runs_then_suggestion_is_returned(
     text, expected

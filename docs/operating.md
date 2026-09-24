@@ -261,6 +261,10 @@ hyphens, such as `eu-west`. Empty keys and other formats are rejected, whether
 or not the constitution is published. Kyno does not rewrite capitalization
 or punctuation. An omitted delivery-history filter still selects all constitutions.
 
+Surrounding whitespace is trimmed before selecting direction. ` support ` and
+`support` select the same constitution and version history. Whitespace inside
+a key is not removed and remains invalid.
+
 The schema has to exist before the first read, so run `kyno db init` once
 against the same database, or call `store.create_all()` from code. From
 here the binder behaves exactly as it does over MCP, and the CLI keeps

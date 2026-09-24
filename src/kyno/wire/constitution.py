@@ -21,9 +21,10 @@ class InvalidConstitutionKeyError(CoherenceError, ValueError):
 
 
 def check_constitution_key(value: str) -> str:
-    """Validate a key without changing its spelling."""
+    """Trim surrounding whitespace and validate the remaining key."""
     if not isinstance(value, str):
         raise InvalidConstitutionKeyError("constitution key must be a string")
+    value = value.strip()
     if is_constitution_key(value):
         return value
     suggestion = suggest_constitution_key(value)

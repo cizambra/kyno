@@ -38,6 +38,32 @@ def apply_yaml(
     return runner.invoke(app, args)
 
 
+@pytest.mark.parametrize("command", [["current", "--yaml"], ["get-version", "1", "--yaml"]])
+def test_given_existing_direction_when_cli_reads_padded_key_then_output_uses_same_identity(
+    tmp_path, monkeypatch, command
+):
+    cli_workspace(monkeypatch, tmp_path)
+    assert runner.invoke(app, ["db", "init"]).exit_code == 0
+    assert (
+        apply_yaml(
+            tmp_path, mission="Support mission", constitution="support", note="init"
+        ).exit_code
+        == 0
+    )
+    assert (
+        apply_yaml(tmp_path, mission="Sales mission", constitution="sales", note="init").exit_code
+        == 0
+    )
+
+    expected = runner.invoke(app, [*command, "--constitution", "support"])
+    result = runner.invoke(app, [*command, "--constitution", " \tsupport\n"])
+
+    assert expected.exit_code == result.exit_code == 0
+    assert result.stdout == expected.stdout
+    assert "constitution: support" in result.stdout
+    assert "Support mission" in result.stdout
+
+
 def test_given_the_cli_when_requesting_root_help_then_it_describes_a_coherence_control_plane():
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0

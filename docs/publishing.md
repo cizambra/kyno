@@ -46,6 +46,7 @@ Three things worth knowing:
   agents use, so Kyno refuses anything else rather than quietly rewriting it.
   The same format applies to private constitutions. Capitalization and
   punctuation are never changed automatically.
+  Surrounding whitespace is trimmed, so ` acme-eu ` uses the `acme-eu` URL.
 - **Nothing is public until you publish it**, and publication is per name.
   One Kyno can hold your internal constitution and your public one side by
   side; publishing the second does nothing to the first.

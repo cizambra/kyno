@@ -256,6 +256,11 @@ Each control-plane operation selects its own constitution. Omit the name or
 pass `None` to use `default`; pass `constitution="eu"` to select `eu` for
 that operation. Selecting a name never changes subsequent operations.
 
+Constitution keys use lowercase ASCII letters or digits separated by single
+hyphens, such as `eu-west`. Empty keys and other formats are rejected, whether
+or not the constitution is published. Kyno does not rewrite capitalization
+or punctuation. An omitted delivery-history filter still selects all constitutions.
+
 The schema has to exist before the first read, so run `kyno db init` once
 against the same database, or call `store.create_all()` from code. From
 here the binder behaves exactly as it does over MCP, and the CLI keeps

@@ -17,10 +17,6 @@ class NoFieldChangedError(EmptyChangeError):
     """The edit would leave every field exactly as it is."""
 
 
-class UnpublishableNameError(CoherenceError):
-    """The constitution's name cannot be served as a URL path segment."""
-
-
 class VersionConflictError(CoherenceError):
     """A concurrent writer already created the target version."""
 

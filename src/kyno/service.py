@@ -13,7 +13,6 @@ from kyno.errors import (
     ReservedMarkerError,
     UnknownConstitutionError,
     UnknownVersionError,
-    UnpublishableNameError,
     VersionConflictError,
 )
 from kyno.models import (
@@ -25,7 +24,7 @@ from kyno.models import (
 )
 from kyno.store.base import ConstitutionStore
 from kyno.store.delivery_record import SqlDeliveryRecordStore
-from kyno.wire.constitution import is_constitution_key, suggest_constitution_key
+from kyno.wire.constitution import check_constitution_key
 from kyno.wire.delivery import RecordingStatus, recording_result
 from kyno.wire.models import (
     DIRECTION_MARKER,
@@ -142,20 +141,6 @@ def _delta(before, after) -> tuple[str, ...]:
     return tuple(lines)
 
 
-def _check_publishable(name: str) -> None:
-    """A published name is a URL and an identity at once: it is what
-    /constitutions/<name> serves and what agents pass over MCP. Slugs are what
-    survive being pasted into a chat, a slide, or an address bar unmangled, so
-    a name that is not one is refused rather than quietly rewritten."""
-    if is_constitution_key(name):
-        return
-    suggestion = suggest_constitution_key(name)
-    hint = f" like '{suggestion}'" if suggestion else ""
-    raise UnpublishableNameError(
-        f"'{name}' cannot be published: use a lowercase-and-hyphens name{hint}"
-    )
-
-
 def _carry_forward(head, *, mission, declaration, principles):
     """What an edit with these fields makes of a head: the new content plus
     the changed flags. Omitted fields carry forward; on nothing, everything
@@ -264,7 +249,9 @@ class ControlPlane:
 
     def _name(self, constitution: str | None) -> str:
         """Resolve a per-call name, using default when omitted or None."""
-        return DEFAULT_CONSTITUTION_KEY if constitution is None else constitution
+        return check_constitution_key(
+            DEFAULT_CONSTITUTION_KEY if constitution is None else constitution
+        )
 
     def on_change(self, callback: Callable[[ConstitutionVersion], None]) -> None:
         self._subscribers.append(callback)
@@ -282,12 +269,12 @@ class ControlPlane:
 
         An absent positive version raises UnknownVersionError.
         """
+        name = self._name(constitution)
         if version is None:
-            return self.current(constitution)
+            return self.current(name)
         check_version(version)
         if version == 0:
             return _EMPTY_CONSTITUTION
-        name = self._name(constitution)
         selected = self._store.get(name, version)
         if selected is None:
             raise UnknownVersionError(f"constitution '{name}' version {version} not found")
@@ -337,7 +324,6 @@ class ControlPlane:
             raise UnknownConstitutionError(
                 f"'{name}' has no direction set, so there is nothing to publish"
             )
-        _check_publishable(name)
         already = self._store.publication(name)
         # The stamp records when this constitution went public; turning
         # history on later is not a new publication.

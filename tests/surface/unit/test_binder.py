@@ -37,11 +37,20 @@ def test_given_fixed_detail_when_assigning_binder_detail_then_attribute_error_pr
 
 
 @pytest.mark.parametrize("constitution_name", [None, 1, True, [], {}])
-def test_given_non_string_constitution_name_when_creating_direction_binder_then_raises_type_error(
+def test_given_non_string_key_when_creating_direction_binder_then_value_error_is_raised(
     scripted_source, constitution_name
 ):
-    with pytest.raises(TypeError, match="constitution name must be a string"):
+    with pytest.raises(ValueError, match="constitution key must be a string"):
         DirectionBinder(scripted_source, constitution_name)
+    assert scripted_source.calls == []
+
+
+@pytest.mark.parametrize("key", ["", "Upper", "bad/name", " support "])
+def test_given_malformed_key_when_creating_binder_then_it_is_rejected_before_pulling(
+    scripted_source, key
+):
+    with pytest.raises(ValueError, match="constitution key"):
+        DirectionBinder(scripted_source, key)
     assert scripted_source.calls == []
 
 

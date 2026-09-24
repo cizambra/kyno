@@ -10,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 from kyno.errors import ConfigError, CorruptStateError, VersionConflictError
 from kyno.models import AuthorizationType, ConstitutionVersion, Publication, Token, TokenScope
 from kyno.store.schema import build_metadata
+from kyno.wire.constitution import check_constitution_key
 from kyno.wire.errors import CoherenceError
 from kyno.wire.models import Principle, normalize_principles
 
@@ -119,6 +120,7 @@ class SqlConstitutionStore:
         return row.id if row else None
 
     def head(self, constitution: str) -> ConstitutionVersion | None:
+        constitution = check_constitution_key(constitution)
         with self.engine.connect() as conn:
             cur = conn.execute(
                 select(self._constitutions.c.id, self._constitutions.c.current_version).where(
@@ -140,6 +142,7 @@ class SqlConstitutionStore:
             return self._row_to_version(row)
 
     def get(self, constitution: str, version: int) -> ConstitutionVersion | None:
+        constitution = check_constitution_key(constitution)
         with self.engine.connect() as conn:
             cid = self._constitution_id(conn, constitution)
             if cid is None:
@@ -154,6 +157,7 @@ class SqlConstitutionStore:
     def versions_after(
         self, constitution: str, last_seen_version: int
     ) -> list[ConstitutionVersion]:
+        constitution = check_constitution_key(constitution)
         with self.engine.connect() as conn:
             cid = self._constitution_id(conn, constitution)
             if cid is None:
@@ -177,6 +181,7 @@ class SqlConstitutionStore:
         Bounds are inclusive; an omitted bound means "from the beginning" or
         "to head". An empty store or range returns an empty list rather than
         raising, consistent with the read-never-fails contract elsewhere."""
+        constitution = check_constitution_key(constitution)
         with self.engine.connect() as conn:
             cid = self._constitution_id(conn, constitution)
             if cid is None:
@@ -214,6 +219,7 @@ class SqlConstitutionStore:
         the exporting database's own token table. The changed_mission and
         changed_principles flags are not in the export; recomputing them
         against the version before gives what authoring wrote."""
+        constitution = check_constitution_key(constitution)
         _require_whole_ledger(rows)
         now = datetime.now(UTC)
         with self.engine.begin() as conn:
@@ -292,6 +298,7 @@ class SqlConstitutionStore:
             previous_mission, previous_principles = mission, principles
 
     def publication(self, constitution: str) -> Publication:
+        constitution = check_constitution_key(constitution)
         with self.engine.connect() as conn:
             row = conn.execute(
                 select(
@@ -321,6 +328,7 @@ class SqlConstitutionStore:
         """Record (or clear) publication. False means the name does not exist,
         which callers turn into an error rather than a silent success: a typo
         must not report that something was published."""
+        constitution = check_constitution_key(constitution)
         with self.engine.begin() as conn:
             result = conn.execute(
                 update(self._constitutions)
@@ -344,6 +352,7 @@ class SqlConstitutionStore:
         authorized_by: AuthorizationType | None = None,
         token_id: int | None = None,
     ) -> ConstitutionVersion:
+        constitution = check_constitution_key(constitution)
         now = datetime.now(UTC)
         try:
             with self.engine.begin() as conn:

@@ -1,12 +1,9 @@
-from datetime import UTC, datetime
-
 import pytest
 
 from kyno.errors import (
     EmptyChangeError,
     UnknownConstitutionError,
     UnknownVersionError,
-    UnpublishableNameError,
     VersionConflictError,
 )
 from kyno.service import ControlPlane
@@ -487,37 +484,7 @@ def test_given_public_history_when_building_the_public_payload_then_it_is_newest
     assert payload["constitution"] == "default"
 
 
-def test_given_a_name_that_cannot_be_a_url_segment_when_publishing_then_it_is_refused(cp):
-    # The page is served at /constitutions/<name>. A name with a slash in it
-    # would report success and then never be reachable.
-    _direction(cp, "acme/eu")
-    with pytest.raises(UnpublishableNameError):
-        cp.publish(constitution="acme/eu")
-    assert cp.publication("acme/eu").published is False
-
-
-def test_given_a_name_ending_in_json_when_publishing_then_it_is_refused(cp):
-    # /constitutions/x.json is the machine-readable route for "x", so a
-    # constitution named "x.json" would be served under the wrong name.
-    _direction(cp, "policy.json")
-    with pytest.raises(UnpublishableNameError):
-        cp.publish(constitution="policy.json")
-
-
-def test_given_an_unpublishable_name_when_used_anywhere_else_then_it_still_works(cp):
-    # Only publishing is refused; the constitution itself is untouched.
-    _direction(cp, "acme/eu", mission="EU mission")
-    assert cp.current("acme/eu").mission == "EU mission"
-    assert cp.changes_since(0, "acme/eu").mission == "EU mission"
-
-
-# --- a published name is a slug --------------------------------------------
-
-
-@pytest.mark.parametrize(
-    "name",
-    ["acme", "eu", "acme-eu", "acme-eu-west", "policy2", "2026-policy", "index", "a"],
-)
+@pytest.mark.parametrize("name", ["acme", "acme-eu", "policy2", "2026-policy", "a"])
 def test_given_a_slug_name_when_publishing_then_it_is_accepted(name, cp):
     _direction(cp, name)
     assert cp.publish(constitution=name).published is True
@@ -526,82 +493,36 @@ def test_given_a_slug_name_when_publishing_then_it_is_accepted(name, cp):
 @pytest.mark.parametrize(
     "name",
     [
-        "Acme",  # uppercase
-        "acme eu",  # space
-        "acme?",  # query
-        "acme#eu",  # fragment
-        "acme%20eu",  # already-encoded
-        "acme/eu",  # would leave the path segment
-        "policy.json",  # already the machine-readable route for "policy"
-        "-acme",  # leading hyphen
-        "acme-",  # trailing hyphen
-        "acme--eu",  # doubled separator
-        "acme_eu",  # underscore
-        "acme\n",  # a trailing newline is not the end of the name
+        "Acme",
+        "acme eu",
+        "acme?",
+        "acme#eu",
+        "acme%20eu",
+        "acme/eu",
+        "policy.json",
+        "-acme",
+        "acme-",
+        "acme--eu",
+        "acme_eu",
         "",
     ],
 )
-def test_given_a_name_that_is_not_a_slug_when_publishing_then_it_is_refused(name, cp):
-    _direction(cp, name)
-    with pytest.raises(UnpublishableNameError):
-        cp.publish(constitution=name)
-    assert cp.publication(name).published is False
+@pytest.mark.parametrize(
+    "operation", ["current", "publication", "publish", "unpublish", "public_constitution"]
+)
+def test_given_invalid_key_when_core_reads_or_publishes_then_value_error_is_raised(
+    name, operation, cp
+):
+    with pytest.raises(ValueError, match="constitution key"):
+        getattr(cp, operation)(name)
 
 
-def test_given_a_refused_name_when_reading_the_error_then_it_suggests_the_likely_slug(cp):
-    # Presentation help only: the suggestion is never applied to the name.
-    _direction(cp, "Epicurean Digital")
-    with pytest.raises(UnpublishableNameError) as refusal:
-        cp.publish(constitution="Epicurean Digital")
-    assert str(refusal.value) == (
-        "'Epicurean Digital' cannot be published: "
-        "use a lowercase-and-hyphens name like 'epicurean-digital'"
-    )
-
-
-def test_given_a_name_with_nothing_sluggable_when_publishing_then_no_suggestion_comes(cp):
-    _direction(cp, "///")
-    with pytest.raises(UnpublishableNameError) as refusal:
-        cp.publish(constitution="///")
-    assert str(refusal.value) == "'///' cannot be published: use a lowercase-and-hyphens name"
-
-
-def test_given_a_sluggable_name_when_publishing_then_it_is_never_quietly_slugged(cp):
-    # The name in the URL is the name agents pass over MCP. Publishing
-    # "Acme EU" as "acme-eu" would silently break that identity.
-    _direction(cp, "Acme EU")
-    with pytest.raises(UnpublishableNameError):
-        cp.publish(constitution="Acme EU")
-    assert cp.publication("acme-eu").published is False
-    assert cp.current("acme-eu").version == 0
-
-
-def test_given_a_name_refused_for_publishing_when_used_elsewhere_then_it_still_works(cp):
-    _direction(cp, "Acme EU", mission="EU mission")
-    assert cp.current("Acme EU").mission == "EU mission"
-    assert cp.changes_since(0, "Acme EU").mission == "EU mission"
-
-
-def _publish_bypassing_the_rule(cp, name):
-    """A row from before the rule existed: published directly through the
-    store, the way a release that predates this check left it."""
-    cp._store.set_publication(
-        name, published_at=datetime(2026, 1, 1, tzinfo=UTC), history_public=False
-    )
-
-
-def test_given_a_name_published_before_the_rule_when_serving_then_it_works_and_can_go_down(cp):
-    # Nobody gets stranded: the rule bites when you publish, and reading or
-    # withdrawing a publication never validates.
-    _direction(cp, "Legacy Name", mission="Still served")
-    _publish_bypassing_the_rule(cp, "Legacy Name")
-
-    public = cp.public_constitution("Legacy Name")
-    assert public is not None and public.mission == "Still served"
-    assert [v.name for v in cp.published_constitutions()] == ["Legacy Name"]
-
-    assert cp.unpublish(constitution="Legacy Name").published is False
-    assert cp.public_constitution("Legacy Name") is None
+def test_given_uppercase_words_when_apply_direction_runs_then_suggested_key_remains_unwritten(
+    cp,
+):
+    with pytest.raises(ValueError, match="epicurean-digital"):
+        _direction(cp, "Epicurean Digital")
+    assert cp.current("epicurean-digital").version == 0
 
 
 # --- principles: a title, and an optional description ----------------------

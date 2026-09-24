@@ -67,6 +67,12 @@ def test_given_history_when_filtering_then_matching_records_are_oldest_first(
     assert [record["record_id"] for record in history.list(**filters)["items"]] == expected
 
 
+@pytest.mark.parametrize("key", ["", "Upper", "bad/name", " alpha "])
+def test_given_invalid_constitution_filter_when_listing_then_it_is_rejected(history, key):
+    with pytest.raises(ValueError, match="constitution key"):
+        history.list(constitution=key)
+
+
 def test_given_stored_json_when_listing_then_values_are_decoded_without_sequence(history):
     record = history.list(limit=1)["items"][0]
     assert "delta" not in record

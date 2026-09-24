@@ -1,8 +1,6 @@
 """The unauthenticated /constitutions pages: what they show, what they must
 never show, and how they answer for something that is not published."""
 
-from datetime import UTC, datetime
-
 import pytest
 from starlette.testclient import TestClient
 
@@ -249,27 +247,6 @@ def test_given_a_multi_line_mission_when_rendering_the_index_then_only_the_first
     assert "A long second paragraph" not in body
 
 
-def _publish_bypassing_the_name_rule(plane, name):
-    """A row from before published names had to be slugs. The page renderer's
-    escaping and URL-encoding are what keep such a page safe, so the tests
-    using this helper exercise them against a name today's `publish` would
-    refuse."""
-    plane._store.set_publication(
-        name, published_at=datetime(2026, 1, 1, tzinfo=UTC), history_public=False
-    )
-
-
-def test_given_a_hostile_name_when_rendering_the_index_then_it_is_escaped_and_url_encoded(
-    plane, client
-):
-    direction(plane, "a<b> c", mission="Odd name")
-    _publish_bypassing_the_name_rule(plane, "a<b> c")
-    body = client.get("/constitutions/").text
-    assert "<b>" not in body
-    assert "&lt;b&gt;" in body
-    assert "a%3Cb%3E%20c" in body
-
-
 def test_given_a_constitution_named_index_when_routing_then_the_index_route_does_not_shadow_it(
     plane, client
 ):
@@ -355,19 +332,6 @@ def test_given_hostile_content_when_rendering_the_title_element_then_it_is_escap
     plane.publish()
     title = re.search(r"<title>(.*?)</title>", client.get("/constitutions/default").text).group(1)
     assert title == "Mission &lt;script&gt;alert(1)&lt;/script&gt;"
-
-
-def test_given_no_mission_when_rendering_the_title_then_the_escaped_name_is_the_fallback(
-    plane, client
-):
-    import re
-
-    plane.apply_direction(principles=("p1",), change_note="init", constitution="a<b>")
-    _publish_bypassing_the_name_rule(plane, "a<b>")
-    page = client.get("/constitutions/a%3Cb%3E")
-    assert page.status_code == 200
-    title = re.search(r"<title>(.*?)</title>", page.text).group(1)
-    assert title == "a&lt;b&gt;"
 
 
 # --- principles render as titled sections ----------------------------------

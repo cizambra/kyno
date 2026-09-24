@@ -246,7 +246,10 @@ def test_given_two_bindings_with_one_wiring_when_comparing_then_they_are_equal_a
     assert len({KynoBinding(**wiring), KynoBinding(**wiring)}) == 1
 
 
-def test_given_a_typed_detail_when_pulling_over_mcp_then_the_argument_is_a_plain_string():
+@pytest.mark.parametrize("key", ["default", "support"])
+def test_given_key_and_detail_enum_when_mcp_changes_since_runs_then_wire_arguments_are_normalized(
+    key,
+):
     seen = {}
 
     class Session:
@@ -268,10 +271,23 @@ def test_given_a_typed_detail_when_pulling_over_mcp_then_the_argument_is_a_plain
         def call(self, operation):
             return asyncio.run(operation(Session()))
 
-    McpDirectionSource(Runner()).changes_since(0, "default", DetailLevel.FULL)
+    McpDirectionSource(Runner()).changes_since(0, key, DetailLevel.FULL)
 
+    assert seen["constitution"] == key.strip()
     assert seen["detail"] == "full"
     assert type(seen["detail"]) is str
+
+
+@pytest.mark.parametrize("source_type", [LocalDirectionSource, McpDirectionSource])
+@pytest.mark.parametrize("key", ["", " ", "Upper"])
+def test_given_invalid_key_when_source_changes_since_runs_then_dependency_is_not_called(
+    source_type, key
+):
+    dependency = Mock()
+    with pytest.raises(ValueError, match="constitution key"):
+        source_type(dependency).changes_since(0, key)
+    dependency.changes_since.assert_not_called()
+    dependency.call.assert_not_called()
 
 
 @pytest.mark.parametrize("source_type", [LocalDirectionSource, McpDirectionSource])

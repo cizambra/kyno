@@ -551,15 +551,19 @@ def test_given_a_name_that_is_not_a_slug_when_publishing_then_it_is_refused(name
 def test_given_a_refused_name_when_reading_the_error_then_it_suggests_the_likely_slug(cp):
     # Presentation help only: the suggestion is never applied to the name.
     _direction(cp, "Epicurean Digital")
-    with pytest.raises(UnpublishableNameError, match="epicurean-digital"):
+    with pytest.raises(UnpublishableNameError) as refusal:
         cp.publish(constitution="Epicurean Digital")
+    assert str(refusal.value) == (
+        "'Epicurean Digital' cannot be published: "
+        "use a lowercase-and-hyphens name like 'epicurean-digital'"
+    )
 
 
 def test_given_a_name_with_nothing_sluggable_when_publishing_then_no_suggestion_comes(cp):
     _direction(cp, "///")
-    with pytest.raises(UnpublishableNameError, match="cannot be published") as refusal:
+    with pytest.raises(UnpublishableNameError) as refusal:
         cp.publish(constitution="///")
-    assert "like ''" not in str(refusal.value)
+    assert str(refusal.value) == "'///' cannot be published: use a lowercase-and-hyphens name"
 
 
 def test_given_a_sluggable_name_when_publishing_then_it_is_never_quietly_slugged(cp):

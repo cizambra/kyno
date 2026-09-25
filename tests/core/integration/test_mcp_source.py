@@ -58,14 +58,19 @@ def test_given_recording_fails_when_sdk_pulls_then_current_direction_and_failed_
     assert history.list()["items"] == []
 
 
-def test_given_a_name_when_the_mcp_source_pulls_then_that_constitution_comes(mcp_runner):
+def test_given_eu_and_us_missions_when_mcp_source_reads_each_key_then_selected_mission_returns(
+    mcp_runner,
+):
     runner, control_plane = mcp_runner
     control_plane.apply_direction(mission="EU mission", change_note="init", constitution_key="eu")
     control_plane.apply_direction(mission="US mission", change_note="init", constitution_key="us")
     source = McpDirectionSource(runner)
 
-    assert source.changes_since(0, "eu").changes.mission == "EU mission"
-    assert source.changes_since(0, "us").changes.mission == "US mission"
+    eu_changes = source.changes_since(0, "eu").changes
+    us_changes = source.changes_since(0, "us").changes
+
+    assert eu_changes.mission == "EU mission"
+    assert us_changes.mission == "US mission"
 
 
 def test_given_a_last_seen_version_when_the_mcp_source_reports_then_the_notes_since_come(
@@ -89,17 +94,24 @@ def test_given_an_unwritten_name_when_the_mcp_source_reads_then_it_is_version_ze
     assert McpDirectionSource(runner).changes_since(0, "never-written").changes.current_version == 0
 
 
-def test_given_a_binder_over_mcp_when_steps_run_then_each_binds_the_live_version(mcp_runner):
+def test_given_eu_mission_update_when_mcp_binder_pulls_again_then_version_two_replaces_version_one(
+    mcp_runner,
+):
     runner, control_plane = mcp_runner
-    control_plane.apply_direction(mission="M1", change_note="init", constitution_key="eu")
+    control_plane.apply_direction(
+        mission="Initial mission", change_note="init", constitution_key="eu"
+    )
     binder = DirectionBinder(McpDirectionSource(runner), "eu")
 
     first = binder.bind()
-    control_plane.apply_direction(mission="M2", change_note="pivot", constitution_key="eu")
+    control_plane.apply_direction(
+        mission="Updated mission", change_note="pivot", constitution_key="eu"
+    )
     second = binder.bind()
 
-    assert (first.version, second.version) == (1, 2)
-    assert second.mission == "M2"
+    assert first.version == 1
+    assert second.version == 2
+    assert second.mission == "Updated mission"
 
 
 def test_given_a_closed_runner_when_pulling_then_unavailable_raises_instead_of_hanging(
@@ -117,10 +129,9 @@ def test_given_the_mcp_source_when_checking_the_protocol_then_it_satisfies_it(mc
     assert isinstance(McpDirectionSource(runner), DirectionSource)
 
 
-def test_given_the_two_sources_when_asking_the_same_question_then_the_answers_match(
+def test_given_eu_principles_update_when_local_and_mcp_sources_read_since_one_then_changes_match(
     mcp_runner,
 ):
-    """The in-process and MCP paths must stay interchangeable for a binder."""
     runner, control_plane = mcp_runner
     control_plane.apply_direction(mission="M1", change_note="init", constitution_key="eu")
     control_plane.apply_direction(

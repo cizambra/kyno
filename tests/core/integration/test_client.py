@@ -5,13 +5,18 @@ import pytest
 from kyno.sdk.client import DirectionSource, LocalDirectionSource
 
 
-def test_given_a_local_source_when_pulling_a_name_then_that_constitution_serves(control_plane):
+def test_given_eu_and_us_missions_when_local_source_reads_each_key_then_selected_mission_returns(
+    control_plane,
+):
     control_plane.apply_direction(mission="EU mission", change_note="init", constitution_key="eu")
     control_plane.apply_direction(mission="US mission", change_note="init", constitution_key="us")
     source = LocalDirectionSource(control_plane)
 
-    assert source.changes_since(0, "eu").changes.mission == "EU mission"
-    assert source.changes_since(0, "us").changes.mission == "US mission"
+    eu_changes = source.changes_since(0, "eu").changes
+    us_changes = source.changes_since(0, "us").changes
+
+    assert eu_changes.mission == "EU mission"
+    assert us_changes.mission == "US mission"
 
 
 def test_given_an_unwritten_name_when_a_local_source_reads_then_it_is_version_zero(control_plane):
@@ -37,19 +42,21 @@ def test_given_a_future_last_seen_version_when_a_local_source_pulls_then_the_err
         )
 
 
-def test_given_one_source_when_serving_two_bindings_then_there_is_no_crosstalk(control_plane):
-    """The use case: one process runs an EU crew and a US crew off one plane."""
+def test_given_eu_and_us_at_version_one_when_only_eu_updates_then_us_reports_no_change(
+    control_plane,
+):
     control_plane.apply_direction(mission="EU v1", change_note="init", constitution_key="eu")
     control_plane.apply_direction(mission="US v1", change_note="init", constitution_key="us")
     source = LocalDirectionSource(control_plane)
-    eu, us = "eu", "us"
 
     control_plane.apply_direction(mission="EU v2", change_note="pivot", constitution_key="eu")
 
-    after_eu = source.changes_since(1, eu).changes
-    after_us = source.changes_since(1, us).changes
-    assert after_eu.changed is True and after_eu.mission == "EU v2"
-    assert after_us.changed is False and after_us.mission == "US v1"
+    after_eu = source.changes_since(1, "eu").changes
+    after_us = source.changes_since(1, "us").changes
+    assert after_eu.changed is True
+    assert after_eu.mission == "EU v2"
+    assert after_us.changed is False
+    assert after_us.mission == "US v1"
 
 
 def test_given_a_last_seen_version_when_a_local_source_reports_then_every_note_since_comes(

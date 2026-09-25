@@ -203,12 +203,12 @@ def test_given_published_constitutions_when_rendering_the_index_then_they_list_w
     direction(plane, "product", mission="Product mission")
     plane.publish(constitution_key="product")
 
-    r = client.get("/constitutions/")
-    assert r.status_code == 200
-    assert r.headers["content-type"].startswith("text/html")
-    assert "product" in r.text
-    assert "Product mission" in r.text
-    assert 'href="/constitutions/product"' in r.text
+    response = client.get("/constitutions/")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "product" in response.text
+    assert "Product mission" in response.text
+    assert 'href="/constitutions/product"' in response.text
 
 
 def test_given_an_unpublished_constitution_when_rendering_the_index_then_it_never_shows(
@@ -647,7 +647,7 @@ def test_given_repeat_visits_when_rendering_a_declaration_then_it_renders_once_p
     assert info.misses == 1 and info.hits >= 1
 
 
-def test_given_the_render_cache_when_inspecting_its_key_then_it_is_the_declaration_text(
+def test_given_shared_declaration_when_rendering_two_constitutions_then_second_render_hits_cache(
     plane, client
 ):
     # Two constitutions sharing one declaration share one render: versions
@@ -666,5 +666,6 @@ def test_given_the_render_cache_when_inspecting_its_key_then_it_is_the_declarati
     client.get("/constitutions/beta")
 
     info = _declaration_html.cache_info()
-    assert info.misses == 1 and info.hits == 1
+    assert info.misses == 1
+    assert info.hits == 1
     assert info.maxsize == 64

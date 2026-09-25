@@ -82,7 +82,7 @@ def test_given_only_a_font_when_rendering_then_the_automatic_dark_swap_stays(pla
     assert "Iowan Old Style, serif" in page
 
 
-def test_given_a_theme_when_rendering_the_index_then_it_uses_the_same_theme(plane):
+def test_given_custom_accent_when_rendering_index_then_configured_accent_is_included(plane):
     direction(plane, "product", mission="Product mission")
     plane.publish(constitution_key="product")
     page = render_index(plane.published_constitutions(), PageConfig(theme=PageTheme(accent="#b45")))
@@ -221,7 +221,7 @@ def test_given_a_custom_index_template_when_rendering_then_it_replaces_the_built
     assert "<style>" not in page
 
 
-def test_given_a_broken_index_template_when_rendering_then_the_built_in_index_serves(
+def test_given_missing_index_template_when_rendering_then_builtin_index_serves_with_one_warning(
     plane, tmp_path, caplog
 ):
     direction(plane, "product", mission="Product mission")
@@ -291,7 +291,7 @@ def test_given_a_custom_template_when_reading_the_json_view_then_it_is_untouched
     assert [p["title"] for p in payload["principles"]] == ["p1", "p2"]
 
 
-def test_given_the_index_template_when_rendering_then_it_can_report_how_many_are_published(
+def test_given_two_public_constitutions_when_rendering_count_placeholder_then_index_reports_two(
     plane, tmp_path
 ):
     path = tmp_path / "index.html"

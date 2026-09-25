@@ -80,7 +80,10 @@ def test_given_the_packaged_index_template_when_rendering_then_the_built_in_inde
     copy = tmp_path / "index.html"
     copy.write_text(packaged_template("index.html"), encoding="utf-8")
 
-    assert render_index(views, PageConfig(index_template=str(copy))) == render_index(views)
+    custom_index = render_index(views, PageConfig(index_template=str(copy)))
+    builtin_index = render_index(views)
+
+    assert custom_index == builtin_index
 
 
 def test_given_a_copied_template_when_rendering_then_it_follows_the_theme_it_is_rendered_with(

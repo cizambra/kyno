@@ -18,7 +18,8 @@ def test_given_support_binder_when_plan_tracker_checks_changes_then_only_support
     )
     changed = tracker.changed()
 
-    assert planned.constitution == changed.constitution == "support"
+    assert planned.constitution == "support"
+    assert changed.constitution == "support"
     assert changed.version == 2
     assert changed.mission == "New support"
 

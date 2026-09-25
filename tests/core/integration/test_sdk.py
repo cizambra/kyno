@@ -73,7 +73,7 @@ def test_given_a_closed_connection_when_binding_then_it_degrades_instead_of_cras
 
 
 @pytest.mark.parametrize("cached", [False, True], ids=["without-cache", "with-cache"])
-def test_given_fail_closed_support_binder_when_bind_with_status_loses_connection_then_it_raises(
+def test_given_fail_closed_support_binder_when_connection_is_lost_then_kyno_unavailable_is_raised(
     mcp_connection, cached
 ):
     connection, control_plane = mcp_connection

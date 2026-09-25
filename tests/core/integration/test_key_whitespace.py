@@ -26,12 +26,21 @@ def test_given_empty_store_when_applying_padded_key_then_only_trimmed_identity_i
     constitutions = memory_store.metadata.tables["kyno_constitutions"]
     versions = memory_store.metadata.tables["kyno_constitution_versions"]
     with memory_store.engine.connect() as connection:
-        assert connection.execute(
-            select(constitutions.c.name, constitutions.c.current_version)
-        ).all() == [("support", 1)]
-        assert connection.execute(
-            select(constitutions.c.name, versions.c.version).join(versions)
-        ).all() == [("support", 1)]
+        stored_constitution = (
+            connection.execute(select(constitutions.c.name, constitutions.c.current_version))
+            .mappings()
+            .one()
+        )
+        stored_version = (
+            connection.execute(select(constitutions.c.name, versions.c.version).join(versions))
+            .mappings()
+            .one()
+        )
+
+    assert stored_constitution["name"] == "support"
+    assert stored_constitution["current_version"] == 1
+    assert stored_version["name"] == "support"
+    assert stored_version["version"] == 1
     assert result.version == 1
 
 
@@ -92,7 +101,7 @@ def test_given_key_at_write_limit_when_applying_with_padding_then_only_key_count
         assert connection.scalars(select(table.c.name)).all() == [key]
 
 
-def test_given_existing_version_when_padded_apply_expects_empty_then_no_second_identity_is_created(
+def test_given_support_version_one_when_padded_apply_expects_zero_then_stored_history_is_unchanged(
     memory_store,
 ):
     plane = ControlPlane(memory_store)
@@ -106,10 +115,14 @@ def test_given_existing_version_when_padded_apply_expects_empty_then_no_second_i
     constitutions = memory_store.metadata.tables["kyno_constitutions"]
     versions = memory_store.metadata.tables["kyno_constitution_versions"]
     with memory_store.engine.connect() as connection:
-        assert connection.execute(select(constitutions.c.name)).all() == [("support",)]
-        assert connection.execute(select(versions.c.version, versions.c.mission)).all() == [
-            (1, "First")
-        ]
+        stored_keys = connection.scalars(select(constitutions.c.name)).all()
+        stored_version = (
+            connection.execute(select(versions.c.version, versions.c.mission)).mappings().one()
+        )
+
+    assert stored_keys == ["support"]
+    assert stored_version["version"] == 1
+    assert stored_version["mission"] == "First"
 
 
 def test_given_served_version_when_recording_padded_key_then_trimmed_key_links_to_that_constitution(
@@ -130,14 +143,23 @@ def test_given_served_version_when_recording_padded_key_then_trimmed_key_links_t
     constitutions = memory_store.metadata.tables["kyno_constitutions"]
     records = memory_store.metadata.tables["kyno_delivery_records"]
     with memory_store.engine.connect() as connection:
-        assert connection.execute(
-            select(
-                records.c.record_id,
-                records.c.requested_constitution,
-                constitutions.c.name,
-                records.c.served_version,
-            ).join(constitutions)
-        ).all() == [(identifier, "support", "support", 1)]
+        stored_record = (
+            connection.execute(
+                select(
+                    records.c.record_id,
+                    records.c.requested_constitution,
+                    constitutions.c.name,
+                    records.c.served_version,
+                ).join(constitutions)
+            )
+            .mappings()
+            .one()
+        )
+
+    assert stored_record["record_id"] == identifier
+    assert stored_record["requested_constitution"] == "support"
+    assert stored_record["name"] == "support"
+    assert stored_record["served_version"] == 1
 
 
 def test_given_existing_key_when_apply_direction_uses_padded_key_then_same_history_gets_version_two(
@@ -145,9 +167,11 @@ def test_given_existing_key_when_apply_direction_uses_padded_key_then_same_histo
 ):
     plane = ControlPlane(memory_store)
     plane.apply_direction(mission="First", change_note="init", constitution_key="support")
+
     result = plane.apply_direction(
         mission="Second", change_note="update", constitution_key=" \tsupport\n", expected_version=1
     )
+
     assert result.version == 2
     assert plane.current("support").mission == "Second"
     assert [version.version for version in memory_store.versions_after("support", 0)] == [1, 2]

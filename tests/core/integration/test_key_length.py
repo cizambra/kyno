@@ -20,30 +20,33 @@ def ledger():
 
 
 @pytest.mark.parametrize("operation", ["apply", "append", "import"])
-@pytest.mark.parametrize("populated", [False, True])
+@pytest.mark.parametrize(
+    "has_prefix_history", [False, True], ids=["empty-store", "existing-prefix"]
+)
 @pytest.mark.parametrize("padding", ["", " \t"])
-def test_given_overlong_key_when_writing_then_identity_and_version_tables_are_unchanged(
-    memory_store, ledger, operation, populated, padding
+def test_given_201_character_key_when_writing_then_identity_and_version_tables_are_unchanged(
+    memory_store, ledger, operation, has_prefix_history, padding
 ):
     plane = ControlPlane(memory_store)
-    prefix = "a" * 200
-    if populated:
-        plane.apply_direction(mission="Existing", change_note="init", constitution_key=prefix)
-    tables = [
-        memory_store.metadata.tables[name]
-        for name in ("kyno_constitutions", "kyno_constitution_versions")
-    ]
+    key_at_limit = "a" * 200
+    overlong_key = f"{padding}{key_at_limit}b{padding}"
+    if has_prefix_history:
+        plane.apply_direction(mission="Existing", change_note="init", constitution_key=key_at_limit)
+    constitutions = memory_store.metadata.tables["kyno_constitutions"]
+    versions = memory_store.metadata.tables["kyno_constitution_versions"]
     with memory_store.engine.connect() as connection:
-        before = [connection.execute(select(table).order_by(table.c.id)).all() for table in tables]
+        identities_before = connection.execute(select(constitutions)).all()
+        versions_before = connection.execute(select(versions)).all()
 
-    key = f"{padding}{prefix}b{padding}"
     with pytest.raises(InvalidConstitutionKeyError, match="200"):
         if operation == "apply":
-            plane.apply_direction(mission="New", change_note="update", constitution_key=key)
+            plane.apply_direction(
+                mission="New", change_note="update", constitution_key=overlong_key
+            )
         elif operation == "append":
             memory_store.append(
-                key,
-                version=2 if populated else 1,
+                overlong_key,
+                version=2 if has_prefix_history else 1,
                 mission="New",
                 principles=(),
                 change_note="update",
@@ -52,11 +55,14 @@ def test_given_overlong_key_when_writing_then_identity_and_version_tables_are_un
                 created_by=None,
             )
         else:
-            memory_store.import_versions(key, ledger)
+            memory_store.import_versions(overlong_key, ledger)
 
     with memory_store.engine.connect() as connection:
-        after = [connection.execute(select(table).order_by(table.c.id)).all() for table in tables]
-    assert after == before
+        identities_after = connection.execute(select(constitutions)).all()
+        versions_after = connection.execute(select(versions)).all()
+
+    assert identities_after == identities_before
+    assert versions_after == versions_before
 
 
 def test_given_200_character_key_when_filtering_delivery_history_then_exact_identity_is_selected(

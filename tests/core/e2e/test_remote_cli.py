@@ -39,7 +39,7 @@ def test_given_a_read_token_when_reading_history_over_http_then_full_content_is_
     control_plane.apply_direction(
         constitution_key="support", mission="New mission", change_note="updated"
     )
-    before = store.export_versions("support")
+    original_history = store.export_versions("support")
     value = generate_value()
     token = store.add_token("reader", "read", token_hash=hash_value(value))
     port = free_port()
@@ -79,7 +79,7 @@ def test_given_a_read_token_when_reading_history_over_http_then_full_content_is_
 
         for result in (historical, authored, current, latest):
             assert result.exit_code == 0, result.output
-        assert json.loads(historical.stdout) == before[0]
+        assert json.loads(historical.stdout) == original_history[0]
         assert yaml.safe_load(authored.stdout) == {
             "constitution": "support",
             "mission": "",
@@ -88,7 +88,7 @@ def test_given_a_read_token_when_reading_history_over_http_then_full_content_is_
         }
         assert latest.stdout == current.stdout
         assert json.loads(latest.stdout)["version"] == 2
-        assert store.export_versions("support") == before
+        assert store.export_versions("support") == original_history
         store.revoke_token(token.id)
         refused = runner.invoke(app, ["get-version", "1", *options])
         assert refused.exit_code == 1

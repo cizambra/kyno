@@ -157,11 +157,9 @@ def test_given_remote_direction_when_reading_current_or_latest_then_output_and_e
     options = ["--remote", "--constitution", "support", *options]
     current = runner.invoke(app, ["current", *options])
     latest = runner.invoke(app, ["get-version", "latest", *options])
-    assert (latest.exit_code, latest.stdout, latest.stderr) == (
-        current.exit_code,
-        current.stdout,
-        current.stderr,
-    )
+    assert latest.exit_code == current.exit_code
+    assert latest.stdout == current.stdout
+    assert latest.stderr == current.stderr
     assert fake_dial.closed
 
 
@@ -275,9 +273,9 @@ def test_given_a_matching_file_when_checking_remotely_then_it_matches_current_di
 ):
     remote_cp.apply_direction(mission="M1", change_note="init", constitution_key=constitution)
     path = write_file(tmp_path, mission="M1", constitution=constitution)
-    r = runner.invoke(app, ["check", path, "--remote"])
-    assert r.exit_code == 0, r.output
-    assert f"direction: '{constitution}' matches current version 1" in r.output
+    result = runner.invoke(app, ["check", path, "--remote"])
+    assert result.exit_code == 0, result.output
+    assert f"direction: '{constitution}' matches current version 1" in result.output
 
 
 @pytest.mark.parametrize("constitution", ["default", "sales"])
@@ -286,10 +284,10 @@ def test_given_a_stale_file_when_checking_remotely_then_it_fails_with_the_delta(
 ):
     remote_cp.apply_direction(mission="M1", change_note="init", constitution_key=constitution)
     path = write_file(tmp_path, mission="M2", constitution=constitution)
-    r = runner.invoke(app, ["check", path, "--remote"])
-    assert r.exit_code == 1
-    assert f"direction: '{constitution}' differs from current version 1:" in r.output
-    assert 'The mission was "M1" and is now "M2".' in r.output
+    result = runner.invoke(app, ["check", path, "--remote"])
+    assert result.exit_code == 1
+    assert f"direction: '{constitution}' differs from current version 1:" in result.output
+    assert 'The mission was "M1" and is now "M2".' in result.output
 
 
 @pytest.mark.parametrize("constitution", ["default", "sales"])

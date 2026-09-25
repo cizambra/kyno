@@ -6,15 +6,6 @@ from kyno.errors import UnknownVersionError
 from kyno.service import ControlPlane
 
 
-@pytest.fixture
-def two_directions(memory_store):
-    plane = ControlPlane(memory_store)
-    plane.apply_direction(mission="Default mission", change_note="init")
-    plane.apply_direction(mission="EU first", change_note="init", constitution_key="eu-west")
-    plane.apply_direction(mission="EU second", change_note="update", constitution_key="eu-west")
-    return plane
-
-
 def test_given_two_histories_when_exporting_eu_west_version_2_then_only_eu_west_version_2_returns(
     memory_store,
 ):
@@ -37,62 +28,98 @@ def test_given_two_histories_when_exporting_eu_west_version_2_then_only_eu_west_
     assert exported_version["mission"] == "EU second"
 
 
-def test_given_two_directions_when_previewing_selected_mission_then_selected_head_has_no_delta(
-    two_directions,
+def test_given_eu_west_at_version_two_when_previewing_its_mission_then_no_delta_or_write_occurs(
+    memory_store,
 ):
-    assert two_directions.preview_edit(mission="EU second", constitution_key=" eu-west ") == ()
-    head, delta = two_directions.head_and_delta(mission="EU second", constitution_key=" eu-west ")
-    assert (head.version, head.mission, delta) == (2, "EU second", ())
-    assert two_directions.current().mission == "Default mission"
-    assert two_directions.current("eu-west").version == 2
+    plane = ControlPlane(memory_store)
+    plane.apply_direction(mission="Default mission", change_note="init")
+    plane.apply_direction(mission="EU first", change_note="init", constitution_key="eu-west")
+    plane.apply_direction(mission="EU second", change_note="update", constitution_key="eu-west")
+
+    preview = plane.preview_edit(mission="EU second", constitution_key=" eu-west ")
+    head, delta = plane.head_and_delta(mission="EU second", constitution_key=" eu-west ")
+
+    assert preview == ()
+    assert head.version == 2
+    assert head.mission == "EU second"
+    assert delta == ()
+    assert plane.current().mission == "Default mission"
+    assert plane.current("eu-west").version == 2
 
 
-def test_given_two_directions_when_publishing_named_key_then_default_remains_private(
-    two_directions,
+def test_given_two_private_constitutions_when_publishing_eu_west_then_default_remains_private(
+    memory_store,
 ):
-    plane = two_directions
-    plane.publish(constitution_key=" eu-west ", with_history=True)
+    plane = ControlPlane(memory_store)
+    plane.apply_direction(mission="Default mission", change_note="init")
+    plane.apply_direction(mission="EU first", change_note="init", constitution_key="eu-west")
+    plane.apply_direction(mission="EU second", change_note="update", constitution_key="eu-west")
 
-    assert plane.publication(constitution_key="eu-west").published
+    publication = plane.publish(constitution_key=" eu-west ", with_history=True)
+
+    assert publication.published is True
+    assert plane.publication(constitution_key="eu-west").published is True
     public = plane.public_constitution(constitution_key="eu-west")
-    assert (public.name, public.mission) == ("eu-west", "EU second")
+    assert public.name == "eu-west"
+    assert public.mission == "EU second"
     assert public.history is not None
     assert not plane.publication().published
     assert plane.public_constitution() is None
 
 
-def test_given_two_public_directions_when_unpublishing_named_key_then_default_stays_public(
-    two_directions,
+def test_given_two_public_constitutions_when_unpublishing_eu_west_then_default_stays_public(
+    memory_store,
 ):
-    plane = two_directions
+    plane = ControlPlane(memory_store)
+    plane.apply_direction(mission="Default mission", change_note="init")
+    plane.apply_direction(mission="EU mission", change_note="init", constitution_key="eu-west")
     plane.publish()
     plane.publish(constitution_key="eu-west")
 
-    plane.unpublish(constitution_key=" eu-west ")
+    publication = plane.unpublish(constitution_key=" eu-west ")
 
+    assert publication.published is False
     assert not plane.publication(constitution_key="eu-west").published
     assert plane.public_constitution(constitution_key="eu-west") is None
     assert plane.publication().published
     assert plane.public_constitution().mission == "Default mission"
 
 
-def test_given_named_direction_when_selecting_key_then_embedded_operations_share_it(memory_store):
+def test_given_empty_store_when_applying_eu_west_then_named_history_starts_and_default_stays_empty(
+    memory_store,
+):
     plane = ControlPlane(memory_store)
+
     plane.apply_direction(mission="EU mission", change_note="init", constitution_key=" eu-west ")
+
     assert plane.current(constitution_key="eu-west").mission == "EU mission"
     assert plane.get_constitution(constitution_key="eu-west", version=1).mission == "EU mission"
     assert plane.changes_since(0, constitution_key="eu-west").current_version == 1
-    assert plane.export_versions(constitution_key="eu-west")[0]["version"] == 1
-    assert plane.preview_edit(mission="Next mission", constitution_key="eu-west")
-    assert plane.head_and_delta(mission="Next mission", constitution_key="eu-west")[0].version == 1
-    assert plane.publish(constitution_key="eu-west").published
-    assert plane.publication(constitution_key="eu-west").published
-    assert plane.public_constitution(constitution_key="eu-west").name == "eu-west"
-    assert not plane.unpublish(constitution_key="eu-west").published
+    exported_versions = plane.export_versions(constitution_key="eu-west")
+    assert len(exported_versions) == 1
+    assert exported_versions[0]["version"] == 1
+    assert exported_versions[0]["mission"] == "EU mission"
     assert plane.current().version == 0
 
 
-@pytest.mark.parametrize("key, expected", [(None, "Default mission"), ("eu-west", "EU mission")])
+def test_given_eu_west_mission_when_previewing_replacement_then_delta_describes_mission_change(
+    memory_store,
+):
+    plane = ControlPlane(memory_store)
+    plane.apply_direction(mission="EU mission", change_note="init", constitution_key="eu-west")
+
+    preview = plane.preview_edit(mission="Next mission", constitution_key="eu-west")
+    head, delta = plane.head_and_delta(mission="Next mission", constitution_key="eu-west")
+
+    assert preview == ('The mission was "EU mission" and is now "Next mission".',)
+    assert head.version == 1
+    assert head.mission == "EU mission"
+    assert delta == ('The mission was "EU mission" and is now "Next mission".',)
+
+
+@pytest.mark.parametrize(
+    "key, expected_mission", [(None, "Default mission"), ("eu-west", "EU mission")]
+)
 @pytest.mark.parametrize(
     "operation, arguments",
     [
@@ -101,14 +128,16 @@ def test_given_named_direction_when_selecting_key_then_embedded_operations_share
         ("changes_since", {"last_seen_version": 0}),
     ],
 )
-def test_given_two_directions_when_selecting_key_keyword_then_read_uses_that_selection(
-    memory_store, key, expected, operation, arguments
+def test_given_default_and_eu_west_when_reading_by_key_keyword_then_selected_mission_returns(
+    memory_store, key, expected_mission, operation, arguments
 ):
     plane = ControlPlane(memory_store)
     plane.apply_direction(mission="Default mission", change_note="init")
     plane.apply_direction(mission="EU mission", change_note="init", constitution_key="eu-west")
+
     selected = getattr(plane, operation)(constitution_key=key, **arguments)
-    assert selected.mission == expected
+
+    assert selected.mission == expected_mission
 
 
 def test_given_unknown_key_when_requesting_exact_version_by_keyword_then_version_is_not_found(

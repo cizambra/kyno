@@ -39,15 +39,14 @@ def apply_yaml(
 
 
 @pytest.mark.parametrize("command", [["current", "--yaml"], ["get-version", "1", "--yaml"]])
+@pytest.mark.parametrize("key", ["support", "a" * 200])
 def test_given_existing_direction_when_cli_reads_padded_key_then_output_uses_same_identity(
-    tmp_path, monkeypatch, command
+    tmp_path, monkeypatch, command, key
 ):
     cli_workspace(monkeypatch, tmp_path)
     assert runner.invoke(app, ["db", "init"]).exit_code == 0
     assert (
-        apply_yaml(
-            tmp_path, mission="Support mission", constitution="support", note="init"
-        ).exit_code
+        apply_yaml(tmp_path, mission="Support mission", constitution=key, note="init").exit_code
         == 0
     )
     assert (
@@ -55,12 +54,12 @@ def test_given_existing_direction_when_cli_reads_padded_key_then_output_uses_sam
         == 0
     )
 
-    expected = runner.invoke(app, [*command, "--constitution", "support"])
-    result = runner.invoke(app, [*command, "--constitution", " \tsupport\n"])
+    expected = runner.invoke(app, [*command, "--constitution", key])
+    result = runner.invoke(app, [*command, "--constitution", f" \t{key}\n"])
 
     assert expected.exit_code == result.exit_code == 0
     assert result.stdout == expected.stdout
-    assert "constitution: support" in result.stdout
+    assert f"constitution: {key}" in result.stdout
     assert "Support mission" in result.stdout
 
 

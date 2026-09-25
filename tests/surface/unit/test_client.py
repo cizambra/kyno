@@ -296,7 +296,7 @@ def test_given_padded_key_when_local_source_pulls_then_dependency_receives_trimm
 
 
 @pytest.mark.parametrize("source_type", [LocalDirectionSource, McpDirectionSource])
-@pytest.mark.parametrize("key", ["", " ", "Upper"])
+@pytest.mark.parametrize("key", ["", " ", "Upper", "a" * 201])
 def test_given_invalid_key_when_source_changes_since_runs_then_dependency_is_not_called(
     source_type, key
 ):

@@ -5,6 +5,7 @@ import pytest
 
 from kyno.sdk.cell import DIRECTION_MARKER
 from kyno.service import ControlPlane
+from kyno.wire.constitution import MAX_CONSTITUTION_KEY_CHARS, InvalidConstitutionKeyError
 from tests.stores import create_memory_store
 
 
@@ -93,11 +94,19 @@ def test_given_a_description_at_the_cap_when_applying_then_it_is_accepted_and_on
         cp.apply_direction(principles=(over,), change_note="too long")
 
 
-def test_given_a_name_at_the_cap_when_applying_then_it_is_accepted_and_one_over_is_refused(cp):
-    at_cap = "c" * caps().MAX_CONSTITUTION_NAME_CHARS
-    assert cp.apply_direction(mission="M", change_note="init", constitution=at_cap).version == 1
+def test_given_200_character_key_with_surrounding_spaces_when_applying_then_key_is_accepted(
+    cp,
+):
+    at_cap = "c" * MAX_CONSTITUTION_KEY_CHARS
+    assert (
+        cp.apply_direction(mission="M", change_note="init", constitution=f" {at_cap} ").version == 1
+    )
+    assert cp.current(at_cap).mission == "M"
 
-    with pytest.raises(field_too_large(), match="name"):
+
+def test_given_201_character_key_when_apply_direction_runs_then_key_length_error_is_raised(cp):
+    at_cap = "c" * MAX_CONSTITUTION_KEY_CHARS
+    with pytest.raises(InvalidConstitutionKeyError, match="200"):
         cp.apply_direction(mission="M", change_note="init", constitution=at_cap + "c")
 
 

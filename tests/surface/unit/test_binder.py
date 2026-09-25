@@ -45,7 +45,7 @@ def test_given_non_string_key_when_creating_direction_binder_then_value_error_is
     assert scripted_source.calls == []
 
 
-@pytest.mark.parametrize("key", ["", "Upper", "bad/name", " support "])
+@pytest.mark.parametrize("key", ["", "Upper", "bad/name", " sup port "])
 def test_given_malformed_key_when_creating_binder_then_it_is_rejected_before_pulling(
     scripted_source, key
 ):

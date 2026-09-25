@@ -87,6 +87,7 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
     "filters, expected_arguments",
     [
         ({}, {"limit": 50}),
+        ({"constitution": " support "}, {"constitution": "support", "limit": 50}),
         (
             {
                 "correlation_id": "run-42",
@@ -108,6 +109,7 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
     ],
     ids=[
         "default-limit-without-filters",
+        "trimmed-key-filter",
         "all-filters-including-zero-cursor",
     ],
 )
@@ -138,16 +140,18 @@ def test_given_invalid_version_when_get_constitution_is_called_then_request_is_n
 
 @pytest.mark.parametrize("version", [None, 0, 3])
 @pytest.mark.parametrize("detail", list(DetailLevel))
+@pytest.mark.parametrize("key", ["example", " \texample\n"])
 def test_given_version_selection_when_get_constitution_is_called_then_exact_tool_arguments_are_sent(
-    version, detail
+    version, detail, key
 ):
     returned_version = 3 if version is None else version
     payload = {"version": returned_version, "mission": "", "principles": []}
     session = SimpleNamespace(call_tool=AsyncMock(return_value=reply(payload)))
     runner = Mock()
     runner.call.side_effect = lambda callback: asyncio.run(callback(session))
-    result = KynoConnection(runner).get_constitution("example", version=version, detail=detail)
+    result = KynoConnection(runner).get_constitution(key, version=version, detail=detail)
     assert result.version == returned_version
+    assert result.constitution == "example"
     assert result.detail is detail
     expected = {"constitution": "example", "detail": detail.value}
     if version is not None:
@@ -181,7 +185,7 @@ def test_given_malformed_reply_when_get_constitution_is_called_then_unavailable_
         history.get_constitution(runner, version=1)
 
 
-@pytest.mark.parametrize("constitution", [None, 1, "", "   ", "Upper", "bad/name", " support "])
+@pytest.mark.parametrize("constitution", [None, 1, "", "   ", "Upper", "bad/name", " sup port "])
 def test_given_invalid_name_when_get_constitution_is_called_then_request_is_not_sent(constitution):
     runner = Mock()
     with pytest.raises(ValueError, match="constitution"):

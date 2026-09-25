@@ -21,7 +21,7 @@ def _direction(version: int, constitution: str = "default") -> Direction:
     )
 
 
-@pytest.mark.parametrize("key", [None, "", "Upper", "bad/name", " support "])
+@pytest.mark.parametrize("key", [None, "", "Upper", "bad/name", " sup port "])
 def test_given_invalid_key_when_creating_direction_then_it_is_rejected(key):
     with pytest.raises(ValueError, match="constitution key"):
         _direction(1, key)

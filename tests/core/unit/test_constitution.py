@@ -40,8 +40,8 @@ def test_given_display_text_when_suggest_constitution_key_runs_then_suggestion_i
         None,
         "",
         " ",
-        " support ",
-        "support\n",
+        " sup port ",
+        "sup\nport",
         "Acme",
         "a/b",
         "a--b",
@@ -85,3 +85,17 @@ def test_given_invalid_key_when_validating_then_error_has_format_and_available_s
     with pytest.raises(InvalidConstitutionKeyError) as refusal:
         check_constitution_key(key)
     assert str(refusal.value) == expected
+
+
+@pytest.mark.parametrize("key", [" support", "support ", "\tsupport\n", "\u2003support\u2003"])
+def test_given_padded_key_when_check_constitution_key_runs_then_only_outer_whitespace_is_removed(
+    key,
+):
+    assert check_constitution_key(key) == "support"
+
+
+@pytest.mark.parametrize("separator", [" ", "\t", "\n"])
+@pytest.mark.parametrize("padding", ["", " \t"])
+def test_given_internal_whitespace_when_validating_then_key_is_rejected(separator, padding):
+    with pytest.raises(InvalidConstitutionKeyError):
+        check_constitution_key(f"{padding}sup{separator}port{padding}")

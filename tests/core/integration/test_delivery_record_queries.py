@@ -67,7 +67,7 @@ def test_given_history_when_filtering_then_matching_records_are_oldest_first(
     assert [record["record_id"] for record in history.list(**filters)["items"]] == expected
 
 
-@pytest.mark.parametrize("key", ["", "Upper", "bad/name", " alpha "])
+@pytest.mark.parametrize("key", ["", "Upper", "bad/name", " al pha "])
 def test_given_invalid_constitution_filter_when_listing_then_it_is_rejected(history, key):
     with pytest.raises(ValueError, match="constitution key"):
         history.list(constitution=key)

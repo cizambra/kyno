@@ -9,7 +9,7 @@ import pytest
 
 from kyno.sdk.client import KynoBinding, LocalDirectionSource, McpDirectionSource, SessionRunner
 from kyno.sdk.errors import KynoUnavailableError
-from kyno.wire.models import DetailLevel
+from kyno.wire.models import ChangesSince, DetailLevel
 
 
 def receipt_source(recording):
@@ -246,7 +246,7 @@ def test_given_two_bindings_with_one_wiring_when_comparing_then_they_are_equal_a
     assert len({KynoBinding(**wiring), KynoBinding(**wiring)}) == 1
 
 
-@pytest.mark.parametrize("key", ["default", "support"])
+@pytest.mark.parametrize("key", ["default", "support", " support "])
 def test_given_key_and_detail_enum_when_mcp_changes_since_runs_then_wire_arguments_are_normalized(
     key,
 ):
@@ -276,6 +276,23 @@ def test_given_key_and_detail_enum_when_mcp_changes_since_runs_then_wire_argumen
     assert seen["constitution"] == key.strip()
     assert seen["detail"] == "full"
     assert type(seen["detail"]) is str
+
+
+def test_given_padded_key_when_local_source_pulls_then_dependency_receives_trimmed_key():
+    plane = Mock()
+    plane.changes_since.return_value = ChangesSince(
+        current_version=0,
+        changed=False,
+        mission="",
+        principles=(),
+        changed_mission=False,
+        changed_principles=False,
+        change_notes=(),
+    )
+
+    LocalDirectionSource(plane).changes_since(0, " \tsupport\n")
+
+    plane.changes_since.assert_called_once_with(0, "support")
 
 
 @pytest.mark.parametrize("source_type", [LocalDirectionSource, McpDirectionSource])

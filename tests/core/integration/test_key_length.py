@@ -28,7 +28,7 @@ def test_given_overlong_key_when_writing_then_identity_and_version_tables_are_un
     plane = ControlPlane(memory_store)
     prefix = "a" * 200
     if populated:
-        plane.apply_direction(mission="Existing", change_note="init", constitution=prefix)
+        plane.apply_direction(mission="Existing", change_note="init", constitution_key=prefix)
     tables = [
         memory_store.metadata.tables[name]
         for name in ("kyno_constitutions", "kyno_constitution_versions")
@@ -39,7 +39,7 @@ def test_given_overlong_key_when_writing_then_identity_and_version_tables_are_un
     key = f"{padding}{prefix}b{padding}"
     with pytest.raises(InvalidConstitutionKeyError, match="200"):
         if operation == "apply":
-            plane.apply_direction(mission="New", change_note="update", constitution=key)
+            plane.apply_direction(mission="New", change_note="update", constitution_key=key)
         elif operation == "append":
             memory_store.append(
                 key,

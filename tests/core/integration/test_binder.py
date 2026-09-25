@@ -63,7 +63,9 @@ def test_given_rich_direction_when_bind_is_called_then_content_matches_selected_
 def test_given_an_unchanged_version_when_binding_again_then_the_successful_read_is_pulled(
     control_plane,
 ):
-    control_plane.apply_direction(mission="Mission", change_note="initial", constitution="sales")
+    control_plane.apply_direction(
+        mission="Mission", change_note="initial", constitution_key="sales"
+    )
     binder = DirectionBinder(LocalDirectionSource(control_plane), "sales")
     first = binder.bind_with_status()
     second = binder.bind_with_status()
@@ -74,10 +76,10 @@ def test_given_an_unchanged_version_when_binding_again_then_the_successful_read_
 def test_given_a_direction_change_when_binding_again_then_the_prior_result_stays_unchanged(
     control_plane,
 ):
-    control_plane.apply_direction(mission="Old", change_note="initial", constitution="sales")
+    control_plane.apply_direction(mission="Old", change_note="initial", constitution_key="sales")
     binder = DirectionBinder(LocalDirectionSource(control_plane), "sales")
     first = binder.bind_with_status()
-    control_plane.apply_direction(mission="New", change_note="pivot", constitution="sales")
+    control_plane.apply_direction(mission="New", change_note="pivot", constitution_key="sales")
     second = binder.bind_with_status()
     assert (first.direction.version, first.direction.mission) == (1, "Old")
     assert (second.direction.version, second.direction.mission) == (2, "New")

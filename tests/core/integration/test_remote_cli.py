@@ -101,11 +101,11 @@ def test_given_remote_history_when_reading_a_numbered_version_then_only_that_ver
     fake_dial, remote_cp, monkeypatch, version
 ):
     remote_cp.apply_direction(
-        mission="Other direction", change_note="other", constitution="default"
+        mission="Other direction", change_note="other", constitution_key="default"
     )
     for number in (1, 2, 3):
         remote_cp.apply_direction(
-            mission=f"Mission {number}", change_note=f"Change {number}", constitution="support"
+            mission=f"Mission {number}", change_note=f"Change {number}", constitution_key="support"
         )
     calls = []
     original = fake_dial.call_tool
@@ -150,8 +150,10 @@ def test_given_remote_direction_when_reading_current_or_latest_then_output_and_e
     fake_dial, remote_cp, written, options
 ):
     if written:
-        remote_cp.apply_direction(mission="First", change_note="first", constitution="support")
-        remote_cp.apply_direction(mission="Second", change_note="second", constitution="support")
+        remote_cp.apply_direction(mission="First", change_note="first", constitution_key="support")
+        remote_cp.apply_direction(
+            mission="Second", change_note="second", constitution_key="support"
+        )
     options = ["--remote", "--constitution", "support", *options]
     current = runner.invoke(app, ["current", *options])
     latest = runner.invoke(app, ["get-version", "latest", *options])
@@ -271,7 +273,7 @@ def test_given_dry_run_when_applying_remotely_then_the_delta_prints_and_nothing_
 def test_given_a_matching_file_when_checking_remotely_then_it_matches_current_direction(
     fake_dial, remote_cp, tmp_path, constitution
 ):
-    remote_cp.apply_direction(mission="M1", change_note="init", constitution=constitution)
+    remote_cp.apply_direction(mission="M1", change_note="init", constitution_key=constitution)
     path = write_file(tmp_path, mission="M1", constitution=constitution)
     r = runner.invoke(app, ["check", path, "--remote"])
     assert r.exit_code == 0, r.output
@@ -282,7 +284,7 @@ def test_given_a_matching_file_when_checking_remotely_then_it_matches_current_di
 def test_given_a_stale_file_when_checking_remotely_then_it_fails_with_the_delta(
     fake_dial, remote_cp, tmp_path, constitution
 ):
-    remote_cp.apply_direction(mission="M1", change_note="init", constitution=constitution)
+    remote_cp.apply_direction(mission="M1", change_note="init", constitution_key=constitution)
     path = write_file(tmp_path, mission="M2", constitution=constitution)
     r = runner.invoke(app, ["check", path, "--remote"])
     assert r.exit_code == 1

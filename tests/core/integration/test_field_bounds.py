@@ -99,7 +99,8 @@ def test_given_200_character_key_with_surrounding_spaces_when_applying_then_key_
 ):
     at_cap = "c" * MAX_CONSTITUTION_KEY_CHARS
     assert (
-        cp.apply_direction(mission="M", change_note="init", constitution=f" {at_cap} ").version == 1
+        cp.apply_direction(mission="M", change_note="init", constitution_key=f" {at_cap} ").version
+        == 1
     )
     assert cp.current(at_cap).mission == "M"
 
@@ -107,7 +108,7 @@ def test_given_200_character_key_with_surrounding_spaces_when_applying_then_key_
 def test_given_201_character_key_when_apply_direction_runs_then_key_length_error_is_raised(cp):
     at_cap = "c" * MAX_CONSTITUTION_KEY_CHARS
     with pytest.raises(InvalidConstitutionKeyError, match="200"):
-        cp.apply_direction(mission="M", change_note="init", constitution=at_cap + "c")
+        cp.apply_direction(mission="M", change_note="init", constitution_key=at_cap + "c")
 
 
 def test_given_an_over_cap_value_when_refused_then_the_error_names_the_field_and_the_cap(cp):

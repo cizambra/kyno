@@ -20,7 +20,7 @@ def test_given_empty_store_when_applying_padded_key_then_only_trimmed_identity_i
     memory_store, key
 ):
     result = ControlPlane(memory_store).apply_direction(
-        mission="Help", change_note="init", constitution=key, expected_version=0
+        mission="Help", change_note="init", constitution_key=key, expected_version=0
     )
 
     constitutions = memory_store.metadata.tables["kyno_constitutions"]
@@ -71,7 +71,7 @@ def test_given_empty_store_when_applying_invalid_padded_key_then_no_identity_or_
 ):
     with pytest.raises(ValueError, match="constitution key"):
         ControlPlane(memory_store).apply_direction(
-            mission="Help", change_note="init", constitution=key
+            mission="Help", change_note="init", constitution_key=key
         )
 
     with memory_store.engine.connect() as connection:
@@ -84,7 +84,7 @@ def test_given_key_at_write_limit_when_applying_with_padding_then_only_key_count
 ):
     key = "a" * 200
     ControlPlane(memory_store).apply_direction(
-        mission="Help", change_note="init", constitution=f" \t{key}\n"
+        mission="Help", change_note="init", constitution_key=f" \t{key}\n"
     )
 
     table = memory_store.metadata.tables["kyno_constitutions"]
@@ -96,11 +96,11 @@ def test_given_existing_version_when_padded_apply_expects_empty_then_no_second_i
     memory_store,
 ):
     plane = ControlPlane(memory_store)
-    plane.apply_direction(mission="First", change_note="init", constitution="support")
+    plane.apply_direction(mission="First", change_note="init", constitution_key="support")
 
     with pytest.raises(VersionConflictError):
         plane.apply_direction(
-            mission="Second", change_note="update", constitution=" support ", expected_version=0
+            mission="Second", change_note="update", constitution_key=" support ", expected_version=0
         )
 
     constitutions = memory_store.metadata.tables["kyno_constitutions"]
@@ -116,7 +116,7 @@ def test_given_served_version_when_recording_padded_key_then_trimmed_key_links_t
     memory_store,
 ):
     plane = ControlPlane(memory_store)
-    plane.apply_direction(mission="Help", change_note="init", constitution="support")
+    plane.apply_direction(mission="Help", change_note="init", constitution_key="support")
     history = SqlDeliveryRecordStore(memory_store.engine)
 
     identifier = history.append(
@@ -144,9 +144,9 @@ def test_given_existing_key_when_apply_direction_uses_padded_key_then_same_histo
     memory_store,
 ):
     plane = ControlPlane(memory_store)
-    plane.apply_direction(mission="First", change_note="init", constitution="support")
+    plane.apply_direction(mission="First", change_note="init", constitution_key="support")
     result = plane.apply_direction(
-        mission="Second", change_note="update", constitution=" \tsupport\n", expected_version=1
+        mission="Second", change_note="update", constitution_key=" \tsupport\n", expected_version=1
     )
     assert result.version == 2
     assert plane.current("support").mission == "Second"

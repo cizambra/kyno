@@ -15,7 +15,7 @@ def two_directions(memory_store):
     return plane
 
 
-def test_given_two_histories_when_exporting_named_key_then_only_selected_version_range_returns(
+def test_given_two_histories_when_exporting_eu_west_version_2_then_only_eu_west_version_2_returns(
     two_directions,
 ):
     rows = two_directions.export_versions(

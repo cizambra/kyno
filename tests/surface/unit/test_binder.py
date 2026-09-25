@@ -45,13 +45,20 @@ def test_given_non_string_key_when_creating_direction_binder_then_value_error_is
     assert scripted_source.calls == []
 
 
-@pytest.mark.parametrize("key", ["", "Upper", "bad/name", " sup port "])
+@pytest.mark.parametrize("key", ["", "Upper", "bad/name", " sup port ", "a" * 201])
 def test_given_malformed_key_when_creating_binder_then_it_is_rejected_before_pulling(
     scripted_source, key
 ):
     with pytest.raises(ValueError, match="constitution key"):
         DirectionBinder(scripted_source, key)
     assert scripted_source.calls == []
+
+
+def test_given_padded_200_character_key_when_creating_binder_then_full_key_is_preserved(
+    scripted_source,
+):
+    key = "a" * 200
+    assert DirectionBinder(scripted_source, f" {key} ").constitution == key
 
 
 def test_given_support_binder_when_bind_runs_then_every_pull_uses_support(scripted_source):

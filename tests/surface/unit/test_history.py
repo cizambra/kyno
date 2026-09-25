@@ -140,7 +140,7 @@ def test_given_invalid_version_when_get_constitution_is_called_then_request_is_n
 
 @pytest.mark.parametrize("version", [None, 0, 3])
 @pytest.mark.parametrize("detail", list(DetailLevel))
-@pytest.mark.parametrize("key", ["example", " \texample\n"])
+@pytest.mark.parametrize("key", ["example", " \texample\n", " " + "a" * 200 + " "])
 def test_given_version_selection_when_get_constitution_is_called_then_exact_tool_arguments_are_sent(
     version, detail, key
 ):
@@ -151,9 +151,9 @@ def test_given_version_selection_when_get_constitution_is_called_then_exact_tool
     runner.call.side_effect = lambda callback: asyncio.run(callback(session))
     result = KynoConnection(runner).get_constitution(key, version=version, detail=detail)
     assert result.version == returned_version
-    assert result.constitution == "example"
+    assert result.constitution == key.strip()
     assert result.detail is detail
-    expected = {"constitution": "example", "detail": detail.value}
+    expected = {"constitution": key.strip(), "detail": detail.value}
     if version is not None:
         expected["version"] = version
     session.call_tool.assert_awaited_once_with("get_constitution", expected)
@@ -185,7 +185,9 @@ def test_given_malformed_reply_when_get_constitution_is_called_then_unavailable_
         history.get_constitution(runner, version=1)
 
 
-@pytest.mark.parametrize("constitution", [None, 1, "", "   ", "Upper", "bad/name", " sup port "])
+@pytest.mark.parametrize(
+    "constitution", [None, 1, "", "   ", "Upper", "bad/name", " sup port ", "a" * 201]
+)
 def test_given_invalid_name_when_get_constitution_is_called_then_request_is_not_sent(constitution):
     runner = Mock()
     with pytest.raises(ValueError, match="constitution"):
@@ -193,7 +195,7 @@ def test_given_invalid_name_when_get_constitution_is_called_then_request_is_not_
     runner.call.assert_not_called()
 
 
-@pytest.mark.parametrize("key", ["", " ", "Upper"])
+@pytest.mark.parametrize("key", ["", " ", "Upper", "a" * 201])
 def test_given_invalid_key_when_list_delivery_records_runs_then_mcp_request_is_not_sent(
     key,
 ):

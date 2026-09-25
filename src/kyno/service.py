@@ -46,7 +46,6 @@ MAX_CHANGE_NOTE_CHARS = 2_000
 MAX_PRINCIPLES = 100
 MAX_PRINCIPLE_TITLE_CHARS = 300
 MAX_PRINCIPLE_DESCRIPTION_CHARS = 4_000
-MAX_CONSTITUTION_NAME_CHARS = 200
 
 # The public page's contract: it and its .json serve at most this many
 # versions, newest first. The full history stays readable to authenticated
@@ -72,16 +71,10 @@ def _check_fields(
     declaration: str | None,
     principles: tuple[Principle, ...] | None,
     change_note: str,
-    name: str,
 ) -> None:
     _check_text("mission", mission, MAX_MISSION_CHARS)
     _check_text("declaration", declaration, MAX_DECLARATION_CHARS)
     _check_text("change_note", change_note, MAX_CHANGE_NOTE_CHARS)
-    if len(name) > MAX_CONSTITUTION_NAME_CHARS:
-        raise FieldTooLargeError(
-            f"the constitution name is {len(name)} characters, "
-            f"over the cap of {MAX_CONSTITUTION_NAME_CHARS}"
-        )
     if principles is None:
         return
     if len(principles) > MAX_PRINCIPLES:
@@ -422,7 +415,6 @@ class ControlPlane:
             declaration=declaration,
             principles=principles,
             change_note=change_note,
-            name=name,
         )
         head, effective = self._effective(
             name, mission=mission, declaration=declaration, principles=principles

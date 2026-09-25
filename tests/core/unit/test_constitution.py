@@ -59,7 +59,7 @@ def test_given_invalid_key_when_check_constitution_key_runs_then_typed_key_error
         check_constitution_key(key)
 
 
-@pytest.mark.parametrize("key", ["a", "0", "team-2-eu", "a" * 201])
+@pytest.mark.parametrize("key", ["a", "0", "team-2-eu"])
 def test_given_valid_key_when_check_constitution_key_runs_then_spelling_is_preserved(key):
     assert check_constitution_key(key) == key
 
@@ -99,3 +99,19 @@ def test_given_padded_key_when_check_constitution_key_runs_then_only_outer_white
 def test_given_internal_whitespace_when_validating_then_key_is_rejected(separator, padding):
     with pytest.raises(InvalidConstitutionKeyError):
         check_constitution_key(f"{padding}sup{separator}port{padding}")
+
+
+@pytest.mark.parametrize("padding", ["", " \t"])
+def test_given_200_character_key_when_check_constitution_key_runs_then_trimmed_key_is_accepted(
+    padding,
+):
+    key = "a" * 200
+    assert check_constitution_key(f"{padding}{key}{padding}") == key
+
+
+@pytest.mark.parametrize("padding", ["", " \t"])
+def test_given_201_character_key_when_check_constitution_key_runs_then_length_error_is_raised(
+    padding,
+):
+    with pytest.raises(InvalidConstitutionKeyError, match="200"):
+        check_constitution_key(f"{padding}{'a' * 201}{padding}")

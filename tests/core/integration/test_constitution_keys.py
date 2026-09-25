@@ -7,7 +7,7 @@ from kyno.service import ControlPlane
 from kyno.store.delivery_record import SqlDeliveryRecordStore
 
 
-@pytest.mark.parametrize("key", [" ", "Upper", "bad/name"])
+@pytest.mark.parametrize("key", [" ", "Upper", "bad/name", "a" * 201])
 def test_given_invalid_key_when_delivery_store_append_runs_then_value_error_leaves_history_empty(
     memory_store, key
 ):
@@ -25,7 +25,7 @@ def test_given_invalid_key_when_delivery_store_append_runs_then_value_error_leav
     assert history.list()["items"] == []
 
 
-@pytest.mark.parametrize("key", ["", " ", "Upper", "bad/name"])
+@pytest.mark.parametrize("key", ["", " ", "Upper", "bad/name", "a" * 201])
 def test_given_invalid_key_when_core_reads_or_store_import_runs_then_value_error_is_raised(
     memory_store, key
 ):
@@ -37,7 +37,7 @@ def test_given_invalid_key_when_core_reads_or_store_import_runs_then_value_error
         memory_store.import_versions(key, [])
 
 
-@pytest.mark.parametrize("key", [" ", "Upper"])
+@pytest.mark.parametrize("key", [" ", "Upper", "a" * 201])
 def test_given_invalid_key_when_render_constitution_yaml_runs_then_value_error_is_raised(
     memory_store, key
 ):
@@ -45,7 +45,7 @@ def test_given_invalid_key_when_render_constitution_yaml_runs_then_value_error_i
         render_constitution_yaml(ControlPlane(memory_store).current(), key)
 
 
-@pytest.mark.parametrize("key", ["", " ", "Acme EU"])
+@pytest.mark.parametrize("key", ["", " ", "Acme EU", "a" * 201])
 def test_given_invalid_yaml_key_when_read_constitution_file_runs_then_value_error_is_raised(
     tmp_path, key
 ):
@@ -79,7 +79,7 @@ def test_given_invalid_yaml_key_when_read_constitution_file_runs_then_value_erro
         ),
     ],
 )
-@pytest.mark.parametrize("key", [" ", "Upper"])
+@pytest.mark.parametrize("key", [" ", "Upper", "a" * 201])
 def test_given_invalid_key_when_sql_store_operation_runs_then_value_error_is_raised(
     memory_store, operation, arguments, key
 ):

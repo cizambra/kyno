@@ -265,6 +265,9 @@ Surrounding whitespace is trimmed before selecting direction. ` support ` and
 `support` select the same constitution and version history. Whitespace inside
 a key is not removed and remains invalid.
 
+Keys contain at most 200 characters after trimming. This limit applies to
+reads, writes, authored files, SDK inputs, and delivery-history filters.
+
 The schema has to exist before the first read, so run `kyno db init` once
 against the same database, or call `store.create_all()` from code. From
 here the binder behaves exactly as it does over MCP, and the CLI keeps

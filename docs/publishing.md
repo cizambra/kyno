@@ -47,6 +47,7 @@ Three things worth knowing:
   The same format applies to private constitutions. Capitalization and
   punctuation are never changed automatically.
   Surrounding whitespace is trimmed, so ` acme-eu ` uses the `acme-eu` URL.
+  Keys contain at most 200 characters after trimming, whether public or private.
 - **Nothing is public until you publish it**, and publication is per name.
   One Kyno can hold your internal constitution and your public one side by
   side; publishing the second does nothing to the first.

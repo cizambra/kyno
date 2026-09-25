@@ -16,12 +16,25 @@ def two_directions(memory_store):
 
 
 def test_given_two_histories_when_exporting_eu_west_version_2_then_only_eu_west_version_2_returns(
-    two_directions,
+    memory_store,
 ):
-    rows = two_directions.export_versions(
-        constitution_key=" eu-west ", from_version=2, to_version=2
+    plane = ControlPlane(memory_store)
+    plane.apply_direction(constitution_key="default", mission="Default first", change_note="init")
+    plane.apply_direction(
+        constitution_key="default", mission="Default second", change_note="update"
     )
-    assert [(row["version"], row["mission"]) for row in rows] == [(2, "EU second")]
+    plane.apply_direction(constitution_key="eu-west", mission="EU first", change_note="init")
+    plane.apply_direction(constitution_key="eu-west", mission="EU second", change_note="update")
+    plane.apply_direction(constitution_key="eu-west", mission="EU third", change_note="update")
+
+    exported_versions = plane.export_versions(
+        constitution_key="eu-west", from_version=2, to_version=2
+    )
+
+    assert len(exported_versions) == 1
+    exported_version = exported_versions[0]
+    assert exported_version["version"] == 2
+    assert exported_version["mission"] == "EU second"
 
 
 def test_given_two_directions_when_previewing_selected_mission_then_selected_head_has_no_delta(

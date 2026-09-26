@@ -120,7 +120,7 @@ def test_given_remote_history_when_cli_get_version_receives_number_then_only_tha
         [
             "get-version",
             str(version),
-            "--constitution",
+            "--constitution-key",
             "support",
             "--remote",
             "--profile",
@@ -154,7 +154,7 @@ def test_given_remote_key_when_cli_current_and_get_version_latest_run_then_outpu
         remote_cp.apply_direction(
             mission="Second", change_note="second", constitution_key="support"
         )
-    options = ["--remote", "--constitution", "support", *options]
+    options = ["--remote", "--constitution-key", "support", *options]
     current = runner.invoke(app, ["current", *options])
     latest = runner.invoke(app, ["get-version", "latest", *options])
     assert latest.exit_code == current.exit_code

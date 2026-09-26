@@ -39,7 +39,7 @@ PARAGRAPH = "Lending is a promise about somebody's worst month."
 DESCRIPTION = "A refusal is a sentence, not a maze."
 
 
-def test_given_a_rich_constitution_when_published_and_bound_then_a_crew_serves_it(
+def test_given_a_rich_constitution_when_cli_publish_and_binder_bind_run_then_a_crew_serves_it(
     tmp_path, monkeypatch
 ):
     db = tmp_path / "kyno.sqlite3"
@@ -50,7 +50,7 @@ def test_given_a_rich_constitution_when_published_and_bound_then_a_crew_serves_i
     assert runner.invoke(cli, ["db", "init"]).exit_code == 0
     apply = ["apply", str(path), "--note", "the constitution as written", "--by", "camilo"]
     assert runner.invoke(cli, apply).exit_code == 0
-    assert runner.invoke(cli, ["publish", "--constitution", "acme"]).exit_code == 0
+    assert runner.invoke(cli, ["publish", "--constitution-key", "acme"]).exit_code == 0
 
     store = SqlConstitutionStore(url=f"sqlite:///{db}")
     plane = ControlPlane(store)
@@ -85,10 +85,12 @@ def test_given_a_rich_constitution_when_published_and_bound_then_a_crew_serves_i
     source = LocalDirectionSource(plane)
     compact = DirectionBinder(source, "acme").bind().render()
     assert HEADLINE in compact
-    assert "Say the hard number first" in compact and "Refuse quietly" in compact
+    assert "Say the hard number first" in compact
+    assert "Refuse quietly" in compact
     assert PARAGRAPH not in compact
     assert DESCRIPTION not in compact
 
     # Unless this binding would rather spend the tokens.
     full = DirectionBinder(source, "acme", detail=DetailLevel.FULL).bind().render()
-    assert PARAGRAPH in full and DESCRIPTION in full
+    assert PARAGRAPH in full
+    assert DESCRIPTION in full

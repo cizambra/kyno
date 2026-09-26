@@ -177,11 +177,11 @@ async def test_given_last_seen_version_when_recording_changes_then_the_returned_
 
 
 @pytest.mark.asyncio
-async def test_given_an_unknown_name_when_reading_then_the_record_has_no_constitution_id(
+async def test_given_unknown_key_when_get_constitution_then_record_has_no_constitution_id(
     memory_store,
 ):
     server, history, _ = server_with_history(memory_store)
-    result = await invoke(server, "get_constitution", {"constitution": "missing"})
+    result = await invoke(server, "get_constitution", {"constitution_key": "missing"})
     record = saved_record(memory_store, result["recording"]["record_id"])
     assert record["constitution_id"] is None
     assert record["requested_constitution"] == "missing"

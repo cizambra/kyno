@@ -275,9 +275,9 @@ def test_given_two_names_when_appending_to_each_then_their_version_sequences_sta
     assert store.head("other").version == 1
 
 
-def test_given_an_empty_store_when_exporting_versions_then_the_list_is_empty(store):
+def test_given_an_empty_store_when_sql_store_export_versions_then_the_list_is_empty(store):
     # Consistent with the read-never-fails contract: empty yields [], not an error.
-    assert store.export_versions() == []
+    assert store.export_versions("default") == []
 
 
 def test_given_a_full_range_when_sql_store_export_versions_then_plain_dicts_come_back_ascending(
@@ -288,7 +288,7 @@ def test_given_a_full_range_when_sql_store_export_versions_then_plain_dicts_come
     cp.apply_direction(mission="M2", change_note="pivot", created_by="bob")
     cp.apply_direction(principles=("p1", "p2"), change_note="add p2", created_by="alice")
 
-    rows = store.export_versions()
+    rows = store.export_versions("default")
 
     assert [r["version"] for r in rows] == [1, 2, 3]
     assert rows[0] == {
@@ -312,22 +312,24 @@ def test_given_a_full_range_when_sql_store_export_versions_then_plain_dicts_come
     assert parsed.tzinfo is not None
 
 
-def test_given_range_bounds_when_exporting_versions_then_they_are_inclusive(store):
+def test_given_range_bounds_when_sql_store_export_versions_then_they_are_inclusive(store):
     cp = ControlPlane(store)
     cp.apply_direction(mission="M1", change_note="v1")
     cp.apply_direction(mission="M2", change_note="v2")
     cp.apply_direction(mission="M3", change_note="v3")
 
-    assert [r["version"] for r in store.export_versions(from_version=2)] == [2, 3]
-    assert [r["version"] for r in store.export_versions(to_version=2)] == [1, 2]
-    assert [r["version"] for r in store.export_versions(from_version=2, to_version=2)] == [2]
+    assert [r["version"] for r in store.export_versions("default", from_version=2)] == [2, 3]
+    assert [r["version"] for r in store.export_versions("default", to_version=2)] == [1, 2]
+    assert [
+        r["version"] for r in store.export_versions("default", from_version=2, to_version=2)
+    ] == [2]
 
 
-def test_given_out_of_range_bounds_when_exporting_versions_then_the_list_is_empty(store):
+def test_given_out_of_range_bounds_when_sql_store_export_versions_then_the_list_is_empty(store):
     cp = ControlPlane(store)
     cp.apply_direction(mission="M1", change_note="v1")
 
-    assert store.export_versions(from_version=5) == []
+    assert store.export_versions("default", from_version=5) == []
 
 
 def test_given_a_name_when_exporting_versions_then_only_that_constitution_exports(store):
@@ -541,13 +543,15 @@ def test_given_a_row_of_plain_strings_when_reading_then_they_are_title_only_prin
     assert store.head("default").principles == (Principle("p1"), Principle("p2"))
 
 
-def test_given_described_principles_when_exporting_then_each_description_is_carried(store):
+def test_given_described_principles_when_sql_store_export_versions_then_each_description_is_carried(
+    store,
+):
     ControlPlane(store).apply_direction(
         mission="M1",
         principles=("p1", {"title": "p2", "description": "why p2"}),
         change_note="init",
     )
-    assert store.export_versions()[0]["principles"] == [
+    assert store.export_versions("default")[0]["principles"] == [
         {"title": "p1", "description": ""},
         {"title": "p2", "description": "why p2"},
     ]
@@ -587,11 +591,11 @@ def test_given_a_version_without_a_declaration_when_reading_then_it_is_an_empty_
     assert store.head("default").declaration == ""
 
 
-def test_given_a_declaration_when_exporting_then_it_is_carried(store):
+def test_given_a_declaration_when_sql_store_export_versions_then_it_is_carried(store):
     ControlPlane(store).apply_direction(
         mission="M1", declaration="The long form.", change_note="init"
     )
-    assert store.export_versions()[0]["declaration"] == "The long form."
+    assert store.export_versions("default")[0]["declaration"] == "The long form."
 
 
 def test_given_an_unwritten_name_when_getting_one_version_then_it_is_none(store):
@@ -861,7 +865,9 @@ def test_given_an_old_touch_when_touching_after_the_window_then_the_row_moves(st
     assert store.token(t.id).last_used_at >= first
 
 
-def test_given_an_append_with_a_token_id_when_reading_back_then_the_version_carries_it(store):
+def test_given_saved_token_id_when_head_and_export_versions_then_token_id_returns(
+    store,
+):
     t = store.add_token("ops", "write", token_hash="9" * 64)
     store.append(
         "default",
@@ -878,7 +884,7 @@ def test_given_an_append_with_a_token_id_when_reading_back_then_the_version_carr
     head = store.head("default")
 
     assert head.token_id == t.id
-    assert store.export_versions()[0]["token_id"] == t.id
+    assert store.export_versions("default")[0]["token_id"] == t.id
 
 
 def test_given_an_append_without_a_token_id_when_reading_back_then_it_is_none(store):

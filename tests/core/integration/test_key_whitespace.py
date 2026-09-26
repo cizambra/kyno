@@ -194,7 +194,7 @@ def test_given_padded_yaml_key_when_reading_and_rendering_authoring_then_output_
     assert yaml.safe_load(rendered)["constitution"] == "support"
 
 
-def test_given_two_keys_when_delivery_list_uses_padded_filter_then_only_matching_records_return(
+def test_given_padded_filter_when_delivery_store_list_then_only_matching_records_return(
     memory_store,
 ):
     history = SqlDeliveryRecordStore(memory_store.engine)
@@ -208,7 +208,7 @@ def test_given_two_keys_when_delivery_list_uses_padded_filter_then_only_matching
             context={"correlation_id": None, "metadata": {}},
         )
     assert len(history.list()["items"]) == 2
-    records = history.list(constitution=" support ")["items"]
+    records = history.list(constitution_key=" support ")["items"]
     assert len(records) == 1
     assert records[0]["record_id"] == identifiers[" support "]
     table = memory_store.metadata.tables["kyno_delivery_records"]

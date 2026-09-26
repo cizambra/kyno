@@ -65,7 +65,7 @@ def test_given_201_char_key_when_apply_direction_append_or_import_versions_runs_
     assert versions_after == versions_before
 
 
-def test_given_200_character_key_when_filtering_delivery_history_then_exact_identity_is_selected(
+def test_given_200_character_key_when_delivery_store_list_then_exact_identity_is_selected(
     memory_store,
 ):
     history = SqlDeliveryRecordStore(memory_store.engine)
@@ -79,14 +79,14 @@ def test_given_200_character_key_when_filtering_delivery_history_then_exact_iden
             arguments={},
             context={"correlation_id": None, "metadata": {}},
         )
-    records = history.list(constitution=f" \t{key}\n")["items"]
+    records = history.list(constitution_key=f" \t{key}\n")["items"]
     assert [record["record_id"] for record in records] == [identifiers[key]]
 
 
 @pytest.mark.parametrize("padding", ["", " \t"])
-def test_given_overlong_filter_when_listing_delivery_history_then_key_error_is_raised(
+def test_given_overlong_filter_when_delivery_store_list_then_key_error_is_raised(
     memory_store, padding
 ):
     history = SqlDeliveryRecordStore(memory_store.engine)
     with pytest.raises(InvalidConstitutionKeyError, match="200"):
-        history.list(constitution=f"{padding}{'a' * 201}{padding}")
+        history.list(constitution_key=f"{padding}{'a' * 201}{padding}")

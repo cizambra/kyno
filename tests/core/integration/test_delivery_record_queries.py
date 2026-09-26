@@ -1,6 +1,7 @@
 """Delivery history queries filter and bound persisted delivery records."""
 
 import json
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import event, insert, update
@@ -38,13 +39,15 @@ def history():
     "filters, expected",
     [
         ({}, ["1", "2", "3", "4"]),
+        ({"constitution_key": None}, ["1", "2", "3", "4"]),
         ({"correlation_id": "one"}, ["1", "3"]),
-        ({"constitution": "alpha"}, ["1", "2", "4"]),
-        ({"correlation_id": "one", "constitution": "beta"}, ["3"]),
+        ({"constitution_key": "alpha"}, ["1", "2", "4"]),
+        ({"constitution_key": " alpha "}, ["1", "2", "4"]),
+        ({"correlation_id": "one", "constitution_key": "beta"}, ["3"]),
         ({"correlation_id": ""}, ["4"]),
-        ({"constitution": "absent"}, []),
+        ({"constitution_key": "absent"}, []),
         ({"correlation_id": "absent"}, []),
-        ({"correlation_id": "one", "constitution": "beta", "limit": 1}, ["3"]),
+        ({"correlation_id": "one", "constitution_key": "beta", "limit": 1}, ["3"]),
         ({"since": "2026-01-01T03:00:00Z", "limit": 1}, ["3"]),
         ({"correlation_id": "one", "until": "2026-01-01T02:00:00Z"}, ["1"]),
         ({"since": "2026-01-01T02:00:00Z"}, ["2", "3", "4"]),
@@ -53,7 +56,7 @@ def history():
         (
             {
                 "correlation_id": "one",
-                "constitution": "beta",
+                "constitution_key": "beta",
                 "since": "2026-01-01T02:00:00Z",
                 "until": "2026-01-01T04:00:00Z",
             },
@@ -61,20 +64,36 @@ def history():
         ),
     ],
 )
-def test_given_history_when_filtering_then_matching_records_are_oldest_first(
+def test_given_filters_when_delivery_store_list_then_matches_return_oldest_first(
     history, filters, expected
 ):
     assert [record["record_id"] for record in history.list(**filters)["items"]] == expected
 
 
 @pytest.mark.parametrize("key", ["", "Upper", "bad/name", " al pha "])
-def test_given_invalid_constitution_filter_when_listing_then_it_is_rejected(history, key):
+def test_given_invalid_key_filter_when_delivery_store_list_then_key_is_rejected(history, key):
     with pytest.raises(ValueError, match="constitution key"):
-        history.list(constitution=key)
+        history.list(constitution_key=key)
 
 
-def test_given_stored_json_when_listing_then_values_are_decoded_without_sequence(history):
+def test_given_constitution_keyword_when_delivery_store_list_then_type_error_prevents_query(
+    history, monkeypatch
+):
+    connect = Mock()
+    monkeypatch.setattr(history._engine, "connect", connect)
+
+    with pytest.raises(TypeError, match="constitution"):
+        history.list(constitution="support")
+
+    connect.assert_not_called()
+
+
+def test_given_stored_json_when_delivery_store_list_then_values_are_decoded_without_sequence(
+    history,
+):
     record = history.list(limit=1)["items"][0]
+    assert record["constitution_key"] == "alpha"
+    assert record["constitution_id"] is None
     assert "delta" not in record
     assert record["selection"] == {"title": "Example"}
     assert record["requester"] is None
@@ -191,8 +210,10 @@ def test_given_filtered_sequence_gaps_when_paging_then_cursor_tracks_the_last_ma
     assert last["next_cursor"] is None
 
 
-@pytest.mark.parametrize("filters", [{"after": 4}, {"after": 500}, {"constitution": "absent"}])
-def test_given_no_remaining_matches_when_paging_then_empty_page_has_no_cursor(history, filters):
+@pytest.mark.parametrize("filters", [{"after": 4}, {"after": 500}, {"constitution_key": "absent"}])
+def test_given_exhausted_cursor_when_delivery_store_list_then_empty_page_has_no_cursor(
+    history, filters
+):
     assert history.list(**filters) == {"items": [], "next_cursor": None}
 
 

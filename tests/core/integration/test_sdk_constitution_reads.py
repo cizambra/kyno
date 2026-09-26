@@ -103,9 +103,9 @@ def test_given_two_keys_when_sdk_get_constitution_receives_each_key_then_selecte
     direction = connection.get_constitution("example", version=version)
     default_direction = connection.get_constitution(version=version)
 
-    assert direction.constitution == "example"
+    assert direction.constitution_key == "example"
     assert direction.mission == "Original mission"
-    assert default_direction.constitution == "default"
+    assert default_direction.constitution_key == "default"
     assert default_direction.mission == "Default mission"
     assert direction.version == 1
     assert default_direction.version == 1
@@ -119,7 +119,7 @@ def test_given_unwritten_constitution_when_get_constitution_is_called_then_empty
 
     direction = connection.get_constitution("unwritten", detail=detail)
 
-    assert direction.constitution == "unwritten"
+    assert direction.constitution_key == "unwritten"
     assert direction.version == 0
     assert direction.mission == direction.declaration == ""
     assert direction.principles == direction.change_notes == direction.delta == ()

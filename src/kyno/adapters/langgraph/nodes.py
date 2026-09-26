@@ -42,7 +42,7 @@ def direction_update(
     Status is unknown when no binding metadata is supplied.
     """
     return {
-        "kyno_constitution": direction.constitution,
+        "kyno_constitution": direction.constitution_key,
         "kyno_version": direction.version,
         "kyno_mission": direction.mission,
         "kyno_declaration": direction.declaration,
@@ -62,7 +62,7 @@ def direction_update(
 
 def direction_from_state(state: dict) -> Direction:
     return Direction(
-        constitution=state.get("kyno_constitution", "default"),
+        constitution_key=state.get("kyno_constitution", "default"),
         version=state.get("kyno_version", 0),
         mission=state.get("kyno_mission", ""),
         declaration=state.get("kyno_declaration", ""),

@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-MARKER = re.compile(r"^\[kyno:direction constitution=(\S+) version=(\d+)\]$")
+MARKER = re.compile(r"^\[kyno:direction constitution_key=(\S+) version=(\d+)\]$")
 SEPARATOR = "---end---"
 EMPTY_STATE_LINE = "No direction has been set yet."
 
@@ -54,7 +54,7 @@ def check_log(text: str) -> Report:
         if not m:
             report.problems.append(
                 f"block {i}: the first line must be the marker "
-                f"[kyno:direction constitution=... version=...], got: {lines[0]!r}"
+                f"[kyno:direction constitution_key=... version=...], got: {lines[0]!r}"
             )
             continue
         version = int(m.group(2))

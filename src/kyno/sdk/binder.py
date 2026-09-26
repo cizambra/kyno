@@ -26,12 +26,12 @@ class DirectionBinder:
     def __init__(
         self,
         source: DirectionSource,
-        constitution: str = "default",
+        constitution_key: str = "default",
         *,
         policy: PullPolicy | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> None:
-        self._constitution = check_constitution_key(constitution)
+        self._constitution_key = check_constitution_key(constitution_key)
         self._source = source
         self._cell = DirectionCell()
         self._policy = policy or PullPolicy()
@@ -45,9 +45,9 @@ class DirectionBinder:
         return self._detail
 
     @property
-    def constitution(self) -> str:
-        """The constitution name selected when the binder was constructed."""
-        return self._constitution
+    def constitution_key(self) -> str:
+        """The constitution key selected when the binder was constructed."""
+        return self._constitution_key
 
     def bind(self) -> Direction:
         """Pull direction, applying the configured failure policy."""
@@ -61,18 +61,18 @@ class DirectionBinder:
         older overlapping response. Empty identifies failure without a cached
         value. A fail-closed pull failure raises instead of returning a binding.
         """
-        constitution = self.constitution
+        constitution_key = self.constitution_key
         last_seen_version = self._cell.last_seen_version()
         try:
-            response = self._source.changes_since(last_seen_version, constitution, self.detail)
+            response = self._source.changes_since(last_seen_version, constitution_key, self.detail)
         except (CoherenceError, OSError) as exc:
             # OSError covers the socket family and, since 3.10, TimeoutError;
             # CoherenceError covers everything kyno raises, including the
             # adapters' KynoUnavailableError.
-            return self._degrade(constitution, exc)
+            return self._degrade(constitution_key, exc)
         changes = response.changes
         direction, recording = self._cell.update_with_recording(
-            Direction.from_changes(changes, constitution, self.detail), response.recording
+            Direction.from_changes(changes, constitution_key, self.detail), response.recording
         )
         status = (
             BindingStatus.CACHED
@@ -81,21 +81,25 @@ class DirectionBinder:
         )
         return DirectionBinding(direction, status, recording)
 
-    def _degrade(self, constitution: str, exc: Exception) -> DirectionBinding:
+    def _degrade(self, constitution_key: str, exc: Exception) -> DirectionBinding:
         snapshot = self._cell.get_with_recording()
         if self._policy.fail_closed:
-            raise KynoUnavailableError(f"cannot reach kyno for '{constitution}': {exc}") from exc
+            raise KynoUnavailableError(
+                f"cannot reach kyno for '{constitution_key}': {exc}"
+            ) from exc
         if snapshot is not None:
             last, recording = snapshot
             logger.warning(
-                "kyno pull_failed_cached constitution=%s version=%s %s",
-                constitution,
+                "kyno pull_failed_cached constitution_key=%s version=%s %s",
+                constitution_key,
                 last.version,
                 exc,
             )
             return DirectionBinding(last, BindingStatus.CACHED, recording)
-        logger.warning("kyno pull_failed_empty constitution=%s version=0 %s", constitution, exc)
-        return DirectionBinding(Direction.empty(constitution, self.detail), BindingStatus.EMPTY)
+        logger.warning(
+            "kyno pull_failed_empty constitution_key=%s version=0 %s", constitution_key, exc
+        )
+        return DirectionBinding(Direction.empty(constitution_key, self.detail), BindingStatus.EMPTY)
 
     def plan(self):
         from kyno.sdk.plan import PlanTracker

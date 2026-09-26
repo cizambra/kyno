@@ -35,11 +35,11 @@ def receipt_source(recording):
         {"status": "failed", "record_id": None},
     ],
 )
-def test_given_server_recording_when_pulling_with_recording_then_the_receipt_is_preserved(
+def test_given_server_recording_when_mcp_source_changes_since_then_the_receipt_is_preserved(
     recording,
 ):
     result = receipt_source({"recording": recording}).changes_since(
-        last_seen_version=0, constitution="default"
+        last_seen_version=0, constitution_key="default"
     )
 
     assert result.recording.status.value == recording["status"]
@@ -317,4 +317,24 @@ def test_given_invalid_detail_when_changes_since_is_called_then_source_dependenc
     with pytest.raises(ValueError, match="detail"):
         source_type(dependency).changes_since(0, "default", detail)
 
+    assert dependency.mock_calls == []
+
+
+@pytest.mark.parametrize("source_type", [LocalDirectionSource, McpDirectionSource])
+def test_given_omitted_key_when_source_changes_since_then_required_argument_error(
+    source_type,
+):
+    dependency = Mock()
+    with pytest.raises(TypeError, match="constitution_key"):
+        source_type(dependency).changes_since(0)
+    assert dependency.mock_calls == []
+
+
+@pytest.mark.parametrize("source_type", [LocalDirectionSource, McpDirectionSource])
+def test_given_constitution_keyword_when_source_changes_since_then_type_error_prevents_io(
+    source_type,
+):
+    dependency = Mock()
+    with pytest.raises(TypeError, match="constitution"):
+        source_type(dependency).changes_since(0, constitution="support")
     assert dependency.mock_calls == []

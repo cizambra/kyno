@@ -169,7 +169,7 @@ def test_given_current_status_when_direction_lacks_metadata_then_checkpoint_stat
         .add_node(
             "manual_direction",
             lambda state: direction_update(
-                Direction(constitution="support", version=2, mission="Help", principles=())
+                Direction(constitution_key="support", version=2, mission="Help", principles=())
             ),
         )
         .add_edge(START, "manual_direction")

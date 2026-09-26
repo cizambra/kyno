@@ -45,7 +45,7 @@ def test_given_a_live_server_when_the_adapter_refreshes_then_the_latest_directio
 
     direction_blocks = [message for message in context.messages if message["role"] == "system"]
     assert len(direction_blocks) == 1
-    assert "constitution=default version=2" in direction_blocks[0]["content"]
+    assert "constitution_key=default version=2" in direction_blocks[0]["content"]
     assert "Mission: M2" in direction_blocks[0]["content"]
 
 
@@ -159,6 +159,6 @@ def test_given_failed_reads_when_before_llm_call_runs_again_then_fallback_recove
         assert first.status == "pulled"
         assert second.status == "pulled"
     for binding, block in observed:
-        assert binding.direction.constitution == "support"
+        assert binding.direction.constitution_key == "support"
         assert binding.direction.render() == block
     assert len([message for message in context.messages if message["role"] == "system"]) == 1

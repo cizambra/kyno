@@ -48,6 +48,12 @@ write it in that place.
   and what should happen. In `when`, name the method, function, request,
   or command the test runs. For parametrized tests, the case ID can supply
   the detail that changes between cases.
+- Each test proves one behavior: the one described in its name. Make
+  that behavior explicit in the action and assertions. Exercising code
+  while testing something else does not replace a dedicated test for it.
+  If a test checks independent behaviors, split it so each failure points
+  to the behavior that failed. Several assertions are fine when they
+  establish the same outcome.
 - Keep example values in the body unless the value is the point of the
   test, like a length limit or version zero. If `append` should store the
   current version as the served version, say that in the name. The body

@@ -80,9 +80,12 @@ with client libraries in most languages. From your language, call the tool
 `last_seen_version` is the last version number you saw; `0` means "I haven't
 seen any yet".
 
-`constitution_key` selects a constitution within this database. Omitting it selects
+`constitution_key` selects a constitution within this database. Omitting it or passing `null` selects
 `default`. Keys contain lowercase ASCII letters and digits separated by single
 hyphens, with at most 200 characters after trimming surrounding whitespace.
+
+For `list_delivery_records`, an omitted or `null` `constitution_key` leaves the
+query unfiltered by constitution; it does not restrict the results to `default`.
 
 Here is that call in three languages. Every example on this page was run
 against a Kyno started exactly as above before being committed.

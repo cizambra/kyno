@@ -37,8 +37,10 @@ _DETAIL_ARG = {
 }
 
 _CONSTITUTION_KEY_ARG = {
-    "type": "string",
-    "description": 'Constitution key, unique within this database. Defaults to "default".',
+    "type": ["string", "null"],
+    "description": (
+        'Constitution key, unique within this database. Omitted or null selects "default".'
+    ),
 }
 
 # Either shape a principle comes in: a bare title, or a title with the
@@ -304,8 +306,8 @@ DECLARATIONS.append(
                 "properties": {
                     "correlation_id": {"type": "string"},
                     "constitution_key": {
-                        "type": "string",
-                        "description": "Filter by constitution key; omitted means all.",
+                        "type": ["string", "null"],
+                        "description": "Filter by constitution key; omitted or null means all.",
                     },
                     "since": {
                         "type": "string",

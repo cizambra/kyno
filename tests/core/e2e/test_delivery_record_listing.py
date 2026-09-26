@@ -77,6 +77,7 @@ async def test_given_cursor_and_filters_when_list_delivery_records_then_matching
         ({"correlation_id": "two"}, [1]),
         ({"constitution_key": "beta"}, [1]),
         ({"constitution_key": " alpha "}, [0, 2]),
+        ({"constitution_key": None}, [0, 1, 2]),
         ({"since": "2026-01-02T00:00:00Z"}, [1, 2]),
         ({"until": "2026-01-02T00:00:00Z"}, [0, 1]),
         ({"constitution_key": "missing"}, []),

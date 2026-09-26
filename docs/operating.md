@@ -219,6 +219,12 @@ Database failures return an availability error without database details.
 
 ## Browsing delivery history
 
+HTTP tool-call request logs use `requested_constitution_key` for the caller's selector.
+Omitted or null selectors appear as `None`; explicit strings retain their whitespace
+and are quoted. These logs describe the request before Core resolves its target,
+including requests with invalid selectors. Persisted delivery records identify
+the normalized target actually served.
+
 Call `list_delivery_records` to browse delivery summaries. Each summary includes
 the recorded version reference, timestamp, request context, requester,
 correlation ID, and application metadata. It includes neither direction content

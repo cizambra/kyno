@@ -1,4 +1,4 @@
-[kyno:direction constitution=default version=1]
+[kyno:direction constitution_key=default version=1]
 Mission: Ship a lending product people trust
 Declaration:
 We lend to people the big banks ignore, and we stay in business by being

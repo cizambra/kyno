@@ -344,7 +344,7 @@ from a process that can read the referenced environment variable.
 Token scopes apply across the server, not to individual constitution
 names. A read token can read any constitution available through that
 server's MCP tools. A write token can also change any of those
-constitutions. Selecting `constitution="customer-support"` when creating a binder
+constitutions. Selecting `constitution_key="customer-support"` when creating a binder
 chooses what it reads; it is not an access restriction.
 
 Do not use constitution names as a privacy boundary between teams or

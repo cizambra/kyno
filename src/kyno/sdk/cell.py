@@ -36,7 +36,7 @@ def refresh(items, block, *, text_of=None, make=None):
 
 @dataclass(frozen=True)
 class Direction(HoldsPrinciples):
-    constitution: str
+    constitution_key: str
     version: int
     mission: str
     principles: tuple[Principle, ...]
@@ -47,22 +47,26 @@ class Direction(HoldsPrinciples):
 
     def __post_init__(self) -> None:
         super().__post_init__()
-        object.__setattr__(self, "constitution", check_constitution_key(self.constitution))
+        object.__setattr__(self, "constitution_key", check_constitution_key(self.constitution_key))
         object.__setattr__(self, "detail", check_detail(self.detail))
 
     @classmethod
-    def empty(cls, constitution: str, detail: str | DetailLevel = DetailLevel.COMPACT) -> Direction:
-        return cls(constitution=constitution, version=0, mission="", principles=(), detail=detail)
+    def empty(
+        cls, constitution_key: str, detail: str | DetailLevel = DetailLevel.COMPACT
+    ) -> Direction:
+        return cls(
+            constitution_key=constitution_key, version=0, mission="", principles=(), detail=detail
+        )
 
     @classmethod
     def from_changes(
         cls,
         changes: ChangesSince,
-        constitution: str,
+        constitution_key: str,
         detail: str | DetailLevel = DetailLevel.COMPACT,
     ) -> Direction:
         return cls(
-            constitution=constitution,
+            constitution_key=constitution_key,
             version=changes.current_version,
             mission=changes.mission,
             principles=changes.principles,
@@ -78,7 +82,9 @@ class Direction(HoldsPrinciples):
         direction was this agent on" without any other context. What it costs
         is chosen where an integrator binds: compact carries the mission and
         the principle titles, full adds the declaration and the descriptions."""
-        header = f"{DIRECTION_MARKER} constitution={self.constitution} version={self.version}]"
+        header = (
+            f"{DIRECTION_MARKER} constitution_key={self.constitution_key} version={self.version}]"
+        )
         if self.version == 0:
             return f"{header}\nNo direction has been set yet."
         full = self.detail is DetailLevel.FULL
@@ -102,7 +108,7 @@ class Direction(HoldsPrinciples):
 
     def to_dict(self) -> dict:
         return {
-            "constitution": self.constitution,
+            "constitution_key": self.constitution_key,
             "version": self.version,
             "mission": self.mission,
             "declaration": self.declaration,

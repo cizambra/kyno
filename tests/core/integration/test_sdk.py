@@ -80,9 +80,9 @@ def test_given_closed_connection_when_fail_closed_bind_with_status_runs_then_una
     control_plane.apply_direction(
         mission="Support customers", change_note="initial", constitution_key="support"
     )
-    binder = connection.binder("support", policy=PullPolicy(fail_closed=True))
+    binder = connection.binder(constitution_key="support", policy=PullPolicy(fail_closed=True))
     if cached:
-        assert binder.bind().constitution == "support"
+        assert binder.bind().constitution_key == "support"
     connection.close()
 
     with pytest.raises(KynoUnavailableError, match="cannot reach kyno for 'support'"):

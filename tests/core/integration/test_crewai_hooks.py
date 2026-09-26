@@ -66,7 +66,7 @@ def test_given_named_binder_when_before_llm_call_runs_then_selected_direction_is
     )
     context = FakeCtx()
     CrewAiKyno(binder).before_llm_call(context)
-    assert "constitution=eu version=1" in context.messages[0]["content"]
+    assert "constitution_key=eu version=1" in context.messages[0]["content"]
     assert "European mission" in context.messages[0]["content"]
 
 

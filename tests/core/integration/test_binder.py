@@ -17,13 +17,14 @@ def test_given_non_string_key_when_connection_binder_runs_then_value_error_is_ra
         connection.binder(constitution_name)
 
 
-def test_given_a_step_when_binding_then_the_current_version_is_bound(control_plane):
+def test_given_a_step_when_bind_then_the_current_version_is_bound(control_plane):
     control_plane.apply_direction(mission="M1", change_note="init")
     binder = DirectionBinder(LocalDirectionSource(control_plane))
 
     direction = binder.bind()
-    assert direction.version == 1 and direction.mission == "M1"
-    assert direction.constitution == "default"
+    assert direction.version == 1
+    assert direction.mission == "M1"
+    assert direction.constitution_key == "default"
 
 
 def test_given_a_direction_change_between_steps_when_binding_the_second_then_it_sees_the_change(

@@ -54,34 +54,45 @@ def test_given_malformed_key_when_creating_binder_then_it_is_rejected_before_pul
     assert scripted_source.calls == []
 
 
-def test_given_padded_200_character_key_when_creating_binder_then_full_key_is_preserved(
+def test_given_padded_200_character_key_when_direction_binder_init_then_full_key_is_preserved(
     scripted_source,
 ):
     key = "a" * 200
-    assert DirectionBinder(scripted_source, f" {key} ").constitution == key
+    assert DirectionBinder(scripted_source, f" {key} ").constitution_key == key
 
 
-def test_given_support_binder_when_bind_runs_then_every_pull_uses_support(scripted_source):
+def test_given_constitution_keyword_when_direction_binder_init_then_type_error_prevents_pulls(
+    scripted_source,
+):
+    with pytest.raises(TypeError, match="constitution"):
+        DirectionBinder(scripted_source, constitution="support")
+
+    assert scripted_source.calls == []
+
+
+def test_given_explicit_key_when_bind_and_bind_with_status_run_then_every_pull_uses_selected_key(
+    scripted_source,
+):
     scripted_source.set("support", 3, "Help customers")
-    binder = DirectionBinder(scripted_source, "support")
+    binder = DirectionBinder(scripted_source, constitution_key="support")
 
-    assert binder.constitution == "support"
-    assert binder.bind().constitution == "support"
-    assert binder.bind_with_status().direction.constitution == "support"
+    assert binder.constitution_key == "support"
+    assert binder.bind().constitution_key == "support"
+    assert binder.bind_with_status().direction.constitution_key == "support"
     assert scripted_source.calls == [(0, "support"), (3, "support")]
 
 
-def test_given_support_binder_when_assigning_constitution_then_attribute_error_keeps_support(
+def test_given_fixed_key_when_assigning_binder_constitution_key_then_attribute_error(
     scripted_source,
 ):
     scripted_source.set("support", 3, "Help customers")
     binder = DirectionBinder(scripted_source, "support")
 
     with pytest.raises(AttributeError):
-        binder.constitution = "sales"
+        binder.constitution_key = "sales"
 
-    assert binder.constitution == "support"
-    assert binder.bind().constitution == "support"
+    assert binder.constitution_key == "support"
+    assert binder.bind().constitution_key == "support"
     assert scripted_source.calls == [(0, "support")]
 
 
@@ -125,17 +136,19 @@ def test_given_cached_direction_when_bind_fails_then_warning_reports_cached_fall
     scripted_source.failure = OSError("connection refused")
     direction = binder.bind()
 
-    assert direction.version == version and direction.mission == mission
+    assert direction.version == version
+    assert direction.mission == mission
     assert caplog.record_tuples == [
         (
             "kyno.sdk.binder",
             logging.WARNING,
-            f"kyno pull_failed_cached constitution=default version={version} connection refused",
+            f"kyno pull_failed_cached constitution_key=default version={version} "
+            "connection refused",
         )
     ]
 
 
-def test_given_a_pull_failure_and_an_empty_cell_when_binding_then_the_empty_direction_serves(
+def test_given_a_pull_failure_and_an_empty_cell_when_bind_then_the_empty_direction_serves(
     scripted_source,
     caplog,
 ):
@@ -144,12 +157,13 @@ def test_given_a_pull_failure_and_an_empty_cell_when_binding_then_the_empty_dire
 
     direction = binder.bind()
 
-    assert direction.version == 0 and direction.constitution == "eu"
+    assert direction.version == 0
+    assert direction.constitution_key == "eu"
     assert caplog.record_tuples == [
         (
             "kyno.sdk.binder",
             logging.WARNING,
-            "kyno pull_failed_empty constitution=eu version=0 connection refused",
+            "kyno pull_failed_empty constitution_key=eu version=0 connection refused",
         )
     ]
 
@@ -229,8 +243,8 @@ def test_given_binders_when_bind_with_status_fails_then_logs_name_each_constitut
     records = [record for record in caplog.records if record.name == "kyno.sdk.binder"]
     assert [record.levelno for record in records] == [logging.WARNING, logging.WARNING]
     assert [record.getMessage() for record in records] == [
-        "kyno pull_failed_cached constitution=support version=3 connection refused",
-        "kyno pull_failed_empty constitution=sales version=0 connection refused",
+        "kyno pull_failed_cached constitution_key=support version=3 connection refused",
+        "kyno pull_failed_empty constitution_key=sales version=0 connection refused",
     ]
 
 
@@ -297,7 +311,7 @@ def test_given_cached_direction_when_bind_fails_then_warning_names_constitution_
         (
             "kyno.sdk.binder",
             logging.WARNING,
-            "kyno pull_failed_cached constitution=eu version=7 connection refused",
+            "kyno pull_failed_cached constitution_key=eu version=7 connection refused",
         )
     ]
 
@@ -366,7 +380,7 @@ def test_given_a_compact_binding_when_pulling_then_kyno_is_asked_for_the_compact
 
 
 @pytest.mark.parametrize("version", [0, 3])
-def test_given_an_authoritative_reply_when_binding_with_status_then_it_is_pulled(
+def test_given_successful_source_reply_when_bind_with_status_then_status_is_pulled(
     scripted_source, version
 ):
     scripted_source.set("sales", version, "Mission" if version else "")
@@ -374,7 +388,7 @@ def test_given_an_authoritative_reply_when_binding_with_status_then_it_is_pulled
     binding = binder.bind_with_status()
     assert binding.status == "pulled"
     assert binding.direction.version == version
-    assert binding.direction.constitution == "sales"
+    assert binding.direction.constitution_key == "sales"
     assert scripted_source.calls == [(0, "sales")]
 
 
@@ -436,7 +450,7 @@ def test_given_a_failed_pull_when_the_source_recovers_then_a_new_binding_is_pull
     assert fallback.status is (BindingStatus.CACHED if cached else BindingStatus.EMPTY)
 
 
-def test_given_only_sales_cached_when_support_pull_fails_then_support_binding_is_empty(
+def test_given_other_binder_cached_when_bind_with_status_fails_then_own_binding_is_empty(
     scripted_source,
 ):
     sales = DirectionBinder(scripted_source, "sales")
@@ -447,7 +461,7 @@ def test_given_only_sales_cached_when_support_pull_fails_then_support_binding_is
     assert sales.bind_with_status().status is BindingStatus.CACHED
     support = support_binder.bind_with_status()
     assert support.status is BindingStatus.EMPTY
-    assert support.direction.constitution == "support"
+    assert support.direction.constitution_key == "support"
 
 
 def test_given_an_older_reply_when_the_cell_holds_newer_direction_then_the_binding_is_cached(

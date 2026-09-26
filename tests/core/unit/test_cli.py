@@ -18,6 +18,16 @@ from kyno import cli
         ["export"],
         ["export", "--remote"],
     ],
+    ids=[
+        "get-version-latest",
+        "get-version-latest---remote",
+        "publish",
+        "unpublish",
+        "history",
+        "history---remote",
+        "export",
+        "export---remote",
+    ],
 )
 @pytest.mark.parametrize("key", ["Upper", "bad/name", "a" * 201])
 def test_given_invalid_key_when_cli_command_runs_then_clean_error_precedes_dependencies(
@@ -27,7 +37,7 @@ def test_given_invalid_key_when_cli_command_runs_then_clean_error_precedes_depen
     for name in ("_control_plane", "_store", "_read_direction_version", "_fetch_remote_rows"):
         monkeypatch.setattr(cli, name, dependencies)
 
-    result = CliRunner().invoke(cli.app, [*arguments, "--constitution", key])
+    result = CliRunner().invoke(cli.app, [*arguments, "--constitution-key", key])
 
     assert result.exit_code == 1
     assert "error:" in result.stderr

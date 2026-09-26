@@ -1,8 +1,10 @@
 import json
+from unittest.mock import Mock
 
 import pytest
 from typer.testing import CliRunner
 
+import kyno.cli as cli
 from kyno.cli import app
 from tests.remote_cli import plain
 from tests.workspaces import cli_workspace
@@ -38,7 +40,32 @@ def apply_yaml(
     return runner.invoke(app, args)
 
 
-@pytest.mark.parametrize("command", [["current", "--yaml"], ["get-version", "1", "--yaml"]])
+@pytest.mark.parametrize(
+    "command",
+    [["current"], ["get-version", "1"], ["history"], ["export"], ["publish"], ["unpublish"]],
+    ids=["current", "get-version-1", "history", "export", "publish", "unpublish"],
+)
+def test_given_unsupported_constitution_option_when_cli_command_runs_then_usage_error_prevents_io(
+    monkeypatch, command
+):
+    local = Mock()
+    remote = Mock()
+    monkeypatch.setattr(cli, "_control_plane", local)
+    monkeypatch.setattr(cli, "dial", remote)
+
+    result = runner.invoke(app, [*command, "--constitution", "support"])
+
+    assert result.exit_code == 2
+    assert "No such option: --constitution" in plain(result.output)
+    local.assert_not_called()
+    remote.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "command",
+    [["current", "--yaml"], ["get-version", "1", "--yaml"]],
+    ids=["current---yaml", "get-version-1---yaml"],
+)
 @pytest.mark.parametrize("key", ["support", "a" * 200])
 def test_given_padded_key_when_cli_read_command_runs_then_output_matches_trimmed_key(
     tmp_path, monkeypatch, command, key
@@ -54,8 +81,8 @@ def test_given_padded_key_when_cli_read_command_runs_then_output_matches_trimmed
         == 0
     )
 
-    expected = runner.invoke(app, [*command, "--constitution", key])
-    result = runner.invoke(app, [*command, "--constitution", f" \t{key}\n"])
+    expected = runner.invoke(app, [*command, "--constitution-key", key])
+    result = runner.invoke(app, [*command, "--constitution-key", f" \t{key}\n"])
 
     assert expected.exit_code == result.exit_code == 0
     assert result.stdout == expected.stdout
@@ -77,7 +104,7 @@ def test_given_a_direction_command_when_requesting_help_then_it_is_available(com
 
 @pytest.mark.parametrize("constitution", ["default", "support"])
 @pytest.mark.parametrize("version", [1, 2, 3])
-def test_given_three_versions_when_reading_a_numbered_version_then_only_that_version_is_returned(
+def test_given_history_when_cli_get_version_receives_number_then_only_selected_version_returns(
     tmp_path, monkeypatch, constitution, version
 ):
     cli_workspace(monkeypatch, tmp_path)
@@ -98,18 +125,20 @@ def test_given_three_versions_when_reading_a_numbered_version_then_only_that_ver
             ).exit_code
             == 0
         )
-    before = runner.invoke(app, ["export", "--constitution", constitution])
+    before = runner.invoke(app, ["export", "--constitution-key", constitution])
 
-    result = runner.invoke(app, ["get-version", str(version), "--constitution", constitution])
+    result = runner.invoke(app, ["get-version", str(version), "--constitution-key", constitution])
 
     assert result.exit_code == 0, result.output
     assert json.loads(result.stdout) == json.loads(before.stdout)[version - 1]
-    assert runner.invoke(app, ["export", "--constitution", constitution]).stdout == before.stdout
+    assert (
+        runner.invoke(app, ["export", "--constitution-key", constitution]).stdout == before.stdout
+    )
 
 
 @pytest.mark.parametrize("written", [False, True])
 @pytest.mark.parametrize("options", [[], ["--yaml"]])
-def test_given_latest_direction_when_reading_current_or_latest_then_output_and_exit_status_match(
+def test_given_latest_direction_when_cli_current_and_get_version_latest_then_results_match(
     tmp_path, monkeypatch, written, options
 ):
     cli_workspace(monkeypatch, tmp_path)
@@ -123,7 +152,7 @@ def test_given_latest_direction_when_reading_current_or_latest_then_output_and_e
             apply_yaml(tmp_path, mission="Second", constitution="support", note="second").exit_code
             == 0
         )
-    options = ["--constitution", "support", *options]
+    options = ["--constitution-key", "support", *options]
 
     current = runner.invoke(app, ["current", *options])
     latest = runner.invoke(app, ["get-version", "latest", *options])
@@ -144,14 +173,14 @@ def test_given_an_invalid_version_selector_when_reading_then_it_is_rejected_befo
 
 @pytest.mark.parametrize("constitution", ["default", "unknown"])
 @pytest.mark.parametrize("options", [[], ["--yaml"]])
-def test_given_a_missing_numbered_version_when_reading_then_no_direction_is_printed(
+def test_given_a_missing_numbered_version_when_cli_current_then_no_direction_is_printed(
     tmp_path, monkeypatch, constitution, options
 ):
     cli_workspace(monkeypatch, tmp_path)
     assert runner.invoke(app, ["db", "init"]).exit_code == 0
     assert apply_yaml(tmp_path, mission="First", note="first").exit_code == 0
 
-    result = runner.invoke(app, ["get-version", "2", "--constitution", constitution, *options])
+    result = runner.invoke(app, ["get-version", "2", "--constitution-key", constitution, *options])
 
     assert result.exit_code == 1
     assert result.stdout == ""
@@ -205,7 +234,7 @@ def test_given_empty_field_when_cli_read_outputs_yaml_then_field_is_explicitly_e
         )
         assert runner.invoke(app, ["apply", str(path), "--note", "newer"]).exit_code == 0
 
-    result = runner.invoke(app, [*command, "--constitution", "support", "--yaml"])
+    result = runner.invoke(app, [*command, "--constitution-key", "support", "--yaml"])
 
     assert result.exit_code == 0, result.output
     assert yaml.safe_load(result.stdout) == content
@@ -474,16 +503,14 @@ def test_given_two_constitutions_when_exporting_default_then_stderr_reads_defaul
     assert "Constitution 'default' exported" in r.stderr
 
 
-def test_given_a_misspelled_name_when_exporting_then_it_refuses_naming_the_name_as_typed(
-    tmp_path, monkeypatch
-):
+def test_given_unwritten_key_when_cli_export_then_error_names_requested_key(tmp_path, monkeypatch):
     # The common way to ask for an empty export is a typo, and a backup
     # script that writes an empty file and exits 0 hides it.
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="v1", constitution="default")
 
-    r = runner.invoke(app, ["export", "--constitution", "defualt"])
+    r = runner.invoke(app, ["export", "--constitution-key", "defualt"])
 
     assert r.exit_code == 1
     assert "nothing to export: 'defualt' has no versions" in r.stderr
@@ -506,19 +533,19 @@ def test_given_a_bogus_transport_when_running_serve_then_the_exit_is_argparse_st
     assert r.exit_code == 2
 
 
-def test_given_an_apply_to_eu_when_reading_with_the_flag_then_eu_answers_and_default_is_empty(
+def test_given_named_direction_when_cli_current_then_key_selects_mission_and_default_is_empty(
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     r = apply_yaml(tmp_path, mission="EU1", principles=["p1"], constitution="eu", note="init")
     assert r.exit_code == 0
-    out = runner.invoke(app, ["current", "--constitution", "eu"])
+    out = runner.invoke(app, ["current", "--constitution-key", "eu"])
     assert json.loads(out.stdout)["mission"] == "EU1"
     assert "version 0" in runner.invoke(app, ["current"]).output
 
 
-def test_given_two_constitutions_when_applying_to_each_then_their_versions_stay_independent(
+def test_given_distinct_keys_when_cli_apply_then_version_histories_are_independent(
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
@@ -528,26 +555,29 @@ def test_given_two_constitutions_when_applying_to_each_then_their_versions_stay_
     apply_yaml(tmp_path, mission="EU2", constitution="eu", note="pivot")
 
     assert json.loads(runner.invoke(app, ["current"]).stdout)["version"] == 1
-    eu = json.loads(runner.invoke(app, ["current", "--constitution", "eu"]).stdout)
-    assert eu["version"] == 2 and eu["mission"] == "EU2"
+    eu = json.loads(runner.invoke(app, ["current", "--constitution-key", "eu"]).stdout)
+    assert eu["version"] == 2
+    assert eu["mission"] == "EU2"
 
-    rows = json.loads(runner.invoke(app, ["export", "--constitution", "eu"]).stdout)
+    rows = json.loads(runner.invoke(app, ["export", "--constitution-key", "eu"]).stdout)
     assert [r["version"] for r in rows] == [1, 2]
     assert len(json.loads(runner.invoke(app, ["export"]).stdout)) == 1
 
 
-def test_given_an_unknown_constitution_when_reading_then_the_empty_state_is_reported(
+def test_given_an_unknown_constitution_when_cli_current_then_the_empty_state_is_reported(
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init")
-    r = runner.invoke(app, ["current", "--constitution", "never-written"])
-    assert r.exit_code == 0 and "version 0" in r.output
+    r = runner.invoke(app, ["current", "--constitution-key", "never-written"])
+    assert r.exit_code == 0
+    assert "version 0" in r.output
     # Export is the exception: its output is a file somebody keeps, so an
     # empty one is refused instead of written.
-    e = runner.invoke(app, ["export", "--constitution", "never-written"])
-    assert e.exit_code == 1 and e.stdout == ""
+    e = runner.invoke(app, ["export", "--constitution-key", "never-written"])
+    assert e.exit_code == 1
+    assert e.stdout == ""
 
 
 def test_given_a_constitution_when_publishing_and_unpublishing_then_each_reports_what_changed(
@@ -586,7 +616,7 @@ def test_given_the_history_flag_when_publishing_then_the_output_says_whether_his
     assert "public" in loud.output.lower()
 
 
-def test_given_no_name_when_publishing_then_the_default_is_used_and_the_flag_overrides(
+def test_given_no_name_when_cli_publish_then_the_default_is_used_and_the_flag_overrides(
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
@@ -594,30 +624,30 @@ def test_given_no_name_when_publishing_then_the_default_is_used_and_the_flag_ove
     apply_yaml(tmp_path, mission="M1", note="init")
     apply_yaml(tmp_path, mission="EU1", constitution="eu", note="init")
 
-    r = runner.invoke(app, ["publish", "--constitution", "eu"])
+    r = runner.invoke(app, ["publish", "--constitution-key", "eu"])
     assert r.exit_code == 0
     assert "/constitutions/eu" in r.output
 
 
-def test_given_a_constitution_with_no_direction_when_publishing_then_the_error_is_clean(
+def test_given_a_constitution_with_no_direction_when_cli_publish_then_the_error_is_clean(
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
-    r = runner.invoke(app, ["publish", "--constitution", "never-written"])
+    r = runner.invoke(app, ["publish", "--constitution-key", "never-written"])
     assert r.exit_code == 1
     assert "error:" in r.output.lower()
     assert "Traceback" not in r.output
 
 
-def test_given_an_unknown_constitution_when_unpublishing_then_the_error_is_clean(
+def test_given_an_unknown_constitution_when_cli_unpublish_then_the_error_is_clean(
     tmp_path, monkeypatch
 ):
     # A typo here must not print success while the real page stays public.
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", note="init")
-    r = runner.invoke(app, ["unpublish", "--constitution", "defualt"])
+    r = runner.invoke(app, ["unpublish", "--constitution-key", "defualt"])
     assert r.exit_code == 1
     assert "error:" in r.output.lower()
     assert "Traceback" not in r.output
@@ -631,13 +661,13 @@ def test_given_an_uninitialized_db_when_publishing_then_the_error_is_clean(tmp_p
     assert "Traceback" not in r.output
 
 
-def test_given_a_name_with_a_slash_when_publishing_then_it_is_refused_without_a_traceback(
+def test_given_a_name_with_a_slash_when_cli_publish_then_it_is_refused_without_a_traceback(
     tmp_path, monkeypatch
 ):
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="M1", constitution="acme/eu", note="init")
-    r = runner.invoke(app, ["publish", "--constitution", "acme/eu"])
+    r = runner.invoke(app, ["publish", "--constitution-key", "acme/eu"])
     assert r.exit_code == 1
     assert "error:" in r.output.lower()
     assert "Traceback" not in r.output
@@ -696,7 +726,7 @@ def test_given_a_named_constitution_when_cli_current_outputs_yaml_then_the_name_
     cli_workspace(monkeypatch, tmp_path, tmp_path / "c.sqlite3")
     runner.invoke(app, ["db", "init"])
     apply_yaml(tmp_path, mission="EU rules", constitution="eu", note="init")
-    out = runner.invoke(app, ["current", "--yaml", "--constitution", "eu"]).stdout
+    out = runner.invoke(app, ["current", "--yaml", "--constitution-key", "eu"]).stdout
     assert "constitution_key: eu" in out
     # The name in the output is enough to route a later apply back to eu.
     target = tmp_path / "eu.yaml"

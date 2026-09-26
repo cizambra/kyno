@@ -37,8 +37,9 @@ def test_given_missing_consent_or_configuration_when_starting_then_no_connection
 
 @pytest.mark.parametrize("record", [True, False])
 @pytest.mark.parametrize("failure", [True, False])
-def test_given_consent_when_running_then_recording_is_opt_in_and_connections_close(
-    crewai_example, monkeypatch, tmp_path, record, failure
+@pytest.mark.parametrize("constitution_key", [None, "billing"])
+def test_given_consent_when_crewai_example_main_runs_then_recording_is_opt_in_and_connections_close(
+    crewai_example, monkeypatch, tmp_path, record, failure, constitution_key
 ):
     import crewai
 
@@ -53,7 +54,7 @@ def test_given_consent_when_running_then_recording_is_opt_in_and_connections_clo
             closed.append(True)
 
         def binder(self, constitution, **kwargs):
-            assert constitution == "customer-support"
+            assert constitution == (constitution_key or "customer-support")
             assert kwargs["policy"].fail_closed
             return "binder"
 
@@ -66,7 +67,8 @@ def test_given_consent_when_running_then_recording_is_opt_in_and_connections_clo
         return "model"
 
     def run(model, binder, **kwargs):
-        assert (model, binder) == ("model", "binder")
+        assert model == "model"
+        assert binder == "binder"
         kwargs["emit"](event)
         if failure:
             raise RuntimeError("failed")
@@ -86,6 +88,7 @@ def test_given_consent_when_running_then_recording_is_opt_in_and_connections_clo
             "--allow-model-calls",
             "--token-env",
             "SUPPORT_TOKEN",
+            *(["--constitution-key", constitution_key] if constitution_key else []),
             *(["--record", str(path)] if record else []),
         ]
     ) == (1 if failure else 0)

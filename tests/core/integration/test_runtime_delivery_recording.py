@@ -184,14 +184,14 @@ async def test_given_unknown_key_when_get_constitution_then_record_has_no_consti
     result = await invoke(server, "get_constitution", {"constitution_key": "missing"})
     record = saved_record(memory_store, result["recording"]["record_id"])
     assert record["constitution_id"] is None
-    assert record["requested_constitution"] == "missing"
+    assert record["constitution_key"] == "missing"
     assert record["served_version"] == 0
     assert memory_store.head("missing") is None
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("status", ["recorded", "disabled", "failed"])
-async def test_given_recording_outcome_when_reading_resource_then_direction_and_status_are_returned(
+async def test_given_recording_outcome_when_read_resource_then_direction_and_status_return(
     memory_store,
     monkeypatch,
     status,
@@ -219,7 +219,7 @@ async def test_given_recording_outcome_when_reading_resource_then_direction_and_
         assert records(memory_store) == []
         return
     record = saved_record(memory_store, payload["recording"]["record_id"])
-    assert record["requested_constitution"] == "default"
+    assert record["constitution_key"] == "default"
     assert record["operation"] == "read_resource"
     assert record["detail_level"] == "compact"
     assert record["correlation_id"] is None

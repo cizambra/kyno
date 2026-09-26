@@ -16,6 +16,23 @@ def reply(payload, *, error=False):
     )
 
 
+@pytest.mark.parametrize(
+    "operation", ["connection.list_delivery_records", "history.list_delivery_records"]
+)
+def test_given_constitution_keyword_when_list_delivery_records_then_type_error_prevents_request(
+    operation,
+):
+    runner = Mock()
+
+    with pytest.raises(TypeError, match="constitution"):
+        if operation == "connection.list_delivery_records":
+            KynoConnection(runner).list_delivery_records(constitution="support")
+        else:
+            history.list_delivery_records(runner, constitution="support")
+
+    runner.call.assert_not_called()
+
+
 @pytest.mark.parametrize("record_id", [None, 1, True, "", "   "])
 def test_given_invalid_record_id_when_getting_history_then_request_is_not_sent(record_id):
     runner = Mock()
@@ -87,11 +104,12 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
     "filters, expected_arguments",
     [
         ({}, {"limit": 50}),
-        ({"constitution": " support "}, {"constitution_key": "support", "limit": 50}),
+        ({"constitution_key": " support "}, {"constitution_key": "support", "limit": 50}),
+        ({"constitution_key": None}, {"limit": 50}),
         (
             {
                 "correlation_id": "run-42",
-                "constitution": "support",
+                "constitution_key": "support",
                 "since": "2026-01-01T00:00:00Z",
                 "until": "2026-02-01T00:00:00Z",
                 "after": 0,
@@ -110,6 +128,7 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
     ids=[
         "default-limit-without-filters",
         "trimmed-key-filter",
+        "null-key-filter",
         "all-filters-including-zero-cursor",
     ],
 )
@@ -128,6 +147,18 @@ def test_given_filters_when_connection_list_delivery_records_then_mcp_arguments_
     }
 
     session.call_tool.assert_awaited_once_with("list_delivery_records", expected_arguments)
+
+
+@pytest.mark.parametrize("constitution_key", ["", "   ", "Upper"])
+def test_given_invalid_key_filter_when_connection_list_delivery_records_then_request_is_not_sent(
+    constitution_key,
+):
+    runner = Mock()
+
+    with pytest.raises(ValueError, match="constitution key"):
+        KynoConnection(runner).list_delivery_records(constitution_key=constitution_key)
+
+    runner.call.assert_not_called()
 
 
 @pytest.mark.parametrize("version", [-1, True, "1", 1.5])
@@ -203,7 +234,7 @@ def test_given_invalid_key_when_list_delivery_records_runs_then_mcp_request_is_n
 ):
     runner = Mock()
     with pytest.raises(ValueError, match="constitution key"):
-        history.list_delivery_records(runner, constitution=key)
+        history.list_delivery_records(runner, constitution_key=key)
     runner.call.assert_not_called()
 
 

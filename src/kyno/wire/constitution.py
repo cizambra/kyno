@@ -22,7 +22,7 @@ class InvalidConstitutionKeyError(CoherenceError, ValueError):
 
 
 def check_constitution_key(value: str) -> str:
-    """Trim surrounding whitespace and validate the remaining key."""
+    """Trim and validate an explicitly selected constitution key."""
     if not isinstance(value, str):
         raise InvalidConstitutionKeyError("constitution key must be a string")
     value = value.strip()

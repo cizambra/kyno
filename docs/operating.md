@@ -262,6 +262,10 @@ Each control-plane operation selects its own constitution. Omit the name or
 pass `None` to use `default`; pass `constitution_key="eu"` to select `eu` for
 that operation. Selecting a name never changes subsequent operations.
 
+Core resolves an omitted selection to `default`. Adapters, the SDK, and MCP
+preserve omission until Core answers. Direct SQL store operations require an
+explicit key.
+
 Constitution keys use lowercase ASCII letters or digits separated by single
 hyphens, such as `eu-west`. Empty keys and other formats are rejected, whether
 or not the constitution is published. Kyno does not rewrite capitalization

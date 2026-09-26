@@ -230,7 +230,8 @@ per page.
 
 Use `correlation_id`, `constitution_key`, `since`, and `until` to narrow
 the results. Kyno applies these filters before counting records toward
-the page limit. Records at either time boundary count too.
+the page limit. Both time bounds are inclusive: records with timestamps
+equal to `since` or `until` are included.
 For the next page, pass `next_cursor` as `after` with the same filters; a null
 cursor means the current results are exhausted. Events are ordered by insertion,
 and new events can appear between pages. Read and write tokens may browse history.

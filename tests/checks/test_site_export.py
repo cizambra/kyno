@@ -2,7 +2,10 @@
 constitution.yaml, and the landing page must load nothing from the network."""
 
 import html
+import json
 import re
+import runpy
+import sys
 
 import pytest
 
@@ -41,3 +44,28 @@ def test_given_the_landing_page_when_reading_the_install_step_then_it_uses_pypi_
     html = (SITE / "index.html").read_text()
     assert "pip install kyno" in html
     assert "pip install ." not in html
+
+
+def test_given_repo_constitution_when_build_script_runs_then_html_and_json_share_its_key(
+    tmp_path, monkeypatch
+):
+    (tmp_path / "site-src").mkdir()
+    (tmp_path / "site" / "constitution").mkdir(parents=True)
+    (tmp_path / "constitution.yaml").write_text((ROOT / "constitution.yaml").read_text())
+    (tmp_path / "site-src" / "constitution.html").write_text(
+        (ROOT / "site-src" / "constitution.html").read_text()
+    )
+    script = runpy.run_path(str(ROOT / "site-src" / "build-constitution.py"))
+    monkeypatch.setitem(script["main"].__globals__, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        sys, "argv", ["build-constitution", "--version", "6", "--updated", "2026-08-24"]
+    )
+
+    script["main"]()
+
+    output = tmp_path / "site" / "constitution"
+    payload = json.loads((output / "constitution.json").read_text())
+    assert payload["constitution_key"] == "main"
+    assert payload["version"] == 6
+    assert html.escape(payload["mission"]) in (output / "index.html").read_text()
+    assert "constitution/main" in (output / "index.html").read_text()

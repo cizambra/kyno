@@ -69,13 +69,13 @@ def build_http_app(
     # runs a plain `def` endpoint in a threadpool, so their blocking store reads stay off the
     # event loop.
     def constitution_page(request):
-        view = control_plane.public_constitution(request.path_params["name"])
+        view = control_plane.public_constitution(request.path_params["constitution_key"])
         if view is None:
             return HTMLResponse(render_not_found(page), status_code=404, headers=PUBLIC_HEADERS)
         return HTMLResponse(render_constitution(view, page), headers=PUBLIC_HEADERS)
 
     def constitution_json(request):
-        view = control_plane.public_constitution(request.path_params["name"])
+        view = control_plane.public_constitution(request.path_params["constitution_key"])
         if view is None:
             return JSONResponse({"error": "not found"}, status_code=404, headers=PUBLIC_HEADERS)
         return JSONResponse(view.to_dict(), headers=PUBLIC_HEADERS)
@@ -101,8 +101,8 @@ def build_http_app(
     routes = [
         Route("/constitutions.json", index_json),
         Route("/constitutions/", index_page),
-        Route("/constitutions/{name}.json", constitution_json),
-        Route("/constitutions/{name}", constitution_page),
+        Route("/constitutions/{constitution_key}.json", constitution_json),
+        Route("/constitutions/{constitution_key}", constitution_page),
         Mount("/mcp", app=handle),
     ]
     return Starlette(routes=routes, lifespan=lifespan)

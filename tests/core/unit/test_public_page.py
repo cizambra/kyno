@@ -2,13 +2,13 @@ import re
 from datetime import UTC, datetime
 
 from kyno.models import PublicConstitution
-from kyno.public_page import render_constitution, render_index
+from kyno.public_page import PageConfig, render_constitution, render_index
 from kyno.wire.models import Principle
 
 
-def view(name, mission="", principles=()):
+def view(constitution_key, mission="", principles=()):
     return PublicConstitution(
-        name=name,
+        constitution_key=constitution_key,
         mission=mission,
         principles=principles,
         version=1,
@@ -32,3 +32,14 @@ def test_given_principles_without_mission_when_render_constitution_runs_then_key
 def test_given_html_in_title_fallback_when_render_constitution_runs_then_markup_is_escaped():
     body = render_constitution(view("a<b>"))
     assert re.search(r"<title>(.*?)</title>", body).group(1) == "a&lt;b&gt;"
+
+
+def test_given_name_and_key_placeholders_when_render_constitution_then_only_key_is_filled(
+    tmp_path,
+):
+    template = tmp_path / "constitution.html"
+    template.write_text("<h1>$constitution_key</h1><p>$name / ${name}</p>")
+
+    body = render_constitution(view("support"), PageConfig(constitution_template=str(template)))
+
+    assert body == "<h1>support</h1><p>$name / ${name}</p>"

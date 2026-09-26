@@ -18,7 +18,7 @@ class KynoState(TypedDict, total=False):
     reaches downstream work nodes.
     """
 
-    kyno_constitution: str
+    kyno_constitution_key: str
     kyno_version: int
     kyno_mission: str
     kyno_declaration: str
@@ -42,7 +42,7 @@ def direction_update(
     Status is unknown when no binding metadata is supplied.
     """
     return {
-        "kyno_constitution": direction.constitution_key,
+        "kyno_constitution_key": direction.constitution_key,
         "kyno_version": direction.version,
         "kyno_mission": direction.mission,
         "kyno_declaration": direction.declaration,
@@ -61,8 +61,15 @@ def direction_update(
 
 
 def direction_from_state(state: dict) -> Direction:
+    if "kyno_constitution" in state:
+        raise ValueError(
+            "migrate the checkpoint from kyno_constitution to kyno_constitution_key "
+            "before restoring direction"
+        )
+    if "kyno_constitution_key" not in state and any(key.startswith("kyno_") for key in state):
+        raise ValueError("checkpoint direction is missing kyno_constitution_key")
     return Direction(
-        constitution_key=state.get("kyno_constitution", "default"),
+        constitution_key=state.get("kyno_constitution_key", "default"),
         version=state.get("kyno_version", 0),
         mission=state.get("kyno_mission", ""),
         declaration=state.get("kyno_declaration", ""),

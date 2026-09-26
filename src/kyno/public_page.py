@@ -116,8 +116,8 @@ def _date(value) -> str:
     return value.strftime("%Y-%m-%d")
 
 
-def _path(name: str) -> str:
-    return f"/constitutions/{quote(name, safe='')}"
+def _path(constitution_key: str) -> str:
+    return f"/constitutions/{quote(constitution_key, safe='')}"
 
 
 def _substitute(text: str, values: dict[str, str]) -> str:
@@ -149,7 +149,7 @@ def _render(packaged: str, operator: str | None, values: dict[str, str]) -> str:
 def _headline(view: PublicConstitution) -> str:
     # A constitution may have principles and no mission. A blank headline would look like a
     # broken page rather than an empty one.
-    return escape(view.mission) if view.mission.strip() else escape(view.name)
+    return escape(view.mission) if view.mission.strip() else escape(view.constitution_key)
 
 
 @lru_cache(maxsize=64)
@@ -209,9 +209,12 @@ def _index_items(views: Sequence[PublicConstitution]) -> str:
     items = []
     for view in views:
         # The index is a directory listing, so a long mission is trimmed to its first line.
-        headline = view.mission.strip().splitlines()[0] if view.mission.strip() else view.name
+        headline = (
+            view.mission.strip().splitlines()[0] if view.mission.strip() else view.constitution_key
+        )
         items.append(
-            f'<li><h2><a href="{escape(_path(view.name))}">{escape(view.name)}</a></h2>'
+            f'<li><h2><a href="{escape(_path(view.constitution_key))}">'
+            f"{escape(view.constitution_key)}</a></h2>"
             f"<p>{escape(headline)}</p>"
             f'<p class="stamp">v{view.version} &middot; {_date(view.last_changed_at)}</p></li>'
         )
@@ -222,7 +225,7 @@ def render_constitution(view: PublicConstitution, config: PageConfig | None = No
     config = config or _DEFAULT_CONFIG
     values = {
         "stylesheet": _style_block(config.theme),
-        "name": escape(view.name),
+        "constitution_key": escape(view.constitution_key),
         "mission": _headline(view),
         "declaration": _declaration_block(view),
         "principles": _principles_section(view),

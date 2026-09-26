@@ -92,7 +92,7 @@ def test_given_custom_accent_when_render_index_runs_then_configured_accent_is_in
 # --- template override -----------------------------------------------------
 
 TEMPLATE = """<!doctype html>
-<html><head><title>$name</title></head>
+<html><head><title>$constitution_key</title></head>
 <body>
 <h1>$mission</h1>
 <ul class="ours">$principles</ul>
@@ -304,7 +304,7 @@ def test_given_public_constitutions_when_render_index_expands_count_then_count_m
     assert "<p>2 published</p>" in page
 
 
-def test_given_the_docs_when_comparing_to_the_code_then_the_documented_placeholders_exist(
+def test_given_documented_placeholders_when_public_page_render_runs_then_placeholders_are_filled(
     plane, tmp_path
 ):
     # The publishing page is how an operator learns these names; a placeholder
@@ -312,7 +312,7 @@ def test_given_the_docs_when_comparing_to_the_code_then_the_documented_placehold
     readme = (REPO_ROOT / "docs" / "publishing.md").read_text()
     documented = [
         "$stylesheet",
-        "$name",
+        "$constitution_key",
         "$mission",
         "$declaration",
         "$principles",

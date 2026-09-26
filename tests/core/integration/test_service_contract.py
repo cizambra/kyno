@@ -461,7 +461,7 @@ def test_given_private_and_public_keys_when_published_constitutions_then_only_pu
     cp.publish(constitution_key="product")
 
     listed = cp.published_constitutions()
-    assert [c.name for c in listed] == ["product"]
+    assert [c.constitution_key for c in listed] == ["product"]
 
 
 def test_given_nothing_published_when_listing_published_then_the_list_is_empty(cp):
@@ -476,7 +476,7 @@ def test_given_public_keys_when_published_constitutions_runs_then_results_are_or
     for name in ("zeta", "alpha", "mu"):
         _direction(cp, name, mission=f"{name} mission")
         cp.publish(constitution_key=name)
-    assert [c.name for c in cp.published_constitutions()] == ["alpha", "mu", "zeta"]
+    assert [c.constitution_key for c in cp.published_constitutions()] == ["alpha", "mu", "zeta"]
 
 
 def test_given_private_history_when_building_the_public_payload_then_history_is_omitted(cp):
@@ -495,14 +495,14 @@ def test_given_private_history_when_building_the_public_payload_then_history_is_
     assert payload["last_changed_at"]
 
 
-def test_given_public_history_when_building_the_public_payload_then_it_is_newest_first(cp):
+def test_given_public_history_when_public_constitution_then_versions_are_newest_first(cp):
     _direction(cp)
     _direction(cp, mission="M2", note="pivot")
     cp.publish(with_history=True)
     payload = cp.public_constitution().to_dict()
     assert [h["version"] for h in payload["history"]] == [2, 1]
     assert payload["history"][0]["change_note"] == "pivot"
-    assert payload["constitution"] == "default"
+    assert payload["constitution_key"] == "default"
 
 
 @pytest.mark.parametrize("name", ["acme", "acme-eu", "policy2", "2026-policy", "a"])

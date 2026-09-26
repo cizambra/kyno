@@ -81,7 +81,7 @@ def test_given_read_token_when_cli_get_version_and_current_run_over_http_then_fu
             assert result.exit_code == 0, result.output
         assert json.loads(historical.stdout) == original_history[0]
         assert yaml.safe_load(authored.stdout) == {
-            "constitution": "support",
+            "constitution_key": "support",
             "mission": "",
             "declaration": "Explain.\nFully.",
             "principles": [{"title": "Trust", "description": "Be honest."}],

@@ -183,15 +183,15 @@ def test_given_padded_key_when_binder_init_and_direction_empty_then_trimmed_key_
     assert Direction.empty(" support ").constitution_key == "support"
 
 
-def test_given_padded_yaml_key_when_reading_and_rendering_authoring_then_output_uses_trimmed_key(
+def test_given_padded_key_when_read_constitution_file_then_rendered_yaml_keeps_trimmed_key(
     tmp_path,
     memory_store,
 ):
     path = tmp_path / "direction.yaml"
-    path.write_text('constitution: " support "\nmission: Help\n')
-    assert read_constitution_file(str(path)).constitution == "support"
+    path.write_text('constitution_key: " support "\nmission: Help\n')
+    assert read_constitution_file(str(path)).constitution_key == "support"
     rendered = render_constitution_yaml(ControlPlane(memory_store).current(), " support ")
-    assert yaml.safe_load(rendered)["constitution"] == "support"
+    assert yaml.safe_load(rendered)["constitution_key"] == "support"
 
 
 def test_given_padded_filter_when_delivery_store_list_then_only_matching_records_return(

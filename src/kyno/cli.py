@@ -452,16 +452,16 @@ def _clean_errors() -> Iterator[None]:
 
 
 def _constitution_name(fields: ConstitutionFile, path: str) -> str:
-    """Which constitution the file belongs to, read from its `constitution:`
+    """Which constitution the file belongs to, read from its `constitution_key:`
     key. The key is required: without it, a file could be applied to the
     wrong constitution by accident, so the file is refused instead and the
     message says what line to add."""
-    if not fields.constitution:
+    if not fields.constitution_key:
         raise AuthoringError(
             f"{path}: the file does not say which constitution it is; "
-            "add a 'constitution: <name>' line ('default' if you keep only one)"
+            "add a 'constitution_key: <key>' line ('default' if you keep only one)"
         )
-    return fields.constitution
+    return fields.constitution_key
 
 
 def _content_of(fields: ConstitutionFile) -> dict[str, object]:

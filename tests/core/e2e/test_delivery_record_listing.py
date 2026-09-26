@@ -44,13 +44,13 @@ async def invoke(control_plane, arguments):
 
 
 @pytest.mark.asyncio
-async def test_given_delivery_filters_when_reading_next_page_then_only_matching_records_return(
+async def test_given_cursor_and_filters_when_list_delivery_records_then_matching_records_return(
     configured,
 ):
     _store, control_plane, identifiers = configured
     filters = {
         "correlation_id": "one",
-        "constitution": "alpha",
+        "constitution_key": "alpha",
         "since": "2000-01-01T00:00:00Z",
         "until": "9998-01-01T00:00:00Z",
         "limit": 1,
@@ -75,13 +75,14 @@ async def test_given_delivery_filters_when_reading_next_page_then_only_matching_
     ("filters", "positions"),
     [
         ({"correlation_id": "two"}, [1]),
-        ({"constitution": "beta"}, [1]),
+        ({"constitution_key": "beta"}, [1]),
+        ({"constitution_key": " alpha "}, [0, 2]),
         ({"since": "2026-01-02T00:00:00Z"}, [1, 2]),
         ({"until": "2026-01-02T00:00:00Z"}, [0, 1]),
-        ({"constitution": "missing"}, []),
+        ({"constitution_key": "missing"}, []),
     ],
 )
-async def test_given_one_history_filter_when_listing_then_only_matching_deliveries_return(
+async def test_given_history_filter_when_list_delivery_records_then_only_matching_deliveries_return(
     configured, filters, positions
 ):
     store, control_plane, identifiers = configured
@@ -147,6 +148,8 @@ async def test_given_no_filters_when_listing_over_mcp_then_all_constitutions_are
 @pytest.mark.parametrize(
     "arguments",
     [
+        {"constitution_key": ""},
+        {"constitution_key": "   "},
         {"limit": 0},
         {"limit": 101},
         {"limit": True},
@@ -157,7 +160,7 @@ async def test_given_no_filters_when_listing_over_mcp_then_all_constitutions_are
         {"since": "2026-01-02T00:00:00Z", "until": "2026-01-01T00:00:00Z"},
     ],
 )
-async def test_given_invalid_filters_when_listing_over_mcp_then_tool_returns_an_error(
+async def test_given_invalid_filters_when_list_delivery_records_then_tool_error_returns(
     configured, arguments
 ):
     _store, control_plane, _identifiers = configured

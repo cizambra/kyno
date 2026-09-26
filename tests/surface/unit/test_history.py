@@ -87,7 +87,7 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
     "filters, expected_arguments",
     [
         ({}, {"limit": 50}),
-        ({"constitution": " support "}, {"constitution": "support", "limit": 50}),
+        ({"constitution": " support "}, {"constitution_key": "support", "limit": 50}),
         (
             {
                 "correlation_id": "run-42",
@@ -99,7 +99,7 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
             },
             {
                 "correlation_id": "run-42",
-                "constitution": "support",
+                "constitution_key": "support",
                 "since": "2026-01-01T00:00:00Z",
                 "until": "2026-02-01T00:00:00Z",
                 "after": 0,
@@ -113,7 +113,7 @@ def test_given_empty_content_when_reading_history_then_unavailable_is_raised():
         "all-filters-including-zero-cursor",
     ],
 )
-def test_given_list_filters_when_querying_the_connection_then_mcp_receives_the_exact_arguments(
+def test_given_filters_when_connection_list_delivery_records_then_mcp_arguments_match(
     filters, expected_arguments
 ):
     session = SimpleNamespace(
@@ -153,7 +153,7 @@ def test_given_version_selection_when_get_constitution_is_called_then_exact_tool
     assert result.version == returned_version
     assert result.constitution == key.strip()
     assert result.detail is detail
-    expected = {"constitution": key.strip(), "detail": detail.value}
+    expected = {"constitution_key": key.strip(), "detail": detail.value}
     if version is not None:
         expected["version"] = version
     session.call_tool.assert_awaited_once_with("get_constitution", expected)

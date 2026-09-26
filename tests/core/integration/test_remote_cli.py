@@ -34,12 +34,12 @@ class FakeRemote:
         try:
             if name == "get_constitution":
                 result = mcp_handlers.handle_get_constitution(
-                    self.cp, arguments.get("constitution"), arguments.get("detail", "compact")
+                    self.cp, arguments.get("constitution_key"), arguments.get("detail", "compact")
                 )
             elif name == "export_versions":
                 result = mcp_handlers.handle_export_versions(
                     self.cp,
-                    arguments.get("constitution"),
+                    arguments.get("constitution_key"),
                     from_version=arguments.get("from_version"),
                     to_version=arguments.get("to_version"),
                 )
@@ -51,7 +51,7 @@ class FakeRemote:
                     principles=arguments.get("principles"),
                     change_note=arguments["change_note"],
                     created_by=arguments.get("created_by"),
-                    constitution=arguments.get("constitution"),
+                    constitution_key=arguments.get("constitution_key"),
                     expected_version=arguments.get("expected_version"),
                     authorized_by=arguments.get("authorized_by"),
                 )
@@ -137,7 +137,7 @@ def test_given_remote_history_when_cli_get_version_receives_number_then_only_tha
     assert calls == [
         (
             "export_versions",
-            {"constitution": "support", "from_version": version, "to_version": version},
+            {"constitution_key": "support", "from_version": version, "to_version": version},
         )
     ]
     assert fake_dial.dialed == {"profile": "oncall", "credentials": "ops", "token_env": "APP_TOKEN"}

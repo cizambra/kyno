@@ -45,7 +45,7 @@ def register_tools(server: Server, control_plane: ControlPlane, token_store=None
             case "get_constitution":
                 result = handle_get_constitution(
                     control_plane,
-                    arguments.get("constitution"),
+                    arguments.get("constitution_key"),
                     arguments.get("detail", DetailLevel.COMPACT),
                     version=arguments.get("version"),
                 )
@@ -54,28 +54,28 @@ def register_tools(server: Server, control_plane: ControlPlane, token_store=None
                 result = handle_get_changes_since(
                     control_plane,
                     arguments["last_seen_version"],
-                    arguments.get("constitution"),
+                    arguments.get("constitution_key"),
                     arguments.get("detail", DetailLevel.COMPACT),
                 )
             case "get_mission":
-                result = handle_get_mission(control_plane, arguments.get("constitution"))
+                result = handle_get_mission(control_plane, arguments.get("constitution_key"))
             case "get_principles":
                 result = handle_get_principles(
                     control_plane,
-                    arguments.get("constitution"),
+                    arguments.get("constitution_key"),
                     arguments.get("detail", TITLES),
                 )
             case "get_declaration":
-                result = handle_get_declaration(control_plane, arguments.get("constitution"))
+                result = handle_get_declaration(control_plane, arguments.get("constitution_key"))
             case "get_principle":
                 _require(arguments, "title")
                 result = handle_get_principle(
-                    control_plane, arguments["title"], arguments.get("constitution")
+                    control_plane, arguments["title"], arguments.get("constitution_key")
                 )
             case "export_versions":
                 result = handle_export_versions(
                     control_plane,
-                    arguments.get("constitution"),
+                    arguments.get("constitution_key"),
                     from_version=arguments.get("from_version"),
                     to_version=arguments.get("to_version"),
                 )
@@ -89,7 +89,7 @@ def register_tools(server: Server, control_plane: ControlPlane, token_store=None
                     principles=arguments.get("principles"),
                     change_note=arguments["change_note"],
                     created_by=arguments.get("created_by"),
-                    constitution=arguments.get("constitution"),
+                    constitution_key=arguments.get("constitution_key"),
                     expected_version=arguments.get("expected_version"),
                     authorized_by=arguments.get("authorized_by"),
                     token_id=requester.id if requester else None,
@@ -101,10 +101,10 @@ def register_tools(server: Server, control_plane: ControlPlane, token_store=None
                     control_plane,
                     lambda store: store.list(
                         **{
-                            key: arguments[key]
+                            ("constitution" if key == "constitution_key" else key): arguments[key]
                             for key in (
                                 "correlation_id",
-                                "constitution",
+                                "constitution_key",
                                 "since",
                                 "until",
                                 "after",

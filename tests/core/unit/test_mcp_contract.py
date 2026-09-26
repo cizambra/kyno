@@ -149,49 +149,73 @@ def test_given_the_module_when_looking_up_run_stdio_then_it_is_a_coroutine_funct
     assert inspect.iscoroutinefunction(run_stdio)
 
 
-def test_given_the_tool_schemas_when_inspecting_then_constitution_is_an_optional_argument():
+def test_given_TOOLS_when_input_schemas_are_inspected_then_constitution_key_is_optional():
     for tool in mcp_tools.TOOLS:
         if tool.name == "get_delivery_record":
-            assert "constitution" not in tool.inputSchema["properties"]
+            assert "constitution_key" not in tool.inputSchema["properties"]
             continue
         if tool.name == "whoami":
             # whoami answers about the request's token, not a constitution.
             assert tool.inputSchema["properties"] == {}
             continue
         props = tool.inputSchema["properties"]
-        assert props["constitution"]["type"] == "string"
-        assert "constitution" not in tool.inputSchema.get("required", [])
+        assert props["constitution_key"]["type"] == "string"
+        assert "constitution_key" not in tool.inputSchema.get("required", [])
 
 
-def test_given_a_named_set_when_getting_that_name_then_it_round_trips(cp):
+def test_given_a_named_set_when_handle_get_constitution_receives_written_key_then_it_round_trips(
+    cp,
+):
     mcp_handlers.handle_apply_direction(
-        cp, mission="EU1", principles=["p1"], change_note="init", created_by="op", constitution="eu"
+        cp,
+        mission="EU1",
+        principles=["p1"],
+        change_note="init",
+        created_by="op",
+        constitution_key="eu",
     )
-    d = mcp_handlers.handle_get_constitution(cp, constitution="eu")
-    assert d["version"] == 1 and d["mission"] == "EU1"
+    d = mcp_handlers.handle_get_constitution(cp, constitution_key="eu")
+    assert d["version"] == 1
+    assert d["mission"] == "EU1"
     assert mcp_handlers.handle_get_constitution(cp)["version"] == 0
 
 
 def test_given_a_name_when_calling_get_changes_since_then_it_reads_that_constitution(cp):
     mcp_handlers.handle_apply_direction(
-        cp, mission="EU1", principles=["p1"], change_note="init", created_by=None, constitution="eu"
+        cp,
+        mission="EU1",
+        principles=["p1"],
+        change_note="init",
+        created_by=None,
+        constitution_key="eu",
     )
     mcp_handlers.handle_apply_direction(
-        cp, mission="EU2", principles=None, change_note="pivot", created_by=None, constitution="eu"
+        cp,
+        mission="EU2",
+        principles=None,
+        change_note="pivot",
+        created_by=None,
+        constitution_key="eu",
     )
-    d = mcp_handlers.handle_get_changes_since(cp, 1, constitution="eu")
-    assert d["current_version"] == 2 and d["mission"] == "EU2"
+    d = mcp_handlers.handle_get_changes_since(cp, 1, constitution_key="eu")
+    assert d["current_version"] == 2
+    assert d["mission"] == "EU2"
     assert d["change_notes"] == ["pivot"]
 
 
-def test_given_an_unknown_constitution_when_reading_over_mcp_then_the_empty_state_returns(cp):
+def test_given_unknown_key_when_mcp_read_handler_runs_then_empty_direction_returns(
+    cp,
+):
     mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=["p1"], change_note="init", created_by=None
     )
-    d = mcp_handlers.handle_get_constitution(cp, constitution="never-written")
-    assert d["version"] == 0 and d["mission"] == "" and d["principles"] == []
-    changes = mcp_handlers.handle_get_changes_since(cp, 4, constitution="never-written")
-    assert changes["current_version"] == 0 and changes["changed"] is False
+    d = mcp_handlers.handle_get_constitution(cp, constitution_key="never-written")
+    assert d["version"] == 0
+    assert d["mission"] == ""
+    assert d["principles"] == []
+    changes = mcp_handlers.handle_get_changes_since(cp, 4, constitution_key="never-written")
+    assert changes["current_version"] == 0
+    assert changes["changed"] is False
 
 
 def test_given_no_detail_asked_when_getting_the_constitution_then_it_is_compact(cp):
@@ -303,7 +327,7 @@ def test_given_a_name_when_calling_get_declaration_then_it_reads_that_constituti
         principles=None,
         change_note="init",
         created_by=None,
-        constitution="eu",
+        constitution_key="eu",
     )
     assert mcp_handlers.handle_get_declaration(cp, "eu")["declaration"] == "The EU long form."
     assert mcp_handlers.handle_get_declaration(cp)["declaration"] == ""
@@ -343,7 +367,7 @@ def test_given_a_name_when_calling_get_principle_then_it_reads_that_constitution
         principles=[{"title": "EU only", "description": "why"}],
         change_note="init",
         created_by=None,
-        constitution="eu",
+        constitution_key="eu",
     )
     assert mcp_handlers.handle_get_principle(cp, "EU only", "eu")["description"] == "why"
     with pytest.raises(ValueError):
@@ -391,7 +415,7 @@ def test_given_a_name_when_calling_get_mission_then_it_reads_that_constitution(c
         principles=None,
         change_note="init",
         created_by=None,
-        constitution="eu",
+        constitution_key="eu",
     )
     assert mcp_handlers.handle_get_mission(cp, "eu")["mission"] == "EU"
     assert mcp_handlers.handle_get_mission(cp)["mission"] == ""
@@ -438,7 +462,7 @@ def test_given_a_name_when_calling_get_principles_then_it_reads_that_constitutio
         principles=["EU only"],
         change_note="init",
         created_by=None,
-        constitution="eu",
+        constitution_key="eu",
     )
     assert mcp_handlers.handle_get_principles(cp, "eu")["principles"] == [{"title": "EU only"}]
     assert mcp_handlers.handle_get_principles(cp)["principles"] == []
@@ -458,7 +482,7 @@ def test_given_the_read_family_when_answering_then_each_carries_its_source_versi
     assert [r["version"] for r in reads] == [1, 1, 1, 1, 1]
 
 
-def test_given_the_server_when_listing_tools_then_apply_direction_is_the_write_tool():
+def test_given_TOOLS_when_write_scopes_are_inspected_then_only_apply_direction_is_writable():
     names = [t.name for t in mcp_tools.TOOLS]
     assert names == [
         "get_delivery_record",
@@ -478,7 +502,7 @@ def test_given_the_server_when_listing_tools_then_apply_direction_is_the_write_t
         assert description.startswith(("Return ", "Apply ")), tool.name
         assert description.endswith("."), tool.name
         if tool.name.startswith("get_") and tool.name != "get_delivery_record":
-            assert "constitution" in tool.inputSchema["properties"], tool.name
+            assert "constitution_key" in tool.inputSchema["properties"], tool.name
 
 
 def test_given_a_markdown_declaration_when_calling_get_declaration_then_raw_markdown_serves(cp):

@@ -274,6 +274,10 @@ a key is not removed and remains invalid.
 Keys contain at most 200 characters after trimming. This limit applies to
 reads, writes, authored files, SDK inputs, and delivery-history filters.
 
+Embedded direction and publication results expose `constitution_key`, including
+empty direction reads. This is the resolved key, so callers can identify what
+Core selected even when the request omitted it.
+
 The schema has to exist before the first read, so run `kyno db init` once
 against the same database, or call `store.create_all()` from code. From
 here the binder behaves exactly as it does over MCP, and the CLI keeps

@@ -44,6 +44,7 @@ class ScriptedRunner:
 
 def good_payload(**overrides):
     payload = {
+        "constitution_key": "default",
         "current_version": 2,
         "changed": True,
         "mission": "M2",

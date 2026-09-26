@@ -34,7 +34,7 @@ def test_given_omitted_or_none_key_when_apply_direction_runs_then_only_default_g
     assert plane.current("support").mission == "Support first"
 
 
-def test_given_omitted_or_none_key_when_get_constitution_requests_v1_then_default_v1_is_returned(
+def test_given_omitted_or_none_key_when_get_constitution_requests_version_then_default_returns(
     memory_store, default_selection
 ):
     plane = ControlPlane(memory_store)
@@ -54,7 +54,7 @@ def test_given_omitted_or_none_key_when_get_constitution_requests_v1_then_defaul
     assert direction.mission == "Default first"
 
 
-def test_given_omitted_or_none_key_when_changes_since_uses_v1_then_default_v2_changes_return(
+def test_given_omitted_or_none_key_when_changes_since_reads_prior_head_then_default_updates_return(
     memory_store, default_selection
 ):
     plane = ControlPlane(memory_store)

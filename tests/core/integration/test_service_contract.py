@@ -329,7 +329,7 @@ def test_given_two_keys_when_apply_direction_updates_each_then_sequences_stay_in
     assert cp.current().version == 1
 
 
-def test_given_empty_default_when_apply_direction_receives_eu_key_then_default_reads_remain_empty(
+def test_given_empty_default_when_apply_direction_uses_named_key_then_default_reads_remain_empty(
     cp,
 ):
     cp.apply_direction(mission="Initial EU mission", change_note="eu init", constitution_key="eu")
@@ -453,7 +453,7 @@ def test_given_three_keys_when_publish_receives_two_keys_then_only_selected_keys
     assert cp.public_constitution("eu").history is None
 
 
-def test_given_only_product_public_when_published_constitutions_runs_then_only_product_returns(
+def test_given_private_and_public_keys_when_published_constitutions_then_only_public_keys_return(
     cp,
 ):
     _direction(cp, "internal", mission="Internal mission")

@@ -291,7 +291,7 @@ def test_given_a_custom_template_when_reading_the_json_view_then_it_is_untouched
     assert [p["title"] for p in payload["principles"]] == ["p1", "p2"]
 
 
-def test_given_two_public_constitutions_when_render_index_expands_count_then_index_reports_two(
+def test_given_public_constitutions_when_render_index_expands_count_then_count_matches_publications(
     plane, tmp_path
 ):
     path = tmp_path / "index.html"

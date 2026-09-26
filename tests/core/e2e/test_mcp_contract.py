@@ -255,7 +255,7 @@ async def test_given_named_constitutions_when_dispatching_writes_then_sequences_
 
 @pytest.mark.asyncio
 @pytest.mark.e2e
-async def test_given_default_and_eu_when_read_resource_is_called_then_default_mission_returns():
+async def test_given_named_and_default_keys_when_read_resource_runs_then_default_mission_returns():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = create_memory_store()
@@ -366,7 +366,7 @@ async def test_given_a_compact_pull_when_an_agent_needs_more_then_it_asks_for_th
 
 @pytest.mark.asyncio
 @pytest.mark.e2e
-async def test_given_eu_when_call_tool_reads_mission_and_principles_then_selected_detail_returns():
+async def test_given_key_when_call_tool_reads_mission_and_principles_then_key_selects_content():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = create_memory_store()

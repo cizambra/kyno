@@ -101,7 +101,7 @@ def test_given_200_character_key_when_apply_direction_receives_padding_then_padd
         assert connection.scalars(select(table.c.name)).all() == [key]
 
 
-def test_given_support_v1_when_apply_direction_expects_zero_for_padded_key_then_history_unchanged(
+def test_given_stored_key_when_apply_direction_expects_zero_for_padded_key_then_history_unchanged(
     memory_store,
 ):
     plane = ControlPlane(memory_store)
@@ -162,7 +162,7 @@ def test_given_version_when_delivery_store_append_receives_padded_key_then_trimm
     assert stored_record["served_version"] == 1
 
 
-def test_given_existing_key_when_apply_direction_uses_padded_key_then_same_history_gets_version_two(
+def test_given_stored_key_when_apply_direction_uses_padded_key_then_same_history_gets_next_version(
     memory_store,
 ):
     plane = ControlPlane(memory_store)

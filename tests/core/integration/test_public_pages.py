@@ -146,7 +146,7 @@ def test_given_no_principles_when_rendering_then_the_principles_list_is_omitted(
     assert "Principles" not in body
 
 
-def test_given_no_mission_when_get_constitutions_rules_runs_then_rules_is_the_headline(
+def test_given_no_mission_when_get_requests_constitution_page_then_key_is_the_headline(
     plane, client
 ):
     # Reachable: `kyno apply --principle p --note init` sets no mission. A
@@ -199,7 +199,7 @@ def test_given_the_json_route_when_requesting_then_history_comes_only_if_publish
     assert payload["history"][0]["change_note"] == "second note"
 
 
-def test_given_public_product_when_get_constitutions_index_runs_then_product_lists_with_link(
+def test_given_public_constitution_when_get_constitutions_index_runs_then_it_lists_with_link(
     plane, client
 ):
     direction(plane, "product", mission="Product mission")
@@ -260,7 +260,7 @@ def test_given_key_named_index_when_get_requests_its_html_and_json_then_constitu
     assert client.get("/constitutions/index.json").json()["constitution"] == "index"
 
 
-def test_given_public_product_when_get_constitutions_omits_trailing_slash_then_status_is_200(
+def test_given_public_constitution_when_get_constitutions_omits_trailing_slash_then_status_is_200(
     plane, client
 ):
     direction(plane, "product")

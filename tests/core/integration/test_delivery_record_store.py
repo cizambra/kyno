@@ -99,7 +99,7 @@ def test_given_mutable_request_data_when_appending_then_delta_and_context_keep_o
     )
 
 
-def test_given_changes_response_when_delivery_store_append_runs_then_served_version_is_current(
+def test_given_current_version_provided_when_delivery_store_append_then_served_version_is_current(
     store,
 ):
     plane = ControlPlane(store)
@@ -252,7 +252,7 @@ def test_given_persisted_delivery_when_getting_then_only_select_is_executed(stor
     assert statements[0].startswith("SELECT ")
 
 
-def test_given_version_one_when_delivery_store_append_records_it_then_history_is_unchanged(
+def test_given_stored_version_when_delivery_store_append_records_it_then_history_is_unchanged(
     store,
 ):
     plane = ControlPlane(store)
@@ -273,7 +273,7 @@ def test_given_version_one_when_delivery_store_append_records_it_then_history_is
         )
 
 
-def test_given_two_keys_when_delivery_store_append_receives_support_then_record_links_to_support(
+def test_given_two_keys_when_delivery_store_append_receives_key_then_record_links_to_selected_key(
     store,
 ):
     plane = ControlPlane(store)

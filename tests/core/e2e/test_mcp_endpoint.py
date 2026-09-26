@@ -93,8 +93,27 @@ def test_given_a_client_claiming_a_token_id_when_writing_then_the_server_ignores
 
 
 @pytest.mark.e2e
-def test_given_a_tool_call_when_POST_mcp_handles_tool_call_then_the_request_log_carries_the_fields(
-    caplog,
+@pytest.mark.parametrize(
+    "arguments, requested",
+    [
+        ({}, None),
+        ({"constitution_key": None}, None),
+        ({"constitution_key": "main"}, "main"),
+        ({"constitution_key": " main "}, " main "),
+        ({"constitution_key": "\nmain\n"}, "\nmain\n"),
+        ({"constitution_key": "main\ninjected"}, "main\ninjected"),
+        ({"constitution_key": ""}, ""),
+        ({"constitution_key": " "}, " "),
+        ({"constitution_key": []}, []),
+        ({"constitution_key": {}}, {}),
+        ({"constitution_key": 7}, 7),
+        ({"constitution_key": 0}, 0),
+        ({"constitution_key": False}, False),
+        ({"constitution_key": True}, True),
+    ],
+)
+def test_given_raw_selector_when_POST_mcp_then_request_log_preserves_selector(
+    caplog, arguments, requested
 ):
     from starlette.testclient import TestClient
 
@@ -103,9 +122,44 @@ def test_given_a_tool_call_when_POST_mcp_handles_tool_call_then_the_request_log_
 
     with caplog.at_level(logging.INFO, logger="kyno.requests"), TestClient(app) as client:
         h = drive_session(client, bearer(value))
-        call_tool(client, h, 2, "get_constitution", {"constitution_key": "main"})
+        response = call_tool(client, h, 2, "get_constitution", arguments)
 
+    assert response.status_code == 200
     line = next(r.getMessage() for r in caplog.records if "tool=get_constitution" in r.getMessage())
-    assert f"token={token_id}" in line
-    assert "name=t" in line
-    assert "constitution_key=main" in line
+    assert line == (
+        f"token={token_id} name=t tool=get_constitution requested_constitution_key={requested!r}"
+    )
+    assert "\n" not in line
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize(
+    "arguments, requested, mission",
+    [
+        ({}, None, "Default mission"),
+        ({"constitution_key": " support "}, " support ", "Support mission"),
+    ],
+)
+def test_given_padded_key_when_POST_mcp_get_mission_then_log_keeps_raw_key_and_mission_matches(
+    caplog, arguments, requested, mission
+):
+    from starlette.testclient import TestClient
+
+    from kyno.service import ControlPlane
+
+    store, value, app = gated_http_app()
+    plane = ControlPlane(store)
+    plane.apply_direction(mission="Default mission", change_note="initial")
+    plane.apply_direction(
+        mission="Support mission", change_note="initial", constitution_key="support"
+    )
+    with caplog.at_level(logging.INFO, logger="kyno.requests"), TestClient(app) as client:
+        headers = drive_session(client, bearer(value))
+        response = call_tool(client, headers, 2, "get_constitution", arguments)
+
+    result = sse_json(response.text)["result"]
+    assert not result.get("isError", False)
+    assert json.loads(result["content"][0]["text"])["mission"] == mission
+    records = [record for record in caplog.records if record.name == "kyno.requests"]
+    assert len(records) == 1
+    assert records[0].getMessage().endswith(f"requested_constitution_key={requested!r}")

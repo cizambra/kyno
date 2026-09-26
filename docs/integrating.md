@@ -434,8 +434,8 @@ describes the difference for that request. The record references the
 constitution and version rather than storing the full direction. IDs and
 timestamps vary between records.
 
-Keep the same filters while paging. To narrow the results, choose a
-constitution or a time range with `since` and `until`. Direct MCP calls
+Keep the same filters when requesting subsequent pages. To narrow the
+results, choose a constitution or a time range with `since` and `until`. Direct MCP calls
 use `constitution_key` for the constitution filter. Include a timezone in
 each timestamp. Both time bounds are inclusive, so records with timestamps
 equal to `since` or `until` are included. Pages contain up to 100 delivery

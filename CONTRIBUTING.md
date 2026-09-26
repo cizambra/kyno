@@ -41,6 +41,23 @@ write it in that place.
   `KYNO_TEST_POSTGRES_URL` is set and skip otherwise.
 - Test code is code. It gets the same style, the same naming care, and
   the same review as `src/`.
+- For naming tests, use the
+  [Given-When-Then pattern](https://miro.com/agile/given-when-then-framework/):
+  `given_conditions_when_specific_code_behavior_change_then_expectation`.
+  The name should tell someone what the test starts with, what it calls,
+  and what should happen. In `when`, name the method, function, request,
+  or command the test runs. For parametrized tests, the case ID can supply
+  the detail that changes between cases.
+- Keep example values in the body unless the value is the point of the
+  test, like a length limit or version zero. If `append` should store the
+  current version as the served version, say that in the name. The body
+  shows it with an actual version.
+- Someone reading the body should be able to follow the test without
+  opening several helpers. Keep the setup that explains the case there,
+  use names that say what the values are, and assert each result directly.
+  Leave a blank line between setup, action, and assertions. When checking
+  which version or identity comes back, use different values so the test
+  can tell them apart.
 - Tests come in three layers, and the layer decides how a file is named
   and how much it explains. A healthy suite is a pyramid: many unit
   tests, fewer integration tests, fewest end to end tests. Each layer

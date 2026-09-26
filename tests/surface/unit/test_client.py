@@ -273,7 +273,7 @@ def test_given_key_and_detail_enum_when_mcp_changes_since_runs_then_wire_argumen
 
     McpDirectionSource(Runner()).changes_since(0, key, DetailLevel.FULL)
 
-    assert seen["constitution"] == key.strip()
+    assert seen["constitution_key"] == key.strip()
     assert seen["detail"] == "full"
     assert type(seen["detail"]) is str
 

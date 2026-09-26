@@ -74,11 +74,17 @@ with client libraries in most languages. From your language, call the tool
 `get_changes_since` with these arguments:
 
 ```json
-{ "last_seen_version": 0, "constitution": "default", "detail": "compact" }
+{ "last_seen_version": 0, "constitution_key": "default", "detail": "compact" }
 ```
 
 `last_seen_version` is the last version number you saw; `0` means "I haven't
 seen any yet".
+
+`constitution_key` identifies the constitution to read from this database.
+If omitted, `get_changes_since` reads the `default` constitution. Keys use
+lowercase ASCII letters and digits, with single hyphens between groups,
+for example `customer-support`. Kyno removes leading and trailing whitespace
+before validating the key. The trimmed key must be between 1 and 200 characters.
 
 Here is that call in three languages. Every example on this page was run
 against a Kyno started exactly as above before being committed.
@@ -102,7 +108,7 @@ async def main():
             await session.initialize()
             result = await session.call_tool(
                 "get_changes_since",
-                {"last_seen_version": 0, "constitution": "default", "detail": "compact"},
+                {"last_seen_version": 0, "constitution_key": "default", "detail": "compact"},
             )
             response = json.loads(result.content[0].text)
             print(response["current_version"], response["mission"])
@@ -126,7 +132,7 @@ await client.connect(transport);
 
 const result = await client.callTool({
   name: "get_changes_since",
-  arguments: { last_seen_version: 0, constitution: "default", detail: "compact" },
+  arguments: { last_seen_version: 0, constitution_key: "default", detail: "compact" },
 });
 const response = JSON.parse(result.content[0].text);
 console.log(response.current_version, response.mission);
@@ -165,7 +171,7 @@ post({ jsonrpc: "2.0", method: "notifications/initialized" }, session_id: sessio
 
 reply = post({ jsonrpc: "2.0", id: 2, method: "tools/call",
                params: { name: "get_changes_since",
-                         arguments: { last_seen_version: 0, constitution: "default",
+                         arguments: { last_seen_version: 0, constitution_key: "default",
                                       detail: "compact" } } }, session_id: session_id)
 data = reply.body.lines.find { |l| l.start_with?("data: ") }.delete_prefix("data: ")
 response = JSON.parse(JSON.parse(data).dig("result", "content", 0, "text"))
@@ -428,10 +434,12 @@ describes the difference for that request. The record references the
 constitution and version rather than storing the full direction. IDs and
 timestamps vary between records.
 
-Keep the same filters while paging. Optional `constitution`, `since`, and
-`until` filters narrow the results; timestamps must include a timezone and
-both bounds are inclusive. Pages contain up to 100 delivery records in
-insertion order. List results omit deltas; `get_delivery_record()` includes
+Keep the same filters when requesting subsequent pages. To narrow the
+results, choose a constitution or a time range with `since` and `until`. Direct MCP calls
+use `constitution_key` for the constitution filter. Include a timezone in
+each timestamp. Both time bounds are inclusive, so records with timestamps
+equal to `since` or `until` are included. Pages contain up to 100 delivery
+records in insertion order. List results omit deltas; `get_delivery_record()` includes
 the saved delta. Neither response includes direction text. Reading history
 does not create delivery records.
 

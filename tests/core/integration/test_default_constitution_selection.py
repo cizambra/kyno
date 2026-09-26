@@ -94,7 +94,7 @@ def test_given_omitted_or_none_key_when_export_versions_runs_then_only_default_h
     assert [version["mission"] for version in versions] == ["Default first", "Default second"]
 
 
-def test_given_default_mission_when_preview_omits_or_passes_none_key_then_no_change_is_reported(
+def test_given_default_mission_when_preview_edit_omits_or_passes_none_key_then_delta_is_empty(
     memory_store, default_selection
 ):
     plane = ControlPlane(memory_store)

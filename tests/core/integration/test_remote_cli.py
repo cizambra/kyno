@@ -97,7 +97,7 @@ def _three_versions(remote_cp):
 
 
 @pytest.mark.parametrize("version", [1, 2, 3])
-def test_given_remote_history_when_reading_a_numbered_version_then_only_that_version_is_requested(
+def test_given_remote_history_when_cli_get_version_receives_number_then_only_that_version_returns(
     fake_dial, remote_cp, monkeypatch, version
 ):
     remote_cp.apply_direction(
@@ -146,7 +146,7 @@ def test_given_remote_history_when_reading_a_numbered_version_then_only_that_ver
 
 @pytest.mark.parametrize("written", [False, True])
 @pytest.mark.parametrize("options", [[], ["--yaml"]])
-def test_given_remote_direction_when_reading_current_or_latest_then_output_and_exit_status_match(
+def test_given_remote_key_when_cli_current_and_get_version_latest_run_then_output_and_status_match(
     fake_dial, remote_cp, written, options
 ):
     if written:
@@ -268,7 +268,7 @@ def test_given_dry_run_when_applying_remotely_then_the_delta_prints_and_nothing_
 
 
 @pytest.mark.parametrize("constitution", ["default", "sales"])
-def test_given_a_matching_file_when_checking_remotely_then_it_matches_current_direction(
+def test_given_matching_file_when_cli_check_runs_with_remote_then_current_version_matches(
     fake_dial, remote_cp, tmp_path, constitution
 ):
     remote_cp.apply_direction(mission="M1", change_note="init", constitution_key=constitution)
@@ -279,7 +279,7 @@ def test_given_a_matching_file_when_checking_remotely_then_it_matches_current_di
 
 
 @pytest.mark.parametrize("constitution", ["default", "sales"])
-def test_given_a_stale_file_when_checking_remotely_then_it_fails_with_the_delta(
+def test_given_stale_file_when_cli_check_runs_with_remote_then_exit_one_and_delta_return(
     fake_dial, remote_cp, tmp_path, constitution
 ):
     remote_cp.apply_direction(mission="M1", change_note="init", constitution_key=constitution)

@@ -5,7 +5,7 @@ import pytest
 from kyno.sdk.client import DirectionSource, LocalDirectionSource
 
 
-def test_given_eu_and_us_missions_when_local_source_reads_each_key_then_selected_mission_returns(
+def test_given_eu_and_us_when_local_changes_since_receives_each_key_then_selected_mission_returns(
     control_plane,
 ):
     control_plane.apply_direction(mission="EU mission", change_note="init", constitution_key="eu")
@@ -42,7 +42,7 @@ def test_given_a_future_last_seen_version_when_a_local_source_pulls_then_the_err
         )
 
 
-def test_given_eu_and_us_at_version_one_when_only_eu_updates_then_us_reports_no_change(
+def test_given_eu_updated_when_local_changes_since_reads_us_v1_then_us_is_unchanged(
     control_plane,
 ):
     control_plane.apply_direction(mission="EU v1", change_note="init", constitution_key="eu")

@@ -99,7 +99,7 @@ def test_given_mutable_request_data_when_appending_then_delta_and_context_keep_o
     )
 
 
-def test_given_get_changes_since_when_recording_then_current_version_becomes_served_version(
+def test_given_changes_response_when_delivery_store_append_runs_then_served_version_is_current(
     store,
 ):
     plane = ControlPlane(store)
@@ -123,7 +123,7 @@ def test_given_non_json_delta_when_appending_then_no_partial_record_is_written(s
     assert rows(store) == []
 
 
-def test_given_new_version_before_recording_when_saving_delivery_then_served_version_is_kept(
+def test_given_new_head_when_delivery_store_append_saves_prior_response_then_served_version_is_kept(
     store,
 ):
     plane = ControlPlane(store)
@@ -215,7 +215,7 @@ def test_given_multiple_deliveries_when_getting_by_id_then_exact_decoded_record_
     assert SqlDeliveryRecordStore(store.engine).get(identifier) == expected
 
 
-def test_given_updates_and_mutations_when_getting_delivery_then_version_and_delta_are_unchanged(
+def test_given_mutated_read_when_delivery_store_get_runs_again_then_stored_record_is_unchanged(
     store,
 ):
     plane = ControlPlane(store)
@@ -252,7 +252,7 @@ def test_given_persisted_delivery_when_getting_then_only_select_is_executed(stor
     assert statements[0].startswith("SELECT ")
 
 
-def test_given_version_one_when_recording_its_delivery_then_constitution_history_is_unchanged(
+def test_given_version_one_when_delivery_store_append_records_it_then_history_is_unchanged(
     store,
 ):
     plane = ControlPlane(store)
@@ -273,7 +273,7 @@ def test_given_version_one_when_recording_its_delivery_then_constitution_history
         )
 
 
-def test_given_sales_and_support_when_recording_support_delivery_then_record_links_to_support(
+def test_given_two_keys_when_delivery_store_append_receives_support_then_record_links_to_support(
     store,
 ):
     plane = ControlPlane(store)
@@ -296,7 +296,7 @@ def test_given_sales_and_support_when_recording_support_delivery_then_record_lin
 
 @pytest.mark.parametrize("correlation_id", [None, "", "workflow-42/research"])
 @pytest.mark.parametrize("served_version", [0, 2], ids=["unwritten", "stored-version-with-delta"])
-def test_given_migrated_database_when_reopened_then_committed_recording_is_preserved(
+def test_given_saved_delivery_when_sql_constitution_store_reopens_database_then_record_is_preserved(
     tmp_path, correlation_id, served_version
 ):
     url = f"sqlite:///{tmp_path / 'recordings.sqlite3'}"
@@ -403,7 +403,7 @@ def test_given_a_response_when_recording_then_missing_delta_is_null_and_present_
 
 
 @pytest.mark.parametrize("constitution, version", [("missing", 1), ("existing", 2)])
-def test_given_missing_constitution_or_version_when_recording_then_no_dangling_reference_is_saved(
+def test_given_missing_key_or_version_when_delivery_store_append_runs_then_no_record_is_saved(
     store, constitution, version
 ):
     ControlPlane(store).apply_direction(

@@ -23,7 +23,7 @@ def home(remote_cli_home):
 
 
 @pytest.mark.e2e
-def test_given_a_read_token_when_reading_history_over_http_then_full_content_is_returned(
+def test_given_read_token_when_cli_get_version_and_current_run_over_http_then_full_content_returns(
     tmp_path, monkeypatch
 ):
     store = SqlConstitutionStore(url=f"sqlite:///{tmp_path / 'server.sqlite3'}")

@@ -1,7 +1,7 @@
 """Plans go stale the same way steps do; the tracker is how a planner knows."""
 
 
-def test_given_support_binder_when_plan_tracker_checks_changes_then_only_support_changes_return(
+def test_given_support_binder_when_plan_tracker_changed_runs_then_only_support_changes_return(
     mcp_connection,
 ):
     connection, control_plane = mcp_connection

@@ -24,7 +24,7 @@ def ledger():
     "has_prefix_history", [False, True], ids=["empty-store", "existing-prefix"]
 )
 @pytest.mark.parametrize("padding", ["", " \t"])
-def test_given_201_character_key_when_writing_then_identity_and_version_tables_are_unchanged(
+def test_given_201_char_key_when_apply_direction_append_or_import_versions_runs_then_no_rows_change(
     memory_store, ledger, operation, has_prefix_history, padding
 ):
     plane = ControlPlane(memory_store)

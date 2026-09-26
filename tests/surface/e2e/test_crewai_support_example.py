@@ -29,7 +29,7 @@ def fake_llm():
 
 
 @pytest.mark.parametrize("changed", [True, False])
-def test_given_completed_draft_when_operator_checks_direction_then_remaining_steps_use_current_plan(
+def test_given_draft_when_run_example_checks_operator_update_then_remaining_steps_use_current_plan(
     crewai_example, fake_llm, live_server, changed
 ):
     control_plane, url, token = live_server

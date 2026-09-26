@@ -71,7 +71,7 @@ def test_given_the_packaged_template_when_rendering_then_the_built_in_page_match
     )
 
 
-def test_given_the_packaged_index_template_when_rendering_then_the_built_in_index_matches_it(
+def test_given_packaged_index_template_when_render_index_uses_its_copy_then_output_matches_builtin(
     plane, tmp_path
 ):
     plane.apply_direction(mission="Product mission", change_note="init", constitution_key="product")

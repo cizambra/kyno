@@ -60,7 +60,7 @@ def test_given_rich_direction_when_bind_is_called_then_content_matches_selected_
     assert full.principles[0].description == "Say the hard number first."
 
 
-def test_given_an_unchanged_version_when_binding_again_then_the_successful_read_is_pulled(
+def test_given_unchanged_version_when_bind_with_status_runs_again_then_status_is_pulled(
     control_plane,
 ):
     control_plane.apply_direction(
@@ -75,7 +75,7 @@ def test_given_an_unchanged_version_when_binding_again_then_the_successful_read_
     assert second.status is BindingStatus.PULLED
 
 
-def test_given_a_direction_change_when_binding_again_then_the_prior_result_stays_unchanged(
+def test_given_direction_update_when_bind_with_status_runs_again_then_prior_result_stays_unchanged(
     control_plane,
 ):
     control_plane.apply_direction(mission="Old", change_note="initial", constitution_key="sales")

@@ -21,7 +21,7 @@ from kyno.service import ControlPlane
         ("head_and_delta", {"mission": "Help"}),
     ],
 )
-def test_given_constitution_keyword_when_calling_core_then_type_error_precedes_storage(
+def test_given_constitution_keyword_when_core_method_receives_it_then_type_error_precedes_storage(
     operation, arguments
 ):
     store = Mock()

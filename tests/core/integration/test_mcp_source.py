@@ -58,7 +58,7 @@ def test_given_recording_fails_when_sdk_pulls_then_current_direction_and_failed_
     assert history.list()["items"] == []
 
 
-def test_given_eu_and_us_missions_when_mcp_source_reads_each_key_then_selected_mission_returns(
+def test_given_eu_and_us_when_mcp_changes_since_receives_each_key_then_selected_mission_returns(
     mcp_runner,
 ):
     runner, control_plane = mcp_runner
@@ -94,7 +94,7 @@ def test_given_an_unwritten_name_when_the_mcp_source_reads_then_it_is_version_ze
     assert McpDirectionSource(runner).changes_since(0, "never-written").changes.current_version == 0
 
 
-def test_given_eu_mission_update_when_mcp_binder_pulls_again_then_version_two_replaces_version_one(
+def test_given_eu_update_when_mcp_binder_bind_runs_again_then_version_two_replaces_version_one(
     mcp_runner,
 ):
     runner, control_plane = mcp_runner
@@ -129,7 +129,7 @@ def test_given_the_mcp_source_when_checking_the_protocol_then_it_satisfies_it(mc
     assert isinstance(McpDirectionSource(runner), DirectionSource)
 
 
-def test_given_eu_principles_update_when_local_and_mcp_sources_read_since_one_then_changes_match(
+def test_given_eu_principles_update_when_local_and_mcp_changes_since_receive_one_then_changes_match(
     mcp_runner,
 ):
     runner, control_plane = mcp_runner

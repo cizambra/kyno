@@ -73,7 +73,7 @@ def test_given_a_live_server_when_langgraph_refreshes_then_the_latest_direction_
 @pytest.mark.e2e
 @pytest.mark.parametrize("cached", [False, True], ids=["empty", "cached"])
 @pytest.mark.parametrize("wrapper", [False, True], ids=["direction-node", "pull-before"])
-def test_given_server_read_failure_when_langgraph_pulls_over_http_then_fallback_clears_on_recovery(
+def test_given_read_failure_when_direction_node_or_pull_before_runs_then_fallback_clears_on_retry(
     live_server, read_failure, cached, wrapper
 ):
     pytest.importorskip("langgraph")
@@ -117,7 +117,7 @@ def test_given_server_read_failure_when_langgraph_pulls_over_http_then_fallback_
 
 @pytest.mark.e2e
 @pytest.mark.parametrize("cached", [False, True], ids=["empty", "cached"])
-def test_given_failed_reads_when_crewai_calls_again_then_observed_fallback_recovers_to_pulled(
+def test_given_failed_reads_when_before_llm_call_runs_again_then_fallback_recovers_to_pulled(
     live_server, read_failure, cached
 ):
     control_plane, url, token = live_server

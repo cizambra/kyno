@@ -146,7 +146,9 @@ def test_given_no_principles_when_rendering_then_the_principles_list_is_omitted(
     assert "Principles" not in body
 
 
-def test_given_no_mission_when_rendering_then_the_name_is_the_headline(plane, client):
+def test_given_no_mission_when_get_constitutions_rules_runs_then_rules_is_the_headline(
+    plane, client
+):
     # Reachable: `kyno apply --principle p --note init` sets no mission. A
     # blank headline would read as a broken page rather than a sparse one.
     plane.apply_direction(principles=("p1",), change_note="init", constitution_key="rules")
@@ -197,7 +199,7 @@ def test_given_the_json_route_when_requesting_then_history_comes_only_if_publish
     assert payload["history"][0]["change_note"] == "second note"
 
 
-def test_given_published_constitutions_when_rendering_the_index_then_they_list_with_links(
+def test_given_public_product_when_get_constitutions_index_runs_then_product_lists_with_link(
     plane, client
 ):
     direction(plane, "product", mission="Product mission")
@@ -211,7 +213,7 @@ def test_given_published_constitutions_when_rendering_the_index_then_they_list_w
     assert 'href="/constitutions/product"' in response.text
 
 
-def test_given_an_unpublished_constitution_when_rendering_the_index_then_it_never_shows(
+def test_given_private_key_when_get_constitutions_html_and_json_indexes_run_then_key_is_absent(
     plane, client
 ):
     direction(plane, "acme-internal", mission="Internal mission nobody may see")
@@ -237,7 +239,7 @@ def test_given_nothing_published_when_rendering_the_index_then_it_says_so_and_li
     assert client.get("/constitutions.json").json()["constitutions"] == []
 
 
-def test_given_a_multi_line_mission_when_rendering_the_index_then_only_the_first_line_shows(
+def test_given_multiline_mission_when_get_constitutions_index_runs_then_only_first_line_shows(
     plane, client
 ):
     direction(plane, "product", mission="Headline claim\nA long second paragraph nobody needs here")
@@ -247,7 +249,7 @@ def test_given_a_multi_line_mission_when_rendering_the_index_then_only_the_first
     assert "A long second paragraph" not in body
 
 
-def test_given_a_constitution_named_index_when_routing_then_the_index_route_does_not_shadow_it(
+def test_given_key_named_index_when_get_requests_its_html_and_json_then_constitution_is_served(
     plane, client
 ):
     # The index lives at /constitutions.json rather than
@@ -258,7 +260,9 @@ def test_given_a_constitution_named_index_when_routing_then_the_index_route_does
     assert client.get("/constitutions/index.json").json()["constitution"] == "index"
 
 
-def test_given_no_trailing_slash_when_requesting_the_index_then_it_is_reachable(plane, client):
+def test_given_public_product_when_get_constitutions_omits_trailing_slash_then_status_is_200(
+    plane, client
+):
     direction(plane, "product")
     plane.publish(constitution_key="product")
     assert client.get("/constitutions").status_code == 200
@@ -647,7 +651,7 @@ def test_given_repeat_visits_when_rendering_a_declaration_then_it_renders_once_p
     assert info.misses == 1 and info.hits >= 1
 
 
-def test_given_shared_declaration_when_rendering_two_constitutions_then_second_render_hits_cache(
+def test_given_shared_declaration_when_get_reads_both_constitutions_then_second_render_hits_cache(
     plane, client
 ):
     # Two constitutions sharing one declaration share one render: versions

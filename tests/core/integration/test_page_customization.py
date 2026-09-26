@@ -82,7 +82,7 @@ def test_given_only_a_font_when_rendering_then_the_automatic_dark_swap_stays(pla
     assert "Iowan Old Style, serif" in page
 
 
-def test_given_custom_accent_when_rendering_index_then_configured_accent_is_included(plane):
+def test_given_custom_accent_when_render_index_runs_then_configured_accent_is_included(plane):
     direction(plane, "product", mission="Product mission")
     plane.publish(constitution_key="product")
     page = render_index(plane.published_constitutions(), PageConfig(theme=PageTheme(accent="#b45")))
@@ -206,7 +206,7 @@ def test_given_a_template_that_is_not_valid_text_when_rendering_then_the_built_i
     assert len([r for r in caplog.records if r.levelname == "WARNING"]) == 1
 
 
-def test_given_a_custom_index_template_when_rendering_then_it_replaces_the_built_in_index(
+def test_given_custom_index_template_when_render_index_runs_then_it_replaces_builtin_index(
     plane, tmp_path
 ):
     path = tmp_path / "index.html"
@@ -221,7 +221,7 @@ def test_given_a_custom_index_template_when_rendering_then_it_replaces_the_built
     assert "<style>" not in page
 
 
-def test_given_missing_index_template_when_rendering_then_builtin_index_serves_with_one_warning(
+def test_given_missing_template_when_render_index_runs_then_builtin_index_serves_with_one_warning(
     plane, tmp_path, caplog
 ):
     direction(plane, "product", mission="Product mission")
@@ -291,7 +291,7 @@ def test_given_a_custom_template_when_reading_the_json_view_then_it_is_untouched
     assert [p["title"] for p in payload["principles"]] == ["p1", "p2"]
 
 
-def test_given_two_public_constitutions_when_rendering_count_placeholder_then_index_reports_two(
+def test_given_two_public_constitutions_when_render_index_expands_count_then_index_reports_two(
     plane, tmp_path
 ):
     path = tmp_path / "index.html"

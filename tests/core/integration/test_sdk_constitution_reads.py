@@ -84,7 +84,7 @@ def test_given_updates_when_get_constitution_omits_version_then_current_compact_
 
 
 @pytest.mark.parametrize("version", [None, 1])
-def test_given_example_and_default_when_sdk_reads_each_key_then_selected_mission_returns(
+def test_given_two_keys_when_sdk_get_constitution_receives_each_key_then_selected_mission_returns(
     mcp_connection, version
 ):
     connection, control_plane = mcp_connection

@@ -28,7 +28,7 @@ def model():
 
 
 @pytest.mark.e2e
-def test_given_an_operator_update_when_the_graph_continues_then_each_call_records_its_direction(
+def test_given_operator_update_when_run_example_resumes_graph_then_each_call_records_its_direction(
     example, live_server, server_store, tmp_path, monkeypatch
 ):
     from langchain_core.messages import AIMessage

@@ -16,7 +16,7 @@ from tests.stores import create_memory_store
 
 
 @pytest.mark.parametrize("key", [" support ", " \tsupport\n", "\u2003support\u2003"])
-def test_given_empty_store_when_applying_padded_key_then_only_trimmed_identity_is_persisted(
+def test_given_empty_store_when_apply_direction_receives_padded_key_then_trimmed_identity_persists(
     memory_store, key
 ):
     result = ControlPlane(memory_store).apply_direction(
@@ -75,7 +75,7 @@ def test_given_empty_store_when_writing_padded_key_directly_then_trimmed_identit
 
 
 @pytest.mark.parametrize("key", [" \t\n\u2003", " sup port "])
-def test_given_empty_store_when_applying_invalid_padded_key_then_no_identity_or_version_is_written(
+def test_given_empty_store_when_apply_direction_receives_invalid_padded_key_then_no_rows_written(
     memory_store, key
 ):
     with pytest.raises(ValueError, match="constitution key"):
@@ -88,7 +88,7 @@ def test_given_empty_store_when_applying_invalid_padded_key_then_no_identity_or_
             assert connection.execute(select(memory_store.metadata.tables[name])).all() == []
 
 
-def test_given_key_at_write_limit_when_applying_with_padding_then_only_key_counts_toward_limit(
+def test_given_200_character_key_when_apply_direction_receives_padding_then_padding_does_not_count(
     memory_store,
 ):
     key = "a" * 200
@@ -101,7 +101,7 @@ def test_given_key_at_write_limit_when_applying_with_padding_then_only_key_count
         assert connection.scalars(select(table.c.name)).all() == [key]
 
 
-def test_given_support_version_one_when_padded_apply_expects_zero_then_stored_history_is_unchanged(
+def test_given_support_v1_when_apply_direction_expects_zero_for_padded_key_then_history_unchanged(
     memory_store,
 ):
     plane = ControlPlane(memory_store)
@@ -125,7 +125,7 @@ def test_given_support_version_one_when_padded_apply_expects_zero_then_stored_hi
     assert stored_version["mission"] == "First"
 
 
-def test_given_served_version_when_recording_padded_key_then_trimmed_key_links_to_that_constitution(
+def test_given_version_when_delivery_store_append_receives_padded_key_then_trimmed_key_links_to_it(
     memory_store,
 ):
     plane = ControlPlane(memory_store)

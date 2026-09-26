@@ -6,7 +6,7 @@ from kyno.errors import UnknownVersionError
 from kyno.service import ControlPlane
 
 
-def test_given_two_histories_when_exporting_eu_west_version_2_then_only_eu_west_version_2_returns(
+def test_given_two_histories_when_export_versions_selects_eu_west_2_to_2_then_only_eu_v2_returns(
     memory_store,
 ):
     plane = ControlPlane(memory_store)
@@ -28,7 +28,7 @@ def test_given_two_histories_when_exporting_eu_west_version_2_then_only_eu_west_
     assert exported_version["mission"] == "EU second"
 
 
-def test_given_eu_west_at_version_two_when_previewing_its_mission_then_no_delta_or_write_occurs(
+def test_given_eu_v2_when_preview_edit_and_head_and_delta_receive_same_mission_then_delta_is_empty(
     memory_store,
 ):
     plane = ControlPlane(memory_store)
@@ -47,7 +47,7 @@ def test_given_eu_west_at_version_two_when_previewing_its_mission_then_no_delta_
     assert plane.current("eu-west").version == 2
 
 
-def test_given_two_private_constitutions_when_publishing_eu_west_then_default_remains_private(
+def test_given_two_private_constitutions_when_publish_receives_eu_west_then_default_remains_private(
     memory_store,
 ):
     plane = ControlPlane(memory_store)
@@ -67,7 +67,7 @@ def test_given_two_private_constitutions_when_publishing_eu_west_then_default_re
     assert plane.public_constitution() is None
 
 
-def test_given_two_public_constitutions_when_unpublishing_eu_west_then_default_stays_public(
+def test_given_two_public_constitutions_when_unpublish_receives_eu_west_then_default_stays_public(
     memory_store,
 ):
     plane = ControlPlane(memory_store)
@@ -85,7 +85,7 @@ def test_given_two_public_constitutions_when_unpublishing_eu_west_then_default_s
     assert plane.public_constitution().mission == "Default mission"
 
 
-def test_given_empty_store_when_applying_eu_west_then_named_history_starts_and_default_stays_empty(
+def test_given_empty_store_when_apply_direction_receives_eu_west_then_only_named_history_starts(
     memory_store,
 ):
     plane = ControlPlane(memory_store)
@@ -102,7 +102,7 @@ def test_given_empty_store_when_applying_eu_west_then_named_history_starts_and_d
     assert plane.current().version == 0
 
 
-def test_given_eu_west_mission_when_previewing_replacement_then_delta_describes_mission_change(
+def test_given_eu_when_preview_edit_and_head_and_delta_receive_new_mission_then_delta_describes_it(
     memory_store,
 ):
     plane = ControlPlane(memory_store)
@@ -128,7 +128,7 @@ def test_given_eu_west_mission_when_previewing_replacement_then_delta_describes_
         ("changes_since", {"last_seen_version": 0}),
     ],
 )
-def test_given_default_and_eu_west_when_reading_by_key_keyword_then_selected_mission_returns(
+def test_given_keys_when_current_get_constitution_or_changes_since_runs_then_key_selects_mission(
     memory_store, key, expected_mission, operation, arguments
 ):
     plane = ControlPlane(memory_store)
@@ -140,7 +140,7 @@ def test_given_default_and_eu_west_when_reading_by_key_keyword_then_selected_mis
     assert selected.mission == expected_mission
 
 
-def test_given_unknown_key_when_requesting_exact_version_by_keyword_then_version_is_not_found(
+def test_given_unknown_key_when_get_constitution_requests_v1_then_unknown_version_is_raised(
     memory_store,
 ):
     plane = ControlPlane(memory_store)
@@ -150,7 +150,7 @@ def test_given_unknown_key_when_requesting_exact_version_by_keyword_then_version
 
 
 @pytest.mark.parametrize("key", ["", " ", "Upper"])
-def test_given_invalid_key_when_requesting_version_zero_by_keyword_then_key_is_refused(
+def test_given_invalid_key_when_get_constitution_requests_version_zero_then_key_is_refused(
     memory_store, key
 ):
     with pytest.raises(ValueError, match="constitution key"):

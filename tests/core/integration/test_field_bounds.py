@@ -94,7 +94,7 @@ def test_given_a_description_at_the_cap_when_applying_then_it_is_accepted_and_on
         cp.apply_direction(principles=(over,), change_note="too long")
 
 
-def test_given_200_character_key_with_surrounding_spaces_when_applying_then_key_is_accepted(
+def test_given_padded_200_character_key_when_apply_direction_runs_then_trimmed_key_is_accepted(
     cp,
 ):
     key_at_limit = "c" * 200

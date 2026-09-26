@@ -108,9 +108,10 @@ kyno apply eu.yaml --note "the EU edit"
 kyno current --constitution-key eu
 ```
 
-Reads take the name as an option, over MCP and on the CLI, and default to
-`"default"`, so a single-constitution setup only ever names it in the
-file. Each name has its own version sequence: bumping `eu` to v2 leaves
+Reads accept a constitution key over MCP and on the CLI. When you omit
+`--constitution-key`, the CLI leaves selection to Core, which uses `default`.
+An explicit key selects only that constitution; invalid keys are rejected,
+not replaced by the default. Each key has its own version sequence: bumping `eu` to v2 leaves
 `default` at whatever version it was. A name you have never written to
 reads as the same version-0 empty state an untouched store does. The
 subscribable resource is the default constitution's; agents on another
@@ -157,9 +158,9 @@ Run `import` in a workspace whose database has been initialized with
 `--remote` option. An export can come from a remote instance:
 `kyno export --remote --constitution-key eu > eu-history.json`.
 
-The export contains versions, not a constitution name or database ids
-for the constitution. `--as` chooses the target name; without it, import
-uses `default`. A target that already has versions is refused. Export
+The export contains versions with their source `constitution_key`, not database ids.
+`--as` chooses the destination key; without it, Core selects `default`.
+The source key does not override that destination. A target that already has versions is refused. Export
 also refuses an empty or unknown constitution.
 
 Import requires a nonempty sequence numbered 1 through N in order.

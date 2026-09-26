@@ -50,7 +50,7 @@ def test_given_invalid_yaml_key_when_read_constitution_file_runs_then_value_erro
     tmp_path, key
 ):
     path = tmp_path / "constitution.yaml"
-    path.write_text(f'constitution: "{key}"\nmission: Help\n')
+    path.write_text(f'constitution_key: "{key}"\nmission: Help\n')
     with pytest.raises(ValueError, match="constitution key"):
         read_constitution_file(str(path))
 

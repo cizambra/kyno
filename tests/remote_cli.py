@@ -14,5 +14,5 @@ def plain(output):
 
 def write_file(dirpath, mission="M1", name="c.yaml", constitution="default"):
     path = pathlib.Path(dirpath) / name
-    path.write_text(f"constitution: {constitution}\nmission: {mission}\n", encoding="utf-8")
+    path.write_text(f"constitution_key: {constitution}\nmission: {mission}\n", encoding="utf-8")
     return str(path)

@@ -15,6 +15,12 @@ On this page:
 
 ## The file
 
+The target is identified by `constitution_key`. If an existing file uses
+`constitution`, rename that field before running `kyno check` or `kyno apply`.
+Files containing the unsupported field are rejected, including files that
+also contain `constitution_key`, so a conflicting identity cannot be ignored.
+Keep authored files compatible with the Kyno version you deploy or roll back to.
+
 The constitution is represented in a YAML file that contains three main
 elements:
 
@@ -38,7 +44,7 @@ better written in a file:
 
 ```yaml
 # constitution.yaml
-constitution: default
+constitution_key: default
 mission: Ship a lending product people trust with their worst month
 principles:
   - Say the hard number first
@@ -68,7 +74,8 @@ renders and escapes it is covered in
 ### The file and the flags
 
 The file is the only source of what the constitution is, and that
-includes which one it is: the `constitution:` key names it, and a file
+includes which one it is: `constitution_key` is its unique identifier within
+the Kyno database, not a display name. A file
 without one is refused, so a copy, a rename, or a recovery read always
 lands where it says. The flags describe the edit: `--note` (required,
 what changed and why) and `--by` (who made it, your system username when
@@ -92,7 +99,7 @@ product line or per jurisdiction. Each file says which one it is:
 
 ```yaml
 # eu.yaml
-constitution: eu
+constitution_key: eu
 mission: Lend in the EU the way the EU expects
 ```
 

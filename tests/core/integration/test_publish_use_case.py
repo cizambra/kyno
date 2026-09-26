@@ -27,7 +27,7 @@ def apply_yaml(
     """Write a constitution file and apply it: the only way content lands."""
     lines = []
     if constitution is not None:
-        lines.append(f"constitution: {constitution}")
+        lines.append(f"constitution_key: {constitution}")
     lines.append(f"mission: {mission}")
     if principles:
         lines.append("principles:")

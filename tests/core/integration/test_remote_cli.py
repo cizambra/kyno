@@ -212,13 +212,14 @@ def test_given_an_empty_remote_when_reading_current_remotely_then_version_0_repo
     assert r.exit_code == 0 and "no constitution set (version 0)" in r.output
 
 
-def test_given_a_remote_head_when_reading_current_yaml_remotely_then_the_file_format_prints(
+def test_given_a_remote_head_when_cli_current_remote_outputs_yaml_then_the_file_format_prints(
     fake_dial, remote_cp
 ):
     remote_cp.apply_direction(mission="M-remote", change_note="init")
     r = runner.invoke(app, ["current", "--remote", "--yaml"])
     assert r.exit_code == 0
-    assert "constitution: default" in r.stdout and "mission: M-remote" in r.stdout
+    assert "constitution_key: default" in r.stdout
+    assert "mission: M-remote" in r.stdout
 
 
 def test_given_a_file_when_applying_remotely_then_the_delta_shows_and_the_version_is_applied(
@@ -304,7 +305,7 @@ def test_given_unwritten_direction_when_checking_remotely_then_it_reports_versio
     assert remote_cp.current(constitution).version == 0
 
 
-def test_given_an_unreachable_endpoint_when_checking_remotely_then_it_fails_with_a_report(
+def test_given_an_unreachable_endpoint_when_cli_check_remote_then_it_fails_with_a_report(
     monkeypatch, tmp_path
 ):
     def dial(profile, **_):
@@ -314,11 +315,11 @@ def test_given_an_unreachable_endpoint_when_checking_remotely_then_it_fails_with
     path = write_file(tmp_path, mission="M1")
     r = runner.invoke(app, ["check", path, "--remote"])
     assert r.exit_code == 1
-    assert "kyno fields present: constitution, mission" in r.output
+    assert "kyno fields present: constitution_key, mission" in r.output
     assert "direction: not compared (cannot reach 'default'" in r.output
 
 
-def test_given_a_failed_remote_read_when_checking_then_it_fails_and_closes_the_connection(
+def test_given_a_failed_remote_read_when_cli_check_remote_then_it_fails_and_closes_the_connection(
     fake_dial, monkeypatch, tmp_path
 ):
     def call_tool(name, arguments):
@@ -328,7 +329,7 @@ def test_given_a_failed_remote_read_when_checking_then_it_fails_and_closes_the_c
     path = write_file(tmp_path, mission="M1")
     result = runner.invoke(app, ["check", path, "--remote"])
     assert result.exit_code == 1
-    assert "kyno fields present: constitution, mission" in result.output
+    assert "kyno fields present: constitution_key, mission" in result.output
     assert "direction: not compared (read refused)" in result.output
     assert fake_dial.closed
 
@@ -598,13 +599,13 @@ def test_given_a_file_omitting_fields_when_carry_forward_matches_an_old_version_
     assert "the same content as v1." in r.output
 
 
-def test_given_the_same_mission_but_different_principles_when_applying_then_no_revert_asks(
+def test_given_the_same_mission_but_different_principles_when_cli_apply_remote_then_no_revert_asks(
     fake_dial, remote_cp, tmp_path
 ):
     remote_cp.apply_direction(mission="M1", principles=["p1"], change_note="v1")
     remote_cp.apply_direction(mission="M2", principles=["p1"], change_note="v2")
     p = pathlib.Path(tmp_path) / "c.yaml"
-    p.write_text("constitution: default\nmission: M1\nprinciples:\n  - p2\n", encoding="utf-8")
+    p.write_text("constitution_key: default\nmission: M1\nprinciples:\n  - p2\n", encoding="utf-8")
     r = runner.invoke(app, ["apply", str(p), "--note", "new mix", "--remote"], input="y\n")
     assert r.exit_code == 0, r.output
     assert "deliberate revert" not in r.output
@@ -627,7 +628,7 @@ def test_given_an_empty_remote_when_reading_current_yaml_then_nothing_to_read_ex
     assert "nothing to read: 'default' has no versions" in r.output
 
 
-def test_given_a_file_without_a_constitution_key_when_checking_remotely_then_not_compared(
+def test_given_a_file_without_a_constitution_key_when_cli_check_remote_then_not_compared(
     fake_dial, tmp_path
 ):
     target = pathlib.Path(tmp_path) / "unnamed.yaml"
@@ -635,7 +636,8 @@ def test_given_a_file_without_a_constitution_key_when_checking_remotely_then_not
     r = runner.invoke(app, ["check", str(target), "--remote"])
     assert r.exit_code == 1
     assert "kyno fields omitted: constitution" in r.output
-    assert "direction: not compared" in r.output and "constitution: <name>" in r.output
+    assert "direction: not compared" in r.output
+    assert "constitution_key: <key>" in r.output
 
 
 def test_given_dial_failing_when_reading_history_remotely_then_the_error_is_one_line(monkeypatch):

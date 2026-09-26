@@ -1,7 +1,8 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from threading import Event
+from threading import Event, Lock
 from types import SimpleNamespace
+from unittest.mock import Mock, call
 
 import pytest
 
@@ -15,6 +16,33 @@ from kyno.sdk.policy import PullPolicy
 from kyno.sdk.recording import RecordingReceipt
 from kyno.wire.delivery import RecordingStatus
 from kyno.wire.models import DetailLevel
+
+
+@pytest.fixture
+def resolved_source(scripted_source):
+    scripted_source.set("support", 3, "Help customers")
+    changes = SimpleNamespace(
+        **{**vars(scripted_source.replies["support"]), "constitution_key": "support"}
+    )
+    return SimpleNamespace(changes_since=Mock(return_value=DirectionResponse(changes)))
+
+
+@pytest.fixture
+def observed_resolution_lock():
+    lock = Lock()
+    waiting = Event()
+
+    class ObservedLock:
+        def __enter__(self):
+            if not lock.acquire(blocking=False):
+                waiting.set()
+                assert lock.acquire(timeout=10), "resolution lock was never released"
+            return self
+
+        def __exit__(self, *args):
+            lock.release()
+
+    return ObservedLock(), waiting
 
 
 @pytest.mark.parametrize("detail", list(DetailLevel))
@@ -36,8 +64,8 @@ def test_given_fixed_detail_when_assigning_binder_detail_then_attribute_error_pr
     assert all(requested_detail is detail for requested_detail in scripted_source.details)
 
 
-@pytest.mark.parametrize("constitution_name", [None, 1, True, [], {}])
-def test_given_non_string_key_when_creating_direction_binder_then_value_error_is_raised(
+@pytest.mark.parametrize("constitution_name", [1, True, [], {}])
+def test_given_non_string_key_when_direction_binder_init_then_value_error_is_raised(
     scripted_source, constitution_name
 ):
     with pytest.raises(ValueError, match="constitution key must be a string"):
@@ -96,7 +124,7 @@ def test_given_fixed_key_when_assigning_binder_constitution_key_then_attribute_e
     assert scripted_source.calls == [(0, "support")]
 
 
-def test_given_a_bound_step_when_the_next_pull_asks_then_the_last_seen_version_has_advanced(
+def test_given_a_bound_step_when_bind_runs_again_then_the_last_seen_version_has_advanced(
     control_plane, scripted_source
 ):
     scripted_source.set("default", 4, "M4")
@@ -106,7 +134,7 @@ def test_given_a_bound_step_when_the_next_pull_asks_then_the_last_seen_version_h
     scripted_source.set("default", 5, "M5")
     binder.bind()
 
-    assert scripted_source.calls == [(0, "default"), (4, "default")]
+    assert scripted_source.calls == [(0, None), (4, "default")]
 
 
 def test_given_constitution_bound_binders_when_bind_runs_then_last_seen_versions_are_independent(
@@ -258,7 +286,7 @@ def test_given_one_binder_has_pulled_when_another_calls_bind_then_it_sends_last_
     first.bind()
     second.bind()
 
-    assert scripted_source.calls == [(0, "default"), (0, "default")]
+    assert scripted_source.calls == [(0, None), (0, None)]
 
 
 def test_given_a_fail_closed_policy_when_a_last_direction_exists_then_it_still_refuses(
@@ -330,11 +358,13 @@ def test_given_a_stale_reply_when_binding_then_the_bound_direction_does_not_roll
     assert (direction.version, direction.mission) == (5, "M5")
 
 
-def test_given_a_binder_with_no_sink_when_a_pull_fails_then_it_degrades_quietly(scripted_source):
+def test_given_a_binder_with_no_sink_when_bind_receives_source_error_then_it_degrades_quietly(
+    scripted_source,
+):
     """The default sink logs; a host that passes nothing must not crash."""
     scripted_source.failure = OSError("connection refused")
 
-    assert DirectionBinder(scripted_source).bind() == Direction.empty("default")
+    assert DirectionBinder(scripted_source).bind() == Direction.empty(None)
 
 
 def test_given_full_detail_when_bind_is_called_then_direction_has_full_detail(
@@ -503,7 +533,7 @@ def test_given_two_binders_when_only_one_has_cached_direction_then_failed_pulls_
     assert populated.status is BindingStatus.CACHED
     assert populated.direction is original
     assert empty.status is BindingStatus.EMPTY
-    assert empty.direction == Direction.empty("default", detail)
+    assert empty.direction == Direction.empty(None, detail)
     assert empty.recording is None
 
 
@@ -734,3 +764,211 @@ def test_given_late_reply_when_bind_with_status_runs_then_only_older_versions_ke
     else:
         assert retained.recording is older.recording
         assert retained.status is BindingStatus.PULLED
+
+
+@pytest.mark.parametrize("selection", [{}, {"constitution_key": None}])
+@pytest.mark.parametrize("version", [0, 3])
+def test_given_omitted_key_when_bind_with_status_receives_resolved_key_then_core_key_is_pinned(
+    resolved_source, selection, version
+):
+    resolved_source.changes_since.return_value.changes.current_version = version
+    binder = DirectionBinder(resolved_source, **selection)
+    assert binder.constitution_key is None
+
+    first_binding = binder.bind_with_status()
+    first = first_binding.direction
+    second = binder.bind()
+
+    assert first_binding.status is BindingStatus.PULLED
+    assert first.version == version
+    assert binder.constitution_key == first.constitution_key == second.constitution_key == "support"
+    assert resolved_source.changes_since.call_args_list == [
+        call(0, None, DetailLevel.COMPACT),
+        call(version, "support", DetailLevel.COMPACT),
+    ]
+
+
+def test_given_unresolved_key_and_source_error_when_bind_with_status_then_key_stays_unknown(
+    resolved_source,
+):
+    resolved_source.changes_since.side_effect = OSError("offline")
+    binder = DirectionBinder(resolved_source)
+
+    empty = binder.bind_with_status()
+
+    assert binder.constitution_key is None
+    assert empty.status is BindingStatus.EMPTY
+    assert empty.direction.constitution_key is None
+    assert empty.direction.to_dict()["constitution_key"] is None
+    assert empty.direction.render().splitlines()[0] == "[kyno:direction version=0]"
+    resolved_source.changes_since.side_effect = None
+    assert binder.bind().constitution_key == "support"
+
+
+def test_given_reply_without_resolved_key_when_bind_then_selection_stays_unknown(
+    resolved_source,
+):
+    resolved_source.changes_since.return_value.changes.constitution_key = None
+    binder = DirectionBinder(resolved_source)
+
+    binding = binder.bind_with_status()
+
+    assert binding.status is BindingStatus.EMPTY
+    assert binding.direction.constitution_key is None
+    assert binder.constitution_key is None
+
+
+def test_given_mismatched_key_when_bind_with_status_then_cached_direction_is_retained(
+    resolved_source,
+):
+    binder = DirectionBinder(resolved_source, constitution_key="support")
+    original = binder.bind()
+    resolved_source.changes_since.return_value.changes.constitution_key = "sales"
+
+    binding = binder.bind_with_status()
+
+    assert binding.status is BindingStatus.CACHED
+    assert binding.direction is original
+    assert binder.constitution_key == "support"
+
+
+def test_given_unresolved_key_when_bind_calls_overlap_then_waiting_call_uses_resolved_key(
+    resolved_source,
+    observed_resolution_lock,
+):
+    response = resolved_source.changes_since.return_value
+    started = Event()
+    release = Event()
+    resolution_lock, second_waiting = observed_resolution_lock
+
+    def pull(*args):
+        if not started.is_set():
+            started.set()
+            assert release.wait(10)
+        return response
+
+    resolved_source.changes_since.side_effect = pull
+    binder = DirectionBinder(resolved_source)
+
+    binder._resolution_lock = resolution_lock
+
+    def second_bind():
+        return binder.bind()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(binder.bind)
+        try:
+            assert started.wait(10)
+            second = executor.submit(second_bind)
+            assert second_waiting.wait(10), "second bind never waited for resolution"
+        finally:
+            release.set()
+        assert first.result(10).constitution_key == "support"
+        assert second.result(10).constitution_key == "support"
+
+    assert resolved_source.changes_since.call_args_list == [
+        call(0, None, DetailLevel.COMPACT),
+        call(3, "support", DetailLevel.COMPACT),
+    ]
+
+
+def test_given_fail_closed_unresolved_binder_when_bind_retries_then_key_can_resolve(
+    resolved_source,
+):
+    resolved_source.changes_since.side_effect = OSError("offline")
+    binder = DirectionBinder(resolved_source, policy=PullPolicy(fail_closed=True))
+
+    with pytest.raises(KynoUnavailableError, match="offline"):
+        binder.bind()
+
+    assert binder.constitution_key is None
+    resolved_source.changes_since.side_effect = None
+    assert binder.bind().constitution_key == "support"
+    assert resolved_source.changes_since.call_args_list == [
+        call(0, None, DetailLevel.COMPACT),
+        call(0, None, DetailLevel.COMPACT),
+    ]
+
+
+def test_given_fail_closed_pinned_binder_when_bind_receives_mismatched_key_then_binding_is_refused(
+    resolved_source,
+):
+    binder = DirectionBinder(
+        resolved_source, constitution_key="support", policy=PullPolicy(fail_closed=True)
+    )
+    original = binder.bind()
+    resolved_source.changes_since.return_value.changes.constitution_key = "sales"
+
+    with pytest.raises(KynoUnavailableError, match="unexpected constitution key"):
+        binder.bind()
+
+    assert binder.constitution_key == original.constitution_key == "support"
+
+
+def test_given_initial_failure_when_bind_with_status_overlaps_then_waiter_retries_without_key(
+    resolved_source,
+    observed_resolution_lock,
+):
+    response = resolved_source.changes_since.return_value
+    started = Event()
+    release = Event()
+    resolution_lock, second_waiting = observed_resolution_lock
+
+    def pull(*args):
+        if not started.is_set():
+            started.set()
+            assert release.wait(10)
+            raise OSError("offline")
+        return response
+
+    resolved_source.changes_since.side_effect = pull
+    binder = DirectionBinder(resolved_source)
+
+    binder._resolution_lock = resolution_lock
+
+    def second_bind():
+        return binder.bind_with_status()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(binder.bind_with_status)
+        try:
+            assert started.wait(10)
+            second = executor.submit(second_bind)
+            assert second_waiting.wait(10), "second bind never waited for resolution"
+        finally:
+            release.set()
+        first_binding = first.result(10)
+        second_binding = second.result(10)
+
+    assert first_binding.status is BindingStatus.EMPTY
+    assert first_binding.direction.constitution_key is None
+    assert second_binding.status is BindingStatus.PULLED
+    assert binder.constitution_key == second_binding.direction.constitution_key == "support"
+    assert resolved_source.changes_since.call_args_list == [
+        call(0, None, DetailLevel.COMPACT),
+        call(0, None, DetailLevel.COMPACT),
+    ]
+
+
+@pytest.mark.parametrize("key", ["", "Upper", 1, "a" * 201])
+@pytest.mark.parametrize("fail_closed", [False, True])
+def test_given_invalid_resolved_key_when_bind_with_status_then_failure_policy_applies(
+    resolved_source, key, fail_closed
+):
+    resolved_source.changes_since.return_value.changes.constitution_key = key
+    binder = DirectionBinder(resolved_source, policy=PullPolicy(fail_closed=fail_closed))
+
+    if fail_closed:
+        with pytest.raises(KynoUnavailableError, match="constitution key"):
+            binder.bind_with_status()
+    else:
+        binding = binder.bind_with_status()
+        assert binding.status is BindingStatus.EMPTY
+        assert binding.direction.constitution_key is None
+        assert binding.recording is None
+
+    assert binder.constitution_key is None
+    resolved_source.changes_since.return_value.changes.constitution_key = "support"
+    recovered = binder.bind_with_status()
+    assert recovered.status is BindingStatus.PULLED
+    assert recovered.direction.constitution_key == "support"

@@ -36,7 +36,7 @@ def refresh(items, block, *, text_of=None, make=None):
 
 @dataclass(frozen=True)
 class Direction(HoldsPrinciples):
-    constitution_key: str
+    constitution_key: str | None
     version: int
     mission: str
     principles: tuple[Principle, ...]
@@ -47,12 +47,17 @@ class Direction(HoldsPrinciples):
 
     def __post_init__(self) -> None:
         super().__post_init__()
-        object.__setattr__(self, "constitution_key", check_constitution_key(self.constitution_key))
+        if self.constitution_key is not None:
+            object.__setattr__(
+                self, "constitution_key", check_constitution_key(self.constitution_key)
+            )
+        elif self.version != 0:
+            raise ValueError("written direction requires a resolved constitution key")
         object.__setattr__(self, "detail", check_detail(self.detail))
 
     @classmethod
     def empty(
-        cls, constitution_key: str, detail: str | DetailLevel = DetailLevel.COMPACT
+        cls, constitution_key: str | None, detail: str | DetailLevel = DetailLevel.COMPACT
     ) -> Direction:
         return cls(
             constitution_key=constitution_key, version=0, mission="", principles=(), detail=detail
@@ -82,10 +87,15 @@ class Direction(HoldsPrinciples):
         direction was this agent on" without any other context. What it costs
         is chosen where an integrator binds: compact carries the mission and
         the principle titles, full adds the declaration and the descriptions."""
-        header = (
-            f"{DIRECTION_MARKER} constitution_key={self.constitution_key} version={self.version}]"
+        key_suffix = (
+            f" constitution_key={self.constitution_key}"
+            if self.constitution_key is not None
+            else ""
         )
+        header = f"{DIRECTION_MARKER}{key_suffix} version={self.version}]"
         if self.version == 0:
+            if self.constitution_key is None:
+                return f"{header}\nNo direction has been received yet."
             return f"{header}\nNo direction has been set yet."
         full = self.detail is DetailLevel.FULL
         lines = [header, f"Mission: {self.mission}"]

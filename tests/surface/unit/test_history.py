@@ -224,7 +224,7 @@ def test_given_malformed_reply_when_get_constitution_is_called_then_unavailable_
 
 
 @pytest.mark.parametrize(
-    "constitution", [None, 1, "", "   ", "Upper", "bad/name", " sup port ", "a" * 201]
+    "constitution", [1, "", "   ", "Upper", "bad/name", " sup port ", "a" * 201]
 )
 def test_given_invalid_name_when_get_constitution_is_called_then_request_is_not_sent(constitution):
     runner = Mock()
@@ -253,7 +253,9 @@ def test_given_invalid_response_key_when_get_constitution_runs_then_reply_is_una
         history.get_constitution(runner)
 
 
-@pytest.mark.parametrize("key, expected", [(" a" + "b" * 199 + " ", "a" + "b" * 199)])
+@pytest.mark.parametrize(
+    "key, expected", [(" eu-west ", "eu-west"), (" a" + "b" * 199 + " ", "a" + "b" * 199)]
+)
 def test_given_normalizable_key_when_get_constitution_runs_then_request_uses_normalized_key(
     key, expected
 ):
@@ -271,6 +273,36 @@ def test_given_normalizable_key_when_get_constitution_runs_then_request_uses_nor
     session.call_tool.assert_awaited_once_with(
         "get_constitution", {"constitution_key": expected, "detail": "compact"}
     )
+
+
+@pytest.mark.parametrize("selection", [{}, {"constitution_key": None}])
+def test_given_omitted_key_when_get_constitution_runs_then_core_resolves_returned_direction(
+    selection,
+):
+    session = SimpleNamespace(
+        call_tool=AsyncMock(
+            return_value=reply(
+                {"constitution_key": "support", "version": 0, "mission": "", "principles": []}
+            )
+        )
+    )
+    runner = Mock()
+    runner.call.side_effect = lambda operation: asyncio.run(operation(session))
+
+    direction = KynoConnection(runner).get_constitution(**selection)
+
+    assert direction.constitution_key == "support"
+    session.call_tool.assert_awaited_once_with("get_constitution", {"detail": "compact"})
+
+
+def test_given_reply_for_another_key_when_get_constitution_runs_then_direction_is_refused():
+    runner = Mock()
+    runner.call.return_value = reply(
+        {"constitution_key": "sales", "version": 0, "mission": "", "principles": []}
+    )
+
+    with pytest.raises(KynoUnavailableError, match="unexpected constitution key"):
+        history.get_constitution(runner, constitution_key="support")
 
 
 @pytest.mark.parametrize("detail", ["unknown", None, 1])

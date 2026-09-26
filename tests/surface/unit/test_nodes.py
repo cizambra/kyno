@@ -33,9 +33,9 @@ def test_given_direction_without_identity_when_direction_from_state_then_missing
         direction_from_state(direction_fields)
 
 
-def test_given_application_state_when_direction_from_state_then_default_version_zero_returns():
+def test_given_application_state_when_direction_from_state_then_unresolved_version_zero_returns():
     direction = direction_from_state({"messages": ["Hello"]})
 
-    assert direction.constitution_key == "default"
+    assert direction.constitution_key is None
     assert direction.version == 0
     assert direction.mission == ""

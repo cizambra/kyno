@@ -176,7 +176,12 @@ def test_given_version_selection_when_get_constitution_is_called_then_exact_tool
     version, detail, key
 ):
     returned_version = 3 if version is None else version
-    payload = {"version": returned_version, "mission": "", "principles": []}
+    payload = {
+        "constitution_key": key.strip(),
+        "version": returned_version,
+        "mission": "",
+        "principles": [],
+    }
     session = SimpleNamespace(call_tool=AsyncMock(return_value=reply(payload)))
     runner = Mock()
     runner.call.side_effect = lambda callback: asyncio.run(callback(session))
@@ -236,6 +241,36 @@ def test_given_invalid_key_when_list_delivery_records_runs_then_mcp_request_is_n
     with pytest.raises(ValueError, match="constitution key"):
         history.list_delivery_records(runner, constitution_key=key)
     runner.call.assert_not_called()
+
+
+@pytest.mark.parametrize("key", [None, "", " ", "Upper", 1])
+def test_given_invalid_response_key_when_get_constitution_runs_then_reply_is_unavailable(key):
+    runner = Mock()
+    runner.call.return_value = reply(
+        {"constitution_key": key, "version": 0, "mission": "", "principles": []}
+    )
+    with pytest.raises(KynoUnavailableError, match="bad reply"):
+        history.get_constitution(runner)
+
+
+@pytest.mark.parametrize("key, expected", [(" a" + "b" * 199 + " ", "a" + "b" * 199)])
+def test_given_normalizable_key_when_get_constitution_runs_then_request_uses_normalized_key(
+    key, expected
+):
+    session = SimpleNamespace(
+        call_tool=AsyncMock(
+            return_value=reply(
+                {"constitution_key": expected, "version": 0, "mission": "", "principles": []}
+            )
+        )
+    )
+    runner = Mock()
+    runner.call.side_effect = lambda operation: asyncio.run(operation(session))
+    direction = history.get_constitution(runner, key)
+    assert direction.constitution_key == expected
+    session.call_tool.assert_awaited_once_with(
+        "get_constitution", {"constitution_key": expected, "detail": "compact"}
+    )
 
 
 @pytest.mark.parametrize("detail", ["unknown", None, 1])

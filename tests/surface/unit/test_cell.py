@@ -39,6 +39,7 @@ def test_given_unsupported_constitution_keyword_when_direction_empty_then_type_e
 
 def test_given_constitution_keyword_when_direction_from_changes_then_type_error():
     changes = ChangesSince(
+        constitution_key="support",
         current_version=1,
         changed=True,
         mission="Help customers",
@@ -54,6 +55,7 @@ def test_given_constitution_keyword_when_direction_from_changes_then_type_error(
 
 def test_given_key_and_changes_when_direction_from_changes_then_identity_and_content_match():
     changes = ChangesSince(
+        constitution_key="default",
         current_version=3,
         changed=True,
         mission="Ship trustworthy lending",
@@ -193,8 +195,9 @@ def test_given_the_injected_block_when_direction_render_then_the_declaration_is_
     assert "declaration" not in block.lower()
 
 
-def test_given_a_direction_when_reading_then_the_declaration_is_there_for_the_full_text():
+def test_given_declaration_in_changes_when_direction_from_changes_then_declaration_is_preserved():
     changes = ChangesSince(
+        constitution_key="default",
         current_version=3,
         changed=True,
         mission="M",

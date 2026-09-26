@@ -82,7 +82,11 @@ def handle_export_versions(
 def handle_get_mission(cp: ControlPlane, constitution_key: str | None = None) -> dict:
     def read() -> dict:
         head = cp.current(constitution_key)
-        return {"version": head.version, "mission": head.mission}
+        return {
+            "constitution_key": head.constitution_key,
+            "version": head.version,
+            "mission": head.mission,
+        }
 
     return _guard(read)
 
@@ -90,7 +94,11 @@ def handle_get_mission(cp: ControlPlane, constitution_key: str | None = None) ->
 def handle_get_declaration(cp: ControlPlane, constitution_key: str | None = None) -> dict:
     def read() -> dict:
         head = cp.current(constitution_key)
-        return {"version": head.version, "declaration": head.declaration}
+        return {
+            "constitution_key": head.constitution_key,
+            "version": head.version,
+            "declaration": head.declaration,
+        }
 
     return _guard(read)
 
@@ -104,6 +112,7 @@ def handle_get_principles(
         head = cp.current(constitution_key)
         shape = DetailLevel.COMPACT if detail == TITLES else DetailLevel.FULL
         return {
+            "constitution_key": head.constitution_key,
             "version": head.version,
             "principles": [p.to_dict(shape) for p in head.principles],
         }
@@ -114,7 +123,11 @@ def handle_get_principles(
 def handle_get_principle(cp: ControlPlane, title: str, constitution_key: str | None = None) -> dict:
     def read() -> dict:
         head = cp.current(constitution_key)
-        return {**head.principle(title).to_dict(), "version": head.version}
+        return {
+            **head.principle(title).to_dict(),
+            "constitution_key": head.constitution_key,
+            "version": head.version,
+        }
 
     return _guard(read)
 

@@ -85,16 +85,19 @@ def test_given_an_error_reply_with_no_text_when_decoding_then_the_tool_is_named(
 
 
 @pytest.mark.parametrize("raw", [None, "not-a-date"])
-def test_given_a_payload_without_a_usable_created_at_then_the_version_still_builds(raw):
+def test_given_unusable_created_at_when_version_from_payload_then_timestamp_fallback_builds_version(
+    raw,
+):
     from datetime import datetime
 
     from kyno.remote import version_from_payload
 
-    payload = {"version": 1, "mission": "M"}
+    payload = {"constitution_key": "default", "version": 1, "mission": "M"}
     if raw is not None:
         payload["created_at"] = raw
     version = version_from_payload(payload)
-    assert version.mission == "M" and isinstance(version.created_at, datetime)
+    assert version.mission == "M"
+    assert isinstance(version.created_at, datetime)
     assert version.created_at.tzinfo is not None
 
 

@@ -307,16 +307,26 @@ def test_given_a_declaration_when_calling_get_declaration_then_it_comes_with_its
     assert d["version"] == 1
 
 
-def test_given_no_declaration_when_calling_get_declaration_then_it_is_not_an_error(cp):
+def test_given_no_declaration_when_handle_get_declaration_then_empty_text_and_identity_return(
+    cp,
+):
     # Reads never fail: "there is no declaration" is an answer, not a fault.
     mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=None, change_note="init", created_by=None
     )
-    assert mcp_handlers.handle_get_declaration(cp) == {"version": 1, "declaration": ""}
+    assert mcp_handlers.handle_get_declaration(cp) == {
+        "constitution_key": "default",
+        "version": 1,
+        "declaration": "",
+    }
 
 
 def test_given_an_empty_store_when_calling_get_declaration_then_version_zero_answers(cp):
-    assert mcp_handlers.handle_get_declaration(cp) == {"version": 0, "declaration": ""}
+    assert mcp_handlers.handle_get_declaration(cp) == {
+        "constitution_key": "default",
+        "version": 0,
+        "declaration": "",
+    }
 
 
 def test_given_a_name_when_calling_get_declaration_then_it_reads_that_constitution(cp):
@@ -339,6 +349,7 @@ def test_given_a_title_when_calling_get_principle_then_one_comes_in_full_with_it
     d = mcp_handlers.handle_get_principle(cp, "Be honest")
 
     assert d == {
+        "constitution_key": "default",
         "title": "Be honest",
         "description": "Say the hard number first.",
         "version": 1,
@@ -396,16 +407,21 @@ def test_given_the_targeted_reads_when_inspecting_schemas_then_argument_sources_
     assert tools["get_principle"].inputSchema["required"] == ["title"]
 
 
-def test_given_a_mission_when_calling_get_mission_then_the_headline_comes_with_its_version(cp):
+def test_given_current_mission_when_handle_get_mission_then_mission_version_and_key_return(cp):
     mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
     assert mcp_handlers.handle_get_mission(cp) == {
+        "constitution_key": "default",
         "version": 1,
         "mission": "Ship trustworthy lending",
     }
 
 
 def test_given_an_empty_store_when_calling_get_mission_then_version_zero_answers(cp):
-    assert mcp_handlers.handle_get_mission(cp) == {"version": 0, "mission": ""}
+    assert mcp_handlers.handle_get_mission(cp) == {
+        "constitution_key": "default",
+        "version": 0,
+        "mission": "",
+    }
 
 
 def test_given_a_name_when_calling_get_mission_then_it_reads_that_constitution(cp):
@@ -424,6 +440,7 @@ def test_given_a_name_when_calling_get_mission_then_it_reads_that_constitution(c
 def test_given_no_detail_asked_when_calling_get_principles_then_titles_only_come(cp):
     mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
     assert mcp_handlers.handle_get_principles(cp) == {
+        "constitution_key": "default",
         "version": 1,
         "principles": [{"title": "Be honest"}],
     }
@@ -434,20 +451,31 @@ def test_given_explained_detail_when_calling_get_principles_then_every_descripti
     # explained, without the mission or the declaration around them.
     mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
     assert mcp_handlers.handle_get_principles(cp, detail="full") == {
+        "constitution_key": "default",
         "version": 1,
         "principles": [{"title": "Be honest", "description": "Say the hard number first."}],
     }
 
 
-def test_given_no_principles_when_calling_get_principles_then_it_is_not_an_error(cp):
+def test_given_no_principles_when_handle_get_principles_then_empty_list_and_current_identity_return(
+    cp,
+):
     mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=None, change_note="init", created_by=None
     )
-    assert mcp_handlers.handle_get_principles(cp) == {"version": 1, "principles": []}
+    assert mcp_handlers.handle_get_principles(cp) == {
+        "constitution_key": "default",
+        "version": 1,
+        "principles": [],
+    }
 
 
 def test_given_an_empty_store_when_calling_get_principles_then_version_zero_answers(cp):
-    assert mcp_handlers.handle_get_principles(cp) == {"version": 0, "principles": []}
+    assert mcp_handlers.handle_get_principles(cp) == {
+        "constitution_key": "default",
+        "version": 0,
+        "principles": [],
+    }
 
 
 def test_given_a_detail_it_does_not_offer_when_calling_get_principles_then_it_refuses(cp):

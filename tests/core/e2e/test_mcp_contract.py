@@ -392,6 +392,7 @@ async def test_given_key_when_call_tool_reads_mission_and_principles_then_key_se
         )
 
     assert mission == {
+        "constitution_key": "eu",
         "version": 1,
         "mission": "Ship trustworthy lending",
         "recording": {"status": "disabled", "record_id": None},

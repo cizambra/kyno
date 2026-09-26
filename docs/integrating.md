@@ -26,6 +26,11 @@ adapter should produce. `pip install` gives you the server; the
 `conformance/` files come from the repo, so clone it or download that
 folder.
 
+Every direction response includes `constitution_key`: the key Core actually
+selected, including when no direction has been written and the version is zero.
+`get_constitution`, `get_changes_since`, targeted reads, and the MCP resource
+all return it. Use that response field when identifying the returned direction.
+
 On this page:
 
 - [Stage 1: call Kyno and get the direction](#stage-1-call-kyno-and-get-the-direction)

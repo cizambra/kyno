@@ -280,7 +280,9 @@ def test_given_an_empty_store_when_exporting_versions_then_the_list_is_empty(sto
     assert store.export_versions() == []
 
 
-def test_given_a_full_range_when_exporting_versions_then_plain_dicts_come_back_ascending(store):
+def test_given_a_full_range_when_sql_store_export_versions_then_plain_dicts_come_back_ascending(
+    store,
+):
     cp = ControlPlane(store)
     cp.apply_direction(mission="M1", principles=("p1",), change_note="init", created_by="alice")
     cp.apply_direction(mission="M2", change_note="pivot", created_by="bob")
@@ -290,6 +292,7 @@ def test_given_a_full_range_when_exporting_versions_then_plain_dicts_come_back_a
 
     assert [r["version"] for r in rows] == [1, 2, 3]
     assert rows[0] == {
+        "constitution_key": "default",
         "version": 1,
         "mission": "M1",
         "declaration": "",
@@ -300,7 +303,8 @@ def test_given_a_full_range_when_exporting_versions_then_plain_dicts_come_back_a
         "token_id": None,
         "created_at": rows[0]["created_at"],
     }
-    assert rows[1]["mission"] == "M2" and rows[1]["created_by"] == "bob"
+    assert rows[1]["mission"] == "M2"
+    assert rows[1]["created_by"] == "bob"
     assert [p["title"] for p in rows[2]["principles"]] == ["p1", "p2"]
     from datetime import datetime
 

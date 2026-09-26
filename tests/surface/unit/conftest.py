@@ -16,6 +16,7 @@ class ScriptedDirectionSource:
 
     def set(self, constitution: str, version: int, mission: str, *principles: str) -> None:
         self.replies[constitution] = ChangesSince(
+            constitution_key=constitution,
             current_version=version,
             changed=True,
             mission=mission,

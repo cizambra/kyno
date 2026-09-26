@@ -254,13 +254,16 @@ def test_given_no_file_argument_when_running_apply_then_it_is_refused(db):
     assert "file" in plain(result).lower()
 
 
-def test_given_prose_content_when_rendered_to_yaml_then_reading_it_back_round_trips(tmp_path):
+def test_given_prose_when_render_constitution_yaml_then_read_constitution_file_restores_content(
+    tmp_path,
+):
     from datetime import UTC, datetime
 
     from kyno.authoring import render_constitution_yaml
     from kyno.models import ConstitutionVersion
 
     version = ConstitutionVersion(
+        constitution_key="default",
         version=3,
         mission="Ship a lending product people trust",
         declaration="## What we are for\n\nLending is a promise.",
@@ -279,7 +282,8 @@ def test_given_prose_content_when_rendered_to_yaml_then_reading_it_back_round_tr
     path.write_text(text, encoding="utf-8")
     assert "declaration: |" in text
     # A pulled file is content only; the edit metadata stays in the store.
-    assert "note:" not in text and "by:" not in text
+    assert "note:" not in text
+    assert "by:" not in text
 
     got = read_constitution_file(str(path))
     assert got.constitution == "default"

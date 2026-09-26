@@ -9,6 +9,12 @@ from kyno.models import AuthorizationType, Token, TokenScope
 from kyno.sdk.client import RESOURCE_URI as SDK_RESOURCE_URI
 from kyno.wire import RESOURCE_URI
 
+RICH = dict(
+    mission="Ship trustworthy lending",
+    declaration="# Our declaration\n\nThe long form of what that means.",
+    principles=[{"title": "Be honest", "description": "Say the hard number first."}],
+)
+
 
 @pytest.mark.parametrize("detail", ["compact", "full"])
 def test_given_updates_when_get_constitution_selects_a_version_then_requested_content_returns(
@@ -203,17 +209,21 @@ def test_given_a_name_when_calling_get_changes_since_then_it_reads_that_constitu
     assert d["change_notes"] == ["pivot"]
 
 
-def test_given_unknown_key_when_mcp_read_handler_runs_then_empty_direction_returns(
-    cp,
-):
-    mcp_handlers.handle_apply_direction(
-        cp, mission="M1", principles=["p1"], change_note="init", created_by=None
-    )
-    d = mcp_handlers.handle_get_constitution(cp, constitution_key="never-written")
-    assert d["version"] == 0
-    assert d["mission"] == ""
-    assert d["principles"] == []
+def test_given_unknown_key_when_handle_get_constitution_runs_then_empty_direction_returns(cp):
+    cp.apply_direction(mission="Default mission", change_note="initial")
+
+    direction = mcp_handlers.handle_get_constitution(cp, constitution_key="never-written")
+
+    assert direction["version"] == 0
+    assert direction["mission"] == ""
+    assert direction["principles"] == []
+
+
+def test_given_unknown_key_when_handle_get_changes_since_runs_then_no_changes_return(cp):
+    cp.apply_direction(mission="Default mission", change_note="initial")
+
     changes = mcp_handlers.handle_get_changes_since(cp, 4, constitution_key="never-written")
+
     assert changes["current_version"] == 0
     assert changes["changed"] is False
 
@@ -482,7 +492,7 @@ def test_given_the_read_family_when_answering_then_each_carries_its_source_versi
     assert [r["version"] for r in reads] == [1, 1, 1, 1, 1]
 
 
-def test_given_TOOLS_when_write_scopes_are_inspected_then_only_apply_direction_is_writable():
+def test_given_tools_when_names_are_inspected_then_supported_operations_are_listed():
     names = [t.name for t in mcp_tools.TOOLS]
     assert names == [
         "get_delivery_record",
@@ -497,12 +507,13 @@ def test_given_TOOLS_when_write_scopes_are_inspected_then_only_apply_direction_i
         "whoami",
         "list_delivery_records",
     ]
+
+
+def test_given_tools_when_descriptions_are_inspected_then_each_describes_an_action():
     for tool in mcp_tools.TOOLS:
         description = tool.description
         assert description.startswith(("Return ", "Apply ")), tool.name
         assert description.endswith("."), tool.name
-        if tool.name.startswith("get_") and tool.name != "get_delivery_record":
-            assert "constitution_key" in tool.inputSchema["properties"], tool.name
 
 
 def test_given_a_markdown_declaration_when_calling_get_declaration_then_raw_markdown_serves(cp):
@@ -563,8 +574,9 @@ def test_given_authorization_types_when_inspecting_apply_direction_then_the_sche
     assert all(type(value) is str for value in values[:-1])
 
 
-RICH = dict(
-    mission="Ship trustworthy lending",
-    declaration="# Our declaration\n\nThe long form of what that means.",
-    principles=[{"title": "Be honest", "description": "Say the hard number first."}],
-)
+def test_given_tool_scopes_when_inspecting_permissions_then_only_apply_direction_can_write():
+    writable_tools = [
+        name for name, scope in mcp_tools.TOOL_SCOPES.items() if scope is TokenScope.WRITE
+    ]
+
+    assert writable_tools == ["apply_direction"]

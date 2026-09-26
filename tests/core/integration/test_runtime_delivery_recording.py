@@ -514,3 +514,50 @@ async def test_given_invalid_version_when_get_constitution_is_called_then_no_del
     )
     assert response.root.isError
     assert records(memory_store) == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "operation,arguments",
+    [
+        ("get_constitution", {}),
+        ("get_changes_since", {"last_seen_version": 0}),
+        ("get_mission", {}),
+        ("get_declaration", {}),
+        ("get_principles", {}),
+        ("get_principle", {"title": "Be clear"}),
+    ],
+    ids=[
+        "get_constitution",
+        "get_changes_since",
+        "get_mission",
+        "get_declaration",
+        "get_principles",
+        "get_principle",
+    ],
+)
+async def test_given_two_keys_when_call_tool_reads_key_then_delivery_references_selected_version(
+    memory_store, operation, arguments
+):
+    server, history, plane = server_with_history(memory_store)
+    plane.apply_direction(
+        constitution_key="support",
+        mission="Support mission",
+        principles=["Be clear"],
+        change_note="initial",
+    )
+    plane.apply_direction(
+        constitution_key="support", mission="Updated support mission", change_note="update"
+    )
+    constitutions = memory_store.metadata.tables["kyno_constitutions"]
+    with memory_store.engine.connect() as connection:
+        selected_constitution_id = connection.execute(
+            select(constitutions.c.id).where(constitutions.c.name == "support")
+        ).scalar_one()
+
+    response = await invoke(server, operation, {**arguments, "constitution_key": "support"})
+
+    delivery = history.get(response["recording"]["record_id"])
+    assert delivery["constitution_id"] == selected_constitution_id
+    assert delivery["served_version"] == 2
+    assert delivery["requested_constitution"] == "support"

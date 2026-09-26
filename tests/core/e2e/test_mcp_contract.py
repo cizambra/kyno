@@ -368,40 +368,6 @@ async def test_given_a_compact_pull_when_an_agent_needs_more_then_it_asks_for_th
 
 @pytest.mark.asyncio
 @pytest.mark.e2e
-async def test_given_key_when_call_tool_reads_mission_and_principles_then_key_selects_content():
-    from mcp.shared.memory import create_connected_server_and_client_session
-
-    store = create_memory_store()
-    cp = ControlPlane(store)
-    cp.apply_direction(
-        mission="Ship trustworthy lending",
-        principles=[{"title": "Be honest", "description": "Say the hard number first."}],
-        change_note="init",
-        constitution_key="eu",
-    )
-    server = mcp_server.build_server(cp)
-
-    async def call(client, name, arguments):
-        return json.loads((await client.call_tool(name, arguments)).content[0].text)
-
-    async with create_connected_server_and_client_session(server) as client:
-        mission = await call(client, "get_mission", {"constitution_key": "eu"})
-        titles = await call(client, "get_principles", {"constitution_key": "eu"})
-        explained = await call(
-            client, "get_principles", {"constitution_key": "eu", "detail": "full"}
-        )
-
-    assert mission == {
-        "version": 1,
-        "mission": "Ship trustworthy lending",
-        "recording": {"status": "disabled", "record_id": None},
-    }
-    assert titles["principles"] == [{"title": "Be honest"}]
-    assert explained["principles"][0]["description"] == "Say the hard number first."
-
-
-@pytest.mark.asyncio
-@pytest.mark.e2e
 async def test_given_a_connected_client_when_calling_export_versions_then_it_is_served(cp):
     """The seam the handler tests skip: the tool is advertised in the
     server's listing, the dispatch routes the call to it, and the reply

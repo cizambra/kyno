@@ -762,3 +762,80 @@ def test_given_a_server_that_checked_no_token_when_asking_whoami_remotely_then_i
     assert result.exit_code == 0, result.output
     assert "without checking for one" in result.output
     assert fake_dial.closed
+
+
+def test_given_named_file_when_cli_apply_runs_remotely_then_selected_constitution_is_updated(
+    fake_dial, remote_cp, tmp_path
+):
+    remote_cp.apply_direction(mission="Default mission", change_note="initial")
+    remote_cp.apply_direction(
+        constitution_key="support", mission="Previous support mission", change_note="initial"
+    )
+    path = write_file(tmp_path, mission="Updated support mission", constitution="support")
+
+    result = runner.invoke(app, ["apply", path, "--remote", "--note", "update", "--no-interactive"])
+
+    assert result.exit_code == 0, result.output
+    assert remote_cp.current("support").mission == "Updated support mission"
+    assert remote_cp.current("support").version == 2
+
+
+def test_given_named_file_when_cli_apply_runs_remotely_then_default_constitution_is_unchanged(
+    fake_dial, remote_cp, tmp_path
+):
+    remote_cp.apply_direction(mission="Default mission", change_note="initial")
+    path = write_file(tmp_path, mission="Support mission", constitution="support")
+
+    result = runner.invoke(
+        app, ["apply", path, "--remote", "--note", "initial", "--no-interactive"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert remote_cp.current().mission == "Default mission"
+    assert remote_cp.current().version == 1
+
+
+@pytest.mark.parametrize("command", ["history", "export"], ids=["history", "export"])
+def test_given_distinct_histories_when_cli_command_receives_key_then_only_selected_history_returns(
+    fake_dial, remote_cp, command
+):
+    remote_cp.apply_direction(mission="Default mission", change_note="default-only-note")
+    remote_cp.apply_direction(
+        constitution_key="support", mission="Support mission", change_note="support-only-note"
+    )
+
+    result = runner.invoke(app, [command, "--remote", "--constitution", "support"])
+
+    assert result.exit_code == 0, result.output
+    assert "support-only-note" in result.stdout
+    assert "default-only-note" not in result.stdout
+
+
+def test_given_selected_history_matches_file_when_cli_apply_runs_then_revert_is_identified(
+    fake_dial, remote_cp, tmp_path
+):
+    remote_cp.apply_direction(mission="Unrelated default", change_note="initial")
+    for mission in ("Original support", "Previous support", "Current support"):
+        remote_cp.apply_direction(constitution_key="support", mission=mission, change_note="update")
+    path = write_file(tmp_path, mission="Original support", constitution="support")
+
+    result = runner.invoke(app, ["apply", path, "--remote", "--note", "restore"], input="y\nn\n")
+
+    assert "the same content as v1" in plain(result.output)
+    assert "back as v4" in plain(result.output)
+
+
+def test_given_only_default_history_matches_file_when_cli_apply_runs_then_no_revert_is_reported(
+    fake_dial, remote_cp, tmp_path
+):
+    remote_cp.apply_direction(mission="Incoming support", change_note="initial")
+    remote_cp.apply_direction(mission="Current default", change_note="update")
+    remote_cp.apply_direction(
+        constitution_key="support", mission="Current support", change_note="initial"
+    )
+    path = write_file(tmp_path, mission="Incoming support", constitution="support")
+
+    result = runner.invoke(app, ["apply", path, "--remote", "--note", "update"], input="y\n")
+
+    assert result.exit_code == 0, result.output
+    assert "the same content" not in plain(result.output)

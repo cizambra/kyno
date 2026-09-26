@@ -12,7 +12,11 @@ from kyno.store.delivery_record import SqlDeliveryRecordStore
 from kyno.wire import RESOURCE_URI
 
 
-@pytest.mark.parametrize("explicit_key", [None, "support", "sales"])
+@pytest.mark.parametrize(
+    "explicit_key",
+    [None, "support", "sales"],
+    ids=["key-omitted", "matching-key", "conflicting-key"],
+)
 @pytest.mark.parametrize(
     "operation, required_arguments",
     [
@@ -27,7 +31,7 @@ from kyno.wire import RESOURCE_URI
         ("apply_direction", {"mission": "Replacement", "change_note": "update"}),
     ],
 )
-def test_given_constitution_argument_when_call_tool_then_error_prevents_all_writes(
+def test_given_constitution_argument_when_call_tool_then_request_is_rejected(
     mcp_runner, operation, required_arguments, explicit_key
 ):
     runner, control_plane = mcp_runner
@@ -47,11 +51,87 @@ def test_given_constitution_argument_when_call_tool_then_error_prevents_all_writ
     assert result.isError
     assert "constitution" in result.content[0].text
     assert "should not be valid" in result.content[0].text
+
+
+@pytest.mark.parametrize(
+    "explicit_key",
+    [None, "support", "sales"],
+    ids=["key-omitted", "matching-key", "conflicting-key"],
+)
+@pytest.mark.parametrize(
+    "operation, required_arguments",
+    [
+        ("get_constitution", {}),
+        ("get_changes_since", {"last_seen_version": 0}),
+        ("get_mission", {}),
+        ("get_declaration", {}),
+        ("get_principles", {}),
+        ("get_principle", {"title": "Be clear"}),
+        ("export_versions", {}),
+        ("list_delivery_records", {}),
+        ("apply_direction", {"mission": "Replacement", "change_note": "update"}),
+    ],
+)
+def test_given_constitution_argument_when_call_tool_then_direction_is_unchanged(
+    mcp_runner, operation, required_arguments, explicit_key
+):
+    runner, control_plane = mcp_runner
+    history = SqlDeliveryRecordStore(control_plane._store.engine)
+    control_plane.delivery_record_store = history
+    control_plane.delivery_recorder = DeliveryRecorder(history, RecordingPolicy.ALWAYS)
+    control_plane.apply_direction(mission="Default mission", change_note="initial")
+    control_plane.apply_direction(
+        constitution_key="support", mission="Support mission", change_note="initial"
+    )
+    arguments = {**required_arguments, "constitution": "support"}
+    if explicit_key is not None:
+        arguments["constitution_key"] = explicit_key
+
+    runner.call(lambda session: session.call_tool(operation, arguments))
+
     assert control_plane.current().version == 1
     assert control_plane.current().mission == "Default mission"
     assert control_plane.current("support").version == 1
     assert control_plane.current("support").mission == "Support mission"
     assert control_plane.current("sales").version == 0
+
+
+@pytest.mark.parametrize(
+    "explicit_key",
+    [None, "support", "sales"],
+    ids=["key-omitted", "matching-key", "conflicting-key"],
+)
+@pytest.mark.parametrize(
+    "operation, required_arguments",
+    [
+        ("get_constitution", {}),
+        ("get_changes_since", {"last_seen_version": 0}),
+        ("get_mission", {}),
+        ("get_declaration", {}),
+        ("get_principles", {}),
+        ("get_principle", {"title": "Be clear"}),
+        ("export_versions", {}),
+        ("list_delivery_records", {}),
+        ("apply_direction", {"mission": "Replacement", "change_note": "update"}),
+    ],
+)
+def test_given_constitution_argument_when_call_tool_then_no_delivery_is_recorded(
+    mcp_runner, operation, required_arguments, explicit_key
+):
+    runner, control_plane = mcp_runner
+    history = SqlDeliveryRecordStore(control_plane._store.engine)
+    control_plane.delivery_record_store = history
+    control_plane.delivery_recorder = DeliveryRecorder(history, RecordingPolicy.ALWAYS)
+    control_plane.apply_direction(mission="Default mission", change_note="initial")
+    control_plane.apply_direction(
+        constitution_key="support", mission="Support mission", change_note="initial"
+    )
+    arguments = {**required_arguments, "constitution": "support"}
+    if explicit_key is not None:
+        arguments["constitution_key"] = explicit_key
+
+    runner.call(lambda session: session.call_tool(operation, arguments))
+
     assert history.list()["items"] == []
 
 
@@ -223,3 +303,78 @@ async def test_given_missing_required_args_when_dispatching_a_tool_call_then_the
         )
         result = await handler(req)
         assert result.root.isError is True
+
+
+@pytest.mark.parametrize(
+    "operation,arguments,field,expected",
+    [
+        ("get_constitution", {}, "mission", "Support mission"),
+        ("get_changes_since", {"last_seen_version": 0}, "mission", "Support mission"),
+        ("get_mission", {}, "mission", "Support mission"),
+        ("get_declaration", {}, "declaration", "Support declaration"),
+        ("get_principle", {"title": "Be clear"}, "description", "Explain support options"),
+        ("get_principles", {}, "principles", [{"title": "Be clear"}]),
+        (
+            "get_principles",
+            {"detail": "full"},
+            "principles",
+            [{"title": "Be clear", "description": "Explain support options"}],
+        ),
+    ],
+    ids=[
+        "get_constitution",
+        "get_changes_since",
+        "get_mission",
+        "get_declaration",
+        "get_principle",
+        "get_principles_titles",
+        "get_principles_full",
+    ],
+)
+def test_given_distinct_constitutions_when_call_tool_receives_key_then_selected_content_returns(
+    mcp_runner, operation, arguments, field, expected
+):
+    runner, control_plane = mcp_runner
+    control_plane.apply_direction(
+        mission="Default mission",
+        declaration="Default declaration",
+        principles=[{"title": "Default principle", "description": "Explain default options"}],
+        change_note="initial",
+    )
+    control_plane.apply_direction(
+        constitution_key="support",
+        mission="Support mission",
+        declaration="Support declaration",
+        principles=[{"title": "Be clear", "description": "Explain support options"}],
+        change_note="initial",
+    )
+
+    result = runner.call(
+        lambda session: session.call_tool(operation, {**arguments, "constitution_key": "support"})
+    )
+
+    assert not result.isError
+    assert json.loads(result.content[0].text)[field] == expected
+
+
+def test_given_distinct_histories_when_export_versions_receives_key_then_selected_history_returns(
+    mcp_runner,
+):
+    runner, control_plane = mcp_runner
+    control_plane.apply_direction(mission="Default mission", change_note="initial")
+    control_plane.apply_direction(
+        constitution_key="support", mission="Initial support mission", change_note="initial"
+    )
+    control_plane.apply_direction(
+        constitution_key="support", mission="Updated support mission", change_note="update"
+    )
+
+    result = runner.call(
+        lambda session: session.call_tool("export_versions", {"constitution_key": "support"})
+    )
+
+    assert not result.isError
+    versions = json.loads(result.content[0].text)
+    assert len(versions) == 2
+    assert versions[0]["mission"] == "Initial support mission"
+    assert versions[1]["mission"] == "Updated support mission"

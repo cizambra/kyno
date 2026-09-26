@@ -80,9 +80,10 @@ with client libraries in most languages. From your language, call the tool
 `last_seen_version` is the last version number you saw; `0` means "I haven't
 seen any yet".
 
-`constitution_key` selects a constitution within this database. Omitting it selects
-`default`. Keys contain lowercase ASCII letters and digits separated by single
-hyphens, with at most 200 characters after trimming surrounding whitespace.
+`constitution_key` tells Kyno which constitution you want. Leave it out of
+this call and Kyno uses `default`. Use lowercase ASCII letters and digits,
+with single hyphens between them, like `customer-support`. Kyno trims
+whitespace from both ends, then checks that the key is at most 200 characters.
 
 Here is that call in three languages. Every example on this page was run
 against a Kyno started exactly as above before being committed.
@@ -432,10 +433,12 @@ describes the difference for that request. The record references the
 constitution and version rather than storing the full direction. IDs and
 timestamps vary between records.
 
-Keep the same filters while paging. Optional `constitution_key`, `since`, and
-`until` filters narrow the results; timestamps must include a timezone and
-both bounds are inclusive. Pages contain up to 100 delivery records in
-insertion order. List results omit deltas; `get_delivery_record()` includes
+Keep the same filters while paging. To narrow the results, choose a
+constitution or a time range with `since` and `until`. Direct MCP calls
+use `constitution_key` for the constitution filter. Include a timezone in
+each timestamp; records at either boundary count too. Pages contain up to
+100 delivery records in insertion order. List results omit deltas;
+`get_delivery_record()` includes
 the saved delta. Neither response includes direction text. Reading history
 does not create delivery records.
 

@@ -89,6 +89,18 @@ receipt storage, run IDs, or step IDs for this integration to work.
 
 ## What Kyno provides
 
+`KynoState` carries the selected key in `state["kyno_constitution_key"]`.
+The direction node and decorator populate it alongside `kyno_version`, so
+downstream nodes and saved checkpoints identify the direction they received:
+
+```python
+constitution_key = state["kyno_constitution_key"]
+version = state["kyno_version"]
+```
+
+`direction_from_state(state)` restores the same key as
+`direction.constitution_key`. With an empty state, it selects `"default"`.
+
 Before your work node runs, `direction_node` or `pull_before` supplies the
 direction and sets `state["kyno_binding_status"]` automatically. Your application
 does not need to set or convert this value. It is one of three named values
@@ -169,6 +181,21 @@ Later pulls do not change earlier receipts. Resuming a checkpoint without
 another pull preserves the original binding status; it does not establish
 that the saved version is still current. Work nodes should leave the
 `kyno_` direction keys unchanged so the checkpoint describes their input.
+
+### Checkpoint format changes
+
+Direction state uses `kyno_constitution_key`. Before resuming checkpoints
+written with `kyno_constitution`, back them up and migrate that field in
+both the saved state and any application-owned receipts. Preserve its value;
+do not replace it with `default`. If both fields exist, verify which identity
+belongs to the saved direction before removing the unsupported field.
+`direction_from_state` rejects unsupported or missing direction identity
+instead of assigning saved content to another constitution.
+
+Coordinate the graph schema and checkpoint format with the adapter version.
+Before rolling back to an adapter that reads `kyno_constitution`, restore a
+compatible checkpoint backup or migrate the identity field back. A code
+rollback alone does not convert persisted state.
 
 ## Failure behavior
 

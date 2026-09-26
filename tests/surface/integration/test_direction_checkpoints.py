@@ -59,7 +59,7 @@ def receipt(state):
 @pytest.mark.parametrize("wrapper", [False, True], ids=["direction-node", "pull-before"])
 @pytest.mark.parametrize("status", list(BindingStatus))
 @pytest.mark.parametrize("detail", list(DetailLevel))
-def test_given_a_binding_when_work_is_checkpointed_then_its_exact_direction_and_status_survive(
+def test_given_binding_when_graph_invoke_checkpoints_then_direction_and_status_survive(
     source, wrapper, status, detail
 ):
     binder = DirectionBinder(source, "support", detail=detail)
@@ -88,7 +88,7 @@ def test_given_a_binding_when_work_is_checkpointed_then_its_exact_direction_and_
     assert serialized["kyno_binding_status"] == status.value
     assert type(serialized["kyno_binding_status"]) is str
     assert restored["receipts"][0]["kyno_direction"] == restored["kyno_direction"]
-    assert restored["kyno_constitution"] == "support"
+    assert restored["kyno_constitution_key"] == "support"
     if status is BindingStatus.EMPTY:
         expected = Direction.empty("support", detail)
     else:
@@ -319,3 +319,41 @@ def test_given_rich_direction_when_fields_are_removed_then_only_new_receipts_cle
     )
     assert saved_state_after_second_run["kyno_binding_status"] == "pulled"
     assert source.changes_since.call_count == 2
+
+
+def test_given_unsupported_saved_key_when_graph_resumes_then_work_is_rejected():
+    class UnsupportedState(KynoState, total=False):
+        kyno_constitution: str
+
+    saver = InMemorySaver()
+    config = {"configurable": {"thread_id": "resume-direction"}}
+    paused_graph = (
+        StateGraph(UnsupportedState)
+        .add_node("work", lambda state: {})
+        .add_edge(START, "work")
+        .add_edge("work", END)
+        .compile(checkpointer=saver, interrupt_before=["work"])
+    )
+    paused_graph.invoke(
+        {"kyno_constitution": "support", "kyno_version": 3, "kyno_mission": "Help customers"},
+        config,
+    )
+    completed_work = []
+
+    def work(state):
+        direction = direction_from_state(state)
+        completed_work.append(direction)
+        return {}
+
+    resumed_graph = (
+        StateGraph(KynoState)
+        .add_node("work", work)
+        .add_edge(START, "work")
+        .add_edge("work", END)
+        .compile(checkpointer=saver)
+    )
+
+    with pytest.raises(ValueError, match="checkpoint"):
+        resumed_graph.invoke(None, config)
+
+    assert completed_work == []

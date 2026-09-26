@@ -1,22 +1,25 @@
 """Plans go stale the same way steps do; the tracker is how a planner knows."""
 
 
-def test_given_support_binder_when_plan_tracker_checks_changes_then_only_support_changes_return(
+def test_given_named_binder_when_plan_tracker_changed_runs_then_only_selected_key_changes_return(
     mcp_connection,
 ):
     connection, control_plane = mcp_connection
-    control_plane.apply_direction(mission="Support", change_note="Initial", constitution="support")
+    control_plane.apply_direction(
+        mission="Support", change_note="Initial", constitution_key="support"
+    )
     tracker = connection.binder("support").plan()
 
     planned = tracker.direction()
-    control_plane.apply_direction(mission="Sales", change_note="Initial", constitution="sales")
+    control_plane.apply_direction(mission="Sales", change_note="Initial", constitution_key="sales")
     assert tracker.changed() is None
     control_plane.apply_direction(
-        mission="New support", change_note="Update", constitution="support"
+        mission="New support", change_note="Update", constitution_key="support"
     )
     changed = tracker.changed()
 
-    assert planned.constitution == changed.constitution == "support"
+    assert planned.constitution == "support"
+    assert changed.constitution == "support"
     assert changed.version == 2
     assert changed.mission == "New support"
 

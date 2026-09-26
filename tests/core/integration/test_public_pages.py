@@ -28,7 +28,7 @@ def client(plane, store):
 
 def direction(plane, constitution="default", mission="M1", principles=("p1", "p2"), note="init"):
     return plane.apply_direction(
-        mission=mission, principles=principles, change_note=note, constitution=constitution
+        mission=mission, principles=principles, change_note=note, constitution_key=constitution
     )
 
 
@@ -146,11 +146,13 @@ def test_given_no_principles_when_rendering_then_the_principles_list_is_omitted(
     assert "Principles" not in body
 
 
-def test_given_no_mission_when_rendering_then_the_name_is_the_headline(plane, client):
+def test_given_no_mission_when_get_requests_constitution_page_then_key_is_the_headline(
+    plane, client
+):
     # Reachable: `kyno apply --principle p --note init` sets no mission. A
     # blank headline would read as a broken page rather than a sparse one.
-    plane.apply_direction(principles=("p1",), change_note="init", constitution="rules")
-    plane.publish(constitution="rules")
+    plane.apply_direction(principles=("p1",), change_note="init", constitution_key="rules")
+    plane.publish(constitution_key="rules")
     body = client.get("/constitutions/rules").text
     assert "<h1" in body
     assert "rules" in body
@@ -197,26 +199,26 @@ def test_given_the_json_route_when_requesting_then_history_comes_only_if_publish
     assert payload["history"][0]["change_note"] == "second note"
 
 
-def test_given_published_constitutions_when_rendering_the_index_then_they_list_with_links(
+def test_given_public_constitution_when_get_constitutions_index_runs_then_it_lists_with_link(
     plane, client
 ):
     direction(plane, "product", mission="Product mission")
-    plane.publish(constitution="product")
+    plane.publish(constitution_key="product")
 
-    r = client.get("/constitutions/")
-    assert r.status_code == 200
-    assert r.headers["content-type"].startswith("text/html")
-    assert "product" in r.text
-    assert "Product mission" in r.text
-    assert 'href="/constitutions/product"' in r.text
+    response = client.get("/constitutions/")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "product" in response.text
+    assert "Product mission" in response.text
+    assert 'href="/constitutions/product"' in response.text
 
 
-def test_given_an_unpublished_constitution_when_rendering_the_index_then_it_never_shows(
+def test_given_private_key_when_get_constitutions_html_and_json_indexes_run_then_key_is_absent(
     plane, client
 ):
     direction(plane, "acme-internal", mission="Internal mission nobody may see")
     direction(plane, "product", mission="Product mission")
-    plane.publish(constitution="product")
+    plane.publish(constitution_key="product")
 
     body = client.get("/constitutions/").text
     assert "acme-internal" not in body
@@ -237,30 +239,32 @@ def test_given_nothing_published_when_rendering_the_index_then_it_says_so_and_li
     assert client.get("/constitutions.json").json()["constitutions"] == []
 
 
-def test_given_a_multi_line_mission_when_rendering_the_index_then_only_the_first_line_shows(
+def test_given_multiline_mission_when_get_constitutions_index_runs_then_only_first_line_shows(
     plane, client
 ):
     direction(plane, "product", mission="Headline claim\nA long second paragraph nobody needs here")
-    plane.publish(constitution="product")
+    plane.publish(constitution_key="product")
     body = client.get("/constitutions/").text
     assert "Headline claim" in body
     assert "A long second paragraph" not in body
 
 
-def test_given_a_constitution_named_index_when_routing_then_the_index_route_does_not_shadow_it(
+def test_given_key_named_index_when_get_requests_its_html_and_json_then_constitution_is_served(
     plane, client
 ):
     # The index lives at /constitutions.json rather than
     # /constitutions/index.json precisely so this name stays usable.
     direction(plane, "index", mission="A constitution actually named index")
-    plane.publish(constitution="index")
+    plane.publish(constitution_key="index")
     assert client.get("/constitutions/index").status_code == 200
     assert client.get("/constitutions/index.json").json()["constitution"] == "index"
 
 
-def test_given_no_trailing_slash_when_requesting_the_index_then_it_is_reachable(plane, client):
+def test_given_public_constitution_when_get_constitutions_omits_trailing_slash_then_status_is_200(
+    plane, client
+):
     direction(plane, "product")
-    plane.publish(constitution="product")
+    plane.publish(constitution_key="product")
     assert client.get("/constitutions").status_code == 200
 
 
@@ -647,7 +651,7 @@ def test_given_repeat_visits_when_rendering_a_declaration_then_it_renders_once_p
     assert info.misses == 1 and info.hits >= 1
 
 
-def test_given_the_render_cache_when_inspecting_its_key_then_it_is_the_declaration_text(
+def test_given_shared_declaration_when_get_reads_both_constitutions_then_second_render_hits_cache(
     plane, client
 ):
     # Two constitutions sharing one declaration share one render: versions
@@ -657,12 +661,15 @@ def test_given_the_render_cache_when_inspecting_its_key_then_it_is_the_declarati
     _declaration_html.cache_clear()
     text = "## Shared\n\nsame text"
     for name in ("alpha", "beta"):
-        plane.apply_direction(mission="M", declaration=text, change_note="init", constitution=name)
+        plane.apply_direction(
+            mission="M", declaration=text, change_note="init", constitution_key=name
+        )
         plane.publish(name)
 
     client.get("/constitutions/alpha")
     client.get("/constitutions/beta")
 
     info = _declaration_html.cache_info()
-    assert info.misses == 1 and info.hits == 1
+    assert info.misses == 1
+    assert info.hits == 1
     assert info.maxsize == 64

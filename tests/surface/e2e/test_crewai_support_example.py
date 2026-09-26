@@ -29,20 +29,28 @@ def fake_llm():
 
 
 @pytest.mark.parametrize("changed", [True, False])
-def test_given_a_completed_draft_when_direction_is_checked_then_remaining_work_uses_the_plan(
+def test_given_draft_when_run_example_checks_operator_update_then_remaining_steps_use_current_plan(
     crewai_example, fake_llm, live_server, changed
 ):
     control_plane, url, token = live_server
     directory = Path(crewai_example.__file__).parent
     initial = yaml.safe_load((directory / "direction-v1.yaml").read_text())
     revised = yaml.safe_load((directory / "direction-v2.yaml").read_text())
-    control_plane.apply_direction(**initial, change_note="initial")
+    initial_key = initial.pop("constitution")
+    control_plane.apply_direction(constitution_key=initial_key, **initial, change_note="initial")
+    revised_key = revised.pop("constitution")
     events = []
 
     def operator():
         assert len(fake_llm.calls) == 2
         if changed:
-            control_plane.apply_direction(**revised, change_note="new tradeoff")
+            control_plane.apply_direction(
+                constitution_key=revised_key, **revised, change_note="new tradeoff"
+            )
+
+    def record_and_print(event):
+        events.append(event)
+        crewai_example.report(event)
 
     with connect(url=url, token=token) as connection:
         state = crewai_example.run_example(
@@ -50,7 +58,7 @@ def test_given_a_completed_draft_when_direction_is_checked_then_remaining_work_u
             connection.binder("customer-support", policy=PullPolicy(fail_closed=True)),
             model_name="fake",
             wait_for_operator=operator,
-            emit=lambda event: (events.append(event), crewai_example.report(event)),
+            emit=record_and_print,
         )
 
     receipts = [event for event in events if event["event"] == "direction_supplied"]

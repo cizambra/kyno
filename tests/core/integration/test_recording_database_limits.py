@@ -111,11 +111,11 @@ def test_given_locked_postgres_table_when_recording_then_it_fails_and_recovers_a
         engine.dispose()
 
 
-def test_given_served_version_when_recording_with_wait_limits_then_reference_and_delta_are_saved(
+def test_given_version_when_delivery_recorder_record_uses_timeout_then_reference_and_delta_persist(
     store, records
 ):
     plane = ControlPlane(store)
-    plane.apply_direction(constitution="team", mission="Help customers", change_note="initial")
+    plane.apply_direction(constitution_key="team", mission="Help customers", change_note="initial")
     result = DeliveryRecorder(records, "always", timeout_seconds=1).record(
         {"version": 1, "delta": ["Mission changed."]},
         operation="get_constitution",

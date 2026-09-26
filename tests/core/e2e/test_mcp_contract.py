@@ -255,20 +255,20 @@ async def test_given_named_constitutions_when_dispatching_writes_then_sequences_
 
 @pytest.mark.asyncio
 @pytest.mark.e2e
-async def test_given_a_named_write_when_reading_the_resource_then_it_stays_the_default():
+async def test_given_named_and_default_keys_when_read_resource_runs_then_default_mission_returns():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = create_memory_store()
     cp = ControlPlane(store)
-    cp.apply_direction(mission="M1", change_note="init")
-    cp.apply_direction(mission="EU1", change_note="eu init", constitution="eu")
+    cp.apply_direction(mission="Initial mission", change_note="init")
+    cp.apply_direction(mission="Initial EU mission", change_note="eu init", constitution_key="eu")
     server = mcp_server.build_server(cp)
 
     async with create_connected_server_and_client_session(server) as client:
         result = await client.read_resource(RESOURCE_URI)
         payload = json.loads(result.contents[0].text)
 
-    assert payload["mission"] == "M1"
+    assert payload["mission"] == "Initial mission"
 
 
 @pytest.mark.asyncio
@@ -366,12 +366,17 @@ async def test_given_a_compact_pull_when_an_agent_needs_more_then_it_asks_for_th
 
 @pytest.mark.asyncio
 @pytest.mark.e2e
-async def test_given_the_whole_read_family_when_dispatching_for_real_then_it_works():
+async def test_given_key_when_call_tool_reads_mission_and_principles_then_key_selects_content():
     from mcp.shared.memory import create_connected_server_and_client_session
 
     store = create_memory_store()
     cp = ControlPlane(store)
-    cp.apply_direction(**RICH, change_note="init", constitution="eu")
+    cp.apply_direction(
+        mission="Ship trustworthy lending",
+        principles=[{"title": "Be honest", "description": "Say the hard number first."}],
+        change_note="init",
+        constitution_key="eu",
+    )
     server = mcp_server.build_server(cp)
 
     async def call(client, name, arguments):

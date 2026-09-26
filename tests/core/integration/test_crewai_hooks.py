@@ -57,12 +57,12 @@ def test_given_new_direction_when_before_llm_call_runs_again_then_old_block_is_r
     assert "M2" in blocks[0]["content"] and "version=2" in blocks[0]["content"]
 
 
-def test_given_european_binder_when_before_llm_call_runs_then_european_direction_is_injected(
+def test_given_named_binder_when_before_llm_call_runs_then_selected_direction_is_injected(
     control_plane,
 ):
     binder = DirectionBinder(LocalDirectionSource(control_plane), "eu")
     control_plane.apply_direction(
-        mission="European mission", change_note="Initial", constitution="eu"
+        mission="European mission", change_note="Initial", constitution_key="eu"
     )
     context = FakeCtx()
     CrewAiKyno(binder).before_llm_call(context)

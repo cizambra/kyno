@@ -60,27 +60,34 @@ def test_given_rich_direction_when_bind_is_called_then_content_matches_selected_
     assert full.principles[0].description == "Say the hard number first."
 
 
-def test_given_an_unchanged_version_when_binding_again_then_the_successful_read_is_pulled(
+def test_given_unchanged_version_when_bind_with_status_runs_again_then_status_is_pulled(
     control_plane,
 ):
-    control_plane.apply_direction(mission="Mission", change_note="initial", constitution="sales")
+    control_plane.apply_direction(
+        mission="Mission", change_note="initial", constitution_key="sales"
+    )
     binder = DirectionBinder(LocalDirectionSource(control_plane), "sales")
     first = binder.bind_with_status()
     second = binder.bind_with_status()
-    assert first.direction.version == second.direction.version == 1
-    assert first.status is second.status is BindingStatus.PULLED
+    assert first.direction.version == 1
+    assert second.direction.version == 1
+    assert first.status is BindingStatus.PULLED
+    assert second.status is BindingStatus.PULLED
 
 
-def test_given_a_direction_change_when_binding_again_then_the_prior_result_stays_unchanged(
+def test_given_direction_update_when_bind_with_status_runs_again_then_prior_result_stays_unchanged(
     control_plane,
 ):
-    control_plane.apply_direction(mission="Old", change_note="initial", constitution="sales")
+    control_plane.apply_direction(mission="Old", change_note="initial", constitution_key="sales")
     binder = DirectionBinder(LocalDirectionSource(control_plane), "sales")
     first = binder.bind_with_status()
-    control_plane.apply_direction(mission="New", change_note="pivot", constitution="sales")
+    control_plane.apply_direction(mission="New", change_note="pivot", constitution_key="sales")
     second = binder.bind_with_status()
-    assert (first.direction.version, first.direction.mission) == (1, "Old")
-    assert (second.direction.version, second.direction.mission) == (2, "New")
+    assert first.direction.version == 1
+    assert first.direction.mission == "Old"
+    assert second.direction.version == 2
+    assert second.direction.mission == "New"
     assert second.direction.change_notes == ("pivot",)
     assert second.direction.delta
-    assert first.status is second.status is BindingStatus.PULLED
+    assert first.status is BindingStatus.PULLED
+    assert second.status is BindingStatus.PULLED

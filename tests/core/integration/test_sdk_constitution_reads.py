@@ -18,7 +18,7 @@ def constitution_connection(mcp_connection):
         declaration="Original declaration",
         principles=[{"title": "Honesty", "description": "State the facts."}],
         change_note="Initial version",
-        constitution="example",
+        constitution_key="example",
     )
     return connection, control_plane
 
@@ -26,13 +26,21 @@ def constitution_connection(mcp_connection):
 @pytest.mark.parametrize("detail", ["compact", DetailLevel.COMPACT, "full", DetailLevel.FULL])
 @pytest.mark.parametrize("version", [None, 1])
 def test_given_version_and_detail_when_get_constitution_is_called_then_requested_content_returns(
-    constitution_connection, detail, version
+    mcp_connection, detail, version
 ):
-    connection, control_plane = constitution_connection
+    connection, control_plane = mcp_connection
+    control_plane.apply_direction(
+        mission="Original mission",
+        declaration="Original declaration",
+        principles=[{"title": "Honesty", "description": "State the facts."}],
+        change_note="Initial version",
+        constitution_key="example",
+    )
+
     original = connection.binder("example", detail=detail).bind()
     if version is not None:
         control_plane.apply_direction(
-            mission="New mission", change_note="Updated", constitution="example"
+            mission="New mission", change_note="Updated", constitution_key="example"
         )
     binder = connection.binder("example", detail=detail)
     current = binder.bind()
@@ -53,26 +61,43 @@ def test_given_version_and_detail_when_get_constitution_is_called_then_requested
 
 
 def test_given_updates_when_get_constitution_omits_version_then_current_compact_direction_returns(
-    constitution_connection,
+    mcp_connection,
 ):
-    connection, control_plane = constitution_connection
+    connection, control_plane = mcp_connection
     control_plane.apply_direction(
-        mission="Current mission", change_note="Updated", constitution="example"
+        mission="Original mission",
+        declaration="Original declaration",
+        principles=[{"title": "Honesty", "description": "State the facts."}],
+        change_note="Initial version",
+        constitution_key="example",
+    )
+
+    control_plane.apply_direction(
+        mission="Current mission", change_note="Updated", constitution_key="example"
     )
     direction = connection.get_constitution("example")
     assert direction.version == 2
     assert direction.mission == "Current mission"
     assert direction.detail is DetailLevel.COMPACT
-    assert direction.declaration == direction.principles[0].description == ""
+    assert direction.declaration == ""
+    assert direction.principles[0].description == ""
 
 
 @pytest.mark.parametrize("version", [None, 1])
-def test_given_two_constitutions_when_get_constitution_is_called_then_requested_direction_returns(
-    constitution_connection, version
+def test_given_two_keys_when_sdk_get_constitution_receives_each_key_then_selected_mission_returns(
+    mcp_connection, version
 ):
-    connection, control_plane = constitution_connection
+    connection, control_plane = mcp_connection
     control_plane.apply_direction(
-        mission="Default mission", change_note="Initial", constitution="default"
+        mission="Original mission",
+        declaration="Original declaration",
+        principles=[{"title": "Honesty", "description": "State the facts."}],
+        change_note="Initial version",
+        constitution_key="example",
+    )
+
+    control_plane.apply_direction(
+        mission="Default mission", change_note="Initial", constitution_key="default"
     )
 
     direction = connection.get_constitution("example", version=version)
@@ -82,7 +107,8 @@ def test_given_two_constitutions_when_get_constitution_is_called_then_requested_
     assert direction.mission == "Original mission"
     assert default_direction.constitution == "default"
     assert default_direction.mission == "Default mission"
-    assert direction.version == default_direction.version == 1
+    assert direction.version == 1
+    assert default_direction.version == 1
 
 
 @pytest.mark.parametrize("detail", list(DetailLevel))
@@ -123,19 +149,28 @@ def test_given_live_direction_when_get_constitution_requests_zero_then_empty_dir
 
 @pytest.mark.parametrize("version, served_version", [(None, 2), (1, 1), (0, 0)])
 def test_given_recording_enabled_when_get_constitution_is_called_then_selected_version_is_recorded(
-    constitution_connection, memory_store, version, served_version
+    mcp_connection, memory_store, version, served_version
 ):
-    connection, control_plane = constitution_connection
+    connection, control_plane = mcp_connection
+    control_plane.apply_direction(
+        mission="Original mission",
+        declaration="Original declaration",
+        principles=[{"title": "Honesty", "description": "State the facts."}],
+        change_note="Initial version",
+        constitution_key="example",
+    )
+
     history = SqlDeliveryRecordStore(memory_store.engine)
     control_plane.delivery_recorder = DeliveryRecorder(history, "always")
     control_plane.apply_direction(
-        mission="Current mission", change_note="Updated", constitution="example"
+        mission="Current mission", change_note="Updated", constitution_key="example"
     )
 
     direction = connection.get_constitution("example", version=version)
 
     record = history.list()["items"][0]
-    assert record["served_version"] == direction.version == served_version
+    assert record["served_version"] == served_version
+    assert direction.version == served_version
     assert record["last_seen_version"] is None
     assert record["operation"] == "get_constitution"
     assert record["detail_level"] == "compact"

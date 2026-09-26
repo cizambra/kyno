@@ -5,7 +5,7 @@ import pytest
 
 from kyno.sdk.cell import DIRECTION_MARKER
 from kyno.service import ControlPlane
-from kyno.wire.constitution import MAX_CONSTITUTION_KEY_CHARS, InvalidConstitutionKeyError
+from kyno.wire.constitution import InvalidConstitutionKeyError
 from tests.stores import create_memory_store
 
 
@@ -94,20 +94,24 @@ def test_given_a_description_at_the_cap_when_applying_then_it_is_accepted_and_on
         cp.apply_direction(principles=(over,), change_note="too long")
 
 
-def test_given_200_character_key_with_surrounding_spaces_when_applying_then_key_is_accepted(
+def test_given_padded_200_character_key_when_apply_direction_runs_then_trimmed_key_is_accepted(
     cp,
 ):
-    at_cap = "c" * MAX_CONSTITUTION_KEY_CHARS
-    assert (
-        cp.apply_direction(mission="M", change_note="init", constitution=f" {at_cap} ").version == 1
+    key_at_limit = "c" * 200
+
+    written = cp.apply_direction(
+        mission="Boundary mission", change_note="init", constitution_key=f" {key_at_limit} "
     )
-    assert cp.current(at_cap).mission == "M"
+
+    assert written.version == 1
+    assert cp.current(key_at_limit).mission == "Boundary mission"
 
 
 def test_given_201_character_key_when_apply_direction_runs_then_key_length_error_is_raised(cp):
-    at_cap = "c" * MAX_CONSTITUTION_KEY_CHARS
+    overlong_key = "c" * 201
+
     with pytest.raises(InvalidConstitutionKeyError, match="200"):
-        cp.apply_direction(mission="M", change_note="init", constitution=at_cap + "c")
+        cp.apply_direction(mission="M", change_note="init", constitution_key=overlong_key)
 
 
 def test_given_an_over_cap_value_when_refused_then_the_error_names_the_field_and_the_cap(cp):

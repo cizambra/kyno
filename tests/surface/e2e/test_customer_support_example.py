@@ -28,7 +28,7 @@ def model():
 
 
 @pytest.mark.e2e
-def test_given_an_operator_update_when_the_graph_continues_then_each_call_records_its_direction(
+def test_given_operator_update_when_run_example_resumes_graph_then_each_call_records_its_direction(
     example, live_server, server_store, tmp_path, monkeypatch
 ):
     from langchain_core.messages import AIMessage
@@ -37,7 +37,8 @@ def test_given_an_operator_update_when_the_graph_continues_then_each_call_record
     directory = Path(example.__file__).parent
     initial = yaml.safe_load((directory / "direction-v1.yaml").read_text())
     revised = yaml.safe_load((directory / "direction-v2.yaml").read_text())
-    control_plane.apply_direction(**initial, change_note="initial")
+    initial_key = initial.pop("constitution")
+    control_plane.apply_direction(constitution_key=initial_key, **initial, change_note="initial")
     operator_token = mint(server_store, scope="write", name="operator")
     reads = []
     original_read = control_plane.changes_since

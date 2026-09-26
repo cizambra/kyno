@@ -73,12 +73,12 @@ def test_given_a_closed_connection_when_binding_then_it_degrades_instead_of_cras
 
 
 @pytest.mark.parametrize("cached", [False, True], ids=["without-cache", "with-cache"])
-def test_given_fail_closed_support_binder_when_bind_with_status_loses_connection_then_it_raises(
+def test_given_closed_connection_when_fail_closed_bind_with_status_runs_then_unavailable_raises(
     mcp_connection, cached
 ):
     connection, control_plane = mcp_connection
     control_plane.apply_direction(
-        mission="Support customers", change_note="initial", constitution="support"
+        mission="Support customers", change_note="initial", constitution_key="support"
     )
     binder = connection.binder("support", policy=PullPolicy(fail_closed=True))
     if cached:

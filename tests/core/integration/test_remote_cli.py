@@ -97,15 +97,15 @@ def _three_versions(remote_cp):
 
 
 @pytest.mark.parametrize("version", [1, 2, 3])
-def test_given_remote_history_when_reading_a_numbered_version_then_only_that_version_is_requested(
+def test_given_remote_history_when_cli_get_version_receives_number_then_only_that_version_returns(
     fake_dial, remote_cp, monkeypatch, version
 ):
     remote_cp.apply_direction(
-        mission="Other direction", change_note="other", constitution="default"
+        mission="Other direction", change_note="other", constitution_key="default"
     )
     for number in (1, 2, 3):
         remote_cp.apply_direction(
-            mission=f"Mission {number}", change_note=f"Change {number}", constitution="support"
+            mission=f"Mission {number}", change_note=f"Change {number}", constitution_key="support"
         )
     calls = []
     original = fake_dial.call_tool
@@ -146,20 +146,20 @@ def test_given_remote_history_when_reading_a_numbered_version_then_only_that_ver
 
 @pytest.mark.parametrize("written", [False, True])
 @pytest.mark.parametrize("options", [[], ["--yaml"]])
-def test_given_remote_direction_when_reading_current_or_latest_then_output_and_exit_status_match(
+def test_given_remote_key_when_cli_current_and_get_version_latest_run_then_output_and_status_match(
     fake_dial, remote_cp, written, options
 ):
     if written:
-        remote_cp.apply_direction(mission="First", change_note="first", constitution="support")
-        remote_cp.apply_direction(mission="Second", change_note="second", constitution="support")
+        remote_cp.apply_direction(mission="First", change_note="first", constitution_key="support")
+        remote_cp.apply_direction(
+            mission="Second", change_note="second", constitution_key="support"
+        )
     options = ["--remote", "--constitution", "support", *options]
     current = runner.invoke(app, ["current", *options])
     latest = runner.invoke(app, ["get-version", "latest", *options])
-    assert (latest.exit_code, latest.stdout, latest.stderr) == (
-        current.exit_code,
-        current.stdout,
-        current.stderr,
-    )
+    assert latest.exit_code == current.exit_code
+    assert latest.stdout == current.stdout
+    assert latest.stderr == current.stderr
     assert fake_dial.closed
 
 
@@ -268,26 +268,26 @@ def test_given_dry_run_when_applying_remotely_then_the_delta_prints_and_nothing_
 
 
 @pytest.mark.parametrize("constitution", ["default", "sales"])
-def test_given_a_matching_file_when_checking_remotely_then_it_matches_current_direction(
+def test_given_matching_file_when_cli_check_runs_with_remote_then_current_version_matches(
     fake_dial, remote_cp, tmp_path, constitution
 ):
-    remote_cp.apply_direction(mission="M1", change_note="init", constitution=constitution)
+    remote_cp.apply_direction(mission="M1", change_note="init", constitution_key=constitution)
     path = write_file(tmp_path, mission="M1", constitution=constitution)
-    r = runner.invoke(app, ["check", path, "--remote"])
-    assert r.exit_code == 0, r.output
-    assert f"direction: '{constitution}' matches current version 1" in r.output
+    result = runner.invoke(app, ["check", path, "--remote"])
+    assert result.exit_code == 0, result.output
+    assert f"direction: '{constitution}' matches current version 1" in result.output
 
 
 @pytest.mark.parametrize("constitution", ["default", "sales"])
-def test_given_a_stale_file_when_checking_remotely_then_it_fails_with_the_delta(
+def test_given_stale_file_when_cli_check_runs_with_remote_then_exit_one_and_delta_return(
     fake_dial, remote_cp, tmp_path, constitution
 ):
-    remote_cp.apply_direction(mission="M1", change_note="init", constitution=constitution)
+    remote_cp.apply_direction(mission="M1", change_note="init", constitution_key=constitution)
     path = write_file(tmp_path, mission="M2", constitution=constitution)
-    r = runner.invoke(app, ["check", path, "--remote"])
-    assert r.exit_code == 1
-    assert f"direction: '{constitution}' differs from current version 1:" in r.output
-    assert 'The mission was "M1" and is now "M2".' in r.output
+    result = runner.invoke(app, ["check", path, "--remote"])
+    assert result.exit_code == 1
+    assert f"direction: '{constitution}' differs from current version 1:" in result.output
+    assert 'The mission was "M1" and is now "M2".' in result.output
 
 
 @pytest.mark.parametrize("constitution", ["default", "sales"])

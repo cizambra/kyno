@@ -27,7 +27,7 @@ def plane(store):
 
 def direction(plane, constitution="default", mission="M1", principles=("p1", "p2"), note="init"):
     return plane.apply_direction(
-        mission=mission, principles=principles, change_note=note, constitution=constitution
+        mission=mission, principles=principles, change_note=note, constitution_key=constitution
     )
 
 
@@ -82,9 +82,9 @@ def test_given_only_a_font_when_rendering_then_the_automatic_dark_swap_stays(pla
     assert "Iowan Old Style, serif" in page
 
 
-def test_given_a_theme_when_rendering_the_index_then_it_uses_the_same_theme(plane):
+def test_given_custom_accent_when_render_index_runs_then_configured_accent_is_included(plane):
     direction(plane, "product", mission="Product mission")
-    plane.publish(constitution="product")
+    plane.publish(constitution_key="product")
     page = render_index(plane.published_constitutions(), PageConfig(theme=PageTheme(accent="#b45")))
     assert "--accent: #b45" in page
 
@@ -206,13 +206,13 @@ def test_given_a_template_that_is_not_valid_text_when_rendering_then_the_built_i
     assert len([r for r in caplog.records if r.levelname == "WARNING"]) == 1
 
 
-def test_given_a_custom_index_template_when_rendering_then_it_replaces_the_built_in_index(
+def test_given_custom_index_template_when_render_index_runs_then_it_replaces_builtin_index(
     plane, tmp_path
 ):
     path = tmp_path / "index.html"
     path.write_text('<html><body><ul class="ours">$items</ul></body></html>')
     direction(plane, "product", mission="Product mission")
-    plane.publish(constitution="product")
+    plane.publish(constitution_key="product")
 
     page = render_index(plane.published_constitutions(), PageConfig(index_template=str(path)))
     assert '<ul class="ours">' in page
@@ -221,11 +221,11 @@ def test_given_a_custom_index_template_when_rendering_then_it_replaces_the_built
     assert "<style>" not in page
 
 
-def test_given_a_broken_index_template_when_rendering_then_the_built_in_index_serves(
+def test_given_missing_template_when_render_index_runs_then_builtin_index_serves_with_one_warning(
     plane, tmp_path, caplog
 ):
     direction(plane, "product", mission="Product mission")
-    plane.publish(constitution="product")
+    plane.publish(constitution_key="product")
     with caplog.at_level("WARNING"):
         page = render_index(
             plane.published_constitutions(), PageConfig(index_template=str(tmp_path / "gone.html"))
@@ -291,14 +291,14 @@ def test_given_a_custom_template_when_reading_the_json_view_then_it_is_untouched
     assert [p["title"] for p in payload["principles"]] == ["p1", "p2"]
 
 
-def test_given_the_index_template_when_rendering_then_it_can_report_how_many_are_published(
+def test_given_public_constitutions_when_render_index_expands_count_then_count_matches_publications(
     plane, tmp_path
 ):
     path = tmp_path / "index.html"
     path.write_text("<html><body><p>$count published</p>$items</body></html>")
     for name in ("alpha", "beta"):
         direction(plane, name, mission=f"{name} mission")
-        plane.publish(constitution=name)
+        plane.publish(constitution_key=name)
 
     page = render_index(plane.published_constitutions(), PageConfig(index_template=str(path)))
     assert "<p>2 published</p>" in page

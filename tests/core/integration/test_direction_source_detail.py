@@ -27,14 +27,14 @@ def test_given_rich_updates_when_changes_since_is_called_then_local_and_mcp_cont
         declaration="Explain support decisions.",
         principles=[{"title": "Be clear", "description": "State the reason."}],
         change_note="Initial support direction",
-        constitution="support",
+        constitution_key="support",
     )
     control_plane.apply_direction(
         mission="Resolve support requests",
         declaration="Explain support decisions.",
         principles=[{"title": "Be clear", "description": "State the reason."}],
         change_note="Prioritize resolution",
-        constitution="support",
+        constitution_key="support",
     )
     original = control_plane.changes_since(last_seen_version, "support")
 

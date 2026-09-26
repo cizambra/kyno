@@ -71,16 +71,19 @@ def test_given_the_packaged_template_when_rendering_then_the_built_in_page_match
     )
 
 
-def test_given_the_packaged_index_template_when_rendering_then_the_built_in_index_matches_it(
+def test_given_packaged_index_template_when_render_index_uses_its_copy_then_output_matches_builtin(
     plane, tmp_path
 ):
-    plane.apply_direction(mission="Product mission", change_note="init", constitution="product")
-    plane.publish(constitution="product")
+    plane.apply_direction(mission="Product mission", change_note="init", constitution_key="product")
+    plane.publish(constitution_key="product")
     views = plane.published_constitutions()
     copy = tmp_path / "index.html"
     copy.write_text(packaged_template("index.html"), encoding="utf-8")
 
-    assert render_index(views, PageConfig(index_template=str(copy))) == render_index(views)
+    custom_index = render_index(views, PageConfig(index_template=str(copy)))
+    builtin_index = render_index(views)
+
+    assert custom_index == builtin_index
 
 
 def test_given_a_copied_template_when_rendering_then_it_follows_the_theme_it_is_rendered_with(

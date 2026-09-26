@@ -309,47 +309,62 @@ def test_given_a_previous_version_when_writing_then_changed_flags_compare_agains
     assert v3.changed_mission is False and v3.changed_principles is True
 
 
-def test_given_named_constitutions_when_writing_to_each_then_sequences_stay_independent(cp):
-    cp.apply_direction(mission="M1", change_note="default init")
-    eu = cp.apply_direction(mission="EU1", change_note="eu init", constitution="eu")
+def test_given_two_keys_when_apply_direction_updates_each_then_sequences_stay_independent(
+    cp,
+):
+    cp.apply_direction(mission="Initial mission", change_note="default init")
+    eu = cp.apply_direction(
+        mission="Initial EU mission", change_note="eu init", constitution_key="eu"
+    )
     assert eu.version == 1
-    assert cp.current().version == 1 and cp.current().mission == "M1"
-    assert cp.current("eu").version == 1 and cp.current("eu").mission == "EU1"
-    assert cp.apply_direction(mission="EU2", change_note="eu pivot", constitution="eu").version == 2
+    assert cp.current().version == 1
+    assert cp.current().mission == "Initial mission"
+    assert cp.current("eu").version == 1
+    assert cp.current("eu").mission == "Initial EU mission"
+    updated_eu = cp.apply_direction(
+        mission="Updated EU mission", change_note="eu pivot", constitution_key="eu"
+    )
+
+    assert updated_eu.version == 2
     assert cp.current().version == 1
 
 
-def test_given_a_per_call_name_when_writing_then_the_control_plane_keeps_its_default(cp):
-    """Deliberate: the name is per call, not state — one named write must not
-    silently redirect every later read on the same control plane."""
-    cp.apply_direction(mission="EU1", change_note="eu init", constitution="eu")
+def test_given_empty_default_when_apply_direction_uses_named_key_then_default_reads_remain_empty(
+    cp,
+):
+    cp.apply_direction(mission="Initial EU mission", change_note="eu init", constitution_key="eu")
     assert cp.current().version == 0
     assert cp.changes_since(0).current_version == 0
 
 
-def test_given_named_and_default_directions_when_omitting_the_name_then_default_is_selected(store):
+def test_given_keys_when_current_get_constitution_and_changes_since_omit_key_then_default_returns(
+    store,
+):
     cp = ControlPlane(store)
-    cp.apply_direction(mission="EU1", change_note="init", constitution="eu")
-    cp.apply_direction(mission="Default1", change_note="init")
-    assert cp.current().mission == "Default1"
-    assert cp.current(None).mission == "Default1"
-    assert cp.get_constitution().mission == "Default1"
+    cp.apply_direction(mission="Initial EU mission", change_note="init", constitution_key="eu")
+    cp.apply_direction(mission="Default mission", change_note="init")
+    assert cp.current().mission == "Default mission"
+    assert cp.current(None).mission == "Default mission"
+    assert cp.get_constitution().mission == "Default mission"
     assert cp.changes_since(0).current_version == 1
-    assert store.head("eu").mission == "EU1"
-    assert store.head("default").mission == "Default1"
+    assert store.head("eu").mission == "Initial EU mission"
+    assert store.head("default").mission == "Default mission"
 
 
-def test_given_an_unknown_constitution_when_reading_then_the_empty_state_returns(cp):
-    cp.apply_direction(mission="M1", change_note="init")
+def test_given_unknown_key_when_current_and_changes_since_run_then_empty_state_returns(cp):
+    cp.apply_direction(mission="Initial mission", change_note="init")
     unknown = cp.current("never-written")
-    assert unknown.version == 0 and unknown.mission == "" and unknown.principles == ()
-    changes = cp.changes_since(3, constitution="never-written")
-    assert changes.current_version == 0 and changes.changed is False
+    assert unknown.version == 0
+    assert unknown.mission == ""
+    assert unknown.principles == ()
+    changes = cp.changes_since(3, constitution_key="never-written")
+    assert changes.current_version == 0
+    assert changes.changed is False
 
 
 def _direction(cp, constitution="default", mission="M1", principles=("p1", "p2"), note="init"):
     return cp.apply_direction(
-        mission=mission, principles=principles, change_note=note, constitution=constitution
+        mission=mission, principles=principles, change_note=note, constitution_key=constitution
     )
 
 
@@ -409,26 +424,28 @@ def test_given_a_republish_when_reading_published_at_then_the_original_stamp_sta
     assert again.history_public is True
 
 
-def test_given_no_direction_when_publishing_then_it_is_an_error(cp):
+def test_given_unwritten_key_when_publish_runs_then_unknown_constitution_error_is_raised(cp):
     # Publishing an empty name would serve a blank page under a real URL.
     with pytest.raises(UnknownConstitutionError):
-        cp.publish(constitution="never-written")
+        cp.publish(constitution_key="never-written")
 
 
-def test_given_a_constitution_that_does_not_exist_when_unpublishing_then_it_is_an_error(cp):
+def test_given_unknown_key_when_unpublish_runs_then_unknown_constitution_error_is_raised(cp):
     # A typo must not report success while the real page stays public.
     _direction(cp)
     with pytest.raises(UnknownConstitutionError):
-        cp.unpublish(constitution="defualt")
+        cp.unpublish(constitution_key="defualt")
     assert cp.publication().published is False
 
 
-def test_given_several_names_when_publishing_then_publication_is_per_name(cp):
+def test_given_three_keys_when_publish_receives_two_keys_then_only_selected_keys_are_public(
+    cp,
+):
     _direction(cp, "internal", mission="Internal mission")
     _direction(cp, "product", mission="Product mission")
     _direction(cp, "eu", mission="EU mission")
-    cp.publish(constitution="product", with_history=True)
-    cp.publish(constitution="eu")
+    cp.publish(constitution_key="product", with_history=True)
+    cp.publish(constitution_key="eu")
 
     assert cp.public_constitution("internal") is None
     assert cp.public_constitution("product").mission == "Product mission"
@@ -436,10 +453,12 @@ def test_given_several_names_when_publishing_then_publication_is_per_name(cp):
     assert cp.public_constitution("eu").history is None
 
 
-def test_given_a_mix_of_names_when_listing_published_then_only_the_published_appear(cp):
+def test_given_private_and_public_keys_when_published_constitutions_then_only_public_keys_return(
+    cp,
+):
     _direction(cp, "internal", mission="Internal mission")
     _direction(cp, "product", mission="Product mission")
-    cp.publish(constitution="product")
+    cp.publish(constitution_key="product")
 
     listed = cp.published_constitutions()
     assert [c.name for c in listed] == ["product"]
@@ -450,11 +469,13 @@ def test_given_nothing_published_when_listing_published_then_the_list_is_empty(c
     assert cp.published_constitutions() == ()
 
 
-def test_given_several_published_names_when_listing_then_they_are_ordered_by_name(cp):
+def test_given_public_keys_when_published_constitutions_runs_then_results_are_ordered_by_name(
+    cp,
+):
     # A stable order keeps the index page deterministic across requests.
     for name in ("zeta", "alpha", "mu"):
         _direction(cp, name, mission=f"{name} mission")
-        cp.publish(constitution=name)
+        cp.publish(constitution_key=name)
     assert [c.name for c in cp.published_constitutions()] == ["alpha", "mu", "zeta"]
 
 
@@ -485,9 +506,9 @@ def test_given_public_history_when_building_the_public_payload_then_it_is_newest
 
 
 @pytest.mark.parametrize("name", ["acme", "acme-eu", "policy2", "2026-policy", "a"])
-def test_given_a_slug_name_when_publishing_then_it_is_accepted(name, cp):
+def test_given_slug_key_when_publish_receives_it_then_published_is_true(name, cp):
     _direction(cp, name)
-    assert cp.publish(constitution=name).published is True
+    assert cp.publish(constitution_key=name).published is True
 
 
 @pytest.mark.parametrize(

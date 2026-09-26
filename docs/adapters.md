@@ -153,8 +153,10 @@ report local failures and fallback even when no delivery record exists.
 ### One binder reads one constitution
 
 Pass the constitution's key when creating a binder, not its content.
-The key stays fixed for that binder's lifetime; `bind()`, `bind_with_status()`,
-and `plan()` use that selection. If omitted, the key is `"default"`.
+An explicit key stays fixed for that binder's lifetime; `bind()`, `bind_with_status()`,
+and `plan()` use that selection. If omitted or `None`, the SDK leaves selection to Core.
+The first successful reply supplies the key, which the binder retains for all later pulls.
+Core currently chooses `"default"` for an omitted selection.
 Surrounding whitespace is trimmed; keys use lowercase letters and digits
 separated by single hyphens, up to 200 characters.
 
@@ -170,6 +172,10 @@ These binders share the connection, not their last-seen versions, cached
 direction, or recording receipts. Pass the chosen binder to your adapter or
 call `support.plan()` to track plans against that same constitution.
 `binder.constitution_key` is readable but cannot be reassigned.
+It is `None` before Core resolves an omitted key. A successful version-zero read
+resolves the key too. If the first pull fails under the fail-open policy, the empty
+direction retains `constitution_key=None` and says "No direction has been received yet."
+Its header omits the key; a later successful pull resolves it normally.
 The returned `Direction` exposes the same `constitution_key` in its property,
 dictionary, and rendered header.
 

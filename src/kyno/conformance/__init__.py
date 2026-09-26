@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-MARKER = re.compile(r"^\[kyno:direction constitution_key=(\S+) version=(\d+)\]$")
+MARKER = re.compile(r"^\[kyno:direction(?: constitution_key=(\S+))? version=(\d+)\]$")
 SEPARATOR = "---end---"
 EMPTY_STATE_LINE = "No direction has been set yet."
 
@@ -59,11 +59,18 @@ def check_log(text: str) -> Report:
             continue
         version = int(m.group(2))
         report.versions.append(version)
+        if version != 0 and m.group(1) is None:
+            report.problems.append(f"block {i}: written direction requires a constitution key")
         if version == 0:
-            if lines[1:] != [EMPTY_STATE_LINE]:
+            empty_state = (
+                EMPTY_STATE_LINE
+                if m.group(1) is not None
+                else "No direction has been received yet."
+            )
+            if lines[1:] != [empty_state]:
                 report.problems.append(
                     f"block {i}: a version-0 block must be the marker plus "
-                    f"exactly one line: {EMPTY_STATE_LINE!r}"
+                    f"exactly one line: {empty_state!r}"
                 )
         elif not any(line.startswith("Mission: ") for line in lines[1:]):
             report.problems.append(f"block {i}: no 'Mission: ' line — the block body is missing")

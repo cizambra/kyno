@@ -69,7 +69,7 @@ class KynoConnection:
 
     def binder(
         self,
-        constitution_key: str = "default",
+        constitution_key: str | None = None,
         *,
         policy: PullPolicy | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,
@@ -78,7 +78,8 @@ class KynoConnection:
     ) -> DirectionBinder:
         """Create a binder with private fallback state for the named constitution.
 
-        Pass the constitution's key, not its content. The default key is "default".
+        Pass the constitution's key, not its content. Omit it to let Core select
+        the key; the binder retains Core's selection after its first successful pull.
         """
         source = _client.McpDirectionSource(
             self._runner, correlation_id=correlation_id, metadata=metadata
@@ -98,7 +99,7 @@ class KynoConnection:
 
     def get_constitution(
         self,
-        constitution_key: str = "default",
+        constitution_key: str | None = None,
         *,
         version: int | None = None,
         detail: str | DetailLevel = DetailLevel.COMPACT,

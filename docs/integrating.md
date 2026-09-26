@@ -216,12 +216,15 @@ Recent changes:
 
 The rules:
 
-- The first line is always
+- For a successful reply, the first line is
   `[kyno:direction constitution_key=<name> version=<number>]`. This line is how
   anyone reading a transcript later can tell which version of the direction
   the step ran under.
 - If `current_version` is `0`, the block is the marker line plus exactly
   one more line: `No direction has been set yet.`
+- Before any successful reply, an omitted key is unresolved. A fail-open
+  fallback uses `[kyno:direction version=0]` followed by
+  `No direction has been received yet.` It does not invent a constitution key.
 - If the response has `change_notes`, add a `Recent changes:` section with
   one `- ` line each. Same for `delta` under `What changed:`. Skip either
   section when its list is empty. The `delta` lines matter most: they tell
@@ -234,8 +237,8 @@ The whole function, in TypeScript. A direct translation works in any
 language:
 
 ```typescript
-export function buildBlock(response, constitution = "default", detail = "compact") {
-  const marker = `[kyno:direction constitution_key=${constitution} version=${response.current_version}]`;
+export function buildBlock(response, detail = "compact") {
+  const marker = `[kyno:direction constitution_key=${response.constitution_key} version=${response.current_version}]`;
   if (response.current_version === 0) {
     return `${marker}\nNo direction has been set yet.`;
   }
@@ -291,7 +294,8 @@ or middleware for this). In that place:
 2. Build the block.
 3. Put the block at the very front of the step's context, before the
    agent's role or system prompt, before the task.
-4. Remember the version number for the next call.
+4. Remember the version number and the first successful reply's constitution key
+   for later calls. Until that reply, omit the key so Core chooses it.
 
 Do this on every step, even when nothing changed. A direction that's only
 sent once falls out of the context window as the conversation grows.
@@ -301,11 +305,16 @@ fetch reuses the last block instead of crashing the step:
 
 ```typescript
 let lastSeenVersion = 0;
-let lastBlock = "[kyno:direction constitution_key=default version=0]\nNo direction has been set yet.";
+let constitutionKey: string | undefined;
+let lastBlock = "[kyno:direction version=0]\nNo direction has been received yet.";
 
 async function fetchBlock() {
   try {
-    const response = await callGetChangesSince(lastSeenVersion);  // the call from stage 1
+    const response = await callGetChangesSince(lastSeenVersion, constitutionKey);
+    if (constitutionKey !== undefined && response.constitution_key !== constitutionKey) {
+      throw new Error("Unexpected constitution key");
+    }
+    constitutionKey ??= response.constitution_key;
     lastSeenVersion = response.current_version;
     lastBlock = buildBlock(response);                          // the function from stage 2
   } catch {
@@ -319,6 +328,9 @@ const block = await fetchBlock();
 const context = block + "\n\n" + stepContext;
 appendFileSync("my_blocks.log", block + "\n---end---\n");   // the log the checker reads
 ```
+
+The request helper leaves `constitution_key` out of the MCP arguments when
+`constitutionKey` is undefined. It sends the retained key on subsequent calls.
 
 **Check:** while your orchestrator runs, append every block you inject to a
 log file, each followed by a line containing only `---end---`. Then run the
@@ -489,6 +501,8 @@ declaration and principle descriptions.
 
 Select a constitution with `constitution_key="customer-support"`.
 The returned `Direction.constitution_key` identifies the selected constitution.
+Omitting the key leaves selection to Core; the SDK reads the returned key
+instead of choosing a fallback itself.
 
 ```python
 with kyno.connect() as connection:

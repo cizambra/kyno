@@ -37,7 +37,7 @@ def source():
         changes_since=Mock(
             return_value=DirectionResponse(
                 ChangesSince(
-                    constitution_key="default",
+                    constitution_key="support",
                     current_version=2,
                     changed=True,
                     mission="Help customers",
@@ -60,10 +60,11 @@ def receipt(state):
 @pytest.mark.parametrize("wrapper", [False, True], ids=["direction-node", "pull-before"])
 @pytest.mark.parametrize("status", list(BindingStatus))
 @pytest.mark.parametrize("detail", list(DetailLevel))
+@pytest.mark.parametrize("constitution_key", [None, "support"])
 def test_given_binding_when_graph_invoke_checkpoints_then_direction_and_status_survive(
-    source, wrapper, status, detail
+    source, wrapper, status, detail, constitution_key
 ):
-    binder = DirectionBinder(source, "support", detail=detail)
+    binder = DirectionBinder(source, constitution_key, detail=detail)
     if status is BindingStatus.CACHED:
         binder.bind()
     if status is not BindingStatus.PULLED:
@@ -89,9 +90,10 @@ def test_given_binding_when_graph_invoke_checkpoints_then_direction_and_status_s
     assert serialized["kyno_binding_status"] == status.value
     assert type(serialized["kyno_binding_status"]) is str
     assert restored["receipts"][0]["kyno_direction"] == restored["kyno_direction"]
-    assert restored["kyno_constitution_key"] == "support"
+    expected_key = None if status is BindingStatus.EMPTY and constitution_key is None else "support"
+    assert restored["kyno_constitution_key"] == expected_key
     if status is BindingStatus.EMPTY:
-        expected = Direction.empty("support", detail)
+        expected = Direction.empty(expected_key, detail)
     else:
         expected = Direction.from_changes(
             source.changes_since.return_value.changes, "support", detail
@@ -225,7 +227,7 @@ def test_given_fail_closed_when_the_pull_fails_then_downstream_work_does_not_run
 
 @pytest.mark.parametrize("wrapper", [False, True], ids=["direction-node", "pull-before"])
 @pytest.mark.parametrize("failed_read", [False, True], ids=["unchanged", "recovered"])
-def test_given_the_same_version_when_read_succeeds_then_new_step_status_is_saved_as_pulled(
+def test_given_unchanged_direction_when_graph_invoke_then_new_step_status_is_pulled(
     source, wrapper, failed_read
 ):
     initial = source.changes_since.return_value.changes
@@ -262,9 +264,9 @@ def test_given_the_same_version_when_read_succeeds_then_new_step_status_is_saved
     assert saved == result
     assert saved["kyno_version"] == 2
     assert saved["kyno_binding_status"] == "pulled"
-    assert saved["kyno_direction"] == Direction.from_changes(unchanged, "default").render()
-    assert direction_from_state(saved) == Direction.from_changes(unchanged, "default")
-    assert direction_from_state(saved["receipts"][0]) == Direction.from_changes(initial, "default")
+    assert saved["kyno_direction"] == Direction.from_changes(unchanged, "support").render()
+    assert direction_from_state(saved) == Direction.from_changes(unchanged, "support")
+    assert direction_from_state(saved["receipts"][0]) == Direction.from_changes(initial, "support")
     assert saved["receipts"][0]["kyno_direction"] == first_block
     assert saved["receipts"][0]["kyno_binding_status"] == "pulled"
     assert saved["receipts"][-1]["kyno_direction"] == saved["kyno_direction"]

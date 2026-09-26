@@ -55,16 +55,70 @@ def test_given_constitution_argument_when_call_tool_then_error_prevents_all_writ
     assert history.list()["items"] == []
 
 
-def test_given_default_direction_when_get_constitution_omits_key_then_default_mission_is_returned(
+@pytest.mark.parametrize("arguments", [{}, {"constitution_key": None}])
+def test_given_no_key_or_null_when_get_constitution_runs_then_default_mission_returns(
     mcp_runner,
+    arguments,
 ):
     runner, control_plane = mcp_runner
     control_plane.apply_direction(mission="Default direction", change_note="initial")
 
-    result = runner.call(lambda session: session.call_tool("get_constitution", {}))
+    result = runner.call(lambda session: session.call_tool("get_constitution", arguments))
 
     assert not result.isError
     assert json.loads(result.content[0].text)["mission"] == "Default direction"
+
+
+@pytest.mark.parametrize(
+    "tool, arguments",
+    [
+        ("get_changes_since", {"last_seen_version": 0}),
+        ("get_mission", {}),
+        ("get_declaration", {}),
+        ("get_principles", {}),
+        ("get_principle", {"title": "Be honest"}),
+        ("export_versions", {}),
+    ],
+)
+def test_given_two_constitutions_when_read_tool_gets_null_key_then_omitted_key_result_returns(
+    mcp_runner, tool, arguments
+):
+    runner, plane = mcp_runner
+    plane.apply_direction(
+        mission="Default direction",
+        declaration="Default declaration",
+        principles=("Be honest",),
+        change_note="initial",
+    )
+    plane.apply_direction(
+        mission="Support direction", change_note="initial", constitution_key="support"
+    )
+    omitted = runner.call(lambda session: session.call_tool(tool, arguments))
+    explicit_null = runner.call(
+        lambda session: session.call_tool(tool, {**arguments, "constitution_key": None})
+    )
+    assert not omitted.isError
+    assert not explicit_null.isError
+    assert explicit_null.content == omitted.content
+
+
+def test_given_named_direction_when_apply_direction_gets_null_key_then_only_default_is_written(
+    mcp_runner,
+):
+    runner, plane = mcp_runner
+    plane.apply_direction(
+        mission="Support direction", change_note="initial", constitution_key="support"
+    )
+    result = runner.call(
+        lambda session: session.call_tool(
+            "apply_direction",
+            {"constitution_key": None, "mission": "Default direction", "change_note": "initial"},
+        )
+    )
+    assert not result.isError
+    assert plane.current().mission == "Default direction"
+    assert plane.current("support").mission == "Support direction"
+    assert plane.current("support").version == 1
 
 
 def test_given_padded_key_when_apply_direction_runs_then_get_constitution_reads_trimmed_key(

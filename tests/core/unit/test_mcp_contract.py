@@ -159,7 +159,7 @@ def test_given_TOOLS_when_input_schemas_are_inspected_then_constitution_key_is_o
             assert tool.inputSchema["properties"] == {}
             continue
         props = tool.inputSchema["properties"]
-        assert props["constitution_key"]["type"] == "string"
+        assert props["constitution_key"]["type"] == ["string", "null"]
         assert "constitution_key" not in tool.inputSchema.get("required", [])
 
 

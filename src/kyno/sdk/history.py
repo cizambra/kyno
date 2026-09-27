@@ -67,7 +67,7 @@ def list_delivery_records(
         constitution = check_constitution_key(constitution)
     filters = {
         "correlation_id": correlation_id,
-        "constitution": constitution,
+        "constitution_key": constitution,
         "since": since,
         "until": until,
         "after": after,
@@ -92,7 +92,7 @@ def get_constitution(
     if version is not None and (type(version) is not int or version < 0):
         raise ValueError("version must be a non-negative integer")
     constitution = check_constitution_key(constitution)
-    arguments: dict[str, object] = {"constitution": constitution, "detail": detail.value}
+    arguments: dict[str, object] = {"constitution_key": constitution, "detail": detail.value}
     if version is not None:
         arguments["version"] = version
     row = _query(runner, "get_constitution", arguments, _constitution)

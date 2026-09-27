@@ -331,7 +331,7 @@ def test_given_omitted_key_when_source_changes_since_then_required_argument_erro
 
 
 @pytest.mark.parametrize("source_type", [LocalDirectionSource, McpDirectionSource])
-def test_given_constitution_keyword_when_source_changes_since_then_type_error_prevents_io(
+def test_given_unsupported_constitution_keyword_when_source_changes_since_then_rejected_without_io(
     source_type,
 ):
     dependency = Mock()

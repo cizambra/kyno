@@ -36,11 +36,11 @@ def captured_binding(monkeypatch):
     return captured
 
 
-def test_given_only_legacy_environment_wiring_when_connecting_then_it_is_refused(
+def test_given_url_and_token_env_without_profile_when_connect_runs_then_profile_error_is_raised(
     monkeypatch, tmp_path
 ):
-    monkeypatch.setenv("KYNO_URL", "https://legacy.example.com/mcp")
-    monkeypatch.setenv("KYNO_TOKEN", "legacy-token")
+    monkeypatch.setenv("KYNO_URL", "https://environment.example.com/mcp")
+    monkeypatch.setenv("KYNO_TOKEN", "environment-token")
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr(
         "kyno.sdk._client.http_session",
@@ -162,7 +162,7 @@ def test_given_the_sdk_when_looking_for_the_entry_point_then_it_is_kyno_connect(
 
 
 @pytest.mark.parametrize("operation", ["binder", "get_constitution"])
-def test_given_constitution_keyword_when_connection_operation_runs_then_type_error_prevents_io(
+def test_given_unsupported_constitution_keyword_when_connection_call_then_rejected_without_io(
     operation,
 ):
     runner = Mock()

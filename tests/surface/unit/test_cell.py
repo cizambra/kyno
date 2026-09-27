@@ -37,7 +37,7 @@ def test_given_unsupported_constitution_keyword_when_direction_empty_then_type_e
         Direction.empty(constitution="support")
 
 
-def test_given_constitution_keyword_when_direction_from_changes_then_type_error():
+def test_given_unsupported_constitution_keyword_when_direction_from_changes_then_type_error():
     changes = ChangesSince(
         current_version=1,
         changed=True,
@@ -135,7 +135,6 @@ def test_given_default_detail_when_direction_render_runs_then_long_text_is_exclu
 
 
 def test_given_string_principles_when_direction_init_runs_then_strings_become_principle_titles():
-    # Every caller that passed strings before keeps working; they become titles.
     d = Direction(constitution_key="eu", version=1, mission="M", principles=("p1",))
     assert d.principles == (Principle("p1"),)
 
@@ -251,7 +250,7 @@ def test_given_cached_version_zero_when_get_with_recording_runs_then_empty_direc
     assert cell.last_seen_version() == 0
 
 
-def test_given_constitution_keyword_when_direction_init_runs_then_type_error_is_raised():
+def test_given_unsupported_constitution_keyword_when_direction_init_then_type_error():
     with pytest.raises(TypeError, match="unexpected keyword argument 'constitution'"):
         Direction(constitution="support", version=1, mission="Help customers", principles=())
 

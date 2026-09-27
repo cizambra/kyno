@@ -61,7 +61,7 @@ def test_given_padded_200_character_key_when_direction_binder_init_then_full_key
     assert DirectionBinder(scripted_source, f" {key} ").constitution_key == key
 
 
-def test_given_constitution_keyword_when_direction_binder_init_then_type_error_prevents_pulls(
+def test_given_unsupported_constitution_keyword_when_binder_init_then_rejected_without_pulls(
     scripted_source,
 ):
     with pytest.raises(TypeError, match="constitution"):

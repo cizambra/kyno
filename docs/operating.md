@@ -228,8 +228,10 @@ delivery, then retrieve its historical constitution version if needed.
 Pages default to 50 records. Set `limit` to request between 1 and 100 records
 per page.
 
-Optional `correlation_id`, `constitution`, `since`, and `until` filters select
-matching events before the page limit is applied. Time bounds are inclusive.
+Use `correlation_id`, `constitution_key`, `since`, and `until` to narrow
+the results. Kyno applies these filters before counting records toward
+the page limit. Both time bounds are inclusive: records with timestamps
+equal to `since` or `until` are included.
 For the next page, pass `next_cursor` as `after` with the same filters; a null
 cursor means the current results are exhausted. Events are ordered by insertion,
 and new events can appear between pages. Read and write tokens may browse history.

@@ -79,7 +79,7 @@ def test_given_optional_arguments_when_tool_calls_parses_then_apply_direction_re
     assert _tool_calls(body) == [("apply_direction", "default")]
 
 
-def test_given_bodies_of_every_shape_when_listing_tool_calls_then_only_real_calls_count():
+def test_given_varied_request_bodies_when_tool_calls_then_only_tool_calls_return():
     assert _tool_calls(b"not json") == []
     assert _tool_calls(b'{"method": "initialize"}') == []
     assert _tool_calls(
@@ -90,7 +90,7 @@ def test_given_bodies_of_every_shape_when_listing_tool_calls_then_only_real_call
     # The HTTP behavior is covered by the batched-body integration test.
     assert _tool_calls(
         b'[{"method": "tools/call", "params": {"name": "get_constitution", '
-        b'"arguments": {"constitution": "main"}}},'
+        b'"arguments": {"constitution_key": "main"}}},'
         b'{"method": "notifications/initialized"},'
         b'{"method": "tools/call", "params": {"name": "apply_direction", '
         b'"arguments": {"mission": "M1"}}}]'

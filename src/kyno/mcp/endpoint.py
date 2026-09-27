@@ -31,7 +31,7 @@ TOUCH_EVERY = timedelta(minutes=5)
 
 
 def _tool_calls(body: bytes) -> list[tuple[str, str]]:
-    """List the (tool, constitution) pairs a JSON-RPC body asks for.
+    """List the (tool, constitution_key) pairs a JSON-RPC body asks for.
 
     Returns an empty list for a body that is not valid JSON, or that
     carries no tool call: rejecting malformed requests is the MCP layer's
@@ -61,7 +61,7 @@ def _tool_calls(body: bytes) -> list[tuple[str, str]]:
             continue
         name = params.get("name")
         if isinstance(name, str):
-            calls.append((name, arguments.get("constitution") or "default"))
+            calls.append((name, arguments.get("constitution_key") or "default"))
     return calls
 
 
@@ -166,13 +166,13 @@ class McpEndpoint:
             await Response(refusal, status_code=403)(scope, receive, send)
             return
         if token is not None:
-            for name, constitution in calls:
+            for name, constitution_key in calls:
                 _request_log.info(
-                    "token=%s name=%s tool=%s constitution=%s",
+                    "token=%s name=%s tool=%s constitution_key=%s",
                     token.id,
                     token.name,
                     name,
-                    constitution,
+                    constitution_key,
                 )
         await self._manager.handle_request(scope, _replayed(body, receive), send)
 

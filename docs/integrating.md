@@ -81,10 +81,14 @@ with client libraries in most languages. From your language, call the tool
 seen any yet".
 
 `constitution_key` identifies the constitution to read from this database.
-If omitted, `get_changes_since` reads the `default` constitution. Keys use
-lowercase ASCII letters and digits, with single hyphens between groups,
-for example `customer-support`. Kyno removes leading and trailing whitespace
-before validating the key. The trimmed key must be between 1 and 200 characters.
+If omitted or set to `null`, `get_changes_since` reads the `default`
+constitution. Keys use lowercase ASCII letters and digits, with single
+hyphens between groups, for example `customer-support`. Kyno removes leading
+and trailing whitespace before validating the key. The trimmed key must be
+between 1 and 200 characters.
+
+For `list_delivery_records`, an omitted or `null` `constitution_key` leaves the
+query unfiltered by constitution; it does not restrict the results to `default`.
 
 Here is that call in three languages. Every example on this page was run
 against a Kyno started exactly as above before being committed.

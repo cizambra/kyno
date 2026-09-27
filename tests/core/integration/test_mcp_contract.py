@@ -59,16 +59,97 @@ def test_given_constitution_argument_when_call_tool_runs_then_rejected_without_s
     assert history.list()["items"] == []
 
 
-def test_given_default_direction_when_get_constitution_omits_key_then_default_mission_is_returned(
-    mcp_runner,
+@pytest.mark.parametrize("selector", [{}, {"constitution_key": None}], ids=["omitted", "null"])
+@pytest.mark.parametrize(
+    "operation,arguments,field,expected",
+    [
+        ("get_constitution", {}, "mission", "Default mission"),
+        ("get_changes_since", {"last_seen_version": 0}, "mission", "Default mission"),
+        ("get_mission", {}, "mission", "Default mission"),
+        ("get_declaration", {}, "declaration", "Default declaration"),
+        ("get_principles", {}, "principles", [{"title": "Be clear"}]),
+        ("get_principle", {"title": "Be clear"}, "description", "Explain default choices"),
+    ],
+    ids=[
+        "get_constitution",
+        "get_changes_since",
+        "get_mission",
+        "get_declaration",
+        "get_principles",
+        "get_principle",
+    ],
+)
+def test_given_null_or_omitted_key_when_call_tool_reads_then_default_content_returns(
+    mcp_runner, selector, operation, arguments, field, expected
 ):
-    runner, control_plane = mcp_runner
-    control_plane.apply_direction(mission="Default direction", change_note="initial")
+    runner, plane = mcp_runner
+    plane.apply_direction(
+        mission="Default mission",
+        declaration="Default declaration",
+        principles=[{"title": "Be clear", "description": "Explain default choices"}],
+        change_note="initial",
+    )
+    plane.apply_direction(
+        constitution_key="support",
+        mission="Support mission",
+        declaration="Support declaration",
+        principles=[{"title": "Support principle", "description": "Explain support choices"}],
+        change_note="initial",
+    )
 
-    result = runner.call(lambda session: session.call_tool("get_constitution", {}))
+    result = runner.call(lambda session: session.call_tool(operation, {**arguments, **selector}))
 
     assert not result.isError
-    assert json.loads(result.content[0].text)["mission"] == "Default direction"
+    assert json.loads(result.content[0].text)[field] == expected
+
+
+@pytest.mark.parametrize("selector", [{}, {"constitution_key": None}], ids=["omitted", "null"])
+def test_given_null_or_omitted_key_when_export_versions_runs_then_only_default_history_returns(
+    mcp_runner, selector
+):
+    runner, plane = mcp_runner
+    plane.apply_direction(mission="Initial default mission", change_note="initial")
+    plane.apply_direction(mission="Updated default mission", change_note="update")
+    plane.apply_direction(
+        constitution_key="support", mission="Support mission", change_note="initial"
+    )
+
+    result = runner.call(lambda session: session.call_tool("export_versions", selector))
+
+    assert not result.isError
+    versions = json.loads(result.content[0].text)
+    assert len(versions) == 2
+    assert versions[0]["version"] == 1
+    assert versions[0]["mission"] == "Initial default mission"
+    assert versions[1]["version"] == 2
+    assert versions[1]["mission"] == "Updated default mission"
+
+
+@pytest.mark.parametrize("existing_default", [False, True], ids=["create", "update"])
+@pytest.mark.parametrize("selector", [{}, {"constitution_key": None}], ids=["omitted", "null"])
+def test_given_null_or_omitted_key_when_apply_direction_runs_then_only_default_history_changes(
+    mcp_runner, existing_default, selector
+):
+    runner, plane = mcp_runner
+    if existing_default:
+        plane.apply_direction(mission="Previous default mission", change_note="initial")
+    plane.apply_direction(
+        constitution_key="support", mission="Support mission", change_note="initial"
+    )
+    expected_version = 2 if existing_default else 1
+
+    result = runner.call(
+        lambda session: session.call_tool(
+            "apply_direction",
+            {**selector, "mission": "Updated default mission", "change_note": "update"},
+        )
+    )
+
+    assert not result.isError
+    assert plane.current().mission == "Updated default mission"
+    assert plane.current().version == expected_version
+    assert plane.current("support").mission == "Support mission"
+    assert plane.current("support").version == 1
 
 
 def test_given_padded_key_when_apply_direction_runs_then_get_constitution_reads_trimmed_key(
@@ -307,7 +388,6 @@ def test_given_distinct_histories_when_export_versions_receives_key_then_selecte
 @pytest.mark.parametrize(
     "invalid_key",
     [
-        pytest.param(None, id="null"),
         pytest.param(0, id="integer"),
         pytest.param(1.5, id="float"),
         pytest.param(False, id="boolean"),

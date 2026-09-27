@@ -133,11 +133,13 @@ async def test_given_101_deliveries_when_listing_then_page_size_and_cursor_match
 
 
 @pytest.mark.asyncio
-async def test_given_no_filters_when_listing_over_mcp_then_all_constitutions_are_included(
+@pytest.mark.parametrize("selector", [{}, {"constitution_key": None}], ids=["omitted", "null"])
+async def test_given_null_or_omitted_key_when_list_delivery_records_then_all_keys_are_included(
     configured,
+    selector,
 ):
     _store, control_plane, identifiers = configured
-    result = await invoke(control_plane, {})
+    result = await invoke(control_plane, selector)
     assert not result.isError
     assert [
         item["record_id"] for item in json.loads(result.content[0].text)["items"]

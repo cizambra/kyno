@@ -38,7 +38,7 @@ def test_given_a_future_last_seen_version_when_a_local_source_pulls_then_the_err
     control_plane.apply_direction(mission="M", change_note="init")
     with pytest.raises(UnknownVersionError):
         LocalDirectionSource(control_plane).changes_since(
-            last_seen_version=99, constitution="default"
+            last_seen_version=99, constitution_key="default"
         )
 
 

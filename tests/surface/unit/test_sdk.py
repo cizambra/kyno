@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
+from unittest.mock import Mock
 
 import pytest
 
 import kyno
 from kyno.config import ProfileError, add_credentials, add_remote
-from kyno.sdk import connect
+from kyno.sdk import KynoConnection, connect
 
 
 @pytest.fixture
@@ -158,3 +159,21 @@ def test_given_a_profile_and_explicit_url_when_connecting_then_the_sources_are_r
 
 def test_given_the_sdk_when_looking_for_the_entry_point_then_it_is_kyno_connect():
     assert kyno.connect is connect
+
+
+@pytest.mark.parametrize("operation", ["binder", "get_constitution"])
+def test_given_constitution_keyword_when_connection_operation_runs_then_type_error_prevents_io(
+    operation,
+):
+    runner = Mock()
+    with pytest.raises(TypeError, match="constitution"):
+        getattr(KynoConnection(runner), operation)(constitution="support")
+    assert runner.mock_calls == []
+
+
+@pytest.mark.parametrize("operation", ["binder", "get_constitution"])
+def test_given_explicit_null_key_when_connection_operation_runs_then_no_request_is_sent(operation):
+    runner = Mock()
+    with pytest.raises(ValueError, match="constitution key must be a string"):
+        getattr(KynoConnection(runner), operation)(constitution_key=None)
+    assert runner.mock_calls == []

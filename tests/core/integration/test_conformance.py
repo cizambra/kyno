@@ -110,3 +110,14 @@ def test_given_an_empty_file_when_checked_then_it_says_how_to_write_the_log():
     report = check_log("")
     assert not report.ok
     assert SEPARATOR in report.problems[0]
+
+
+def test_given_constitution_marker_when_check_log_runs_then_marker_is_rejected():
+    block = "[kyno:direction constitution=support version=0]\nNo direction has been set yet."
+
+    report = check_log(log_of(block))
+
+    assert not report.ok
+    assert len(report.problems) == 1
+    assert "block 1" in report.problems[0]
+    assert "constitution_key=" in report.problems[0]

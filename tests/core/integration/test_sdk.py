@@ -80,10 +80,26 @@ def test_given_closed_connection_when_fail_closed_bind_with_status_runs_then_una
     control_plane.apply_direction(
         mission="Support customers", change_note="initial", constitution_key="support"
     )
-    binder = connection.binder("support", policy=PullPolicy(fail_closed=True))
+    binder = connection.binder(constitution_key="support", policy=PullPolicy(fail_closed=True))
     if cached:
-        assert binder.bind().constitution == "support"
+        assert binder.bind().constitution_key == "support"
     connection.close()
 
     with pytest.raises(KynoUnavailableError, match="cannot reach kyno for 'support'"):
         binder.bind_with_status()
+
+
+def test_given_omitted_key_when_connection_binder_binds_then_default_direction_returns(
+    mcp_connection,
+):
+    connection, control_plane = mcp_connection
+    control_plane.apply_direction(mission="Default mission", change_note="initial")
+    control_plane.apply_direction(
+        constitution_key="support", mission="Support mission", change_note="initial"
+    )
+
+    direction = connection.binder().bind()
+
+    assert direction.constitution_key == "default"
+    assert direction.version == 1
+    assert direction.mission == "Default mission"

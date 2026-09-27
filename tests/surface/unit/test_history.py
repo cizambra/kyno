@@ -149,9 +149,11 @@ def test_given_version_selection_when_get_constitution_is_called_then_exact_tool
     session = SimpleNamespace(call_tool=AsyncMock(return_value=reply(payload)))
     runner = Mock()
     runner.call.side_effect = lambda callback: asyncio.run(callback(session))
-    result = KynoConnection(runner).get_constitution(key, version=version, detail=detail)
+    result = KynoConnection(runner).get_constitution(
+        constitution_key=key, version=version, detail=detail
+    )
     assert result.version == returned_version
-    assert result.constitution == key.strip()
+    assert result.constitution_key == key.strip()
     assert result.detail is detail
     expected = {"constitution_key": key.strip(), "detail": detail.value}
     if version is not None:

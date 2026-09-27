@@ -22,7 +22,7 @@ def test_given_no_model_consent_when_starting_then_no_connection_is_opened(examp
 @pytest.mark.parametrize("record", [False, True])
 @pytest.mark.parametrize("failure", [False, True])
 @pytest.mark.parametrize("token_env", ["KYNO_READ_TOKEN", "SUPPORT_READ_TOKEN"])
-def test_given_explicit_consent_when_running_then_recording_is_opt_in_and_connections_close(
+def test_given_consent_when_example_main_then_recording_is_opt_in_and_connections_close(
     example, monkeypatch, tmp_path, record, failure, token_env, capsys
 ):
     events = [
@@ -30,7 +30,7 @@ def test_given_explicit_consent_when_running_then_recording_is_opt_in_and_connec
             "event": "direction_supplied",
             "run_id": "run",
             "step_id": "first_answer",
-            "constitution": "support",
+            "constitution_key": "support",
             "version": 1,
             "status": "pulled",
         },
@@ -60,7 +60,8 @@ def test_given_explicit_consent_when_running_then_recording_is_opt_in_and_connec
         return "model"
 
     def run(model, binder, **kwargs):
-        assert (model, binder) == ("model", "binder")
+        assert model == "model"
+        assert binder == "binder"
         for event in events:
             kwargs["emit"](event)
             if failure:

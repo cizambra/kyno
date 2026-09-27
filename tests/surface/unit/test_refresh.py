@@ -1,7 +1,7 @@
 from kyno.sdk import is_direction_block, refresh
 
-BLOCK_V1 = "[kyno:direction constitution=default version=1]\nMission: M1"
-BLOCK_V2 = "[kyno:direction constitution=default version=2]\nMission: M2"
+BLOCK_V1 = "[kyno:direction constitution_key=default version=1]\nMission: M1"
+BLOCK_V2 = "[kyno:direction constitution_key=default version=2]\nMission: M2"
 
 
 def test_given_texts_when_looking_for_blocks_then_only_marker_first_text_counts():

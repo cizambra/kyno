@@ -18,8 +18,8 @@ def test_given_named_binder_when_plan_tracker_changed_runs_then_only_selected_ke
     )
     changed = tracker.changed()
 
-    assert planned.constitution == "support"
-    assert changed.constitution == "support"
+    assert planned.constitution_key == "support"
+    assert changed.constitution_key == "support"
     assert changed.version == 2
     assert changed.mission == "New support"
 

@@ -43,8 +43,8 @@ class CrewAiKyno:
                 self.on_direction(binding)
             except Exception:
                 _log.exception(
-                    "direction observer failed constitution=%s version=%s",
-                    binding.direction.constitution,
+                    "direction observer failed constitution_key=%s version=%s",
+                    binding.direction.constitution_key,
                     binding.direction.version,
                 )
 

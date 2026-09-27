@@ -178,9 +178,9 @@ def test_given_stored_key_when_apply_direction_uses_padded_key_then_same_history
     assert plane.current().version == 0
 
 
-def test_given_padded_key_when_creating_binder_and_empty_direction_then_both_store_trimmed_key():
-    assert DirectionBinder(Mock(), " support ").constitution == "support"
-    assert Direction.empty(" support ").constitution == "support"
+def test_given_padded_key_when_binder_init_and_direction_empty_then_trimmed_key_is_stored():
+    assert DirectionBinder(Mock(), " support ").constitution_key == "support"
+    assert Direction.empty(" support ").constitution_key == "support"
 
 
 def test_given_padded_yaml_key_when_reading_and_rendering_authoring_then_output_uses_trimmed_key(

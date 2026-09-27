@@ -62,11 +62,13 @@ def test_given_key_and_changes_when_direction_from_changes_then_identity_and_con
         changed_principles=False,
         change_notes=("pivot",),
     )
-    d = Direction.from_changes(changes, constitution_key="eu")
-    assert d.constitution_key == "eu"
-    assert d.version == 3
-    assert d.principles == (Principle("Be honest"),)
-    assert d.change_notes == ("pivot",)
+    direction = Direction.from_changes(changes, constitution_key="eu")
+
+    assert direction.constitution_key == "eu"
+    assert direction.version == 3
+    assert direction.mission == "Ship trustworthy lending"
+    assert direction.principles == (Principle("Be honest"),)
+    assert direction.change_notes == ("pivot",)
 
 
 def test_given_the_empty_direction_when_direction_empty_then_it_matches_version_zero():
@@ -269,3 +271,39 @@ def test_given_serialized_delta_when_caller_appends_to_list_then_direction_delta
 
     assert payload["delta"] == ["Mission changed.", "Caller annotation"]
     assert direction.delta == ("Mission changed.",)
+
+
+@pytest.mark.parametrize("key", [None, 1, True, [], {}, "", " ", "Upper", "bad/name", "a" * 201])
+@pytest.mark.parametrize("operation", ["empty", "from_changes"])
+def test_given_invalid_key_when_direction_factory_runs_then_value_error_is_raised(operation, key):
+    arguments = {"constitution_key": key}
+    if operation == "from_changes":
+        arguments["changes"] = ChangesSince(
+            current_version=1,
+            changed=True,
+            mission="Help customers",
+            principles=(),
+            changed_mission=True,
+            changed_principles=False,
+            change_notes=(),
+        )
+
+    with pytest.raises(ValueError, match="constitution key"):
+        getattr(Direction, operation)(**arguments)
+
+
+@pytest.mark.parametrize("key", ["support", "a" * 200], ids=["named-key", "maximum-length-key"])
+def test_given_padded_key_when_direction_from_changes_runs_then_trimmed_key_is_retained(key):
+    changes = ChangesSince(
+        current_version=1,
+        changed=True,
+        mission="Help customers",
+        principles=(),
+        changed_mission=True,
+        changed_principles=False,
+        change_notes=(),
+    )
+
+    direction = Direction.from_changes(changes, constitution_key=f" \t{key}\n")
+
+    assert direction.constitution_key == key

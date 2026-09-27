@@ -19,18 +19,20 @@ def test_given_two_keys_when_local_changes_since_receives_each_key_then_selected
     assert us_changes.mission == "US mission"
 
 
-def test_given_an_unwritten_name_when_a_local_source_reads_then_it_is_version_zero(control_plane):
+def test_given_unwritten_key_when_local_changes_since_runs_then_version_is_zero(control_plane):
     response = LocalDirectionSource(control_plane).changes_since(0, "never-written")
     assert response.recording is None
     changes = response.changes
     assert changes.current_version == 0 and changes.changed is False
 
 
-def test_given_the_local_source_when_checking_the_protocol_then_it_satisfies_it(control_plane):
+def test_given_local_source_when_isinstance_checks_direction_source_then_it_returns_true(
+    control_plane,
+):
     assert isinstance(LocalDirectionSource(control_plane), DirectionSource)
 
 
-def test_given_a_future_last_seen_version_when_a_local_source_pulls_then_the_error_propagates(
+def test_given_future_last_seen_version_when_local_changes_since_runs_then_unknown_version_raises(
     control_plane,
 ):
     from kyno.errors import UnknownVersionError
@@ -59,7 +61,7 @@ def test_given_other_key_updated_when_local_changes_since_reads_selected_key_the
     assert after_us.mission == "US v1"
 
 
-def test_given_a_last_seen_version_when_a_local_source_reports_then_every_note_since_comes(
+def test_given_updates_when_local_changes_since_runs_then_notes_after_last_seen_version_return(
     control_plane,
 ):
     control_plane.apply_direction(mission="M", change_note="init")

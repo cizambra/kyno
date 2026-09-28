@@ -24,6 +24,19 @@ write it in that place.
   rejected alternative, or something a library does that the code doesn't
   show. Don't add opinions like "best" or "cleaner".
 
+## Documentation examples
+
+- When explaining how to use an API or change a configuration, follow
+  the guidance with a short example that shows how to apply it.
+- Keep examples focused on the instruction, with names that match the
+  surrounding text. Show the relevant inputs and expected result; leave
+  out unrelated setup.
+- Make clear whether an example is runnable code or illustrative data.
+  Check runnable examples against the API they describe, and state any
+  setup they need.
+- For migrations, show the state before and after the change. Explain
+  what must be preserved and which steps depend on the reader's setup.
+
 ## Code style
 
 - Standard PEP 8, as `ruff`/`black` format it. No custom style rules.

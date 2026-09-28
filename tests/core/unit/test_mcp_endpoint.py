@@ -76,25 +76,40 @@ def test_given_optional_arguments_when_tool_calls_parses_then_apply_direction_re
         {"method": "tools/call", "params": {"name": "apply_direction", **arguments}}
     ).encode()
 
-    assert _tool_calls(body) == [("apply_direction", "default")]
+    assert _tool_calls(body) == [("apply_direction", None)]
 
 
-def test_given_varied_request_bodies_when_tool_calls_then_only_tool_calls_return():
-    assert _tool_calls(b"not json") == []
-    assert _tool_calls(b'{"method": "initialize"}') == []
-    assert _tool_calls(
-        b'{"method": "tools/call", "params": {"name": "apply_direction", "arguments": {}}}'
-    ) == [("apply_direction", "default")]
-    # A batch (JSON array) is read by this check, one pair per item, in
-    # order -- but the MCP SDK rejects arrays, so a batch never executes.
-    # The HTTP behavior is covered by the batched-body integration test.
-    assert _tool_calls(
-        b'[{"method": "tools/call", "params": {"name": "get_constitution", '
-        b'"arguments": {"constitution_key": "main"}}},'
-        b'{"method": "notifications/initialized"},'
-        b'{"method": "tools/call", "params": {"name": "apply_direction", '
-        b'"arguments": {"mission": "M1"}}}]'
-    ) == [("get_constitution", "main"), ("apply_direction", "default")]
+@pytest.mark.parametrize(
+    "body, expected",
+    [
+        pytest.param(b"not json", [], id="invalid-json"),
+        pytest.param(b'{"method": "initialize"}', [], id="initialize"),
+        pytest.param(
+            b'{"method": "resources/read", "params": {"uri": "kyno://constitution/current"}}',
+            [],
+            id="resource-read",
+        ),
+        pytest.param(
+            b'{"method": "tools/call", "params": {"name": "apply_direction", "arguments": {}}}',
+            [("apply_direction", None)],
+            id="tool-without-selector",
+        ),
+        pytest.param(
+            b'[{"method": "tools/call", "params": {"name": "get_constitution", '
+            b'"arguments": {"constitution_key": "main"}}},'
+            b'{"method": "notifications/initialized"},'
+            b'{"method": "tools/call", "params": {"name": "apply_direction", '
+            b'"arguments": {"mission": "M1"}}}]',
+            [("get_constitution", "main"), ("apply_direction", None)],
+            id="mixed-batch",
+        ),
+    ],
+)
+def test_given_request_body_when_tool_calls_runs_then_tool_selectors_return_in_request_order(
+    body,
+    expected,
+):
+    assert _tool_calls(body) == expected
 
 
 @pytest.mark.asyncio

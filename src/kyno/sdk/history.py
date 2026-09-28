@@ -57,17 +57,17 @@ def list_delivery_records(
     runner: SessionRunner,
     *,
     correlation_id: str | None = None,
-    constitution: str | None = None,
+    constitution_key: str | None = None,
     since: str | None = None,
     until: str | None = None,
     after: int | None = None,
     limit: int = 50,
 ) -> DeliveryPage:
-    if constitution is not None:
-        constitution = check_constitution_key(constitution)
+    if constitution_key is not None:
+        constitution_key = check_constitution_key(constitution_key)
     filters = {
         "correlation_id": correlation_id,
-        "constitution_key": constitution,
+        "constitution_key": constitution_key,
         "since": since,
         "until": until,
         "after": after,

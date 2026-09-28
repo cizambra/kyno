@@ -25,23 +25,27 @@ def history_connection(mcp_connection):
     return connection, history, identifiers
 
 
-def test_given_saved_record_when_reading_with_sdk_then_version_reference_and_delta_return(
+def test_given_saved_record_when_connection_get_delivery_record_runs_then_saved_fields_return(
     history_connection,
 ):
     connection, history, identifiers = history_connection
+
     record = connection.get_delivery_record(identifiers[0])
+
     assert record == history.get(identifiers[0])
+    assert record["constitution_key"] == "default"
+    assert record["served_version"] == 0
     assert record["delta"] == ["Saved comparison"]
     assert record["metadata"] == {"step": 1}
 
 
-def test_given_filtered_history_when_advancing_cursor_then_matching_summaries_return(
+def test_given_next_cursor_when_list_delivery_records_then_matching_summaries_return(
     history_connection,
 ):
     connection, history, identifiers = history_connection
     filters = dict(
         correlation_id="run-1",
-        constitution="default",
+        constitution_key="default",
         since="2000-01-01T00:00:00Z",
         until="9998-01-01T00:00:00Z",
         limit=1,
@@ -59,13 +63,13 @@ def test_given_filtered_history_when_advancing_cursor_then_matching_summaries_re
     "filters",
     [
         {"correlation_id": "absent"},
-        {"constitution": "absent"},
+        {"constitution_key": "absent"},
         {"since": "9998-01-01T00:00:00Z"},
         {"until": "2000-01-01T00:00:00Z"},
     ],
-    ids=["correlation", "constitution", "since", "until"],
+    ids=["correlation", "constitution_key", "since", "until"],
 )
-def test_given_nonmatching_filter_when_listing_with_sdk_then_empty_page_returns(
+def test_given_nonmatching_filter_when_connection_list_delivery_records_then_empty_page_returns(
     history_connection, filters
 ):
     connection, _, _ = history_connection
@@ -137,3 +141,34 @@ def test_given_a_version_one_record_when_direction_advances_then_sdk_returns_the
     assert record["constitution_id"] is not None
     assert record["served_version"] == 1
     assert record["delta"] is None
+
+
+@pytest.mark.parametrize(
+    "selector, expected_keys",
+    [
+        pytest.param({}, ["default", "support"], id="omitted"),
+        pytest.param({"constitution_key": None}, ["default", "support"], id="null"),
+        pytest.param({"constitution_key": " support "}, ["support"], id="padded-named-key"),
+    ],
+)
+def test_given_two_keys_when_connection_list_delivery_records_runs_then_selected_keys_return(
+    mcp_connection,
+    selector,
+    expected_keys,
+):
+    connection, plane = mcp_connection
+    history = SqlDeliveryRecordStore(plane._store.engine)
+    plane.delivery_record_store = history
+    for key in ["default", "support"]:
+        history.append(
+            {"version": 0},
+            operation="get_constitution",
+            constitution=key,
+            arguments={},
+            context={"correlation_id": None, "metadata": {}},
+        )
+
+    page = connection.list_delivery_records(**selector)
+
+    assert [record["constitution_key"] for record in page["items"]] == expected_keys
+    assert page["next_cursor"] is None

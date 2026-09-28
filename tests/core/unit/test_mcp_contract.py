@@ -495,7 +495,7 @@ def test_given_an_empty_store_when_handle_get_principles_runs_then_version_zero_
     }
 
 
-def test_given_a_detail_it_does_not_offer_when_handle_get_principles_runs_then_it_refuses(cp):
+def test_given_compact_detail_when_handle_get_principles_runs_then_value_error_is_raised(cp):
     with pytest.raises(ValueError, match="compact"):
         mcp_handlers.handle_get_principles(cp, detail="compact")
 

@@ -349,7 +349,7 @@ class ControlPlane:
                 for v in newest_first
             )[:PUBLIC_HISTORY_LIMIT]
         return PublicConstitution(
-            name=name,
+            constitution_key=name,
             mission=head.mission,
             declaration=head.declaration,
             principles=head.principles,

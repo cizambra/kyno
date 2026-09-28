@@ -1,14 +1,16 @@
 import re
 from datetime import UTC, datetime
 
+import pytest
+
 from kyno.models import PublicConstitution
-from kyno.public_page import render_constitution, render_index
+from kyno.public_page import PageConfig, render_constitution, render_index
 from kyno.wire.models import Principle
 
 
-def view(name, mission="", principles=()):
+def view(constitution_key, mission="", principles=()):
     return PublicConstitution(
-        name=name,
+        constitution_key=constitution_key,
         mission=mission,
         principles=principles,
         version=1,
@@ -32,3 +34,16 @@ def test_given_principles_without_mission_when_render_constitution_runs_then_key
 def test_given_html_in_title_fallback_when_render_constitution_runs_then_markup_is_escaped():
     body = render_constitution(view("a<b>"))
     assert re.search(r"<title>(.*?)</title>", body).group(1) == "a&lt;b&gt;"
+
+
+@pytest.mark.parametrize("placeholder", ["$constitution_key", "${constitution_key}"])
+def test_given_key_placeholder_when_render_constitution_runs_then_escaped_key_is_inserted(
+    tmp_path,
+    placeholder,
+):
+    template = tmp_path / "constitution.html"
+    template.write_text(f"<h1>{placeholder}</h1>")
+
+    body = render_constitution(view("a<b>"), PageConfig(constitution_template=str(template)))
+
+    assert body == "<h1>a&lt;b&gt;</h1>"

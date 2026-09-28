@@ -60,7 +60,7 @@ def test_given_private_keys_when_publish_receives_named_key_then_default_remains
     assert publication.published is True
     assert plane.publication(constitution_key="eu-west").published is True
     public = plane.public_constitution(constitution_key="eu-west")
-    assert public.name == "eu-west"
+    assert public.constitution_key == "eu-west"
     assert public.mission == "EU second"
     assert public.history is not None
     assert not plane.publication().published

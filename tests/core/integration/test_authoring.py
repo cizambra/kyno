@@ -106,13 +106,14 @@ def test_given_a_block_of_prose_when_reading_then_its_paragraphs_are_kept(tmp_pa
     assert declaration.endswith("we cannot keep.")
 
 
-def test_given_an_omitted_field_when_read_constitution_file_then_it_reads_as_carry_it_forward(
-    tmp_path,
-):
-    read = read_constitution_file(write(tmp_path, "mission: M\n"))
-    assert read.declaration is None
-    assert read.principles is None
-    assert read.constitution_key is None
+def test_given_mission_only_file_when_read_constitution_file_then_omitted_fields_are_none(tmp_path):
+    path = write(tmp_path, "mission: Help customers\n")
+
+    direction = read_constitution_file(path)
+
+    assert direction.declaration is None
+    assert direction.principles is None
+    assert direction.constitution_key is None
 
 
 def test_given_unknown_keys_when_reading_a_file_then_they_are_the_operators_own(tmp_path):

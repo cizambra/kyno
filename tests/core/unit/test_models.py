@@ -17,8 +17,9 @@ def test_given_an_unknown_token_scope_when_parsing_then_it_is_refused():
         TokenScope("admin")
 
 
-def test_given_an_authorization_string_when_constructing_a_version_then_it_becomes_the_enum():
+def test_given_an_authorization_string_when_constitution_version_init_then_it_becomes_the_enum():
     version = ConstitutionVersion(
+        constitution_key="default",
         version=1,
         mission="M",
         principles=(),
@@ -33,9 +34,10 @@ def test_given_an_authorization_string_when_constructing_a_version_then_it_becom
     assert version.authorized_by is AuthorizationType.OPERATOR
 
 
-def test_given_an_unknown_authorization_when_constructing_a_version_then_it_is_refused():
+def test_given_an_unknown_authorization_when_constitution_version_init_then_it_is_refused():
     with pytest.raises(ValueError, match="sudo"):
         ConstitutionVersion(
+            constitution_key="default",
             version=1,
             mission="M",
             principles=(),
@@ -48,8 +50,9 @@ def test_given_an_unknown_authorization_when_constructing_a_version_then_it_is_r
         )
 
 
-def test_given_a_version_when_assigning_a_field_then_it_is_frozen_and_still_serializes():
+def test_given_version_metadata_when_version_to_dict_runs_then_metadata_and_principles_return():
     v = ConstitutionVersion(
+        constitution_key="default",
         version=1,
         mission="Serve customers",
         principles=(Principle("Be honest"),),
@@ -62,11 +65,13 @@ def test_given_a_version_when_assigning_a_field_then_it_is_frozen_and_still_seri
     assert v.principles == (Principle("Be honest"),)
     d = v.to_dict()
     assert d["principles"] == [{"title": "Be honest", "description": ""}]
-    assert d["version"] == 1 and d["created_by"] == "op"
+    assert d["version"] == 1
+    assert d["created_by"] == "op"
 
 
-def test_given_changes_since_when_serializing_then_the_notes_are_a_list():
+def test_given_changes_when_changes_to_dict_runs_then_notes_and_principles_are_lists():
     c = ChangesSince(
+        constitution_key="default",
         current_version=3,
         changed=True,
         mission="M",
@@ -144,8 +149,9 @@ def test_given_none_when_normalizing_then_it_stays_none_so_carry_forward_is_unto
 # --- the declaration -------------------------------------------------------
 
 
-def test_given_a_version_without_a_declaration_when_reading_then_it_carries_an_empty_one():
+def test_given_no_declaration_when_constitution_version_init_then_declaration_is_empty():
     v = ConstitutionVersion(
+        constitution_key="default",
         version=1,
         mission="M",
         principles=(),
@@ -159,8 +165,9 @@ def test_given_a_version_without_a_declaration_when_reading_then_it_carries_an_e
     assert v.to_dict()["declaration"] == ""
 
 
-def test_given_a_declaration_when_serializing_then_it_sits_beside_the_mission_it_expands():
+def test_given_declaration_when_version_to_dict_runs_then_declaration_and_mission_return():
     v = ConstitutionVersion(
+        constitution_key="default",
         version=1,
         mission="M",
         principles=(),

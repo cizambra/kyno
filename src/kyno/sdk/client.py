@@ -325,7 +325,11 @@ def _sequence(value, field: str) -> tuple:
 
 
 def _changes(payload: dict) -> ChangesSince:
+    constitution_key = payload["constitution_key"]
+    if constitution_key is None:
+        raise ValueError("direction response must identify its constitution key")
     return ChangesSince(
+        constitution_key=check_constitution_key(constitution_key),
         current_version=_version(payload["current_version"]),
         changed=bool(payload["changed"]),
         mission=_text(payload["mission"]),

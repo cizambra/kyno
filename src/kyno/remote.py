@@ -87,6 +87,7 @@ def version_from_payload(payload: dict) -> ConstitutionVersion | None:
         created_at = datetime.now(UTC)
     principles = normalize_principles(tuple(payload.get("principles") or ()))
     return ConstitutionVersion(
+        constitution_key=payload["constitution_key"],
         version=int(payload["version"]),
         mission=payload.get("mission") or "",
         declaration=payload.get("declaration") or "",

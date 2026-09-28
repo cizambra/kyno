@@ -111,6 +111,7 @@ class RegressingSource:
         self.calls += 1
         version = 2 if self.calls == 1 else 1
         changes = ChangesSince(
+            constitution_key="default",
             current_version=version,
             changed=True,
             mission=f"M{version}",

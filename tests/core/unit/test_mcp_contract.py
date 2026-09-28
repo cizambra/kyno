@@ -308,7 +308,7 @@ def test_given_any_detail_schema_when_reading_its_values_then_they_are_plain_str
     assert all(type(value) is str for schema in schemas for value in schema["enum"])
 
 
-def test_given_a_declaration_when_calling_get_declaration_then_it_comes_with_its_version(cp):
+def test_given_a_declaration_when_handle_get_declaration_runs_then_it_comes_with_its_version(cp):
     mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
 
     d = mcp_handlers.handle_get_declaration(cp)
@@ -317,19 +317,29 @@ def test_given_a_declaration_when_calling_get_declaration_then_it_comes_with_its
     assert d["version"] == 1
 
 
-def test_given_no_declaration_when_calling_get_declaration_then_it_is_not_an_error(cp):
+def test_given_no_declaration_when_handle_get_declaration_then_empty_text_and_identity_return(
+    cp,
+):
     # Reads never fail: "there is no declaration" is an answer, not a fault.
     mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=None, change_note="init", created_by=None
     )
-    assert mcp_handlers.handle_get_declaration(cp) == {"version": 1, "declaration": ""}
+    assert mcp_handlers.handle_get_declaration(cp) == {
+        "constitution_key": "default",
+        "version": 1,
+        "declaration": "",
+    }
 
 
-def test_given_an_empty_store_when_calling_get_declaration_then_version_zero_answers(cp):
-    assert mcp_handlers.handle_get_declaration(cp) == {"version": 0, "declaration": ""}
+def test_given_an_empty_store_when_handle_get_declaration_runs_then_version_zero_answers(cp):
+    assert mcp_handlers.handle_get_declaration(cp) == {
+        "constitution_key": "default",
+        "version": 0,
+        "declaration": "",
+    }
 
 
-def test_given_a_name_when_calling_get_declaration_then_it_reads_that_constitution(cp):
+def test_given_a_name_when_handle_get_declaration_runs_then_it_reads_that_constitution(cp):
     mcp_handlers.handle_apply_direction(
         cp,
         mission="EU",
@@ -343,23 +353,31 @@ def test_given_a_name_when_calling_get_declaration_then_it_reads_that_constituti
     assert mcp_handlers.handle_get_declaration(cp)["declaration"] == ""
 
 
-def test_given_a_title_when_calling_get_principle_then_one_comes_in_full_with_its_version(cp):
+def test_given_exact_title_when_handle_get_principle_runs_then_full_principle_and_identity_return(
+    cp,
+):
     mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
 
     d = mcp_handlers.handle_get_principle(cp, "Be honest")
 
     assert d == {
+        "constitution_key": "default",
         "title": "Be honest",
         "description": "Say the hard number first.",
         "version": 1,
     }
 
 
-def test_given_a_title_when_calling_get_principle_then_the_match_is_exact(cp):
+@pytest.mark.parametrize(
+    "title",
+    ["be honest", "Be honest ", "honest"],
+    ids=["different-case", "trailing-space", "partial-title"],
+)
+def test_given_nonexact_title_when_handle_get_principle_runs_then_lookup_is_rejected(cp, title):
     mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
-    for near_miss in ("be honest", "Be honest ", "honest"):
-        with pytest.raises(ValueError, match="honest"):
-            mcp_handlers.handle_get_principle(cp, near_miss)
+
+    with pytest.raises(ValueError, match="honest"):
+        mcp_handlers.handle_get_principle(cp, title)
 
 
 def test_given_a_missing_title_when_calling_get_principle_then_the_error_names_it(cp):
@@ -406,19 +424,24 @@ def test_given_the_targeted_reads_when_inspecting_schemas_then_argument_sources_
     assert tools["get_principle"].inputSchema["required"] == ["title"]
 
 
-def test_given_a_mission_when_calling_get_mission_then_the_headline_comes_with_its_version(cp):
+def test_given_current_mission_when_handle_get_mission_then_mission_version_and_key_return(cp):
     mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
     assert mcp_handlers.handle_get_mission(cp) == {
+        "constitution_key": "default",
         "version": 1,
         "mission": "Ship trustworthy lending",
     }
 
 
-def test_given_an_empty_store_when_calling_get_mission_then_version_zero_answers(cp):
-    assert mcp_handlers.handle_get_mission(cp) == {"version": 0, "mission": ""}
+def test_given_an_empty_store_when_handle_get_mission_runs_then_version_zero_answers(cp):
+    assert mcp_handlers.handle_get_mission(cp) == {
+        "constitution_key": "default",
+        "version": 0,
+        "mission": "",
+    }
 
 
-def test_given_a_name_when_calling_get_mission_then_it_reads_that_constitution(cp):
+def test_given_a_name_when_handle_get_mission_runs_then_it_reads_that_constitution(cp):
     mcp_handlers.handle_apply_direction(
         cp,
         mission="EU",
@@ -431,41 +454,53 @@ def test_given_a_name_when_calling_get_mission_then_it_reads_that_constitution(c
     assert mcp_handlers.handle_get_mission(cp)["mission"] == ""
 
 
-def test_given_no_detail_asked_when_calling_get_principles_then_titles_only_come(cp):
+def test_given_no_detail_asked_when_handle_get_principles_runs_then_titles_only_come(cp):
     mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
     assert mcp_handlers.handle_get_principles(cp) == {
+        "constitution_key": "default",
         "version": 1,
         "principles": [{"title": "Be honest"}],
     }
 
 
-def test_given_explained_detail_when_calling_get_principles_then_every_description_comes(cp):
+def test_given_explained_detail_when_handle_get_principles_runs_then_every_description_comes(cp):
     # The slice an agent adjudicating between principles wants: all of them,
     # explained, without the mission or the declaration around them.
     mcp_handlers.handle_apply_direction(cp, **RICH, change_note="init", created_by=None)
     assert mcp_handlers.handle_get_principles(cp, detail="full") == {
+        "constitution_key": "default",
         "version": 1,
         "principles": [{"title": "Be honest", "description": "Say the hard number first."}],
     }
 
 
-def test_given_no_principles_when_calling_get_principles_then_it_is_not_an_error(cp):
+def test_given_no_principles_when_handle_get_principles_then_empty_list_and_current_identity_return(
+    cp,
+):
     mcp_handlers.handle_apply_direction(
         cp, mission="M1", principles=None, change_note="init", created_by=None
     )
-    assert mcp_handlers.handle_get_principles(cp) == {"version": 1, "principles": []}
+    assert mcp_handlers.handle_get_principles(cp) == {
+        "constitution_key": "default",
+        "version": 1,
+        "principles": [],
+    }
 
 
-def test_given_an_empty_store_when_calling_get_principles_then_version_zero_answers(cp):
-    assert mcp_handlers.handle_get_principles(cp) == {"version": 0, "principles": []}
+def test_given_an_empty_store_when_handle_get_principles_runs_then_version_zero_answers(cp):
+    assert mcp_handlers.handle_get_principles(cp) == {
+        "constitution_key": "default",
+        "version": 0,
+        "principles": [],
+    }
 
 
-def test_given_a_detail_it_does_not_offer_when_calling_get_principles_then_it_refuses(cp):
+def test_given_compact_detail_when_handle_get_principles_runs_then_value_error_is_raised(cp):
     with pytest.raises(ValueError, match="compact"):
         mcp_handlers.handle_get_principles(cp, detail="compact")
 
 
-def test_given_a_name_when_calling_get_principles_then_it_reads_that_constitution(cp):
+def test_given_a_name_when_handle_get_principles_runs_then_it_reads_that_constitution(cp):
     mcp_handlers.handle_apply_direction(
         cp,
         mission="EU",
@@ -516,7 +551,7 @@ def test_given_tools_when_descriptions_are_inspected_then_each_describes_an_acti
         assert description.endswith("."), tool.name
 
 
-def test_given_a_markdown_declaration_when_calling_get_declaration_then_raw_markdown_serves(cp):
+def test_given_a_markdown_declaration_when_handle_get_declaration_runs_then_raw_markdown_serves(cp):
     # Data is markdown. Rendering it is the public HTML page's business, and
     # an agent asking for the declaration wants the source, not a document.
     source = "# What we are for\n\n- one\n- two\n"

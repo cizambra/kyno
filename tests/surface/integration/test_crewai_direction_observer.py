@@ -29,6 +29,7 @@ def test_given_registered_hook_when_before_llm_call_runs_then_observer_sees_inje
         changes_since=Mock(
             return_value=DirectionResponse(
                 ChangesSince(
+                    constitution_key="default",
                     current_version=2,
                     changed=True,
                     mission="Help customers",
@@ -73,6 +74,7 @@ def test_given_registered_hook_when_before_llm_call_runs_then_observer_sees_inje
 
 def test_given_saved_direction_when_before_llm_call_refreshes_then_app_can_assess_prior_version():
     first = ChangesSince(
+        constitution_key="default",
         current_version=1,
         changed=True,
         mission="Help customers",
@@ -139,7 +141,16 @@ def test_given_receipt_when_before_llm_call_runs_then_observer_receives_injected
     source = SimpleNamespace(
         changes_since=Mock(
             return_value=DirectionResponse(
-                changes=ChangesSince(1, True, "Help customers", (), True, False, ("init",)),
+                changes=ChangesSince(
+                    1,
+                    True,
+                    "Help customers",
+                    (),
+                    True,
+                    False,
+                    ("init",),
+                    constitution_key="support",
+                ),
                 recording=receipt,
             )
         )
@@ -170,7 +181,9 @@ def test_given_receipt_when_before_llm_call_runs_then_observer_receives_injected
 
 
 def test_given_same_version_when_before_llm_call_runs_twice_then_observed_receipts_are_distinct():
-    changes = ChangesSince(1, True, "Help customers", (), True, False, ("init",))
+    changes = ChangesSince(
+        1, True, "Help customers", (), True, False, ("init",), constitution_key="support"
+    )
     source = SimpleNamespace(
         changes_since=Mock(
             side_effect=[

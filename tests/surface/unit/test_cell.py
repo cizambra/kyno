@@ -32,28 +32,9 @@ def test_given_padded_200_character_key_when_direction_init_then_full_key_is_pre
     assert _direction(1, f" {key} ").constitution_key == key
 
 
-def test_given_unsupported_constitution_keyword_when_direction_empty_then_type_error_is_raised():
-    with pytest.raises(TypeError, match="constitution"):
-        Direction.empty(constitution="support")
-
-
-def test_given_unsupported_constitution_keyword_when_direction_from_changes_then_type_error():
-    changes = ChangesSince(
-        current_version=1,
-        changed=True,
-        mission="Help customers",
-        principles=(),
-        changed_mission=True,
-        changed_principles=False,
-        change_notes=(),
-    )
-
-    with pytest.raises(TypeError, match="constitution"):
-        Direction.from_changes(changes, constitution="support")
-
-
 def test_given_key_and_changes_when_direction_from_changes_then_identity_and_content_match():
     changes = ChangesSince(
+        constitution_key="default",
         current_version=3,
         changed=True,
         mission="Ship trustworthy lending",
@@ -181,8 +162,9 @@ def test_given_a_direction_when_direction_to_dict_then_principles_come_in_full()
     assert d.to_dict()["principles"] == [{"title": "t", "description": "d"}]
 
 
-def test_given_a_direction_when_reading_then_the_declaration_is_there_for_the_full_text():
+def test_given_declaration_in_changes_when_direction_from_changes_then_declaration_is_preserved():
     changes = ChangesSince(
+        constitution_key="default",
         current_version=3,
         changed=True,
         mission="M",
@@ -252,11 +234,6 @@ def test_given_cached_version_zero_when_get_with_recording_runs_then_empty_direc
     assert cell.last_seen_version() == 0
 
 
-def test_given_unsupported_constitution_keyword_when_direction_init_then_type_error():
-    with pytest.raises(TypeError, match="unexpected keyword argument 'constitution'"):
-        Direction(constitution="support", version=1, mission="Help customers", principles=())
-
-
 def test_given_serialized_delta_when_caller_appends_to_list_then_direction_delta_is_unchanged():
     direction = Direction(
         constitution_key="support",
@@ -279,6 +256,7 @@ def test_given_invalid_key_when_direction_factory_runs_then_value_error_is_raise
     arguments = {"constitution_key": key}
     if operation == "from_changes":
         arguments["changes"] = ChangesSince(
+            constitution_key="support",
             current_version=1,
             changed=True,
             mission="Help customers",
@@ -295,6 +273,7 @@ def test_given_invalid_key_when_direction_factory_runs_then_value_error_is_raise
 @pytest.mark.parametrize("key", ["support", "a" * 200], ids=["named-key", "maximum-length-key"])
 def test_given_padded_key_when_direction_from_changes_runs_then_trimmed_key_is_retained(key):
     changes = ChangesSince(
+        constitution_key=key,
         current_version=1,
         changed=True,
         mission="Help customers",

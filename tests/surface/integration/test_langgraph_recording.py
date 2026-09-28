@@ -40,7 +40,16 @@ def test_given_direction_node_checkpoint_when_graph_resumes_then_receipt_is_kept
     source = SimpleNamespace(
         changes_since=Mock(
             return_value=DirectionResponse(
-                changes=ChangesSince(1, True, "Help customers", (), True, False, ("init",)),
+                changes=ChangesSince(
+                    1,
+                    True,
+                    "Help customers",
+                    (),
+                    True,
+                    False,
+                    ("init",),
+                    constitution_key="support",
+                ),
                 recording=receipt,
             )
         )
@@ -93,7 +102,9 @@ def test_given_direction_node_checkpoint_when_graph_resumes_then_receipt_is_kept
 
 
 def test_given_same_version_when_direction_node_runs_twice_then_saved_receipts_stay_distinct():
-    changes = ChangesSince(1, True, "Help customers", (), True, False, ("init",))
+    changes = ChangesSince(
+        1, True, "Help customers", (), True, False, ("init",), constitution_key="support"
+    )
     source = SimpleNamespace(
         changes_since=Mock(
             side_effect=[

@@ -154,3 +154,31 @@ def test_given_an_existing_recording_when_starting_then_it_is_preserved_without_
         == 1
     )
     assert path.read_text() == "original"
+
+
+@pytest.mark.parametrize(
+    "options, expected_key",
+    [([], "customer-support"), (["--constitution-key", "billing"], "billing")],
+    ids=["omitted-key", "explicit-key"],
+)
+def test_given_key_option_when_example_main_runs_then_binder_receives_selected_key(
+    example, monkeypatch, options, expected_key
+):
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock, Mock
+
+    connection = MagicMock()
+    connection.__enter__.return_value = connection
+    monkeypatch.setenv("KYNO_READ_TOKEN", "read-secret")
+    monkeypatch.setenv("OPENAI_API_KEY", "model-secret")
+    monkeypatch.setitem(sys.modules, "langchain_openai", SimpleNamespace(ChatOpenAI=Mock()))
+    monkeypatch.setattr(example.kyno, "connect", Mock(return_value=connection))
+    monkeypatch.setattr(example, "run_example", Mock())
+
+    result = example.main(
+        ["--url", "http://localhost:9000", "--model", "selected", "--allow-model-calls", *options]
+    )
+
+    assert result == 0
+    assert connection.binder.call_count == 1
+    assert connection.binder.call_args.args == (expected_key,)

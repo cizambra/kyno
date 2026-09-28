@@ -120,7 +120,7 @@ def test_given_remote_history_when_cli_get_version_receives_number_then_only_tha
         [
             "get-version",
             str(version),
-            "--constitution",
+            "--constitution-key",
             "support",
             "--remote",
             "--profile",
@@ -154,7 +154,7 @@ def test_given_remote_key_when_cli_current_and_get_version_latest_run_then_outpu
         remote_cp.apply_direction(
             mission="Second", change_note="second", constitution_key="support"
         )
-    options = ["--remote", "--constitution", "support", *options]
+    options = ["--remote", "--constitution-key", "support", *options]
     current = runner.invoke(app, ["current", *options])
     latest = runner.invoke(app, ["get-version", "latest", *options])
     assert latest.exit_code == current.exit_code
@@ -787,16 +787,30 @@ def test_given_named_file_when_cli_apply_runs_remotely_then_only_selected_histor
     assert remote_cp.current().version == 1
 
 
-@pytest.mark.parametrize("command", ["history", "export"], ids=["history", "export"])
-def test_given_distinct_histories_when_cli_command_receives_key_then_only_selected_history_returns(
-    fake_dial, remote_cp, command
+def test_given_distinct_histories_when_cli_history_receives_key_then_only_selected_history_returns(
+    fake_dial, remote_cp
 ):
     remote_cp.apply_direction(mission="Default mission", change_note="default-only-note")
     remote_cp.apply_direction(
         constitution_key="support", mission="Support mission", change_note="support-only-note"
     )
 
-    result = runner.invoke(app, [command, "--remote", "--constitution", "support"])
+    result = runner.invoke(app, ["history", "--remote", "--constitution-key", "support"])
+
+    assert result.exit_code == 0, result.output
+    assert "support-only-note" in result.stdout
+    assert "default-only-note" not in result.stdout
+
+
+def test_given_distinct_histories_when_cli_export_receives_key_then_only_selected_history_returns(
+    fake_dial, remote_cp
+):
+    remote_cp.apply_direction(mission="Default mission", change_note="default-only-note")
+    remote_cp.apply_direction(
+        constitution_key="support", mission="Support mission", change_note="support-only-note"
+    )
+
+    result = runner.invoke(app, ["export", "--remote", "--constitution-key", "support"])
 
     assert result.exit_code == 0, result.output
     assert "support-only-note" in result.stdout

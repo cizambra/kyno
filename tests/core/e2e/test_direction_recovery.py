@@ -44,22 +44,24 @@ def test_given_exported_version_when_cli_apply_then_new_version_restores_exporte
     )
     second = runner.invoke(app, ["apply", str(authored), "--note", "incorrect change"])
     assert second.exit_code == 0, second.output
-    exported = runner.invoke(app, ["export", "--constitution", constitution])
+    exported = runner.invoke(app, ["export", "--constitution-key", constitution])
     assert exported.exit_code == 0, exported.output
     recovery = tmp_path / "recovery.yaml"
 
-    historical = runner.invoke(app, ["get-version", "1", "--constitution", constitution, "--yaml"])
+    historical = runner.invoke(
+        app, ["get-version", "1", "--constitution-key", constitution, "--yaml"]
+    )
 
     assert historical.exit_code == 0, historical.output
     assert yaml.safe_load(historical.stdout) == good
     recovery.write_text(historical.stdout, encoding="utf-8")
     preview = runner.invoke(app, ["apply", str(recovery), "--dry-run"])
     assert preview.exit_code == 0, preview.output
-    unchanged = runner.invoke(app, ["export", "--constitution", constitution])
+    unchanged = runner.invoke(app, ["export", "--constitution-key", constitution])
     assert json.loads(unchanged.stdout) == json.loads(exported.stdout)
     applied = runner.invoke(app, ["apply", str(recovery), "--note", "restore reviewed v1"])
     assert applied.exit_code == 0, applied.output
-    after = runner.invoke(app, ["export", "--constitution", constitution])
+    after = runner.invoke(app, ["export", "--constitution-key", constitution])
     assert after.exit_code == 0, after.output
     rows = json.loads(after.stdout)
     assert rows[:2] == json.loads(exported.stdout)
@@ -67,10 +69,10 @@ def test_given_exported_version_when_cli_apply_then_new_version_restores_exporte
     assert rows[-1]["change_note"] == "restore reviewed v1"
     for field in ("mission", "declaration", "principles"):
         assert rows[-1][field] == good[field]
-    current = runner.invoke(app, ["current", "--constitution", constitution])
+    current = runner.invoke(app, ["current", "--constitution-key", constitution])
     assert current.exit_code == 0, current.output
     assert json.loads(current.stdout)["version"] == 3
     if constitution != "default":
-        other = runner.invoke(app, ["export", "--constitution", "default"])
+        other = runner.invoke(app, ["export", "--constitution-key", "default"])
         assert other.exit_code == 1
         assert "'default' has no versions" in other.output

@@ -32,9 +32,9 @@ the eventual apply; agents should retain read-only credentials.
 
 ```bash
 umask 077
-kyno current --remote --profile ops --constitution support
-kyno history --remote --profile ops --constitution support
-kyno export --remote --profile ops --constitution support > support-history.json
+kyno current --remote --profile ops --constitution-key support
+kyno history --remote --profile ops --constitution-key support
+kyno export --remote --profile ops --constitution-key support > support-history.json
 ```
 
 Check that export succeeded before continuing. Choose a new filename for
@@ -55,7 +55,7 @@ Read the reviewed version directly from the same constitution and server.
 direction. For version 1:
 
 ```bash
-(set -C; kyno get-version 1 --remote --profile ops --constitution support --yaml > recovery.yaml)
+(set -C; kyno get-version 1 --remote --profile ops --constitution-key support --yaml > recovery.yaml)
 ```
 
 `set -C` makes the shell refuse to overwrite an existing file. Continue
@@ -97,8 +97,8 @@ no-op rather than another version.
 ## 5. Verify direction and resume consumers
 
 ```bash
-kyno current --remote --profile ops --constitution support
-kyno history --remote --profile ops --constitution support
+kyno current --remote --profile ops --constitution-key support
+kyno history --remote --profile ops --constitution-key support
 ```
 
 Verify the full content and the new version number. Confirm the incorrect

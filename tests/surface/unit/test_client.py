@@ -14,6 +14,7 @@ from kyno.wire.models import ChangesSince, DetailLevel
 
 def receipt_source(recording):
     payload = {
+        "constitution_key": "default",
         "current_version": 2,
         "changed": False,
         "mission": "Serve customers",
@@ -53,6 +54,17 @@ def test_given_no_recording_information_when_pulling_then_response_has_no_receip
     result = receipt_source(payload).changes_since(0, "default")
     assert result.recording is None
     assert result.changes.mission == "Serve customers"
+
+
+@pytest.mark.parametrize("key", [None, "", " ", "Upper", 1])
+def test_given_invalid_response_key_when_mcp_source_changes_since_then_reply_is_unavailable(key):
+    with pytest.raises(KynoUnavailableError, match="bad reply"):
+        receipt_source({"constitution_key": key}).changes_since(0, "default")
+
+
+def test_given_resolved_response_key_when_mcp_source_changes_since_then_decoder_preserves_it():
+    response = receipt_source({"constitution_key": " eu-west "}).changes_since(0, "eu-west")
+    assert response.changes.constitution_key == "eu-west"
 
 
 @pytest.mark.parametrize(
@@ -256,6 +268,7 @@ def test_given_key_and_detail_enum_when_mcp_changes_since_runs_then_wire_argumen
         async def call_tool(self, name, arguments):
             seen.update(arguments)
             payload = {
+                "constitution_key": "default",
                 "current_version": 0,
                 "changed": False,
                 "mission": "",
@@ -278,9 +291,10 @@ def test_given_key_and_detail_enum_when_mcp_changes_since_runs_then_wire_argumen
     assert type(seen["detail"]) is str
 
 
-def test_given_padded_key_when_local_source_pulls_then_dependency_receives_trimmed_key():
+def test_given_padded_key_when_local_source_changes_since_then_dependency_receives_trimmed_key():
     plane = Mock()
     plane.changes_since.return_value = ChangesSince(
+        constitution_key="support",
         current_version=0,
         changed=False,
         mission="",
@@ -338,3 +352,20 @@ def test_given_unsupported_constitution_keyword_when_source_changes_since_then_r
     with pytest.raises(TypeError, match="constitution"):
         source_type(dependency).changes_since(0, constitution="support")
     assert dependency.mock_calls == []
+
+
+def test_given_missing_response_key_when_mcp_source_changes_since_then_reply_is_unavailable():
+    payload = {
+        "current_version": 1,
+        "changed": True,
+        "mission": "Help customers",
+        "principles": [],
+        "changed_mission": True,
+        "changed_principles": False,
+        "change_notes": ["Initial direction"],
+    }
+    reply = SimpleNamespace(content=[SimpleNamespace(text=json.dumps(payload))])
+    source = McpDirectionSource(SimpleNamespace(call=lambda operation: reply))
+
+    with pytest.raises(KynoUnavailableError, match="constitution_key"):
+        source.changes_since(0, "support")

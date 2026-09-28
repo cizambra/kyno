@@ -176,7 +176,7 @@ def test_given_a_read_token_when_calling_an_undeclared_tool_then_it_is_403_as_un
     assert "unknown tool: 'not_a_declared_tool' does not exist" in response.text
 
 
-def test_given_a_read_token_when_calling_a_read_tool_then_it_answers():
+def test_given_read_token_when_POST_mcp_get_mission_runs_then_current_mission_returns():
     # The scope check must not get in the way of what a read token is for.
     from starlette.testclient import TestClient
 
@@ -190,6 +190,7 @@ def test_given_a_read_token_when_calling_a_read_tool_then_it_answers():
     assert response.status_code == 200
     payload = json.loads(sse_json(response.text)["result"]["content"][0]["text"])
     assert payload == {
+        "constitution_key": "default",
         "version": 0,
         "mission": "",
         "recording": {"status": "disabled", "record_id": None},

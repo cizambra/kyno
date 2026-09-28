@@ -159,7 +159,12 @@ def test_given_version_selection_when_get_constitution_is_called_then_exact_tool
     version, detail, key
 ):
     returned_version = 3 if version is None else version
-    payload = {"version": returned_version, "mission": "", "principles": []}
+    payload = {
+        "constitution_key": key.strip(),
+        "version": returned_version,
+        "mission": "",
+        "principles": [],
+    }
     session = SimpleNamespace(call_tool=AsyncMock(return_value=reply(payload)))
     runner = Mock()
     runner.call.side_effect = lambda callback: asyncio.run(callback(session))
@@ -180,13 +185,47 @@ def test_given_version_selection_when_get_constitution_is_called_then_exact_tool
     [
         {},
         [None],
-        {"version": 1},
-        {"version": 2, "mission": "M", "declaration": "D", "principles": []},
-        {"version": -1, "mission": "M", "declaration": "D", "principles": []},
-        {"version": True, "mission": "M", "declaration": "D", "principles": []},
-        [{"version": 1, "mission": "M", "declaration": "D", "principles": []}] * 2,
-        {"version": 1, "mission": "M", "declaration": "D", "principles": [{}]},
+        {"constitution_key": "default", "version": 1},
         {
+            "constitution_key": "default",
+            "version": 2,
+            "mission": "M",
+            "declaration": "D",
+            "principles": [],
+        },
+        {
+            "constitution_key": "default",
+            "version": -1,
+            "mission": "M",
+            "declaration": "D",
+            "principles": [],
+        },
+        {
+            "constitution_key": "default",
+            "version": True,
+            "mission": "M",
+            "declaration": "D",
+            "principles": [],
+        },
+        [
+            {
+                "constitution_key": "default",
+                "version": 1,
+                "mission": "M",
+                "declaration": "D",
+                "principles": [],
+            }
+        ]
+        * 2,
+        {
+            "constitution_key": "default",
+            "version": 1,
+            "mission": "M",
+            "declaration": "D",
+            "principles": [{}],
+        },
+        {
+            "constitution_key": "default",
             "version": 1,
             "mission": "M",
             "declaration": "D",
@@ -221,6 +260,62 @@ def test_given_invalid_key_when_list_delivery_records_runs_then_mcp_request_is_n
     runner.call.assert_not_called()
 
 
+@pytest.mark.parametrize("key", [None, "", " ", "Upper", 1])
+def test_given_invalid_response_key_when_get_constitution_runs_then_reply_is_unavailable(key):
+    runner = Mock()
+    runner.call.return_value = reply(
+        {"constitution_key": key, "version": 0, "mission": "", "principles": []}
+    )
+    with pytest.raises(KynoUnavailableError, match="bad reply"):
+        history.get_constitution(runner)
+
+
+def test_given_different_response_key_when_get_constitution_runs_then_reply_is_unavailable():
+    runner = Mock()
+    runner.call.return_value = reply(
+        {
+            "constitution_key": "billing",
+            "version": 1,
+            "mission": "Collect payments",
+            "principles": [],
+        }
+    )
+
+    with pytest.raises(KynoUnavailableError, match="constitution key"):
+        history.get_constitution(runner, "support")
+
+
+def test_given_padded_response_key_when_get_constitution_runs_then_normalized_identity_returns():
+    runner = Mock()
+    runner.call.return_value = reply(
+        {"constitution_key": " support ", "version": 1, "mission": "Help", "principles": []}
+    )
+
+    direction = history.get_constitution(runner, "support")
+
+    assert direction.constitution_key == "support"
+
+
+@pytest.mark.parametrize("key, expected", [(" a" + "b" * 199 + " ", "a" + "b" * 199)])
+def test_given_normalizable_key_when_get_constitution_runs_then_request_uses_normalized_key(
+    key, expected
+):
+    session = SimpleNamespace(
+        call_tool=AsyncMock(
+            return_value=reply(
+                {"constitution_key": expected, "version": 0, "mission": "", "principles": []}
+            )
+        )
+    )
+    runner = Mock()
+    runner.call.side_effect = lambda operation: asyncio.run(operation(session))
+    direction = history.get_constitution(runner, key)
+    assert direction.constitution_key == expected
+    session.call_tool.assert_awaited_once_with(
+        "get_constitution", {"constitution_key": expected, "detail": "compact"}
+    )
+
+
 @pytest.mark.parametrize("detail", ["unknown", None, 1])
 @pytest.mark.parametrize("version", [0, 1])
 def test_given_invalid_detail_when_get_constitution_is_called_then_request_is_not_sent(
@@ -230,3 +325,11 @@ def test_given_invalid_detail_when_get_constitution_is_called_then_request_is_no
     with pytest.raises(ValueError, match="detail"):
         KynoConnection(runner).get_constitution(version=version, detail=detail)
     runner.call.assert_not_called()
+
+
+def test_given_missing_response_key_when_get_constitution_runs_then_reply_is_unavailable():
+    runner = Mock()
+    runner.call.return_value = reply({"version": 1, "mission": "Help customers", "principles": []})
+
+    with pytest.raises(KynoUnavailableError, match="constitution_key"):
+        history.get_constitution(runner, "support")

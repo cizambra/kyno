@@ -86,6 +86,10 @@ def test_given_full_file_when_read_constitution_file_then_all_authored_fields_re
 ):
     read = read_constitution_file(write(tmp_path, FULL_FILE))
 
+    assert read.declaration == (
+        "# What we are for\n\nLending is a promise about somebody's worst month.\n\n"
+        "We would rather lose the deal than make a promise we cannot keep."
+    )
     assert read.constitution_key == "acme"
     assert read.mission == "Ship a lending product people trust with their worst month"
     assert read.principles == (
@@ -114,6 +118,28 @@ def test_given_mission_only_file_when_read_constitution_file_then_omitted_fields
     assert direction.declaration is None
     assert direction.principles is None
     assert direction.constitution_key is None
+
+
+@pytest.mark.parametrize("encode", [json.dumps, yaml.safe_dump], ids=["json", "yaml"])
+def test_given_null_constitution_key_when_read_constitution_file_then_key_is_none(tmp_path, encode):
+    path = write(tmp_path, encode({"constitution_key": None, "mission": "Help"}))
+
+    direction = read_constitution_file(path)
+
+    assert direction.constitution_key is None
+
+
+@pytest.mark.parametrize("encode", [json.dumps, yaml.safe_dump], ids=["json", "yaml"])
+def test_given_null_constitution_key_when_cli_apply_then_file_is_rejected_without_writing(
+    db, tmp_path, encode
+):
+    path = write(tmp_path, encode({"constitution_key": None, "mission": "Help"}))
+
+    result = runner.invoke(app, ["apply", path, "--note", "Initial direction"])
+
+    assert result.exit_code == 1
+    assert "constitution_key: <key>" in result.output
+    assert plane(db).current("default").version == 0
 
 
 def test_given_unknown_keys_when_reading_a_file_then_they_are_the_operators_own(tmp_path):
@@ -270,19 +296,39 @@ def test_given_a_missing_file_when_running_apply_then_the_error_is_clean(db, tmp
     assert "Traceback" not in result.output
 
 
-def test_given_a_second_file_when_cli_apply_then_a_version_appends_and_omissions_carry(
+def test_given_existing_direction_when_cli_apply_changes_mission_then_next_version_is_created(
     db, tmp_path
 ):
-    runner.invoke(app, ["apply", write(tmp_path, FULL_FILE), "--note", "init"])
-    second = write(tmp_path, "constitution_key: acme\nmission: A sharper mission\n", "2.yaml")
+    assert (
+        runner.invoke(app, ["apply", write(tmp_path, FULL_FILE), "--note", "init"]).exit_code == 0
+    )
+    path = write(tmp_path, "constitution_key: acme\nmission: A sharper mission\n", "update.yaml")
 
-    assert runner.invoke(app, ["apply", second, "--note", "sharpen"]).exit_code == 0
+    result = runner.invoke(app, ["apply", path, "--note", "sharpen"])
 
+    assert result.exit_code == 0, result.output
     head = plane(db).current("acme")
     assert head.version == 2
     assert head.mission == "A sharper mission"
-    assert head.declaration.startswith("# What we are for")
-    assert len(head.principles) == 2
+
+
+def test_given_omitted_content_when_cli_apply_changes_mission_then_existing_content_is_preserved(
+    db, tmp_path
+):
+    initial = write(
+        tmp_path,
+        "constitution_key: acme\nmission: Help\n"
+        "declaration: Explain decisions\nprinciples:\n  - Be honest\n",
+    )
+    assert runner.invoke(app, ["apply", initial, "--note", "init"]).exit_code == 0
+    update = write(tmp_path, "constitution_key: acme\nmission: Help customers\n", "update.yaml")
+
+    result = runner.invoke(app, ["apply", update, "--note", "clarify"])
+
+    assert result.exit_code == 0, result.output
+    head = plane(db).current("acme")
+    assert head.declaration == "Explain decisions"
+    assert head.principles == (Principle("Be honest"),)
 
 
 def test_given_a_clearing_file_when_cli_apply_then_the_declaration_clears(db, tmp_path):

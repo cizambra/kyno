@@ -26,8 +26,11 @@ FIELDS = ("constitution_key", "mission", "declaration", "principles")
 
 @dataclass(frozen=True)
 class ConstitutionFile:
-    """What the file said. None means the key was absent, which apply_direction
-    treats as "keep the current value". To clear a field, write ""."""
+    """Parsed authoring fields. Absent or null fields are represented by None.
+
+    CLI apply requires constitution_key. For content fields, None preserves the
+    current value; an empty string or principle list clears that content.
+    """
 
     constitution_key: str | None = None
     mission: str | None = None

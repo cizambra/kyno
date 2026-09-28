@@ -112,39 +112,85 @@ def test_given_default_direction_when_read_resource_then_resolved_key_returns(
 
 
 @pytest.mark.parametrize(
-    "selector, expected",
+    "selector, expected_key",
     [
         pytest.param({}, "default", id="omitted"),
         pytest.param({"constitution_key": None}, "default", id="null"),
         pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
     ],
 )
-@pytest.mark.parametrize(
-    "operation, arguments",
-    [
-        ("get_constitution", {"version": 1}),
-        ("get_principle", {"title": "Be clear"}),
-        ("export_versions", {}),
-    ],
-)
-def test_given_history_when_call_tool_reads_direction_then_results_identify_selected_key(
-    mcp_runner, selector, expected, operation, arguments
+def test_given_two_versions_when_call_tool_get_constitution_then_version_one_identifies_key(
+    mcp_runner, selector, expected_key
 ):
     runner, plane = mcp_runner
-    plane.apply_direction(mission="First", principles=("Be clear",), change_note="init", **selector)
-    plane.apply_direction(mission="Second", change_note="next", **selector)
+    plane.apply_direction(mission="Help customers", change_note="Initial direction", **selector)
+    plane.apply_direction(
+        mission="Resolve customer issues", change_note="Refine mission", **selector
+    )
 
-    reply = runner.call(lambda session: session.call_tool(operation, {**arguments, **selector}))
+    reply = runner.call(
+        lambda session: session.call_tool("get_constitution", {**selector, "version": 1})
+    )
 
     assert not reply.isError
-    result = json.loads(reply.content[0].text)
-    rows = result if operation == "export_versions" else [result]
-    assert all(row["constitution_key"] == expected for row in rows)
-    if operation == "get_constitution":
-        assert result["version"] == 1
-        assert result["mission"] == "First"
-    elif operation == "export_versions":
-        assert [row["version"] for row in rows] == [1, 2]
+    version = json.loads(reply.content[0].text)
+    assert version["constitution_key"] == expected_key
+    assert version["version"] == 1
+    assert version["mission"] == "Help customers"
+
+
+@pytest.mark.parametrize(
+    "selector, expected_key",
+    [
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
+    ],
+)
+def test_given_stored_principle_when_call_tool_get_principle_then_response_identifies_key(
+    mcp_runner, selector, expected_key
+):
+    runner, plane = mcp_runner
+    plane.apply_direction(
+        mission="Help customers",
+        principles=("Be clear",),
+        change_note="Initial direction",
+        **selector,
+    )
+
+    reply = runner.call(
+        lambda session: session.call_tool("get_principle", {**selector, "title": "Be clear"})
+    )
+
+    assert not reply.isError
+    principle = json.loads(reply.content[0].text)
+    assert principle["constitution_key"] == expected_key
+    assert principle["title"] == "Be clear"
+
+
+@pytest.mark.parametrize(
+    "selector, expected_key",
+    [
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
+    ],
+)
+def test_given_two_versions_when_call_tool_export_versions_then_each_version_identifies_key(
+    mcp_runner, selector, expected_key
+):
+    runner, plane = mcp_runner
+    plane.apply_direction(mission="Help customers", change_note="Initial direction", **selector)
+    plane.apply_direction(
+        mission="Resolve customer issues", change_note="Refine mission", **selector
+    )
+
+    reply = runner.call(lambda session: session.call_tool("export_versions", selector))
+
+    assert not reply.isError
+    versions = json.loads(reply.content[0].text)
+    assert [version["constitution_key"] for version in versions] == [expected_key, expected_key]
+    assert [version["version"] for version in versions] == [1, 2]
 
 
 @pytest.mark.parametrize(

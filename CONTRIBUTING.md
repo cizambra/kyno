@@ -24,7 +24,7 @@ write it in that place.
   rejected alternative, or something a library does that the code doesn't
   show. Don't add opinions like "best" or "cleaner".
 
-## Documentation examples
+## Documentation
 
 - When explaining how to use an API or change a configuration, follow
   the guidance with a short example that shows how to apply it.

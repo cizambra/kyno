@@ -20,9 +20,10 @@ def test_given_langgraph_adapter_when_inspecting_exports_then_only_direction_hel
     }
 
 
-def test_given_KynoState_when_direction_update_runs_then_keys_match_declared_fields():
+def test_given_direction_when_direction_update_runs_then_only_supported_state_fields_are_emitted():
     update = langgraph.direction_update(Direction.empty("support"))
-    assert set(langgraph.KynoState.__annotations__) == set(update)
+    assert set(update) == set(langgraph.KynoState.__annotations__)
+    assert "kyno_constitution_key" in update
 
 
 @pytest.mark.parametrize("wrapped", [False, True])

@@ -59,7 +59,7 @@ def receipt(state):
 @pytest.mark.parametrize("wrapper", [False, True], ids=["direction-node", "pull-before"])
 @pytest.mark.parametrize("status", list(BindingStatus))
 @pytest.mark.parametrize("detail", list(DetailLevel))
-def test_given_a_binding_when_work_is_checkpointed_then_its_exact_direction_and_status_survive(
+def test_given_binding_when_graph_invoke_checkpoints_then_direction_and_status_survive(
     source, wrapper, status, detail
 ):
     binder = DirectionBinder(source, "support", detail=detail)
@@ -88,7 +88,7 @@ def test_given_a_binding_when_work_is_checkpointed_then_its_exact_direction_and_
     assert serialized["kyno_binding_status"] == status.value
     assert type(serialized["kyno_binding_status"]) is str
     assert restored["receipts"][0]["kyno_direction"] == restored["kyno_direction"]
-    assert restored["kyno_constitution"] == "support"
+    assert restored["kyno_constitution_key"] == "support"
     if status is BindingStatus.EMPTY:
         expected = Direction.empty("support", detail)
     else:

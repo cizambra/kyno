@@ -46,7 +46,7 @@ def supplied_direction_event(state, identity, messages):
         "event": "direction_supplied",
         "captured_at": datetime.now(UTC).isoformat(),
         "boundary": "before_model_call",
-        "constitution_key": state["kyno_constitution"],
+        "constitution_key": state["kyno_constitution_key"],
         "version": state["kyno_version"],
         "status": state["kyno_binding_status"],
         "detail": state["kyno_detail"],

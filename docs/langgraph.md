@@ -39,6 +39,12 @@ These are example settings, not the SDK defaults.
 Kyno supplies `KynoState`, `direction_node`, and `pull_before`. You supply
 the graph and the node that calls your model.
 
+`KynoState` is a `TypedDict` that declares the fields Kyno uses in graph
+state: direction content, its constitution key and version, and delivery
+metadata. Inherit it in your own state schema so LangGraph preserves those
+fields between nodes and in checkpoints. You can add application fields,
+such as `output` in the example below.
+
 1. Inherit `KynoState` in your graph's state schema. LangGraph only carries
    keys declared by that schema.
 2. Wrap your model-calling node with `pull_before`, or place a
@@ -88,6 +94,19 @@ You do not need to implement those steps yourself. You also do not need
 receipt storage, run IDs, or step IDs for this integration to work.
 
 ## What Kyno provides
+
+[`KynoState`](#required-integration) carries the selected key in
+`state["kyno_constitution_key"]`.
+The direction node and decorator populate it alongside `kyno_version`, so
+downstream nodes and saved checkpoints identify the direction they received:
+
+```python
+constitution_key = state["kyno_constitution_key"]
+version = state["kyno_version"]
+```
+
+`direction_from_state(state)` restores the same key as
+`direction.constitution_key`. With an empty state, it selects `"default"`.
 
 Before your work node runs, `direction_node` or `pull_before` supplies the
 direction and sets `state["kyno_binding_status"]` automatically. Your application
@@ -169,6 +188,35 @@ Later pulls do not change earlier receipts. Resuming a checkpoint without
 another pull preserves the original binding status; it does not establish
 that the saved version is still current. Work nodes should leave the
 `kyno_` direction keys unchanged so the checkpoint describes their input.
+
+### Direction identity in checkpoints
+
+Saved direction uses `kyno_constitution_key` to identify the constitution
+and `kyno_version` to identify its version. Keep these fields with the
+direction content when storing application-owned receipts.
+
+For example, `direction_from_state` restores direction from these fields:
+
+```python
+from kyno.adapters.langgraph import direction_from_state
+
+saved_direction = {
+    "kyno_constitution_key": "support",
+    "kyno_version": 3,
+    "kyno_mission": "Help customers",
+}
+
+direction = direction_from_state(saved_direction)
+assert direction.constitution_key == "support"
+assert direction.version == 3
+assert direction.mission == "Help customers"
+```
+
+This example shows a minimal direction snapshot. Preserve the other
+direction fields, such as principles and declaration, when present.
+`direction_from_state` raises `ValueError` if direction fields are present
+without `kyno_constitution_key`, or if the key is invalid. State without
+any Kyno fields returns empty direction for `default` at version zero.
 
 ## Failure behavior
 

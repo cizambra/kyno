@@ -121,7 +121,7 @@ class KynoConnection:
         self,
         *,
         correlation_id: str | None = None,
-        constitution: str | None = None,
+        constitution_key: str | None = None,
         since: str | None = None,
         until: str | None = None,
         after: int | None = None,
@@ -137,7 +137,7 @@ class KynoConnection:
         return _history.list_delivery_records(
             self._runner,
             correlation_id=correlation_id,
-            constitution=constitution,
+            constitution_key=constitution_key,
             since=since,
             until=until,
             after=after,

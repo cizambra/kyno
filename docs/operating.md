@@ -251,6 +251,21 @@ cursor means the current results are exhausted. Events are ordered by insertion,
 and new events can appear between pages. Read and write tokens may browse history.
 Listing never creates another delivery record.
 
+Both summaries and individual records expose the string `constitution_key` and
+the numeric `constitution_id`. The numeric ID is null when no stored version was
+served.
+Omitting the key filter or passing null includes every constitution; a blank key
+is invalid. For example, an SDK query for one constitution uses:
+
+```python
+page = connection.list_delivery_records(constitution_key="support", limit=10)
+for record in page["items"]:
+    print(record["constitution_key"], record["served_version"])
+```
+
+Here `connection` is an open SDK connection. Each result identifies `support`
+and the version served for that delivery.
+
 ## Running Kyno embedded
 
 When your orchestrator is itself a Python app, you can run the control

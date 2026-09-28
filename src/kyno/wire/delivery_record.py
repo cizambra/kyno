@@ -7,7 +7,7 @@ class DeliverySummary(TypedDict):
     record_id: str
     recorded_at: str
     constitution_id: int | None
-    requested_constitution: str
+    constitution_key: str
     served_version: int
     operation: str
     last_seen_version: int | None

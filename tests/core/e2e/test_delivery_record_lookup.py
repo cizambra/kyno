@@ -140,7 +140,7 @@ def test_given_unauthorized_token_when_getting_delivery_then_access_is_denied(
     assert response.status_code == 401
 
 
-async def test_given_recorded_direction_when_updated_and_restarted_then_lookup_keeps_original(
+async def test_given_restart_after_update_when_call_tool_get_delivery_record_then_original_returns(
     tmp_path,
 ):
     url = f"sqlite:///{tmp_path / 'restart.sqlite3'}"
@@ -192,7 +192,7 @@ async def test_given_recorded_direction_when_updated_and_restarted_then_lookup_k
     assert "direction" not in record
     assert record["delta"] is None
     assert record["served_version"] == original["version"] == 1
-    historical = restarted_store.get(record["requested_constitution"], record["served_version"])
+    historical = restarted_store.get(record["constitution_key"], record["served_version"])
     assert historical.mission == original["mission"]
     assert historical.declaration == original["declaration"]
     assert historical.principles[0].title == "Honesty"

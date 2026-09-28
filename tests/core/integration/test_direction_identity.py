@@ -9,93 +9,334 @@ from kyno.wire import RESOURCE_URI
 
 
 @pytest.mark.parametrize(
-    "selector, expected",
+    "selector, expected_key",
     [
         pytest.param({}, "default", id="omitted"),
         pytest.param({"constitution_key": None}, "default", id="null"),
         pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
     ],
 )
-@pytest.mark.parametrize(
-    "operation, arguments",
-    [
-        ("current", {}),
-        ("get_constitution", {"version": 0}),
-        pytest.param("changes_since", {"last_seen_version": 0}, id="changes_since-version-zero"),
-        ("publication", {}),
-    ],
-)
-def test_given_empty_direction_when_core_operation_runs_then_resolved_key_returns(
-    cp, selector, expected, operation, arguments
+def test_given_empty_store_when_current_runs_then_result_identifies_selected_key(
+    cp, selector, expected_key
 ):
-    result = getattr(cp, operation)(**selector, **arguments)
 
-    assert result.constitution_key == expected
+    result = cp.current(**selector)
+
+    assert result.constitution_key == expected_key
 
 
 @pytest.mark.parametrize(
-    "selector, expected",
+    "selector, expected_key",
     [
         pytest.param({}, "default", id="omitted"),
         pytest.param({"constitution_key": None}, "default", id="null"),
         pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
     ],
 )
+def test_given_empty_store_when_get_constitution_runs_then_result_identifies_selected_key(
+    cp, selector, expected_key
+):
+
+    result = cp.get_constitution(version=0, **selector)
+
+    assert result.constitution_key == expected_key
+
+
 @pytest.mark.parametrize(
-    "operation, arguments",
+    "selector, expected_key",
     [
-        ("current", {}),
-        ("get_constitution", {"version": 1}),
-        pytest.param("changes_since", {"last_seen_version": 0}, id="changes_since-version-zero"),
-        pytest.param("changes_since", {"last_seen_version": 1}, id="changes_since-current-version"),
-        ("publish", {}),
-        ("publication", {}),
-        ("unpublish", {}),
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
     ],
 )
-def test_given_written_direction_when_core_operation_runs_then_selected_key_returns(
-    cp, selector, expected, operation, arguments
+def test_given_empty_store_when_changes_since_runs_then_result_identifies_selected_key(
+    cp, selector, expected_key
 ):
-    cp.apply_direction(mission="Help", change_note="Initial", **selector)
-    if operation == "unpublish":
-        cp.publish(**selector)
 
-    result = getattr(cp, operation)(**selector, **arguments)
+    result = cp.changes_since(last_seen_version=0, **selector)
 
-    assert result.constitution_key == expected
+    assert result.constitution_key == expected_key
+
+
+@pytest.mark.parametrize(
+    "selector, expected_key",
+    [
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
+    ],
+)
+def test_given_empty_store_when_publication_runs_then_result_identifies_selected_key(
+    cp, selector, expected_key
+):
+
+    result = cp.publication(**selector)
+
+    assert result.constitution_key == expected_key
+
+
+@pytest.mark.parametrize(
+    "selector, expected_key",
+    [
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
+    ],
+)
+def test_given_stored_direction_when_current_runs_then_result_identifies_selected_key(
+    cp, selector, expected_key
+):
+    cp.apply_direction(mission="Help customers", change_note="Initial direction", **selector)
+
+    result = cp.current(**selector)
+
+    assert result.constitution_key == expected_key
+
+
+@pytest.mark.parametrize(
+    "selector, expected_key",
+    [
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
+    ],
+)
+def test_given_stored_direction_when_get_constitution_runs_then_result_identifies_selected_key(
+    cp, selector, expected_key
+):
+    cp.apply_direction(mission="Help customers", change_note="Initial direction", **selector)
+
+    result = cp.get_constitution(version=1, **selector)
+
+    assert result.constitution_key == expected_key
+
+
+@pytest.mark.parametrize(
+    "selector, expected_key",
+    [
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
+    ],
+)
+def test_given_newer_direction_when_changes_since_runs_then_result_identifies_selected_key(
+    cp, selector, expected_key
+):
+    cp.apply_direction(mission="Help customers", change_note="Initial direction", **selector)
+
+    result = cp.changes_since(last_seen_version=0, **selector)
+
+    assert result.constitution_key == expected_key
+
+
+@pytest.mark.parametrize(
+    "selector, expected_key",
+    [
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
+    ],
+)
+def test_given_current_version_when_changes_since_runs_then_result_identifies_selected_key(
+    cp, selector, expected_key
+):
+    cp.apply_direction(mission="Help customers", change_note="Initial direction", **selector)
+
+    result = cp.changes_since(last_seen_version=1, **selector)
+
+    assert result.constitution_key == expected_key
+
+
+@pytest.mark.parametrize(
+    "selector, expected_key",
+    [
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
+    ],
+)
+def test_given_private_direction_when_publish_runs_then_result_identifies_selected_key(
+    cp, selector, expected_key
+):
+    cp.apply_direction(mission="Help customers", change_note="Initial direction", **selector)
+
+    result = cp.publish(**selector)
+
+    assert result.constitution_key == expected_key
+
+
+@pytest.mark.parametrize(
+    "selector, expected_key",
+    [
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
+    ],
+)
+def test_given_private_direction_when_publication_runs_then_result_identifies_selected_key(
+    cp, selector, expected_key
+):
+    cp.apply_direction(mission="Help customers", change_note="Initial direction", **selector)
+
+    result = cp.publication(**selector)
+
+    assert result.constitution_key == expected_key
+
+
+@pytest.mark.parametrize(
+    "selector, expected_key",
+    [
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
+    ],
+)
+def test_given_public_direction_when_unpublish_runs_then_result_identifies_selected_key(
+    cp, selector, expected_key
+):
+    cp.apply_direction(mission="Help customers", change_note="Initial direction", **selector)
+    cp.publish(**selector)
+
+    result = cp.unpublish(**selector)
+
+    assert result.constitution_key == expected_key
 
 
 @pytest.mark.parametrize("initialized", [False, True], ids=["empty", "written"])
 @pytest.mark.parametrize(
-    "selector, expected",
+    "selector, expected_key",
     [
         pytest.param({}, "default", id="omitted"),
         pytest.param({"constitution_key": None}, "default", id="null"),
         pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
     ],
 )
-@pytest.mark.parametrize(
-    "operation, arguments",
-    [
-        ("get_constitution", {}),
-        ("get_constitution", {"version": 0}),
-        ("get_changes_since", {"last_seen_version": 0}),
-        ("get_mission", {}),
-        ("get_declaration", {}),
-        ("get_principles", {}),
-    ],
-)
-def test_given_selected_key_when_call_tool_then_response_identifies_selected_key(
-    mcp_runner, initialized, selector, expected, operation, arguments
+def test_given_current_direction_when_call_tool_get_constitution_then_response_identifies_key(
+    mcp_runner, initialized, selector, expected_key
 ):
     runner, plane = mcp_runner
     if initialized:
-        plane.apply_direction(mission="Help", change_note="init", **selector)
+        plane.apply_direction(mission="Help customers", change_note="Initial direction", **selector)
 
-    reply = runner.call(lambda session: session.call_tool(operation, {**arguments, **selector}))
+    reply = runner.call(lambda session: session.call_tool("get_constitution", {**selector}))
 
     assert not reply.isError
-    assert json.loads(reply.content[0].text)["constitution_key"] == expected
+    assert json.loads(reply.content[0].text)["constitution_key"] == expected_key
+
+
+@pytest.mark.parametrize("initialized", [False, True], ids=["empty", "written"])
+@pytest.mark.parametrize(
+    "selector, expected_key",
+    [
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
+    ],
+)
+def test_given_version_zero_when_call_tool_get_constitution_then_response_identifies_key(
+    mcp_runner, initialized, selector, expected_key
+):
+    runner, plane = mcp_runner
+    if initialized:
+        plane.apply_direction(mission="Help customers", change_note="Initial direction", **selector)
+
+    reply = runner.call(
+        lambda session: session.call_tool("get_constitution", {**selector, "version": 0})
+    )
+
+    assert not reply.isError
+    assert json.loads(reply.content[0].text)["constitution_key"] == expected_key
+
+
+@pytest.mark.parametrize("initialized", [False, True], ids=["empty", "written"])
+@pytest.mark.parametrize(
+    "selector, expected_key",
+    [
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
+    ],
+)
+def test_given_changes_when_call_tool_get_changes_since_then_response_identifies_key(
+    mcp_runner, initialized, selector, expected_key
+):
+    runner, plane = mcp_runner
+    if initialized:
+        plane.apply_direction(mission="Help customers", change_note="Initial direction", **selector)
+
+    reply = runner.call(
+        lambda session: session.call_tool("get_changes_since", {**selector, "last_seen_version": 0})
+    )
+
+    assert not reply.isError
+    assert json.loads(reply.content[0].text)["constitution_key"] == expected_key
+
+
+@pytest.mark.parametrize("initialized", [False, True], ids=["empty", "written"])
+@pytest.mark.parametrize(
+    "selector, expected_key",
+    [
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
+    ],
+)
+def test_given_mission_when_call_tool_get_mission_then_response_identifies_key(
+    mcp_runner, initialized, selector, expected_key
+):
+    runner, plane = mcp_runner
+    if initialized:
+        plane.apply_direction(mission="Help customers", change_note="Initial direction", **selector)
+
+    reply = runner.call(lambda session: session.call_tool("get_mission", {**selector}))
+
+    assert not reply.isError
+    assert json.loads(reply.content[0].text)["constitution_key"] == expected_key
+
+
+@pytest.mark.parametrize("initialized", [False, True], ids=["empty", "written"])
+@pytest.mark.parametrize(
+    "selector, expected_key",
+    [
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
+    ],
+)
+def test_given_declaration_when_call_tool_get_declaration_then_response_identifies_key(
+    mcp_runner, initialized, selector, expected_key
+):
+    runner, plane = mcp_runner
+    if initialized:
+        plane.apply_direction(mission="Help customers", change_note="Initial direction", **selector)
+
+    reply = runner.call(lambda session: session.call_tool("get_declaration", {**selector}))
+
+    assert not reply.isError
+    assert json.loads(reply.content[0].text)["constitution_key"] == expected_key
+
+
+@pytest.mark.parametrize("initialized", [False, True], ids=["empty", "written"])
+@pytest.mark.parametrize(
+    "selector, expected_key",
+    [
+        pytest.param({}, "default", id="omitted"),
+        pytest.param({"constitution_key": None}, "default", id="null"),
+        pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
+    ],
+)
+def test_given_principles_when_call_tool_get_principles_then_response_identifies_key(
+    mcp_runner, initialized, selector, expected_key
+):
+    runner, plane = mcp_runner
+    if initialized:
+        plane.apply_direction(mission="Help customers", change_note="Initial direction", **selector)
+
+    reply = runner.call(lambda session: session.call_tool("get_principles", {**selector}))
+
+    assert not reply.isError
+    assert json.loads(reply.content[0].text)["constitution_key"] == expected_key
 
 
 @pytest.mark.parametrize("initialized", [False, True], ids=["empty", "written"])
@@ -201,7 +442,7 @@ def test_given_two_versions_when_call_tool_export_versions_then_each_version_ide
         pytest.param({"constitution_key": " eu-west "}, "eu-west", id="padded-named-key"),
     ],
 )
-def test_given_write_selection_when_call_tool_applies_direction_then_result_identifies_key(
+def test_given_empty_store_when_call_tool_apply_direction_then_created_version_identifies_key(
     mcp_runner, selector, expected
 ):
     runner, _ = mcp_runner
@@ -217,29 +458,55 @@ def test_given_write_selection_when_call_tool_applies_direction_then_result_iden
 
 
 @pytest.mark.parametrize("key", ["default", "support"])
-@pytest.mark.parametrize("operation", ["head", "get", "versions_after", "export_versions"])
-def test_given_two_histories_when_store_read_runs_then_each_result_identifies_selected_key(
-    store, key, operation
-):
-    cp = ControlPlane(store)
-    cp.apply_direction(mission="Default mission", change_note="init")
-    cp.apply_direction(mission="Support mission", change_note="init", constitution_key="support")
-
-    if operation == "get":
-        results = [store.get(key, 1)]
-    elif operation == "versions_after":
-        results = store.versions_after(key, 0)
-    elif operation == "export_versions":
-        results = store.export_versions(key)
-    else:
-        results = [store.head(key)]
-
-    assert len(results) == 1
-    result = results[0]
-    returned_key = (
-        result["constitution_key"] if operation == "export_versions" else result.constitution_key
+def test_given_two_histories_when_store_head_runs_then_selected_key_returns(store, key):
+    plane = ControlPlane(store)
+    plane.apply_direction(mission="Default mission", change_note="Initial direction")
+    plane.apply_direction(
+        mission="Support mission", change_note="Initial direction", constitution_key="support"
     )
-    assert returned_key == key
+
+    version = store.head(key)
+
+    assert version.constitution_key == key
+
+
+@pytest.mark.parametrize("key", ["default", "support"])
+def test_given_two_histories_when_store_get_runs_then_selected_key_returns(store, key):
+    plane = ControlPlane(store)
+    plane.apply_direction(mission="Default mission", change_note="Initial direction")
+    plane.apply_direction(
+        mission="Support mission", change_note="Initial direction", constitution_key="support"
+    )
+
+    version = store.get(key, 1)
+
+    assert version.constitution_key == key
+
+
+@pytest.mark.parametrize("key", ["default", "support"])
+def test_given_two_histories_when_store_versions_after_runs_then_selected_key_returns(store, key):
+    plane = ControlPlane(store)
+    plane.apply_direction(mission="Default mission", change_note="Initial direction")
+    plane.apply_direction(
+        mission="Support mission", change_note="Initial direction", constitution_key="support"
+    )
+
+    versions = store.versions_after(key, 0)
+
+    assert [version.constitution_key for version in versions] == [key]
+
+
+@pytest.mark.parametrize("key", ["default", "support"])
+def test_given_two_histories_when_store_export_versions_runs_then_selected_key_returns(store, key):
+    plane = ControlPlane(store)
+    plane.apply_direction(mission="Default mission", change_note="Initial direction")
+    plane.apply_direction(
+        mission="Support mission", change_note="Initial direction", constitution_key="support"
+    )
+
+    versions = store.export_versions(key)
+
+    assert [version["constitution_key"] for version in versions] == [key]
 
 
 @pytest.mark.parametrize("detail", ["compact", "full"])
@@ -281,3 +548,15 @@ def test_given_two_keys_when_apply_direction_runs_then_written_version_identifie
     )
 
     assert result.constitution_key == key
+
+
+def test_given_two_keys_when_head_and_delta_runs_then_head_identifies_selected_key(cp):
+    cp.apply_direction(mission="Default mission", change_note="Initial direction")
+    cp.apply_direction(
+        mission="Support mission", change_note="Initial direction", constitution_key="support"
+    )
+
+    head, _ = cp.head_and_delta(mission="Resolve customer issues", constitution_key=" support ")
+
+    assert head.constitution_key == "support"
+    assert head.mission == "Support mission"

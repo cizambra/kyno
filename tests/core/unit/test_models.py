@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from kyno.models import AuthorizationType, ConstitutionVersion, TokenScope
+from kyno.models import AuthorizationType, ConstitutionVersion, PublicConstitution, TokenScope
 from kyno.wire.errors import MalformedPrincipleError
 from kyno.wire.models import ChangesSince, Principle, normalize_principles
 
@@ -177,3 +177,24 @@ def test_given_a_declaration_when_serializing_then_it_sits_beside_the_mission_it
 def test_given_a_principle_whose_description_is_not_text_when_normalizing_then_it_is_refused():
     with pytest.raises(MalformedPrincipleError, match="must be text"):
         normalize_principles(({"title": "t", "description": 123},))
+
+
+def test_given_public_direction_when_to_summary_runs_then_only_index_fields_return():
+    direction = PublicConstitution(
+        constitution_key="support",
+        mission="Help customers",
+        version=3,
+        principles=(Principle("Be clear", "Explain decisions"),),
+        declaration="Resolve customer concerns",
+        history=None,
+        last_changed_at=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+
+    summary = direction.to_summary()
+
+    assert summary == {
+        "constitution_key": "support",
+        "mission": "Help customers",
+        "version": 3,
+        "last_changed_at": "2026-01-01T00:00:00+00:00",
+    }

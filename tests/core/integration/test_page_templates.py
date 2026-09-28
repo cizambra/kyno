@@ -44,9 +44,15 @@ def test_given_the_package_when_inspecting_then_default_pages_ship_as_templates_
         assert packaged_template(name).strip(), name
 
 
-def test_given_the_packaged_template_when_inspecting_then_it_uses_the_placeholders_it_documents():
+def test_given_constitution_template_when_packaged_template_then_documented_placeholders_exist():
     text = packaged_template("constitution.html")
-    for placeholder in ("$stylesheet", "$name", "$mission", "$declaration", "$principles"):
+    for placeholder in (
+        "$stylesheet",
+        "$constitution_key",
+        "$mission",
+        "$declaration",
+        "$principles",
+    ):
         assert placeholder in text, placeholder
 
 

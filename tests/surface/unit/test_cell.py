@@ -14,7 +14,7 @@ from kyno.wire.models import ChangesSince, DetailLevel, Principle
 
 def _direction(version: int, constitution: str = "default") -> Direction:
     return Direction(
-        constitution=constitution,
+        constitution_key=constitution,
         version=version,
         mission=f"M{version}",
         principles=("p1",),
@@ -27,12 +27,32 @@ def test_given_invalid_key_when_creating_direction_then_it_is_rejected(key):
         _direction(1, key)
 
 
-def test_given_padded_200_character_key_when_creating_direction_then_full_key_is_preserved():
+def test_given_padded_200_character_key_when_direction_init_then_full_key_is_preserved():
     key = "a" * 200
-    assert _direction(1, f" {key} ").constitution == key
+    assert _direction(1, f" {key} ").constitution_key == key
 
 
-def test_given_changes_when_building_a_direction_then_the_constitution_name_is_carried():
+def test_given_unsupported_constitution_keyword_when_direction_empty_then_type_error_is_raised():
+    with pytest.raises(TypeError, match="constitution"):
+        Direction.empty(constitution="support")
+
+
+def test_given_unsupported_constitution_keyword_when_direction_from_changes_then_type_error():
+    changes = ChangesSince(
+        current_version=1,
+        changed=True,
+        mission="Help customers",
+        principles=(),
+        changed_mission=True,
+        changed_principles=False,
+        change_notes=(),
+    )
+
+    with pytest.raises(TypeError, match="constitution"):
+        Direction.from_changes(changes, constitution="support")
+
+
+def test_given_key_and_changes_when_direction_from_changes_then_identity_and_content_match():
     changes = ChangesSince(
         current_version=3,
         changed=True,
@@ -42,21 +62,30 @@ def test_given_changes_when_building_a_direction_then_the_constitution_name_is_c
         changed_principles=False,
         change_notes=("pivot",),
     )
-    d = Direction.from_changes(changes, "eu")
-    assert d.constitution == "eu" and d.version == 3
-    assert d.principles == (Principle("Be honest"),) and d.change_notes == ("pivot",)
+    direction = Direction.from_changes(changes, constitution_key="eu")
+
+    assert direction.constitution_key == "eu"
+    assert direction.version == 3
+    assert direction.mission == "Ship trustworthy lending"
+    assert direction.principles == (Principle("Be honest"),)
+    assert direction.change_notes == ("pivot",)
 
 
-def test_given_the_empty_direction_when_comparing_then_it_matches_version_zero():
-    d = Direction.empty("eu")
-    assert (d.version, d.mission, d.principles) == (0, "", ())
+def test_given_the_empty_direction_when_direction_empty_then_it_matches_version_zero():
+    d = Direction.empty(constitution_key="eu")
+    assert d.constitution_key == "eu"
+    assert d.version == 0
+    assert d.mission == ""
+    assert d.principles == ()
 
 
-def test_given_a_direction_when_rendering_then_the_constitution_and_version_are_named():
+def test_given_a_direction_when_direction_render_then_the_constitution_and_version_are_named():
     block = _direction(2, "eu").render()
     assert block.startswith(DIRECTION_MARKER)
-    assert "constitution=eu" in block and "version=2" in block
-    assert "M2" in block and "p1" in block
+    assert "constitution_key=eu" in block
+    assert "version=2" in block
+    assert "M2" in block
+    assert "p1" in block
 
 
 def test_given_empty_cache_when_get_with_recording_runs_then_no_snapshot_is_returned():
@@ -87,24 +116,28 @@ def test_given_concurrent_updates_when_racing_the_cell_then_the_newest_version_h
     assert cell.get_with_recording()[0].mission == "M20"
 
 
-def test_given_the_injected_block_when_reading_then_titles_come_without_descriptions():
-    # Deliberate, and it is about what this costs: the block is re-injected at
-    # every step boundary, so the paragraphs stay out of it. An agent that needs
-    # the full text reads get_constitution or the published page.
+def test_given_default_detail_when_direction_render_runs_then_long_text_is_excluded():
+    # Deliberate: the block is injected at every step, so compact rendering
+    # excludes the longer text. Callers can request full detail when needed.
     direction = Direction(
-        constitution="eu",
+        constitution_key="eu",
         version=2,
         mission="Ship trustworthy lending",
-        principles=(Principle("Say the hard number first", "Before any softening story."),),
+        principles=(Principle("Be honest", "Say the hard number first."),),
+        declaration="Explain lending decisions in full.",
     )
+
     block = direction.render()
-    assert "Say the hard number first" in block
-    assert "Before any softening story." not in block
+
+    assert "Ship trustworthy lending" in block
+    assert "Be honest" in block
+    assert "Say the hard number first." not in block
+    assert "Explain lending decisions in full." not in block
+    assert "declaration" not in block.lower()
 
 
-def test_given_plain_strings_when_building_a_direction_then_principles_still_hold():
-    # Every caller that passed strings before keeps working; they become titles.
-    d = Direction(constitution="eu", version=1, mission="M", principles=("p1",))
+def test_given_string_principles_when_direction_init_runs_then_strings_become_principle_titles():
+    d = Direction(constitution_key="eu", version=1, mission="M", principles=("p1",))
     assert d.principles == (Principle("p1"),)
 
 
@@ -114,7 +147,7 @@ def test_given_direction_with_changes_when_to_dict_runs_then_all_fields_are_json
     delta, detail
 ):
     direction = Direction(
-        constitution="support",
+        constitution_key="support",
         version=3,
         mission="Help customers",
         declaration="Explain resolutions.",
@@ -127,7 +160,7 @@ def test_given_direction_with_changes_when_to_dict_runs_then_all_fields_are_json
     payload = direction.to_dict()
 
     assert json.loads(json.dumps(payload)) == {
-        "constitution": "support",
+        "constitution_key": "support",
         "version": 3,
         "mission": "Help customers",
         "declaration": "Explain resolutions.",
@@ -136,34 +169,16 @@ def test_given_direction_with_changes_when_to_dict_runs_then_all_fields_are_json
         "delta": list(delta),
         "detail": detail.value,
     }
-    payload["delta"].append("Caller annotation")
-    assert direction.delta == delta
 
 
-def test_given_a_direction_when_serializing_then_principles_come_in_full():
+def test_given_a_direction_when_direction_to_dict_then_principles_come_in_full():
     d = Direction(
-        constitution="eu",
+        constitution_key="eu",
         version=1,
         mission="M",
         principles=(Principle("t", "d"),),
     )
     assert d.to_dict()["principles"] == [{"title": "t", "description": "d"}]
-
-
-def test_given_the_injected_block_when_reading_then_the_declaration_is_left_out():
-    # Same cost rule as leaving descriptions out: a declaration is a document,
-    # and a document has no business in a block re-sent at every step boundary.
-    direction = Direction(
-        constitution="eu",
-        version=2,
-        mission="Ship trustworthy lending",
-        principles=(Principle("Be honest"),),
-        declaration="# Our declaration\n\nA long document nobody should pay for twice.",
-    )
-    block = direction.render()
-    assert "Ship trustworthy lending" in block
-    assert "A long document" not in block
-    assert "declaration" not in block.lower()
 
 
 def test_given_a_direction_when_reading_then_the_declaration_is_there_for_the_full_text():
@@ -183,7 +198,7 @@ def test_given_a_direction_when_reading_then_the_declaration_is_there_for_the_fu
 # --- how much detail the injected block carries ---------------------------
 
 RICH = dict(
-    constitution="eu",
+    constitution_key="eu",
     version=2,
     mission="Ship trustworthy lending",
     declaration="# Our declaration\n\nThe long form of what that means.",
@@ -235,3 +250,60 @@ def test_given_cached_version_zero_when_get_with_recording_runs_then_empty_direc
 
     assert cell.get_with_recording() == (direction, receipt)
     assert cell.last_seen_version() == 0
+
+
+def test_given_unsupported_constitution_keyword_when_direction_init_then_type_error():
+    with pytest.raises(TypeError, match="unexpected keyword argument 'constitution'"):
+        Direction(constitution="support", version=1, mission="Help customers", principles=())
+
+
+def test_given_serialized_delta_when_caller_appends_to_list_then_direction_delta_is_unchanged():
+    direction = Direction(
+        constitution_key="support",
+        version=2,
+        mission="Help customers",
+        principles=(),
+        delta=("Mission changed.",),
+    )
+    payload = direction.to_dict()
+
+    payload["delta"].append("Caller annotation")
+
+    assert payload["delta"] == ["Mission changed.", "Caller annotation"]
+    assert direction.delta == ("Mission changed.",)
+
+
+@pytest.mark.parametrize("key", [None, 1, True, [], {}, "", " ", "Upper", "bad/name", "a" * 201])
+@pytest.mark.parametrize("operation", ["empty", "from_changes"])
+def test_given_invalid_key_when_direction_factory_runs_then_value_error_is_raised(operation, key):
+    arguments = {"constitution_key": key}
+    if operation == "from_changes":
+        arguments["changes"] = ChangesSince(
+            current_version=1,
+            changed=True,
+            mission="Help customers",
+            principles=(),
+            changed_mission=True,
+            changed_principles=False,
+            change_notes=(),
+        )
+
+    with pytest.raises(ValueError, match="constitution key"):
+        getattr(Direction, operation)(**arguments)
+
+
+@pytest.mark.parametrize("key", ["support", "a" * 200], ids=["named-key", "maximum-length-key"])
+def test_given_padded_key_when_direction_from_changes_runs_then_trimmed_key_is_retained(key):
+    changes = ChangesSince(
+        current_version=1,
+        changed=True,
+        mission="Help customers",
+        principles=(),
+        changed_mission=True,
+        changed_principles=False,
+        change_notes=(),
+    )
+
+    direction = Direction.from_changes(changes, constitution_key=f" \t{key}\n")
+
+    assert direction.constitution_key == key

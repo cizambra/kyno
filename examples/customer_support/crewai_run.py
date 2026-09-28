@@ -49,7 +49,7 @@ class StageBoundary:
                     "event": "direction_supplied",
                     "captured_at": datetime.now(UTC).isoformat(),
                     "boundary": "before_model_call",
-                    "constitution": direction.constitution,
+                    "constitution_key": direction.constitution_key,
                     "version": direction.version,
                     "status": binding.status,
                     "detail": direction.detail,

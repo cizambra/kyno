@@ -116,7 +116,7 @@ def test_given_direction_when_direction_node_runs_then_block_has_mission_and_pri
 def test_given_direction_when_direction_update_runs_then_keys_exist_in_KynoState():
     """A key written but not declared would be dropped between nodes."""
     update = direction_update(
-        Direction(constitution="eu", version=4, mission="M", principles=("P",))
+        Direction(constitution_key="eu", version=4, mission="M", principles=("P",))
     )
     assert set(update) <= set(KynoState.__annotations__)
     assert update["kyno_constitution"] == "eu"
@@ -124,14 +124,16 @@ def test_given_direction_when_direction_update_runs_then_keys_exist_in_KynoState
 
 
 def test_given_updated_state_when_direction_from_state_runs_then_original_direction_returns():
-    original = Direction(constitution="eu", version=4, mission="M", principles=("P", "Q"))
+    original = Direction(constitution_key="eu", version=4, mission="M", principles=("P", "Q"))
     assert direction_from_state(direction_update(original)) == original
 
 
 def test_given_empty_state_when_direction_from_state_runs_then_default_version_zero_returns():
     direction = direction_from_state({})
-    assert direction.constitution == "default" and direction.version == 0
-    assert direction.mission == "" and direction.principles == ()
+    assert direction.constitution_key == "default"
+    assert direction.version == 0
+    assert direction.mission == ""
+    assert direction.principles == ()
 
 
 def test_given_work_returning_none_when_pull_before_runs_then_direction_remains_in_state(
@@ -161,7 +163,7 @@ def test_given_principle_description_when_direction_from_state_runs_then_descrip
     from kyno.wire.models import Principle
 
     original = Direction(
-        constitution="eu",
+        constitution_key="eu",
         version=4,
         mission="M",
         principles=(Principle("P", "why P"),),
@@ -199,7 +201,7 @@ def test_given_default_detail_when_direction_node_runs_then_block_omits_declarat
 
 def test_given_json_state_when_direction_from_state_runs_then_all_fields_are_restored():
     original = Direction(
-        constitution="eu",
+        constitution_key="eu",
         version=4,
         mission="M",
         principles=("P",),
@@ -224,7 +226,7 @@ def test_given_missing_optional_fields_when_direction_from_state_runs_then_empty
     }
 
     assert direction_from_state(state) == Direction(
-        constitution="support",
+        constitution_key="support",
         version=3,
         mission="Resolve issues",
         principles=({"title": "Be honest", "description": "Explain the outcome"},),

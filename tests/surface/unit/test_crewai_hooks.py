@@ -85,7 +85,7 @@ def test_given_markers_in_user_or_tool_messages_when_before_llm_call_runs_then_m
     the transcript, or a paste from the user) is data, not something to
     delete."""
     adapter, _cp = unit_kyno
-    echoed = {"role": "tool", "content": f"{DIRECTION_MARKER} constitution=x version=9]"}
+    echoed = {"role": "tool", "content": f"{DIRECTION_MARKER} constitution_key=x version=9]"}
     pasted = {"role": "user", "content": f"{DIRECTION_MARKER} quoted by a person"}
     ctx = FakeCtx(messages=[echoed, pasted])
 
@@ -142,7 +142,7 @@ def test_given_observer_when_before_llm_call_runs_then_binding_is_reported_after
     assert len(observed) == 1
     binding, captured_messages = observed[0]
     assert binding.status is status
-    assert binding.direction.constitution == "support"
+    assert binding.direction.constitution_key == "support"
     assert binding.direction.detail is detail
     assert binding.direction.version == (0 if status is BindingStatus.EMPTY else 2)
     assert captured_messages == messages
@@ -198,7 +198,7 @@ def test_given_observer_error_when_before_llm_call_runs_then_error_is_logged_wit
 
     observer.assert_called_once()
     assert "Mission: Help" in ctx.messages[0]["content"]
-    assert "direction observer failed constitution=support version=3" in caplog.text
+    assert "direction observer failed constitution_key=support version=3" in caplog.text
     assert any(record.exc_info for record in caplog.records)
 
 

@@ -42,8 +42,6 @@ def test_given_version_and_detail_when_get_constitution_is_called_then_requested
         control_plane.apply_direction(
             mission="New mission", change_note="Updated", constitution_key="example"
         )
-    binder = connection.binder("example", detail=detail)
-    current = binder.bind()
 
     direction = connection.get_constitution("example", version=version, detail=detail)
 
@@ -56,8 +54,6 @@ def test_given_version_and_detail_when_get_constitution_is_called_then_requested
     assert direction.principles[0].description == ("State the facts." if full else "")
     assert ("Original declaration" in direction.render()) is full
     assert ("State the facts." in direction.render()) is full
-    connection.close()
-    assert binder.bind() is current
 
 
 def test_given_updates_when_get_constitution_omits_version_then_current_compact_direction_returns(
@@ -103,9 +99,9 @@ def test_given_two_keys_when_sdk_get_constitution_receives_each_key_then_selecte
     direction = connection.get_constitution("example", version=version)
     default_direction = connection.get_constitution(version=version)
 
-    assert direction.constitution == "example"
+    assert direction.constitution_key == "example"
     assert direction.mission == "Original mission"
-    assert default_direction.constitution == "default"
+    assert default_direction.constitution_key == "default"
     assert default_direction.mission == "Default mission"
     assert direction.version == 1
     assert default_direction.version == 1
@@ -119,7 +115,7 @@ def test_given_unwritten_constitution_when_get_constitution_is_called_then_empty
 
     direction = connection.get_constitution("unwritten", detail=detail)
 
-    assert direction.constitution == "unwritten"
+    assert direction.constitution_key == "unwritten"
     assert direction.version == 0
     assert direction.mission == direction.declaration == ""
     assert direction.principles == direction.change_notes == direction.delta == ()
@@ -186,3 +182,21 @@ def test_given_missing_version_when_get_constitution_is_called_then_no_delivery_
     with pytest.raises(KynoHistoryError):
         connection.get_constitution("example", version=9)
     assert history.list()["items"] == []
+
+
+def test_given_cached_direction_and_closed_connection_when_bind_runs_then_named_cache_returns(
+    mcp_connection,
+):
+    connection, control_plane = mcp_connection
+    control_plane.apply_direction(
+        constitution_key="support", mission="Help customers", change_note="initial"
+    )
+    binder = connection.binder(constitution_key="support")
+    cached_direction = binder.bind()
+    connection.close()
+
+    direction = binder.bind()
+
+    assert direction is cached_direction
+    assert direction.constitution_key == "support"
+    assert direction.mission == "Help customers"

@@ -106,7 +106,7 @@ def test_given_a_malformed_reply_when_a_crew_is_running_then_the_last_direction_
 
 
 @pytest.mark.parametrize("shape", sorted(MALFORMED))
-def test_given_a_malformed_reply_and_nothing_cached_when_pulling_then_the_empty_direction_serves(
+def test_given_malformed_reply_and_empty_cache_when_bind_then_empty_direction_returns(
     shape,
     caplog,
 ):
@@ -115,7 +115,8 @@ def test_given_a_malformed_reply_and_nothing_cached_when_pulling_then_the_empty_
 
     direction = binder.bind()
 
-    assert direction.version == 0 and direction.constitution == "eu"
+    assert direction.version == 0
+    assert direction.constitution_key == "eu"
     assert "pull_failed_empty" in caplog.text
 
 

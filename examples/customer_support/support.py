@@ -42,7 +42,7 @@ def report(event, recording=None):
     if event["event"] == "direction_supplied":
         print(
             f"run={event['run_id']} step={event['step_id']} "
-            f"constitution={event['constitution']} version={event['version']} "
+            f"constitution_key={event['constitution_key']} version={event['version']} "
             f"status={event['status']}",
             flush=True,
         )

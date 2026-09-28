@@ -20,17 +20,19 @@ from kyno.wire.constitution import check_constitution_key
 from kyno.wire.errors import CoherenceError
 from kyno.wire.models import Principle, normalize_principles
 
-# The keys kyno reads. Every other key in the file is the operator's own
-# and is ignored, so one file can serve other tools too.
-FIELDS = ("constitution", "mission", "declaration", "principles")
+# Other keys belong to the operator, so one file can serve other tools too.
+FIELDS = ("constitution_key", "mission", "declaration", "principles")
 
 
 @dataclass(frozen=True)
 class ConstitutionFile:
-    """What the file said. None means the key was absent, which apply_direction
-    treats as "keep the current value". To clear a field, write ""."""
+    """Parsed authoring fields. Absent or null fields are represented by None.
 
-    constitution: str | None = None
+    CLI apply requires constitution_key. For content fields, None preserves the
+    current value; an empty string or principle list clears that content.
+    """
+
+    constitution_key: str | None = None
     mission: str | None = None
     declaration: str | None = None
     principles: tuple[Principle, ...] | None = None
@@ -40,11 +42,11 @@ def read_constitution_file(path: str) -> ConstitutionFile:
     document = _load(path)
     if not isinstance(document, Mapping):
         raise AuthoringError(f"{path}: a constitution file must be a mapping of fields")
-    constitution = _text(document, "constitution", path)
-    if constitution is not None:
-        constitution = check_constitution_key(constitution)
+    constitution_key = _text(document, "constitution_key", path)
+    if constitution_key is not None:
+        constitution_key = check_constitution_key(constitution_key)
     return ConstitutionFile(
-        constitution=constitution,
+        constitution_key=constitution_key,
         mission=_text(document, "mission", path),
         declaration=_text(document, "declaration", path),
         principles=_principles(document, path),
@@ -72,11 +74,11 @@ def check_constitution_file(path: str) -> FileReport:
     )
 
 
-def render_constitution_yaml(version: ConstitutionVersion, constitution: str) -> str:
+def render_constitution_yaml(version: ConstitutionVersion, constitution_key: str) -> str:
     """A version's complete content in the file format `kyno apply` reads.
     Empty fields are explicit so reapplying restores them instead of keeping newer values."""
     document = {
-        "constitution": check_constitution_key(constitution),
+        "constitution_key": check_constitution_key(constitution_key),
         "mission": version.mission,
         "declaration": version.declaration,
         "principles": [

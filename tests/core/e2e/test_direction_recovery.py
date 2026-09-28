@@ -14,13 +14,13 @@ runner = CliRunner()
 
 @pytest.mark.parametrize("constitution", ["default", "support"])
 @pytest.mark.parametrize("empty_fields", ["none", "details", "mission"])
-def test_given_an_earlier_version_when_reapplied_then_its_full_content_returns_as_a_new_version(
+def test_given_exported_version_when_cli_apply_then_new_version_restores_exported_content(
     tmp_path, monkeypatch, constitution, empty_fields
 ):
     cli_workspace(monkeypatch, tmp_path)
     assert runner.invoke(app, ["db", "init"]).exit_code == 0
     good = {
-        "constitution": constitution,
+        "constitution_key": constitution,
         "mission": "" if empty_fields == "mission" else "Help customers",
         "declaration": "" if empty_fields == "details" else "Explain the complete resolution.",
         "principles": (
@@ -34,7 +34,7 @@ def test_given_an_earlier_version_when_reapplied_then_its_full_content_returns_a
     authored.write_text(
         json.dumps(
             {
-                "constitution": constitution,
+                "constitution_key": constitution,
                 "mission": "Unreviewed objective",
                 "declaration": "Unwanted declaration",
                 "principles": ["Unwanted principle"],

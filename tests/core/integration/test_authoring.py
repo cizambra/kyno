@@ -5,6 +5,7 @@ import json
 import re
 
 import pytest
+import yaml
 from typer.testing import CliRunner
 
 from kyno.authoring import read_constitution_file
@@ -29,7 +30,7 @@ def plain(result):
 
 
 FULL_FILE = """
-constitution: acme
+constitution_key: acme
 mission: Ship a lending product people trust with their worst month
 declaration: |
   # What we are for
@@ -67,10 +68,29 @@ def write(tmp_path, text, name="constitution.yaml"):
 # --- reading the file ------------------------------------------------------
 
 
-def test_given_a_full_file_when_reading_then_every_field_a_constitution_has_is_carried(tmp_path):
+@pytest.mark.parametrize("custom_field", ["team", "constitution"], ids=["team", "constitution"])
+@pytest.mark.parametrize("encode", [json.dumps, yaml.safe_dump], ids=["json", "yaml"])
+def test_given_custom_field_when_read_constitution_file_then_target_comes_from_constitution_key(
+    tmp_path, custom_field, encode
+):
+    document = {"constitution_key": "support", custom_field: "sales", "mission": "Help"}
+    path = write(tmp_path, encode(document))
+
+    direction = read_constitution_file(path)
+
+    assert direction.constitution_key == "support"
+
+
+def test_given_full_file_when_read_constitution_file_then_all_authored_fields_return(
+    tmp_path,
+):
     read = read_constitution_file(write(tmp_path, FULL_FILE))
 
-    assert read.constitution == "acme"
+    assert read.declaration == (
+        "# What we are for\n\nLending is a promise about somebody's worst month.\n\n"
+        "We would rather lose the deal than make a promise we cannot keep."
+    )
+    assert read.constitution_key == "acme"
     assert read.mission == "Ship a lending product people trust with their worst month"
     assert read.principles == (
         Principle("Say the hard number first"),
@@ -90,10 +110,36 @@ def test_given_a_block_of_prose_when_reading_then_its_paragraphs_are_kept(tmp_pa
     assert declaration.endswith("we cannot keep.")
 
 
-def test_given_an_omitted_field_when_reading_then_it_reads_as_carry_it_forward(tmp_path):
-    read = read_constitution_file(write(tmp_path, "mission: M\n"))
-    assert read.declaration is None and read.principles is None
-    assert read.constitution is None
+def test_given_mission_only_file_when_read_constitution_file_then_omitted_fields_are_none(tmp_path):
+    path = write(tmp_path, "mission: Help customers\n")
+
+    direction = read_constitution_file(path)
+
+    assert direction.declaration is None
+    assert direction.principles is None
+    assert direction.constitution_key is None
+
+
+@pytest.mark.parametrize("encode", [json.dumps, yaml.safe_dump], ids=["json", "yaml"])
+def test_given_null_constitution_key_when_read_constitution_file_then_key_is_none(tmp_path, encode):
+    path = write(tmp_path, encode({"constitution_key": None, "mission": "Help"}))
+
+    direction = read_constitution_file(path)
+
+    assert direction.constitution_key is None
+
+
+@pytest.mark.parametrize("encode", [json.dumps, yaml.safe_dump], ids=["json", "yaml"])
+def test_given_null_constitution_key_when_cli_apply_then_file_is_rejected_without_writing(
+    db, tmp_path, encode
+):
+    path = write(tmp_path, encode({"constitution_key": None, "mission": "Help"}))
+
+    result = runner.invoke(app, ["apply", path, "--note", "Initial direction"])
+
+    assert result.exit_code == 1
+    assert "constitution_key: <key>" in result.output
+    assert plane(db).current("default").version == 0
 
 
 def test_given_unknown_keys_when_reading_a_file_then_they_are_the_operators_own(tmp_path):
@@ -122,6 +168,29 @@ def test_given_a_json_file_when_reading_then_it_is_read_as_valid_yaml(tmp_path):
     assert read.mission == "M" and read.principles == (Principle("p1"),)
 
 
+@pytest.mark.parametrize("encode", [json.dumps, yaml.safe_dump], ids=["json", "yaml"])
+def test_given_a_padded_key_when_read_constitution_file_runs_then_it_returns_the_normalized_key(
+    tmp_path, encode
+):
+    body = encode({"constitution_key": " support-eu ", "mission": "Help customers"})
+
+    direction = read_constitution_file(write(tmp_path, body))
+
+    assert direction.constitution_key == "support-eu"
+    assert direction.mission == "Help customers"
+
+
+@pytest.mark.parametrize("key", [123, True, ["support"], {"key": "support"}])
+@pytest.mark.parametrize("encode", [json.dumps, yaml.safe_dump], ids=["json", "yaml"])
+def test_given_a_nontext_key_when_read_constitution_file_runs_then_it_rejects_the_key_field(
+    tmp_path, encode, key
+):
+    body = encode({"constitution_key": key, "mission": "Help customers"})
+
+    with pytest.raises(AuthoringError, match="constitution_key"):
+        read_constitution_file(write(tmp_path, body))
+
+
 def test_given_a_misspelled_field_when_reading_a_file_then_it_counts_as_custom(tmp_path):
     # "principals" is not refused; `kyno check` is where a typo shows up,
     # reported as a custom field beside the kyno fields the file misses.
@@ -129,12 +198,14 @@ def test_given_a_misspelled_field_when_reading_a_file_then_it_counts_as_custom(t
     assert read.principles is None
 
 
-def test_given_a_mixed_file_when_checking_then_fields_sort_into_kyno_and_custom(tmp_path):
+def test_given_a_mixed_file_when_check_constitution_file_then_fields_sort_into_kyno_and_custom(
+    tmp_path,
+):
     from kyno.authoring import check_constitution_file
 
     report = check_constitution_file(write(tmp_path, "mission: M\nprincipals:\n  - p1\nnote: n\n"))
     assert report.present == ("mission",)
-    assert report.missing == ("constitution", "declaration", "principles")
+    assert report.missing == ("constitution_key", "declaration", "principles")
     assert report.custom == ("note", "principals")
 
 
@@ -225,22 +296,44 @@ def test_given_a_missing_file_when_running_apply_then_the_error_is_clean(db, tmp
     assert "Traceback" not in result.output
 
 
-def test_given_a_second_file_when_applying_then_a_version_appends_and_omissions_carry(db, tmp_path):
-    runner.invoke(app, ["apply", write(tmp_path, FULL_FILE), "--note", "init"])
-    second = write(tmp_path, "constitution: acme\nmission: A sharper mission\n", "2.yaml")
+def test_given_existing_direction_when_cli_apply_changes_mission_then_next_version_is_created(
+    db, tmp_path
+):
+    assert (
+        runner.invoke(app, ["apply", write(tmp_path, FULL_FILE), "--note", "init"]).exit_code == 0
+    )
+    path = write(tmp_path, "constitution_key: acme\nmission: A sharper mission\n", "update.yaml")
 
-    assert runner.invoke(app, ["apply", second, "--note", "sharpen"]).exit_code == 0
+    result = runner.invoke(app, ["apply", path, "--note", "sharpen"])
 
+    assert result.exit_code == 0, result.output
     head = plane(db).current("acme")
     assert head.version == 2
     assert head.mission == "A sharper mission"
-    assert head.declaration.startswith("# What we are for")
-    assert len(head.principles) == 2
 
 
-def test_given_a_clearing_file_when_applying_then_the_declaration_clears(db, tmp_path):
+def test_given_omitted_content_when_cli_apply_changes_mission_then_existing_content_is_preserved(
+    db, tmp_path
+):
+    initial = write(
+        tmp_path,
+        "constitution_key: acme\nmission: Help\n"
+        "declaration: Explain decisions\nprinciples:\n  - Be honest\n",
+    )
+    assert runner.invoke(app, ["apply", initial, "--note", "init"]).exit_code == 0
+    update = write(tmp_path, "constitution_key: acme\nmission: Help customers\n", "update.yaml")
+
+    result = runner.invoke(app, ["apply", update, "--note", "clarify"])
+
+    assert result.exit_code == 0, result.output
+    head = plane(db).current("acme")
+    assert head.declaration == "Explain decisions"
+    assert head.principles == (Principle("Be honest"),)
+
+
+def test_given_a_clearing_file_when_cli_apply_then_the_declaration_clears(db, tmp_path):
     runner.invoke(app, ["apply", write(tmp_path, FULL_FILE), "--note", "init"])
-    clearing = write(tmp_path, 'constitution: acme\ndeclaration: ""\n', "3.yaml")
+    clearing = write(tmp_path, 'constitution_key: acme\ndeclaration: ""\n', "3.yaml")
 
     assert runner.invoke(app, ["apply", clearing, "--note", "retract"]).exit_code == 0
     assert plane(db).current("acme").declaration == ""
@@ -286,7 +379,7 @@ def test_given_prose_when_render_constitution_yaml_then_read_constitution_file_r
     assert "by:" not in text
 
     got = read_constitution_file(str(path))
-    assert got.constitution == "default"
+    assert got.constitution_key == "default"
     assert got.mission == version.mission
     assert got.declaration == version.declaration
     assert got.principles == version.principles

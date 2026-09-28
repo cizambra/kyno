@@ -36,17 +36,13 @@ def test_given_draft_when_run_example_checks_operator_update_then_remaining_step
     directory = Path(crewai_example.__file__).parent
     initial = yaml.safe_load((directory / "direction-v1.yaml").read_text())
     revised = yaml.safe_load((directory / "direction-v2.yaml").read_text())
-    initial_key = initial.pop("constitution")
-    control_plane.apply_direction(constitution_key=initial_key, **initial, change_note="initial")
-    revised_key = revised.pop("constitution")
+    control_plane.apply_direction(**initial, change_note="initial")
     events = []
 
     def operator():
         assert len(fake_llm.calls) == 2
         if changed:
-            control_plane.apply_direction(
-                constitution_key=revised_key, **revised, change_note="new tradeoff"
-            )
+            control_plane.apply_direction(**revised, change_note="new tradeoff")
 
     def record_and_print(event):
         events.append(event)

@@ -173,7 +173,7 @@ class SqlConstitutionStore:
 
     def export_versions(
         self,
-        constitution: str = "default",
+        constitution: str,
         *,
         from_version: int | None = None,
         to_version: int | None = None,

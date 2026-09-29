@@ -149,7 +149,11 @@ to Core notifications.
 
 ## Limits
 
-Current direction depends on a successful pull. By default, a failed pull
+The SDK must establish a connection before it can read direction. If the
+initial connection fails, `kyno.connect()` raises `KynoUnavailableError`. See
+[connection troubleshooting](docs/adapters.md#connection-troubleshooting).
+
+Once connected, current direction depends on a successful pull. By default, a failed pull
 is logged and the binder uses cached direction, or empty version 0 if it
 has never fetched direction. Set `PullPolicy(fail_closed=True)` on the
 binder to raise an error instead. See [adapter failure policies](docs/adapters.md)

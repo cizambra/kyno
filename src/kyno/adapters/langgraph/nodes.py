@@ -70,8 +70,6 @@ def direction_from_state(state: dict) -> Direction:
         version=state.get("kyno_version", 0),
         mission=state.get("kyno_mission", ""),
         declaration=state.get("kyno_declaration", ""),
-        change_notes=tuple(state.get("kyno_change_notes", ())),
-        delta=tuple(state.get("kyno_delta", ())),
         principles=state.get("kyno_principles", ()),
         detail=state.get("kyno_detail", DetailLevel.COMPACT),
     )

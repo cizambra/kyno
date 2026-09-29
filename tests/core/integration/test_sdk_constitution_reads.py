@@ -1,7 +1,5 @@
 """SDK reads return current or historical constitutions with compact or full detail over MCP."""
 
-from dataclasses import replace
-
 import pytest
 
 from kyno.delivery_recording import DeliveryRecorder
@@ -45,7 +43,7 @@ def test_given_version_and_detail_when_get_constitution_is_called_then_requested
 
     direction = connection.get_constitution("example", version=version, detail=detail)
 
-    assert direction == replace(original, change_notes=(), delta=())
+    assert direction == original
     assert direction.detail is DetailLevel(detail)
     assert direction.version == 1
     assert direction.mission == "Original mission"
@@ -118,7 +116,7 @@ def test_given_unwritten_constitution_when_get_constitution_is_called_then_empty
     assert direction.constitution_key == "unwritten"
     assert direction.version == 0
     assert direction.mission == direction.declaration == ""
-    assert direction.principles == direction.change_notes == direction.delta == ()
+    assert direction.principles == ()
     assert direction.detail is detail
 
 

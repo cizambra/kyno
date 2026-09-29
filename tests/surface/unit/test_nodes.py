@@ -210,3 +210,27 @@ def test_given_binding_metadata_when_state_lists_are_edited_then_binding_metadat
 
     assert binding.change_notes == ("Prioritize customer support",)
     assert binding.delta == ("Mission changed.",)
+
+
+def test_given_same_content_with_different_metadata_when_direction_from_state_then_equal():
+    authoritative_state = {
+        "kyno_constitution_key": "support",
+        "kyno_version": 2,
+        "kyno_mission": "Resolve support requests",
+        "kyno_principles": [{"title": "Be clear", "description": ""}],
+    }
+    first_state = {
+        **authoritative_state,
+        "kyno_change_notes": ["Initial direction", "Prioritize resolution"],
+        "kyno_delta": [],
+    }
+    returning_state = {
+        **authoritative_state,
+        "kyno_change_notes": ["Prioritize resolution"],
+        "kyno_delta": ["Mission changed."],
+    }
+
+    first_direction = direction_from_state(first_state)
+    returning_direction = direction_from_state(returning_state)
+
+    assert first_direction == returning_direction

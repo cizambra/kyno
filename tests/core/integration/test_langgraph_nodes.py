@@ -208,11 +208,9 @@ def test_given_json_state_when_direction_from_state_runs_then_all_fields_are_res
         mission="M",
         principles=("P",),
         declaration="Long form",
-        change_notes=("Changed support priority",),
-        delta=("Mission changed.",),
         detail=DetailLevel.FULL,
     )
-    update = direction_update(original, change_notes=original.change_notes, delta=original.delta)
+    update = direction_update(original)
 
     assert update["kyno_detail"] is DetailLevel.FULL
     assert direction_from_state(json.loads(json.dumps(update))) == original
@@ -247,9 +245,24 @@ def test_given_change_notes_when_direction_node_runs_then_consumer_receives_note
 ):
     bind, _ = binder
     captured = []
-    graph = _capture_graph(bind, captured)
-    graph.invoke({}, {"configurable": {"thread_id": "notes"}})
-    assert captured[0].change_notes == ("init",)
+
+    def capture_notes(state):
+        captured.append(state["kyno_change_notes"])
+        return {}
+
+    graph = (
+        StateGraph(GraphState)
+        .add_node("pull", direction_node(bind))
+        .add_node("capture", capture_notes)
+        .add_edge(START, "pull")
+        .add_edge("pull", "capture")
+        .add_edge("capture", END)
+        .compile()
+    )
+
+    graph.invoke({})
+
+    assert captured == [["init"]]
 
 
 def test_given_intervening_work_when_direction_node_runs_then_consumer_receives_direction(binder):
@@ -304,6 +317,8 @@ def test_given_direction_node_refresh_when_review_resumes_then_saved_answer_keep
                 "direction": direction,
                 "supplied_message": supplied_message,
                 "binding_status": state["kyno_binding_status"],
+                "change_notes": state["kyno_change_notes"],
+                "delta": state["kyno_delta"],
                 "output": output,
             }
         }
@@ -344,8 +359,8 @@ def test_given_direction_node_refresh_when_review_resumes_then_saved_answer_keep
     assert reviewed[0]["direction"].declaration == (
         "Explain the support decision." if detail is DetailLevel.FULL else ""
     )
-    assert tuple(reviewed[0]["direction"].change_notes) == ("Add explanation",)
-    assert reviewed[0]["direction"].delta
+    assert tuple(reviewed[0]["change_notes"]) == ("Add explanation",)
+    assert reviewed[0]["delta"]
     assert reviewed[0]["direction"].detail == detail
     assert reviewed[0]["supplied_message"] == reviewed[0]["direction"].render()
     assert reviewed[0]["output"] == "Answer for M1"

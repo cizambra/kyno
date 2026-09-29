@@ -4,5 +4,3 @@ Principles:
 - Approve in minutes, not days
 - Explain every rejection
 - Never lend what someone cannot repay
-Recent changes:
-- initial constitution

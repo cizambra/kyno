@@ -104,7 +104,9 @@ def test_given_a_delta_and_a_note_when_reading_changes_then_they_stay_separate(p
     assert changes.delta and "Retainer outcomes come first" in changes.delta[0]
 
 
-def test_given_an_injected_block_when_rendered_then_it_carries_the_delta(plane):
+def test_given_changed_principle_when_bind_with_status_then_binding_describes_the_replacement(
+    plane,
+):
     from kyno.sdk.binder import DirectionBinder
     from kyno.sdk.client import LocalDirectionSource
 
@@ -114,8 +116,9 @@ def test_given_an_injected_block_when_rendered_then_it_carries_the_delta(plane):
         principles=("Craft first", "Retainer outcomes come first", "Honest scoping"),
         change_note="board decision",
     )
-    rendered = binder.bind().render()
+    binding = binder.bind_with_status()
 
-    assert "What changed:" in rendered
-    assert "Retainer outcomes come first" in rendered
-    assert "Client success over billable hours" in rendered
+    assert any(
+        "Retainer outcomes come first" in line and "Client success over billable hours" in line
+        for line in binding.delta
+    )

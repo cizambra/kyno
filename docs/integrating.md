@@ -222,8 +222,6 @@ Principles:
 - Approve in minutes, not days
 - Explain every rejection
 - Never lend what someone cannot repay
-Recent changes:
-- initial constitution
 ```
 
 The rules:
@@ -237,10 +235,9 @@ The rules:
 - If no constitution key was specified and the first pull fails, the fail-open
   fallback uses `[kyno:direction version=0]` followed by
   `No direction has been received yet.`
-- If the response has `change_notes`, add a `Recent changes:` section with
-  one `- ` line each. Same for `delta` under `What changed:`. Skip either
-  section when its list is empty. The `delta` lines matter most: they tell
-  the agents what changed since the last version.
+- Render the selected version's mission and principles. Keep `change_notes`
+  and `delta` as delivery metadata for observers or logs; consumers that last
+  saw different versions receive the same block for a given version and detail.
 - With `detail: "full"`, add `Declaration:` and its text after the mission
   line, and put each principle's description on an indented line under its
   title.
@@ -264,12 +261,6 @@ export function buildBlock(response, detail = "compact") {
       lines.push(`- ${p.title}`);
       if (detail === "full" && p.description) lines.push(`  ${p.description}`);
     }
-  }
-  if (response.change_notes.length > 0) {
-    lines.push("Recent changes:", ...response.change_notes.map((n) => `- ${n}`));
-  }
-  if (response.delta.length > 0) {
-    lines.push("What changed:", ...response.delta.map((d) => `- ${d}`));
   }
   return lines.join("\n");
 }
@@ -397,10 +388,9 @@ versions, step by step: [1, 1, 1, 2, 2]
   version changed at step 4: 1 -> 2
 ```
 
-The change must appear on the step right after you published it, not
-several steps later, and not never. The blocks from that step on must also
-contain the `What changed:` lines (compare with
-`block_version2_compact.txt`).
+The next step must use the updated direction. Compare its block with
+`block_version2_compact.txt`; subsequent steps use that same block until
+another version is applied.
 
 ## Stage 5: Kyno goes down
 

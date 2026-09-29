@@ -1214,3 +1214,32 @@ def test_given_prior_binding_when_bind_with_status_pulls_again_then_prior_metada
 
     assert prior_binding.change_notes == ("Prioritize customer support",)
     assert prior_binding.delta == ("Mission changed.",)
+
+
+def test_given_reply_without_constitution_key_when_bind_with_status_then_cached_metadata_returns(
+    scripted_source,
+):
+    scripted_source.set("support", 3, "Help customers")
+    valid_changes = replace(
+        scripted_source.replies["support"],
+        change_notes=("Prioritize resolution",),
+        delta=("Mission changed.",),
+    )
+    source = SimpleNamespace(
+        changes_since=Mock(
+            return_value=DirectionResponse(
+                valid_changes, RecordingReceipt("recorded", "valid-delivery")
+            )
+        )
+    )
+    binder = DirectionBinder(source, "support")
+    binder.bind_with_status()
+    source.changes_since.return_value = DirectionResponse(
+        replace(valid_changes, constitution_key=None, change_notes=("Invalid reply",), delta=())
+    )
+
+    binding = binder.bind_with_status()
+
+    assert binding.change_notes == ("Prioritize resolution",)
+    assert binding.delta == ("Mission changed.",)
+    assert binding.recording.record_id == "valid-delivery"

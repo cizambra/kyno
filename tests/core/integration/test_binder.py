@@ -88,7 +88,7 @@ def test_given_direction_update_when_bind_with_status_runs_again_then_prior_resu
     assert first.direction.mission == "Old"
     assert second.direction.version == 2
     assert second.direction.mission == "New"
-    assert second.direction.change_notes == ("pivot",)
-    assert second.direction.delta
+    assert second.change_notes == ("pivot",)
+    assert second.delta
     assert first.status is BindingStatus.PULLED
     assert second.status is BindingStatus.PULLED

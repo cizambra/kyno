@@ -1,5 +1,6 @@
 import json
 import threading
+from dataclasses import FrozenInstanceError
 
 import pytest
 
@@ -7,9 +8,18 @@ from kyno.sdk.cell import (
     DIRECTION_MARKER,
     Direction,
     DirectionCell,
+    DirectionSnapshot,
 )
 from kyno.sdk.recording import RecordingReceipt
 from kyno.wire.models import ChangesSince, DetailLevel, Principle
+
+RICH = dict(
+    constitution_key="eu",
+    version=2,
+    mission="Ship trustworthy lending",
+    declaration="# Our declaration\n\nThe long form of what that means.",
+    principles=(Principle("Say the hard number first", "Before any softening story."),),
+)
 
 
 def _direction(version: int, constitution: str = "default") -> Direction:
@@ -49,7 +59,6 @@ def test_given_key_and_changes_when_direction_from_changes_then_identity_and_con
     assert direction.version == 3
     assert direction.mission == "Ship trustworthy lending"
     assert direction.principles == (Principle("Be honest"),)
-    assert direction.change_notes == ("pivot",)
 
 
 def test_given_the_empty_direction_when_direction_empty_then_it_matches_version_zero():
@@ -69,32 +78,39 @@ def test_given_a_direction_when_direction_render_then_the_constitution_and_versi
     assert "p1" in block
 
 
-def test_given_empty_cache_when_get_with_recording_runs_then_no_snapshot_is_returned():
+def test_given_empty_cache_when_get_runs_then_no_snapshot_is_returned():
     cell = DirectionCell()
     assert cell.last_seen_version() == 0
-    assert cell.get_with_recording() is None
+    assert cell.get() is None
 
 
-def test_given_an_older_version_when_updating_the_cell_then_it_never_regresses():
+def test_given_older_version_when_cell_update_then_newer_direction_is_preserved():
     cell = DirectionCell()
-    cell.update_with_recording(_direction(5))
-    held, _recording = cell.update_with_recording(_direction(2))
-    assert held.version == 5 and cell.get_with_recording()[0].mission == "M5"
+    cell.update(DirectionSnapshot(_direction(5)))
+    held = cell.update(DirectionSnapshot(_direction(2)))
+    assert held.direction.version == 5
+    assert cell.get().direction.mission == "M5"
 
 
-def test_given_concurrent_updates_when_racing_the_cell_then_the_newest_version_holds():
+def test_given_concurrent_responses_when_cell_update_then_newest_snapshot_is_preserved():
     cell = DirectionCell()
-    threads = [
-        threading.Thread(target=cell.update_with_recording, args=(_direction(version),))
+    snapshots = [
+        DirectionSnapshot(
+            _direction(version),
+            RecordingReceipt("recorded", f"receipt-{version}"),
+            (f"Intent for version {version}",),
+            (f"Delta for version {version}",),
+        )
         for version in range(1, 21)
     ]
+    threads = [threading.Thread(target=cell.update, args=(snapshot,)) for snapshot in snapshots]
     for t in threads:
         t.start()
     for t in threads:
-        t.join()
+        t.join(timeout=10)
+        assert not t.is_alive()
 
-    assert cell.get_with_recording()[0].version == 20
-    assert cell.get_with_recording()[0].mission == "M20"
+    assert cell.get() is snapshots[-1]
 
 
 def test_given_default_detail_when_direction_render_runs_then_long_text_is_excluded():
@@ -122,19 +138,14 @@ def test_given_string_principles_when_direction_init_runs_then_strings_become_pr
     assert d.principles == (Principle("p1"),)
 
 
-@pytest.mark.parametrize("delta", [(), ("Mission changed.", "Principle added.")])
 @pytest.mark.parametrize("detail", list(DetailLevel))
-def test_given_direction_with_changes_when_to_dict_runs_then_all_fields_are_json_serializable(
-    delta, detail
-):
+def test_given_direction_when_to_dict_runs_then_authoritative_fields_are_json_serializable(detail):
     direction = Direction(
         constitution_key="support",
         version=3,
         mission="Help customers",
         declaration="Explain resolutions.",
         principles=(Principle("Be clear", "Use plain language."),),
-        change_notes=("Prioritize support",),
-        delta=delta,
         detail=detail,
     )
 
@@ -146,8 +157,6 @@ def test_given_direction_with_changes_when_to_dict_runs_then_all_fields_are_json
         "mission": "Help customers",
         "declaration": "Explain resolutions.",
         "principles": [{"title": "Be clear", "description": "Use plain language."}],
-        "change_notes": ["Prioritize support"],
-        "delta": list(delta),
         "detail": detail.value,
     }
 
@@ -175,17 +184,6 @@ def test_given_declaration_in_changes_when_direction_from_changes_then_declarati
         declaration="The long form.",
     )
     assert Direction.from_changes(changes, "eu").declaration == "The long form."
-
-
-# --- how much detail the injected block carries ---------------------------
-
-RICH = dict(
-    constitution_key="eu",
-    version=2,
-    mission="Ship trustworthy lending",
-    declaration="# Our declaration\n\nThe long form of what that means.",
-    principles=(Principle("Say the hard number first", "Before any softening story."),),
-)
 
 
 def test_given_full_detail_when_render_is_called_then_declaration_and_descriptions_are_included():
@@ -224,30 +222,14 @@ def test_given_unknown_detail_when_direction_is_constructed_then_value_error_is_
         Direction(**RICH, detail="verbose")
 
 
-def test_given_cached_version_zero_when_get_with_recording_runs_then_empty_direction_is_retained():
+def test_given_cached_version_zero_when_get_runs_then_empty_direction_is_retained():
     cell = DirectionCell()
     direction = Direction.empty("support")
     receipt = RecordingReceipt("recorded", "empty-direction-record")
-    cell.update_with_recording(direction, receipt)
+    cell.update(DirectionSnapshot(direction, receipt))
 
-    assert cell.get_with_recording() == (direction, receipt)
+    assert cell.get() == DirectionSnapshot(direction, receipt)
     assert cell.last_seen_version() == 0
-
-
-def test_given_serialized_delta_when_caller_appends_to_list_then_direction_delta_is_unchanged():
-    direction = Direction(
-        constitution_key="support",
-        version=2,
-        mission="Help customers",
-        principles=(),
-        delta=("Mission changed.",),
-    )
-    payload = direction.to_dict()
-
-    payload["delta"].append("Caller annotation")
-
-    assert payload["delta"] == ["Mission changed.", "Caller annotation"]
-    assert direction.delta == ("Mission changed.",)
 
 
 @pytest.mark.parametrize("key", [1, True, [], {}, "", " ", "Upper", "bad/name", "a" * 201])
@@ -319,3 +301,49 @@ def test_given_direction_without_constitution_key_when_render_then_header_omits_
     block = direction.render()
 
     assert block == "[kyno:direction version=0]\nNo direction has been received yet."
+
+
+def test_given_older_response_when_cell_update_then_newer_snapshot_metadata_is_preserved():
+    cell = DirectionCell()
+    newer = DirectionSnapshot(
+        _direction(5), RecordingReceipt("recorded", "newer"), ("New intent",), ("New delta",)
+    )
+    cell.update(newer)
+    older = DirectionSnapshot(
+        _direction(2), RecordingReceipt("recorded", "older"), ("Old intent",), ("Old delta",)
+    )
+
+    accepted = cell.update(older)
+
+    assert accepted is newer
+    assert cell.get() is newer
+
+
+def test_given_equal_version_response_when_cell_update_then_latest_delivery_metadata_is_used():
+    cell = DirectionCell()
+    cell.update(DirectionSnapshot(_direction(5), None, ("First intent",), ("First delta",)))
+    latest = DirectionSnapshot(_direction(5), RecordingReceipt("recorded", "latest"))
+
+    accepted = cell.update(latest)
+
+    assert accepted is latest
+    assert cell.get() is latest
+
+
+def test_given_mutable_metadata_when_direction_snapshot_init_then_values_are_copied():
+    notes = ["Prioritize resolution"]
+    delta = ["Mission changed."]
+
+    snapshot = DirectionSnapshot(_direction(2), change_notes=notes, delta=delta)
+    notes.append("Caller annotation")
+    delta.clear()
+
+    assert snapshot.change_notes == ("Prioritize resolution",)
+    assert snapshot.delta == ("Mission changed.",)
+
+
+def test_given_direction_snapshot_when_assigning_delta_then_metadata_is_immutable():
+    snapshot = DirectionSnapshot(_direction(2), delta=("Mission changed.",))
+
+    with pytest.raises(FrozenInstanceError):
+        snapshot.delta = ("Caller annotation",)

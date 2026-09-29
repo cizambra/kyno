@@ -57,7 +57,7 @@ def parse_arguments(argv):
     parser.add_argument(
         "--token-env", default="KYNO_READ_TOKEN", help="Variable holding a read-only token."
     )
-    parser.add_argument("--constitution", default="customer-support")
+    parser.add_argument("--constitution-key", default="customer-support")
     parser.add_argument("--model", required=True, help="OpenAI model ID selected by the operator.")
     parser.add_argument(
         "--allow-model-calls",

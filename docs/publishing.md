@@ -13,8 +13,8 @@ On this page:
 
 ```bash
 kyno publish                                  # the default constitution
-kyno publish --constitution eu --with-history
-kyno unpublish --constitution eu
+kyno publish --constitution-key eu --with-history
+kyno unpublish --constitution-key eu
 ```
 
 While `kyno serve --transport http` is running, a published constitution is

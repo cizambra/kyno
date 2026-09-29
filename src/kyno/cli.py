@@ -215,8 +215,8 @@ def token_revoke(
         raise typer.Exit(code=1) from None
 
 
-_CONSTITUTION_OPTION = typer.Option(
-    "default", "--constitution", help="Which named constitution to act on."
+_CONSTITUTION_KEY_OPTION = typer.Option(
+    "default", "--constitution-key", help="The unique constitution key to act on."
 )
 
 _REMOTE_HELP = "Run against a remote profile's endpoint instead of the local store."
@@ -692,7 +692,7 @@ def page_export(
 
 @app.command()
 def current(
-    constitution: str = _CONSTITUTION_OPTION,
+    constitution: str = _CONSTITUTION_KEY_OPTION,
     as_yaml: bool = typer.Option(
         False,
         "--yaml",
@@ -715,7 +715,7 @@ def current(
 @app.command("get-version")
 def get_version(
     version: str = typer.Argument(..., help="A positive version number, or 'latest'."),
-    constitution: str = _CONSTITUTION_OPTION,
+    constitution: str = _CONSTITUTION_KEY_OPTION,
     as_yaml: bool = typer.Option(
         False, "--yaml", help="Print direction in the file format `kyno apply` reads."
     ),
@@ -884,7 +884,7 @@ def _render_comparison(target: str, head, delta: tuple[str, ...]) -> None:
 
 @app.command()
 def publish(
-    constitution: str = _CONSTITUTION_OPTION,
+    constitution: str = _CONSTITUTION_KEY_OPTION,
     with_history: bool = typer.Option(
         False,
         "--with-history",
@@ -906,7 +906,7 @@ def publish(
 
 
 @app.command()
-def unpublish(constitution: str = _CONSTITUTION_OPTION) -> None:
+def unpublish(constitution: str = _CONSTITUTION_KEY_OPTION) -> None:
     """Take a constitution's public page down. History goes private too."""
     try:
         constitution = check_constitution_key(constitution)
@@ -919,7 +919,7 @@ def unpublish(constitution: str = _CONSTITUTION_OPTION) -> None:
 
 @app.command()
 def history(
-    constitution: str = _CONSTITUTION_OPTION,
+    constitution: str = _CONSTITUTION_KEY_OPTION,
     remote: bool = typer.Option(False, "--remote", help=_REMOTE_HELP),
     profile: str = typer.Option("default", "--profile", help="Which remote profile to use."),
     credentials: str | None = typer.Option(
@@ -953,7 +953,7 @@ def history(
 
 @app.command()
 def export(
-    constitution: str = _CONSTITUTION_OPTION,
+    constitution: str = _CONSTITUTION_KEY_OPTION,
     remote: bool = typer.Option(False, "--remote", help=_REMOTE_HELP),
     profile: str = typer.Option("default", "--profile", help="Which remote profile to use."),
     credentials: str | None = typer.Option(

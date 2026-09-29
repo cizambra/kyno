@@ -37,7 +37,7 @@ def test_given_missing_consent_or_configuration_when_starting_then_no_connection
 
 @pytest.mark.parametrize("record", [True, False])
 @pytest.mark.parametrize("failure", [True, False])
-def test_given_consent_when_running_then_recording_is_opt_in_and_connections_close(
+def test_given_consent_when_crewai_example_main_runs_then_recording_is_opt_in_and_connections_close(
     crewai_example, monkeypatch, tmp_path, record, failure
 ):
     import crewai
@@ -66,7 +66,8 @@ def test_given_consent_when_running_then_recording_is_opt_in_and_connections_clo
         return "model"
 
     def run(model, binder, **kwargs):
-        assert (model, binder) == ("model", "binder")
+        assert model == "model"
+        assert binder == "binder"
         kwargs["emit"](event)
         if failure:
             raise RuntimeError("failed")
@@ -168,3 +169,31 @@ def test_given_a_local_dotenv_when_crewai_is_imported_by_the_example_then_it_is_
         timeout=30,
     )
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    "options, expected_key",
+    [([], "customer-support"), (["--constitution-key", "billing"], "billing")],
+    ids=["omitted-key", "explicit-key"],
+)
+def test_given_key_option_when_crewai_example_main_runs_then_binder_receives_selected_key(
+    crewai_example, monkeypatch, options, expected_key
+):
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock, Mock
+
+    connection = MagicMock()
+    connection.__enter__.return_value = connection
+    monkeypatch.setenv("KYNO_READ_TOKEN", "read-secret")
+    monkeypatch.setenv("OPENAI_API_KEY", "model-secret")
+    monkeypatch.setitem(sys.modules, "crewai", SimpleNamespace(LLM=Mock()))
+    monkeypatch.setattr(crewai_example.kyno, "connect", Mock(return_value=connection))
+    monkeypatch.setattr(crewai_example, "run_example", Mock())
+
+    result = crewai_example.main(
+        ["--url", "http://localhost:9000", "--model", "selected", "--allow-model-calls", *options]
+    )
+
+    assert result == 0
+    assert connection.binder.call_count == 1
+    assert connection.binder.call_args.args == (expected_key,)

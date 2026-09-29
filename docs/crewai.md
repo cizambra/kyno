@@ -47,7 +47,8 @@ adapter's hook without clearing unrelated hooks.
 Before each model call, the hook pulls direction, applies the binder's
 failure policy, and replaces the previous Kyno direction block in the
 messages. The block names the constitution and version and includes the
-mission, principles, and change context. Other messages are preserved.
+mission and principles. Other messages are preserved. Read change notes and
+deltas through the [binding callback](#optional-recording).
 
 Use `connection.binder("customer-support", detail="full")` if the model also needs the
 declaration and principle descriptions. No callback, receipt storage,

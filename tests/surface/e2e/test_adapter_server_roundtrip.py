@@ -1,10 +1,12 @@
 """Adapter calls through a running Kyno server."""
 
 import threading
+from unittest.mock import Mock
 
 import pytest
 
 from kyno.adapters.crewai.hooks import CrewAiKyno
+from kyno.adapters.langgraph import direction_node
 from kyno.sdk import connect
 
 
@@ -162,3 +164,47 @@ def test_given_failed_reads_when_before_llm_call_runs_again_then_fallback_recove
         assert binding.direction.constitution_key == "support"
         assert binding.direction.render() == block
     assert len([message for message in context.messages if message["role"] == "system"]) == 1
+
+
+@pytest.mark.e2e
+def test_given_no_key_when_before_llm_call_repeats_then_core_receives_first_reply_key(
+    live_server, monkeypatch
+):
+    control_plane, url, token = live_server
+    changes_since = Mock(wraps=control_plane.changes_since)
+    monkeypatch.setattr(control_plane, "changes_since", changes_since)
+
+    with connect(url=url, token=token) as connection:
+        binder = connection.binder()
+        adapter = CrewAiKyno(binder)
+        context = FakeCtx()
+
+        adapter.before_llm_call(context)
+        adapter.before_llm_call(context)
+
+        assert binder.constitution_key == "default"
+
+    assert changes_since.call_args_list[0].args == (0, None)
+    assert changes_since.call_args_list[1].args == (0, "default")
+
+
+@pytest.mark.e2e
+def test_given_no_key_when_direction_node_repeats_then_core_receives_first_reply_key(
+    live_server, monkeypatch
+):
+    control_plane, url, token = live_server
+    changes_since = Mock(wraps=control_plane.changes_since)
+    monkeypatch.setattr(control_plane, "changes_since", changes_since)
+
+    with connect(url=url, token=token) as connection:
+        binder = connection.binder()
+        node = direction_node(binder)
+
+        first = node({})
+        second = node(first)
+
+        assert first["kyno_constitution_key"] == "default"
+        assert second["kyno_constitution_key"] == "default"
+
+    assert changes_since.call_args_list[0].args == (0, None)
+    assert changes_since.call_args_list[1].args == (0, "default")

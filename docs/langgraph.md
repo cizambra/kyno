@@ -105,8 +105,18 @@ constitution_key = state["kyno_constitution_key"]
 version = state["kyno_version"]
 ```
 
-`direction_from_state(state)` restores the same key as
-`direction.constitution_key`. With an empty state, it selects `"default"`.
+`direction_from_state(state)` reads `state["kyno_constitution_key"]` into
+`direction.constitution_key`. With an empty state, or after a failed first pull
+with no explicit constitution key, this property is `None`. A successful Core
+reply supplies the selected constitution key. For example, an empty state gives:
+
+```python
+from kyno.adapters.langgraph import direction_from_state
+
+empty = direction_from_state({})
+assert empty.constitution_key is None
+assert empty.version == 0
+```
 
 Before your work node runs, `direction_node` or `pull_before` supplies the
 direction and sets `state["kyno_binding_status"]` automatically. Your application

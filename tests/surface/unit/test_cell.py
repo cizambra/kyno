@@ -21,8 +21,8 @@ def _direction(version: int, constitution: str = "default") -> Direction:
     )
 
 
-@pytest.mark.parametrize("key", [None, "", "Upper", "bad/name", " sup port ", "a" * 201])
-def test_given_invalid_key_when_creating_direction_then_it_is_rejected(key):
+@pytest.mark.parametrize("key", ["", "Upper", "bad/name", " sup port ", "a" * 201])
+def test_given_invalid_constitution_key_when_direction_init_then_it_is_rejected(key):
     with pytest.raises(ValueError, match="constitution key"):
         _direction(1, key)
 
@@ -250,24 +250,27 @@ def test_given_serialized_delta_when_caller_appends_to_list_then_direction_delta
     assert direction.delta == ("Mission changed.",)
 
 
+@pytest.mark.parametrize("key", [1, True, [], {}, "", " ", "Upper", "bad/name", "a" * 201])
+def test_given_invalid_constitution_key_when_direction_empty_then_value_error_is_raised(key):
+    with pytest.raises(ValueError, match="constitution key"):
+        Direction.empty(key)
+
+
 @pytest.mark.parametrize("key", [None, 1, True, [], {}, "", " ", "Upper", "bad/name", "a" * 201])
-@pytest.mark.parametrize("operation", ["empty", "from_changes"])
-def test_given_invalid_key_when_direction_factory_runs_then_value_error_is_raised(operation, key):
-    arguments = {"constitution_key": key}
-    if operation == "from_changes":
-        arguments["changes"] = ChangesSince(
-            constitution_key="support",
-            current_version=1,
-            changed=True,
-            mission="Help customers",
-            principles=(),
-            changed_mission=True,
-            changed_principles=False,
-            change_notes=(),
-        )
+def test_given_invalid_constitution_key_when_direction_from_changes_then_value_error_is_raised(key):
+    changes = ChangesSince(
+        constitution_key="support",
+        current_version=1,
+        changed=True,
+        mission="Help customers",
+        principles=(),
+        changed_mission=True,
+        changed_principles=False,
+        change_notes=(),
+    )
 
     with pytest.raises(ValueError, match="constitution key"):
-        getattr(Direction, operation)(**arguments)
+        Direction.from_changes(changes, constitution_key=key)
 
 
 @pytest.mark.parametrize("key", ["support", "a" * 200], ids=["named-key", "maximum-length-key"])
@@ -286,3 +289,33 @@ def test_given_padded_key_when_direction_from_changes_runs_then_trimmed_key_is_r
     direction = Direction.from_changes(changes, constitution_key=f" \t{key}\n")
 
     assert direction.constitution_key == key
+
+
+def test_given_written_direction_without_constitution_key_when_direction_init_then_rejected():
+    with pytest.raises(ValueError, match="resolved constitution key"):
+        Direction(constitution_key=None, version=1, mission="Help", principles=())
+
+
+def test_given_no_constitution_key_when_direction_empty_then_version_zero_has_no_constitution_key():
+    direction = Direction.empty(None)
+
+    assert direction.constitution_key is None
+    assert direction.version == 0
+    assert direction.mission == ""
+    assert direction.principles == ()
+
+
+def test_given_direction_without_constitution_key_when_to_dict_then_constitution_key_is_none():
+    direction = Direction.empty(None)
+
+    payload = direction.to_dict()
+
+    assert payload["constitution_key"] is None
+
+
+def test_given_direction_without_constitution_key_when_render_then_header_omits_constitution_key():
+    direction = Direction.empty(None)
+
+    block = direction.render()
+
+    assert block == "[kyno:direction version=0]\nNo direction has been received yet."

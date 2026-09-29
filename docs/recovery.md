@@ -26,7 +26,7 @@ cached direction after a failed pull.
 ## 2. Preserve the history and identify a known-good version
 
 Use an operator environment, not the agent process. The examples use an
-existing remote profile named `ops` and a constitution named `support`.
+existing remote profile named `ops` and a constitution with key `support`.
 Replace both with your actual target. The profile needs a write token for
 the eventual apply; agents should retain read-only credentials.
 
@@ -39,9 +39,19 @@ kyno export --remote --profile ops --constitution-key support > support-history.
 
 Check that export succeeded before continuing. Choose a new filename for
 each incident so you do not overwrite earlier evidence. The export
-contains full content and version metadata for **one constitution**, not
-a backup of the whole server. Its rows do not contain the constitution
-name: keep the target name with the file and confirm it when reading direction.
+contains full content, version metadata, and `constitution_key` in each row
+for **one constitution**. Confirm the key and version before choosing content
+to restore. Run this from the directory containing the exported file:
+
+```python
+import json
+from pathlib import Path
+
+history = json.loads(Path("support-history.json").read_text())
+for version in history:
+    print(version["constitution_key"], version["version"])
+```
+
 Retain relevant request logs and any application direction receipts too.
 
 Select a version you have reviewed, rather than assuming the oldest or
@@ -60,10 +70,9 @@ direction. For version 1:
 
 `set -C` makes the shell refuse to overwrite an existing file. Continue
 only if the read succeeds; a failed read can leave an empty output file.
-Inspect the file before applying. The output contains the constitution
-name and content, not the old version number,
-timestamps, author, approval method, or token identity. The corrective
-write gets its own metadata.
+Inspect the file before applying. The output contains `constitution_key`
+and content. The corrective write gets its own version number, timestamps,
+author, approval method, and token identity.
 
 Empty fields are intentional. `declaration: ''` and `principles: []`
 clear those fields. Omitting them or using `null` would instead keep the
@@ -77,7 +86,7 @@ kyno apply recovery.yaml --remote --profile ops --dry-run
 kyno apply recovery.yaml --remote --profile ops --note "Restore reviewed content from v1"
 ```
 
-The constitution name comes from `recovery.yaml`. Check the target,
+The target comes from `constitution_key` in `recovery.yaml`. Check the key,
 mission, declaration, principles, and delta, including fields being
 cleared. The real apply asks for consent and can ask you to confirm that
 returning to an older version's content is deliberate. Do not bypass

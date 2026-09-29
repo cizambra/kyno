@@ -97,7 +97,9 @@ class DirectionBinder:
             if direction.version > changes.current_version
             else BindingStatus.PULLED
         )
-        return DirectionBinding(direction, status, recording)
+        return DirectionBinding(
+            direction, status, recording, direction.change_notes, direction.delta
+        )
 
     def _degrade(self, constitution_key: str | None, exc: Exception) -> DirectionBinding:
         snapshot = self._cell.get_with_recording()
@@ -113,7 +115,9 @@ class DirectionBinder:
                 last.version,
                 exc,
             )
-            return DirectionBinding(last, BindingStatus.CACHED, recording)
+            return DirectionBinding(
+                last, BindingStatus.CACHED, recording, last.change_notes, last.delta
+            )
         logger.warning(
             "kyno pull_failed_empty constitution_key=%s version=0 %s", constitution_key, exc
         )

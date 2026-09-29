@@ -98,6 +98,20 @@ direction. When a record was saved, `binding.recording.record_id` identifies it.
   `recording=None`. Direction received without recording information also has
   `recording=None`.
 
+`binding.change_notes` contains the notes for versions crossed by the read.
+`binding.delta` describes the change from the requested version to the returned
+version. Both are tuples. A cached binding keeps the metadata from the same read
+as its direction and receipt; an empty binding has empty tuples. A successful
+read at the same version supplies fresh metadata for that read.
+
+```python
+binding = binder.bind_with_status()
+for note in binding.change_notes:
+    print(note)
+for change in binding.delta:
+    print(change)
+```
+
 Custom integrations can use `binder.bind_with_status()` to distinguish a
 successful read from fallback. It returns an immutable `DirectionBinding`
 containing `direction` and a `BindingStatus` enum, both exported from

@@ -167,9 +167,8 @@ def test_given_failed_reads_when_before_llm_call_runs_again_then_fallback_recove
 
 
 @pytest.mark.e2e
-@pytest.mark.parametrize("framework", ["crewai", "langgraph"])
-def test_given_omitted_adapter_key_when_pulls_cross_mcp_then_only_core_resolves_the_selection(
-    live_server, monkeypatch, framework
+def test_given_no_key_when_before_llm_call_repeats_then_core_receives_first_reply_key(
+    live_server, monkeypatch
 ):
     control_plane, url, token = live_server
     changes_since = Mock(wraps=control_plane.changes_since)
@@ -177,18 +176,35 @@ def test_given_omitted_adapter_key_when_pulls_cross_mcp_then_only_core_resolves_
 
     with connect(url=url, token=token) as connection:
         binder = connection.binder()
-        assert binder.constitution_key is None
-        if framework == "crewai":
-            adapter = CrewAiKyno(binder)
-            context = FakeCtx()
-            adapter.before_llm_call(context)
-            adapter.before_llm_call(context)
-        else:
-            node = direction_node(binder)
-            first = node({})
-            assert first["kyno_constitution_key"] == "default"
-            node(first)
+        adapter = CrewAiKyno(binder)
+        context = FakeCtx()
+
+        adapter.before_llm_call(context)
+        adapter.before_llm_call(context)
+
         assert binder.constitution_key == "default"
+
+    assert changes_since.call_args_list[0].args == (0, None)
+    assert changes_since.call_args_list[1].args == (0, "default")
+
+
+@pytest.mark.e2e
+def test_given_no_key_when_direction_node_repeats_then_core_receives_first_reply_key(
+    live_server, monkeypatch
+):
+    control_plane, url, token = live_server
+    changes_since = Mock(wraps=control_plane.changes_since)
+    monkeypatch.setattr(control_plane, "changes_since", changes_since)
+
+    with connect(url=url, token=token) as connection:
+        binder = connection.binder()
+        node = direction_node(binder)
+
+        first = node({})
+        second = node(first)
+
+        assert first["kyno_constitution_key"] == "default"
+        assert second["kyno_constitution_key"] == "default"
 
     assert changes_since.call_args_list[0].args == (0, None)
     assert changes_since.call_args_list[1].args == (0, "default")

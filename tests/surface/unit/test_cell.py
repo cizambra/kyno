@@ -296,7 +296,7 @@ def test_given_written_direction_without_constitution_key_when_direction_init_th
         Direction(constitution_key=None, version=1, mission="Help", principles=())
 
 
-def test_given_no_constitution_key_when_direction_empty_then_unresolved_version_zero_returns():
+def test_given_no_constitution_key_when_direction_empty_then_version_zero_has_no_constitution_key():
     direction = Direction.empty(None)
 
     assert direction.constitution_key is None
@@ -305,7 +305,7 @@ def test_given_no_constitution_key_when_direction_empty_then_unresolved_version_
     assert direction.principles == ()
 
 
-def test_given_unresolved_direction_when_to_dict_then_constitution_key_is_null():
+def test_given_direction_without_constitution_key_when_to_dict_then_constitution_key_is_none():
     direction = Direction.empty(None)
 
     payload = direction.to_dict()
@@ -313,7 +313,7 @@ def test_given_unresolved_direction_when_to_dict_then_constitution_key_is_null()
     assert payload["constitution_key"] is None
 
 
-def test_given_unresolved_direction_when_render_then_header_omits_constitution_key():
+def test_given_direction_without_constitution_key_when_render_then_header_omits_constitution_key():
     direction = Direction.empty(None)
 
     block = direction.render()

@@ -161,7 +161,7 @@ def test_given_the_sdk_when_looking_for_the_entry_point_then_it_is_kyno_connect(
     assert kyno.connect is connect
 
 
-def test_given_null_constitution_key_when_connection_binder_then_binder_is_unresolved():
+def test_given_none_constitution_key_when_connection_binder_then_constitution_key_is_none():
     runner = Mock()
 
     binder = KynoConnection(runner).binder(constitution_key=None)

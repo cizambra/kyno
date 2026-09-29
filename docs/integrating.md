@@ -348,9 +348,10 @@ async function fetchBlock() {
     if (constitutionKey !== undefined && response.constitution_key !== constitutionKey) {
       throw new Error("Unexpected constitution key");
     }
+    const block = buildBlock(response);  // the function from stage 2
     constitutionKey ??= response.constitution_key;
     lastSeenVersion = response.current_version;
-    lastBlock = buildBlock(response);                          // the function from stage 2
+    lastBlock = block;
   } catch {
     console.error("kyno unreachable, reusing the last block");
   }

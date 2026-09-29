@@ -112,7 +112,7 @@ def test_given_an_empty_file_when_checked_then_it_says_how_to_write_the_log():
     assert SEPARATOR in report.problems[0]
 
 
-def test_given_unresolved_empty_direction_when_check_log_then_no_identity_is_required():
+def test_given_version_zero_without_constitution_key_when_check_log_then_block_is_accepted():
     report = check_log(log_of("[kyno:direction version=0]\nNo direction has been received yet."))
     assert report.ok
     assert report.versions == [0]
@@ -125,7 +125,7 @@ def test_given_written_direction_without_key_when_check_log_then_identity_is_req
 
 
 @pytest.mark.parametrize("body", ["No direction has been set yet.", "", "Mission: Help"])
-def test_given_unresolved_marker_with_wrong_body_when_check_log_then_block_is_rejected(body):
+def test_given_keyless_version_zero_with_wrong_body_when_check_log_then_block_is_rejected(body):
     block = "[kyno:direction version=0]\n" + body
 
     report = check_log(log_of(block))

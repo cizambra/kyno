@@ -751,7 +751,7 @@ def test_given_late_reply_when_bind_with_status_runs_then_only_older_versions_ke
 
 @pytest.mark.parametrize("selection", [{}, {"constitution_key": None}])
 @pytest.mark.parametrize("version", [0, 3])
-def test_given_no_constitution_key_when_bind_repeats_then_core_selection_is_retained(
+def test_given_no_constitution_key_when_bind_repeats_then_requests_use_first_reply_constitution_key(
     resolved_source, selection, version
 ):
     resolved_source.changes_since.return_value.changes.current_version = version
@@ -771,7 +771,7 @@ def test_given_no_constitution_key_when_bind_repeats_then_core_selection_is_reta
     ]
 
 
-def test_given_unresolved_constitution_when_bind_with_status_fails_then_selection_stays_unresolved(
+def test_given_no_key_and_source_error_when_bind_with_status_then_constitution_key_remains_none(
     resolved_source,
 ):
     resolved_source.changes_since.side_effect = OSError("offline")
@@ -786,7 +786,7 @@ def test_given_unresolved_constitution_when_bind_with_status_fails_then_selectio
     assert empty.direction.render().splitlines()[0] == "[kyno:direction version=0]"
 
 
-def test_given_null_constitution_key_when_bind_with_status_then_selection_stays_unresolved(
+def test_given_reply_with_null_key_when_bind_with_status_then_constitution_key_remains_none(
     resolved_source,
 ):
     resolved_source.changes_since.return_value.changes.constitution_key = None
@@ -853,7 +853,7 @@ def test_given_no_constitution_key_when_bind_calls_overlap_then_second_call_uses
     ]
 
 
-def test_given_fail_closed_unresolved_binder_when_bind_retries_then_key_can_resolve(
+def test_given_failed_first_pull_when_bind_retries_then_reply_supplies_constitution_key(
     resolved_source,
 ):
     resolved_source.changes_since.side_effect = OSError("offline")
@@ -871,7 +871,7 @@ def test_given_fail_closed_unresolved_binder_when_bind_retries_then_key_can_reso
     ]
 
 
-def test_given_fail_closed_pinned_binder_when_bind_receives_mismatched_key_then_binding_is_refused(
+def test_given_fail_closed_and_other_constitution_reply_when_bind_then_unavailable_error_is_raised(
     resolved_source,
 ):
     binder = DirectionBinder(
@@ -887,7 +887,7 @@ def test_given_fail_closed_pinned_binder_when_bind_receives_mismatched_key_then_
 
 
 @pytest.mark.parametrize("fail_closed", [False, True], ids=["fail-open", "fail-closed"])
-def test_given_initial_failure_when_bind_with_status_overlaps_then_waiter_retries_without_key(
+def test_given_first_pull_failure_when_bind_with_status_overlaps_then_second_request_omits_key(
     resolved_source,
     observed_resolution_lock,
     fail_closed,

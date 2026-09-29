@@ -68,3 +68,11 @@ def test_given_padded_saved_key_when_direction_from_state_runs_then_trimmed_key_
 
     assert direction.constitution_key == key
     assert state["kyno_constitution_key"] == f" \t{key}\n"
+
+
+def test_given_empty_state_when_direction_from_state_then_version_zero_has_no_constitution_key():
+    direction = direction_from_state({})
+
+    assert direction.constitution_key is None
+    assert direction.version == 0
+    assert direction.mission == ""

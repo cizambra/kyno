@@ -61,6 +61,16 @@ write it in that place.
   and what should happen. In `when`, name the method, function, request,
   or command the test runs. For parametrized tests, the case ID can supply
   the detail that changes between cases.
+- Include the conditions that make the expected result true, such as
+  cached state or a failure policy. Keep the name concise while making
+  clear why this call produces this result. For example:
+
+  ```python
+  def test_given_fail_open_and_cache_when_bind_with_status_rejects_reply_then_cached_metadata_returns(): ...
+  ```
+
+  This name identifies the policy and cached state that allow the fallback.
+  The test body shows what makes the reply invalid.
 - Each test proves one behavior: the one described in its name. Make
   that behavior explicit in the action and assertions. Exercising code
   while testing something else does not replace a dedicated test for it.

@@ -188,3 +188,26 @@ Use these directories:
 Choose the directory from the behavior under test. A server round trip made
 by an adapter belongs in `surface/e2e`; a complete control-plane journey
 belongs in `core/e2e`.
+
+## Prelaunch acceptance
+
+The [Prelaunch acceptance workflow](.github/workflows/prelaunch-acceptance.yml)
+starts disposable PostgreSQL 16 and MySQL 8.4 services and runs the suite with
+both database URLs set. A separate job builds a wheel, installs it in a fresh
+virtual environment outside the checkout, and runs the deployment and adapter
+server tests against that installed package. It does not publish to PyPI.
+
+From the repository's Actions page, select **Prelaunch acceptance**, then
+**Run workflow** and the branch to validate. With GitHub CLI, the equivalent is:
+
+```bash
+gh workflow run prelaunch-acceptance.yml --ref main
+gh run list --workflow prelaunch-acceptance.yml --limit 1
+```
+
+Record the tested commit and workflow run before creating a release tag. The
+run uploads database test results, wheel test results, and the built package.
+The release workflow checks that the tag matches the package version and
+repeats wheel acceptance before publishing. Run first-use checks with someone
+new to Kyno as well: ask them to explain direction, complete the quick start,
+and identify which version their application received.

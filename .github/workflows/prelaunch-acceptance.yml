@@ -5,6 +5,9 @@ on:
   pull_request:
     paths:
       - .github/workflows/prelaunch-acceptance.yml
+      - pyproject.toml
+      - src/kyno/__init__.py
+      - tests/checks/test_smoke.py
 
 permissions:
   contents: read

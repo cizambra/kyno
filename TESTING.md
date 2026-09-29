@@ -196,6 +196,8 @@ starts disposable PostgreSQL 16 and MySQL 8.4 services and runs the suite with
 both database URLs set. A separate job builds a wheel, installs it in a fresh
 virtual environment outside the checkout, and runs the deployment and adapter
 server tests against that installed package. It does not publish to PyPI.
+It also runs on pull requests that change the workflow, package metadata,
+import version, or version checks.
 
 From the repository's Actions page, select **Prelaunch acceptance**, then
 **Run workflow** and the branch to validate. With GitHub CLI, the equivalent is:

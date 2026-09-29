@@ -9,6 +9,8 @@
 **Kyno makes direction a first-class runtime primitive.** It gives running
 agents a shared, versioned source of mission and principles, with its own
 identity, current version, history, and interface for retrieving it.
+[Direction at runtime](docs/direction.md) explains the model and shows a task
+staying the same while its direction changes.
 
 Suppose your sales agent is optimizing for new revenue. You change the
 priority to retaining customers, but its workflow still carries the old

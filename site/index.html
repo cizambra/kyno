@@ -141,7 +141,10 @@
       <p>Suppose your sales agent is optimizing for new revenue. You change the priority to retaining existing customers, but its running workflow still carries the old instructions. The agent can execute its task correctly while working toward yesterday's goal.</p>
       <p>A goal tells an agent what to optimize. Principles help it judge how: protect long-term trust over short-term metrics, for example. We want agent systems to optimize locally without losing coherence globally.</p>
       <p>Kyno gives mission and principles one authoritative source. Adapters refresh the agent's context from it, whether direction changes or stays the same. The model still has to interpret that direction and make a sound decision.</p>
-      <h3>Where it fits</h3>
+      <h3>Direction as a runtime primitive</h3>
+      <p>A task says what to do next. A policy defines what is allowed. Direction supplies the mission and principles used to judge tradeoffs. It has its own identity, version history, and read interface, so an organization can update it while task instructions stay the same.</p>
+      <p>For example, an agent can keep the task “draft a reply to this cancellation request” while the mission changes from increasing renewals to making cancellation straightforward. The next successful pull supplies the revised mission and principles. <a href="https://github.com/cizambra/kyno/blob/main/docs/direction.md">See the runnable example</a>.</p>
+      <h3>Agentic self-governance</h3>
       <p>Your framework schedules tasks and runs agents. Permissions and security controls restrict the available actions. Humans define mission and principles; agents decide how to apply them within those boundaries. This is bottom-up agency. Kyno supplies versioned direction before a step, not a prescribed decision. An optional verifier evaluates the result.</p>
       <p>In the animation, the workflow continues after an operator publishes a new version. Each successful pull supplies it at that agent's next step. The final state shows delivery, not proof that the agents followed it.</p>
     </section>
@@ -165,8 +168,12 @@
 
     <section class="explanation wrap" id="faq" aria-labelledby="faq-heading">
       <h2 id="faq-heading">Questions before you integrate</h2>
-      <h3>Could I do this with Git or a system prompt?</h3>
-      <p>Yes. A prompt or file may be enough for a short workflow with fixed direction. Git gives you storage, history, and review. For a running system, you still need to choose the active revision, fetch it before steps, refresh context, and record the supplied version. Kyno provides that runtime contract. You can review direction in Git and publish it with <code>kyno apply</code>. Automatic Git synchronization is deferred.</p>
+      <h3>How does direction relate to a system prompt?</h3>
+      <p>A system prompt can carry direction alongside instructions for a model call. Kyno manages the direction's identity, current version, and history independently. An adapter retrieves a version and supplies it in the model context; the prompt carries that copy. A fixed prompt may be sufficient for a short workflow with unchanging direction.</p>
+      <h3>Can I keep my constitution in Git?</h3>
+      <p>Yes. Git provides authoring, review, and file history. Kyno provides the runtime read interface and versioned direction that integrations consume. Review a constitution in Git, then apply the approved file:</p>
+      <pre><code>kyno apply constitution.yaml --note "Reviewed support priorities"</code></pre>
+      <p>Run this command in the Kyno workspace, or with a configured remote profile. Automatic Git synchronization is deferred.</p>
       <h3>Is Kyno an orchestrator?</h3>
       <p>Your framework continues scheduling tasks, invoking tools, and running agents. Kyno stores and delivers direction through MCP. Its adapters connect that direction to the workflow you already have; updates do not rewrite tasks or replan the workflow.</p>
       <h3>Is Kyno an AI governance system?</h3>

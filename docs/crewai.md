@@ -88,12 +88,24 @@ the required integration. In this example, `observed_bindings` is an
 application-owned list, not storage Kyno creates. Its `append` method
 is the observer; you do not need to override an adapter method.
 
-Each binding contains `direction`, `status`, and `recording`. The status is a
+Each binding contains `direction`, `status`, `recording`, `change_notes`, and `delta`. The status is a
 `BindingStatus` enum: `pulled`, `cached`, or `empty`, with the
 [shared meanings](adapters.md#inspecting-binding-status). Use
 `binding.direction.render()` for the exact direction block, including
 the selected compact/full detail, change notes, and delta. Later pulls
 do not change previously received bindings.
+
+Read transition metadata from the binding supplied to your observer. The notes
+cover versions crossed by that read; the delta compares its requested and
+returned versions. For example:
+
+```python
+def observe(binding):
+    for note in binding.change_notes:
+        print(note)
+    for change in binding.delta:
+        print(change)
+```
 
 Read `binding.direction.constitution_key` and `binding.direction.version`
 to identify the direction supplied to that call. For example, an observer can

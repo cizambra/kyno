@@ -197,3 +197,37 @@ def test_given_key_option_when_crewai_example_main_runs_then_binder_receives_sel
     assert result == 0
     assert connection.binder.call_count == 1
     assert connection.binder.call_args.args == (expected_key,)
+
+
+def test_given_binding_metadata_when_run_example_then_plan_summary_uses_binding_metadata(
+    crewai_example,
+    monkeypatch,
+):
+    from unittest.mock import Mock
+
+    from kyno.sdk.binding import BindingStatus, DirectionBinding
+    from kyno.sdk.cell import Direction
+
+    binding = DirectionBinding(
+        Direction("support", 3, "Help customers", ()),
+        BindingStatus.PULLED,
+        change_notes=("Support became the priority",),
+        delta=("Mission changed.",),
+    )
+    binder = Mock(bind_with_status=Mock(return_value=binding))
+
+    def run_stage(model, binder, state, step_id, **kwargs):
+        if step_id == "plan":
+            state["plan_version"] = 1
+
+    monkeypatch.setattr(crewai_example, "run_stage", run_stage)
+
+    state = crewai_example.run_example(
+        None,
+        binder,
+        model_name="example-model",
+        wait_for_operator=lambda: None,
+        emit=lambda _: None,
+    )
+
+    assert state["plan_change_summary"] == "Support became the priority\nMission changed."

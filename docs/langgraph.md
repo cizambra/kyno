@@ -418,3 +418,33 @@ This illustrative graph keeps one answer record and runs sequentially.
 For parallel work, your application owns the association between each output
 and its input. A shared `answer_record` field cannot keep separate answers
 from multiple branches.
+
+## Reading transition metadata
+
+The node and decorator copy `binding.change_notes` into `kyno_change_notes` and
+`binding.delta` into `kyno_delta`. These describe the versions crossed by the
+read that supplied the direction. A failed pull using cached direction keeps
+that read's metadata.
+
+```python
+for note in state["kyno_change_notes"]:
+    print(note)
+for change in state["kyno_delta"]:
+    print(change)
+```
+
+When building state with `direction_update` directly, supply transition metadata
+alongside the direction. Omitted metadata produces empty lists:
+
+```python
+from kyno.adapters.langgraph import direction_update
+
+binding = binder.bind_with_status()
+update = direction_update(
+    binding.direction,
+    status=binding.status,
+    recording=binding.recording,
+    change_notes=binding.change_notes,
+    delta=binding.delta,
+)
+```

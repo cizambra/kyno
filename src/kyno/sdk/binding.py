@@ -21,6 +21,10 @@ class DirectionBinding:
     direction: Direction
     status: BindingStatus
     recording: RecordingReceipt | None = None
+    change_notes: tuple[str, ...] = ()
+    delta: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "status", BindingStatus(self.status))
+        object.__setattr__(self, "change_notes", tuple(self.change_notes))
+        object.__setattr__(self, "delta", tuple(self.delta))

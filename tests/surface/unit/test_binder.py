@@ -1,5 +1,6 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from threading import Event, Lock
 from types import SimpleNamespace
 from unittest.mock import Mock, call
@@ -1035,3 +1036,190 @@ def test_given_failed_resolution_when_bind_retries_then_returned_constitution_is
         call(0, None, DetailLevel.COMPACT),
         call(0, None, DetailLevel.COMPACT),
     ]
+
+
+def test_given_response_metadata_when_bind_with_status_then_binding_has_response_metadata(
+    scripted_source,
+):
+    scripted_source.set("support", 3, "Help customers")
+    scripted_source.replies["support"] = replace(
+        scripted_source.replies["support"],
+        change_notes=("Support became the priority",),
+        delta=("Mission changed.",),
+    )
+    binder = DirectionBinder(scripted_source, "support")
+
+    binding = binder.bind_with_status()
+
+    assert binding.change_notes == ("Support became the priority",)
+    assert binding.delta == ("Mission changed.",)
+
+
+def test_given_cached_metadata_and_failed_pull_when_bind_with_status_then_cached_metadata_returns(
+    scripted_source,
+):
+    scripted_source.set("support", 3, "Help customers")
+    scripted_source.replies["support"] = replace(
+        scripted_source.replies["support"],
+        change_notes=("Support became the priority",),
+        delta=("Mission changed.",),
+    )
+    binder = DirectionBinder(scripted_source, "support")
+    binder.bind_with_status()
+    scripted_source.failure = OSError("offline")
+
+    binding = binder.bind_with_status()
+
+    assert binding.change_notes == ("Support became the priority",)
+    assert binding.delta == ("Mission changed.",)
+
+
+def test_given_failed_first_pull_when_bind_with_status_then_transition_metadata_is_empty(
+    scripted_source,
+):
+    scripted_source.failure = OSError("offline")
+    binder = DirectionBinder(scripted_source, "support")
+
+    binding = binder.bind_with_status()
+
+    assert binding.change_notes == ()
+    assert binding.delta == ()
+
+
+def test_given_older_late_reply_when_bind_with_status_then_cached_transition_metadata_returns(
+    scripted_source,
+):
+    scripted_source.set("support", 2, "Help customers")
+    late_reply = DirectionResponse(
+        replace(
+            scripted_source.replies["support"],
+            change_notes=("Late reply note",),
+            delta=("Late reply delta",),
+        ),
+        RecordingReceipt("recorded", "late-reply"),
+    )
+    scripted_source.set("support", 3, "Help customers")
+    current_reply = DirectionResponse(
+        replace(
+            scripted_source.replies["support"],
+            change_notes=("Current reply note",),
+            delta=("Current reply delta",),
+        ),
+        RecordingReceipt("recorded", "current-reply"),
+    )
+    started = Event()
+    release = Event()
+
+    def changes_since(*args):
+        if started.is_set():
+            return current_reply
+        started.set()
+        assert release.wait(timeout=10), "first reply was never released"
+        return late_reply
+
+    binder = DirectionBinder(SimpleNamespace(changes_since=changes_since), "support")
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        pending = executor.submit(binder.bind_with_status)
+        try:
+            assert started.wait(timeout=10), "first pull never started"
+            binder.bind_with_status()
+        finally:
+            release.set()
+        binding = pending.result(timeout=10)
+
+    assert binding.direction.version == 3
+    assert binding.recording.record_id == "current-reply"
+    assert binding.change_notes == ("Current reply note",)
+    assert binding.delta == ("Current reply delta",)
+
+
+def test_given_same_version_late_reply_when_bind_with_status_then_reply_transition_metadata_returns(
+    scripted_source,
+):
+    scripted_source.set("support", 3, "Help customers")
+    late_reply = DirectionResponse(
+        replace(
+            scripted_source.replies["support"],
+            change_notes=("Late reply note",),
+            delta=("Late reply delta",),
+        ),
+        RecordingReceipt("recorded", "late-reply"),
+    )
+    scripted_source.set("support", 3, "Help customers")
+    current_reply = DirectionResponse(
+        replace(
+            scripted_source.replies["support"],
+            change_notes=("Current reply note",),
+            delta=("Current reply delta",),
+        ),
+        RecordingReceipt("recorded", "current-reply"),
+    )
+    started = Event()
+    release = Event()
+
+    def changes_since(*args):
+        if started.is_set():
+            return current_reply
+        started.set()
+        assert release.wait(timeout=10), "first reply was never released"
+        return late_reply
+
+    binder = DirectionBinder(SimpleNamespace(changes_since=changes_since), "support")
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        pending = executor.submit(binder.bind_with_status)
+        try:
+            assert started.wait(timeout=10), "first pull never started"
+            binder.bind_with_status()
+        finally:
+            release.set()
+        binding = pending.result(timeout=10)
+
+    assert binding.direction.version == 3
+    assert binding.recording.record_id == "late-reply"
+    assert binding.change_notes == ("Late reply note",)
+    assert binding.delta == ("Late reply delta",)
+
+
+def test_given_same_version_with_empty_metadata_when_bind_with_status_then_metadata_is_empty(
+    scripted_source,
+):
+    scripted_source.set("support", 3, "Help customers")
+    initial_reply = replace(
+        scripted_source.replies["support"],
+        change_notes=("Prioritize customer support",),
+        delta=("Mission changed.",),
+    )
+    scripted_source.replies["support"] = initial_reply
+    binder = DirectionBinder(scripted_source, "support")
+    binder.bind_with_status()
+    scripted_source.replies["support"] = replace(initial_reply, change_notes=(), delta=())
+
+    binding = binder.bind_with_status()
+
+    assert binding.change_notes == ()
+    assert binding.delta == ()
+
+
+def test_given_prior_binding_when_bind_with_status_pulls_again_then_prior_metadata_stays_unchanged(
+    scripted_source,
+):
+    scripted_source.set("support", 3, "Help customers")
+    initial_reply = replace(
+        scripted_source.replies["support"],
+        change_notes=("Prioritize customer support",),
+        delta=("Mission changed.",),
+    )
+    scripted_source.replies["support"] = initial_reply
+    binder = DirectionBinder(scripted_source, "support")
+    prior_binding = binder.bind_with_status()
+    scripted_source.replies["support"] = replace(
+        initial_reply,
+        current_version=4,
+        change_notes=("Explain each resolution",),
+        delta=("Principle added.",),
+    )
+
+    binder.bind_with_status()
+
+    assert prior_binding.change_notes == ("Prioritize customer support",)
+    assert prior_binding.delta == ("Mission changed.",)

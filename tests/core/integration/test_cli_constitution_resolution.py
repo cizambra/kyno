@@ -11,7 +11,7 @@ from kyno.service import ControlPlane
 from tests.remote_cli import runner
 
 
-def test_given_mismatched_key_when_cli_current_runs_then_error_prevents_output(
+def test_given_mismatched_constitution_key_when_cli_current_remote_then_output_is_rejected(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -33,7 +33,7 @@ def test_given_mismatched_key_when_cli_current_runs_then_error_prevents_output(
     remote.close.assert_called_once()
 
 
-def test_given_mismatched_key_when_cli_current_yaml_runs_then_error_prevents_output(
+def test_given_mismatched_constitution_key_when_cli_current_yaml_remote_then_output_is_rejected(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -57,7 +57,7 @@ def test_given_mismatched_key_when_cli_current_yaml_runs_then_error_prevents_out
     remote.close.assert_called_once()
 
 
-def test_given_mismatched_key_when_cli_get_version_number_runs_then_error_prevents_output(
+def test_given_mismatched_constitution_key_when_cli_get_version_remote_then_output_is_rejected(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -81,7 +81,7 @@ def test_given_mismatched_key_when_cli_get_version_number_runs_then_error_preven
     remote.close.assert_called_once()
 
 
-def test_given_mismatched_key_when_cli_get_version_number_yaml_runs_then_error_prevents_output(
+def test_given_mismatched_constitution_key_when_cli_get_version_yaml_remote_then_output_is_rejected(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -105,7 +105,7 @@ def test_given_mismatched_key_when_cli_get_version_number_yaml_runs_then_error_p
     remote.close.assert_called_once()
 
 
-def test_given_mismatched_key_when_cli_history_runs_then_error_prevents_output(
+def test_given_mismatched_constitution_key_when_cli_history_remote_then_output_is_rejected(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -127,7 +127,7 @@ def test_given_mismatched_key_when_cli_history_runs_then_error_prevents_output(
     remote.close.assert_called_once()
 
 
-def test_given_mismatched_key_when_cli_export_runs_then_error_prevents_output(
+def test_given_mismatched_constitution_key_when_cli_export_remote_then_output_is_rejected(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -150,7 +150,7 @@ def test_given_mismatched_key_when_cli_export_runs_then_error_prevents_output(
 
 
 @pytest.mark.parametrize("explicit", [False, True])
-def test_given_mixed_keys_when_cli_history_runs_then_error_prevents_output(
+def test_given_mixed_constitution_keys_when_cli_history_remote_then_output_is_rejected(
     monkeypatch, memory_store, explicit
 ):
     plane = ControlPlane(memory_store)
@@ -174,7 +174,7 @@ def test_given_mixed_keys_when_cli_history_runs_then_error_prevents_output(
 
 
 @pytest.mark.parametrize("explicit", [False, True])
-def test_given_mixed_keys_when_cli_export_runs_then_error_prevents_output(
+def test_given_mixed_constitution_keys_when_cli_export_remote_then_output_is_rejected(
     monkeypatch, memory_store, explicit
 ):
     plane = ControlPlane(memory_store)
@@ -197,7 +197,7 @@ def test_given_mixed_keys_when_cli_export_runs_then_error_prevents_output(
     remote.close.assert_called_once()
 
 
-def test_given_no_constitution_key_when_cli_current_runs_then_core_receives_none(
+def test_given_no_constitution_key_when_cli_current_then_core_receives_none(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -212,7 +212,7 @@ def test_given_no_constitution_key_when_cli_current_runs_then_core_receives_none
     assert observed.current.call_args.args[0] is None
 
 
-def test_given_no_constitution_key_when_cli_get_version_runs_then_core_receives_none(
+def test_given_no_constitution_key_when_cli_get_version_then_core_receives_none(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -227,7 +227,7 @@ def test_given_no_constitution_key_when_cli_get_version_runs_then_core_receives_
     assert observed.export_versions.call_args.args[0] is None
 
 
-def test_given_no_constitution_key_when_cli_history_runs_then_core_receives_none(
+def test_given_no_constitution_key_when_cli_history_then_core_receives_none(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -242,7 +242,7 @@ def test_given_no_constitution_key_when_cli_history_runs_then_core_receives_none
     assert observed.export_versions.call_args.args[0] is None
 
 
-def test_given_no_constitution_key_when_cli_export_runs_then_core_receives_none(
+def test_given_no_constitution_key_when_cli_export_then_core_receives_none(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -257,7 +257,7 @@ def test_given_no_constitution_key_when_cli_export_runs_then_core_receives_none(
     assert observed.export_versions.call_args.args[0] is None
 
 
-def test_given_no_constitution_key_when_cli_publish_runs_then_core_receives_none(
+def test_given_no_constitution_key_when_cli_publish_then_core_receives_none(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -272,7 +272,7 @@ def test_given_no_constitution_key_when_cli_publish_runs_then_core_receives_none
     assert observed.publish.call_args.args[0] is None
 
 
-def test_given_no_constitution_key_when_cli_unpublish_runs_then_core_receives_none(
+def test_given_no_constitution_key_when_cli_unpublish_then_core_receives_none(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -287,7 +287,7 @@ def test_given_no_constitution_key_when_cli_unpublish_runs_then_core_receives_no
     assert observed.unpublish.call_args.args[0] is None
 
 
-def test_given_no_constitution_key_when_cli_current_runs_then_mcp_arguments_omit_the_key(
+def test_given_no_constitution_key_when_cli_current_remote_then_mcp_omits_the_key(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -303,7 +303,7 @@ def test_given_no_constitution_key_when_cli_current_runs_then_mcp_arguments_omit
     remote.close.assert_called_once()
 
 
-def test_given_no_constitution_key_when_cli_get_version_runs_then_mcp_omits_the_key(
+def test_given_no_constitution_key_when_cli_get_version_remote_then_mcp_omits_the_key(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -319,7 +319,7 @@ def test_given_no_constitution_key_when_cli_get_version_runs_then_mcp_omits_the_
     remote.close.assert_called_once()
 
 
-def test_given_no_constitution_key_when_cli_history_runs_then_mcp_arguments_omit_the_key(
+def test_given_no_constitution_key_when_cli_history_remote_then_mcp_omits_the_key(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -335,7 +335,7 @@ def test_given_no_constitution_key_when_cli_history_runs_then_mcp_arguments_omit
     remote.close.assert_called_once()
 
 
-def test_given_no_constitution_key_when_cli_export_runs_then_mcp_arguments_omit_the_key(
+def test_given_no_constitution_key_when_cli_export_remote_then_mcp_omits_the_key(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -372,7 +372,7 @@ def test_given_omitted_destination_when_cli_import_then_core_resolves_target(
 
 
 @pytest.mark.parametrize("remote", [False, True])
-def test_given_padded_explicit_key_when_cli_current_then_only_that_normalized_key_is_requested(
+def test_given_padded_constitution_key_when_cli_current_then_only_that_normalized_key_is_requested(
     monkeypatch, memory_store, remote
 ):
     plane = ControlPlane(memory_store)
@@ -399,7 +399,7 @@ def test_given_padded_explicit_key_when_cli_current_then_only_that_normalized_ke
 
 @pytest.mark.parametrize("key", ["", " ", "Support", "support/team"])
 @pytest.mark.parametrize("remote", [False, True])
-def test_given_invalid_explicit_key_when_cli_current_then_no_local_or_remote_read_runs(
+def test_given_invalid_constitution_key_when_cli_current_then_no_local_or_remote_read_runs(
     monkeypatch, key, remote
 ):
     local = Mock()
@@ -428,7 +428,7 @@ def test_given_invalid_explicit_key_when_cli_current_then_no_local_or_remote_rea
         {"constitution_key": []},
     ],
 )
-def test_given_invalid_remote_identity_when_cli_current_runs_then_error_is_clean(
+def test_given_invalid_remote_identity_when_cli_current_remote_then_error_is_clean(
     monkeypatch, identity
 ):
     remote = Mock()
@@ -455,7 +455,7 @@ def test_given_invalid_remote_identity_when_cli_current_runs_then_error_is_clean
         {"constitution_key": []},
     ],
 )
-def test_given_invalid_remote_identity_when_cli_current_yaml_runs_then_error_is_clean(
+def test_given_invalid_remote_identity_when_cli_current_yaml_remote_then_error_is_clean(
     monkeypatch, identity
 ):
     remote = Mock()
@@ -482,7 +482,7 @@ def test_given_invalid_remote_identity_when_cli_current_yaml_runs_then_error_is_
         {"constitution_key": []},
     ],
 )
-def test_given_invalid_remote_identity_when_cli_get_version_number_runs_then_error_is_clean(
+def test_given_invalid_remote_identity_when_cli_get_version_remote_then_error_is_clean(
     monkeypatch, identity
 ):
     remote = Mock()
@@ -509,7 +509,7 @@ def test_given_invalid_remote_identity_when_cli_get_version_number_runs_then_err
         {"constitution_key": []},
     ],
 )
-def test_given_invalid_remote_identity_when_cli_export_runs_then_error_is_clean(
+def test_given_invalid_remote_identity_when_cli_export_remote_then_error_is_clean(
     monkeypatch, identity
 ):
     remote = Mock()
@@ -526,7 +526,7 @@ def test_given_invalid_remote_identity_when_cli_export_runs_then_error_is_clean(
     remote.close.assert_called_once()
 
 
-def test_given_server_selected_key_when_cli_current_yaml_runs_then_output_names_returned_key(
+def test_given_selected_constitution_when_current_yaml_remote_then_output_identifies_constitution(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -544,7 +544,7 @@ def test_given_server_selected_key_when_cli_current_yaml_runs_then_output_names_
     assert yaml.safe_load(result.stdout)["constitution_key"] == "server-selected"
 
 
-def test_given_returned_key_when_cli_get_version_number_yaml_runs_then_output_names_returned_key(
+def test_given_constitution_key_when_get_version_yaml_remote_then_output_identifies_constitution(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -562,7 +562,7 @@ def test_given_returned_key_when_cli_get_version_number_yaml_runs_then_output_na
     assert yaml.safe_load(result.stdout)["constitution_key"] == "server-selected"
 
 
-def test_given_server_selected_key_when_cli_export_runs_then_output_names_returned_key(
+def test_given_selected_constitution_when_cli_export_remote_then_output_identifies_constitution(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -581,7 +581,7 @@ def test_given_server_selected_key_when_cli_export_runs_then_output_names_return
     assert json.loads(result.stdout)[0]["constitution_key"] == "server-selected"
 
 
-def test_given_core_publication_identity_when_cli_publish_runs_then_output_names_returned_key(
+def test_given_core_publication_identity_when_cli_publish_then_output_identifies_constitution(
     monkeypatch,
 ):
     plane = Mock()
@@ -596,7 +596,7 @@ def test_given_core_publication_identity_when_cli_publish_runs_then_output_names
     assert plane.publish.call_args.args[0] is None
 
 
-def test_given_core_publication_identity_when_cli_unpublish_runs_then_output_names_returned_key(
+def test_given_core_publication_identity_when_cli_unpublish_then_output_identifies_constitution(
     monkeypatch,
 ):
     plane = Mock()
@@ -611,7 +611,7 @@ def test_given_core_publication_identity_when_cli_unpublish_runs_then_output_nam
     assert plane.unpublish.call_args.args[0] is None
 
 
-def test_given_unwritten_server_target_when_cli_current_outputs_yaml_then_error_names_returned_key(
+def test_given_unwritten_server_target_when_cli_current_yaml_remote_then_error_names_returned_key(
     monkeypatch,
 ):
     remote = Mock()
@@ -630,7 +630,7 @@ def test_given_unwritten_server_target_when_cli_current_outputs_yaml_then_error_
 @pytest.mark.parametrize(
     "options", [[], ["--constitution-key", "default"]], ids=["omitted", "explicit"]
 )
-def test_given_missing_response_key_when_cli_history_remote_runs_then_no_history_is_printed(
+def test_given_missing_constitution_key_when_cli_history_remote_then_no_history_is_printed(
     monkeypatch, memory_store, identity, options
 ):
     row = (
@@ -673,7 +673,7 @@ def test_given_omitted_destination_when_cli_import_then_data_is_written_to_core_
     assert "into 'selected-target'" in result.stdout
 
 
-def test_given_no_constitution_key_when_cli_current_yaml_runs_then_yaml_uses_core_selected_key(
+def test_given_no_constitution_key_when_cli_current_yaml_then_yaml_uses_core_selected_key(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -689,3 +689,31 @@ def test_given_no_constitution_key_when_cli_current_yaml_runs_then_yaml_uses_cor
     assert result.exit_code == 0, result.output
     core.current.assert_called_once_with(None)
     assert yaml.safe_load(result.stdout)["constitution_key"] == "support"
+
+
+@pytest.mark.parametrize(
+    "key",
+    ["", " ", "Upper", ["support"], 42],
+    ids=["empty", "blank", "uppercase", "list", "integer"],
+)
+@pytest.mark.parametrize(
+    "options", [[], ["--constitution-key", "default"]], ids=["omitted", "explicit"]
+)
+def test_given_invalid_constitution_key_when_cli_history_remote_then_output_is_rejected(
+    monkeypatch, memory_store, key, options
+):
+    row = (
+        ControlPlane(memory_store).apply_direction(mission="Help", change_note="Initial").to_dict()
+    )
+    row["constitution_key"] = key
+    remote = Mock()
+    remote.call_tool.return_value = [row]
+    monkeypatch.setattr(cli, "dial", lambda *args, **kwargs: remote)
+
+    result = runner.invoke(cli.app, ["history", "--remote", *options])
+
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert result.stdout == ""
+    assert "constitution key" in result.stderr
+    remote.close.assert_called_once()

@@ -105,9 +105,10 @@ constitution_key = state["kyno_constitution_key"]
 version = state["kyno_version"]
 ```
 
-`direction_from_state(state)` restores the same key as
-`direction.constitution_key`. An empty state or failed first pull with no selected
-key retains `None`. A successful Core reply resolves an omitted key:
+`direction_from_state(state)` reads `state["kyno_constitution_key"]` into
+`direction.constitution_key`. With an empty state, or after a failed first pull
+with no explicit constitution key, this property is `None`. A successful Core
+reply supplies the selected constitution key. For example, an empty state gives:
 
 ```python
 from kyno.adapters.langgraph import direction_from_state

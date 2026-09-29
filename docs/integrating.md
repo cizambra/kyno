@@ -234,7 +234,7 @@ The rules:
   the step ran under.
 - If `current_version` is `0`, the block is the marker line plus exactly
   one more line: `No direction has been set yet.`
-- Before any successful reply, an omitted key is unresolved. A fail-open
+- If no constitution key was specified and the first pull fails, the fail-open
   fallback uses `[kyno:direction version=0]` followed by
   `No direction has been received yet.`
 - If the response has `change_notes`, add a `Recent changes:` section with
@@ -306,8 +306,8 @@ or middleware for this). In that place:
 2. Build the block.
 3. Put the block at the very front of the step's context, before the
    agent's role or system prompt, before the task.
-4. Remember the version number and the first successful reply's constitution key
-   for later calls. Until that reply, omit the key so Core chooses it.
+4. Save the version number for the next call. If you omitted the constitution key,
+   use the key from the first successful reply for all later calls.
 
 Do this on every step, even when nothing changed. A direction that's only
 sent once falls out of the context window as the conversation grows.
@@ -364,7 +364,8 @@ appendFileSync("my_blocks.log", block + "\n---end---\n");   // the log the check
 ```
 
 The request helper leaves `constitution_key` out of the MCP arguments when
-`constitutionKey` is undefined. It sends the retained key on subsequent calls.
+`constitutionKey` is undefined. After the first successful reply, each request
+includes the constitution key from that reply.
 
 **Check:** while your orchestrator runs, append every block you inject to a
 log file, each followed by a line containing only `---end---`. Then run the

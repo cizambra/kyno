@@ -154,9 +154,9 @@ report local failures and fallback even when no delivery record exists.
 
 Pass the constitution's key when creating a binder.
 An explicit key stays fixed for that binder's lifetime; `bind()`, `bind_with_status()`,
-and `plan()` use that selection. If omitted or `None`, the SDK leaves selection to Core.
-The first successful reply supplies the key, which the binder retains for all later pulls.
-Core currently chooses `"default"` for an omitted selection.
+and `plan()` use that constitution. If you omit the key or pass `None`, Core
+selects the constitution. The binder uses the key from the first successful
+reply for every later pull. Core uses `"default"` when no key is specified.
 Surrounding whitespace is trimmed; keys use lowercase letters and digits
 separated by single hyphens, up to 200 characters.
 
@@ -172,11 +172,14 @@ Each binder keeps its own last-seen version, cached direction, and recording
 receipt while sharing the connection. Pass the chosen binder to your adapter or
 call `support.plan()` to track plans against that same constitution.
 `binder.constitution_key` is readable but cannot be reassigned.
-It is `None` before Core resolves an omitted key. A successful version-zero read
-resolves the key too. If the first pull fails under the fail-open policy, the empty
-direction retains `constitution_key=None` and says "No direction has been received yet."
-Its header omits the key; a later successful pull resolves it normally.
-For example, with an available Core connection:
+If you omit the key, `binder.constitution_key` is `None` until the first successful
+reply supplies it. This also applies to a version-zero reply, which identifies
+a constitution with no saved direction. If the first pull fails under the
+fail-open policy, the returned direction has `constitution_key=None`. Its rendered
+block has no constitution key and says "No direction has been received yet."
+A later successful pull supplies the key.
+
+For example, with a connection to an available Core server:
 
 ```python
 binder = connection.binder()
@@ -187,7 +190,7 @@ assert binder.constitution_key == direction.constitution_key
 # Core's current default is "default", including a successful version-zero read.
 ```
 
-A resolved `Direction` includes its `constitution_key` in its property,
+After a successful pull, `Direction` includes its `constitution_key` in its property,
 dictionary, and rendered header.
 
 Consumers can reuse a binder when they intend to share its last-seen version

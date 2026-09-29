@@ -50,7 +50,7 @@ class DirectionBinder:
 
     @property
     def constitution_key(self) -> str | None:
-        """The selected key, or None until Core resolves an omitted selection."""
+        """The constitution key, or None until a successful reply supplies an omitted key."""
         return self._constitution_key
 
     def bind(self) -> Direction:

@@ -78,8 +78,8 @@ class KynoConnection:
     ) -> DirectionBinder:
         """Create a binder with private fallback state for the named constitution.
 
-        Pass the constitution's key, not its content. Omit it to let Core select
-        the key; the binder retains Core's selection after its first successful pull.
+        Omit constitution_key or pass None to let Core select the constitution.
+        The binder uses the key from the first successful reply for later pulls.
         """
         source = _client.McpDirectionSource(
             self._runner, correlation_id=correlation_id, metadata=metadata

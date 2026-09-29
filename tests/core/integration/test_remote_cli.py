@@ -164,13 +164,13 @@ def test_given_remote_key_when_cli_current_and_get_version_latest_run_then_outpu
 
 
 @pytest.mark.parametrize("options", [[], ["--yaml"]])
-def test_given_a_missing_remote_version_when_reading_then_output_is_empty_and_connection_closes(
+def test_given_missing_version_when_cli_get_version_remote_then_no_output_and_connection_closes(
     fake_dial, options
 ):
     result = runner.invoke(app, ["get-version", "2", "--remote", *options])
     assert result.exit_code == 1
     assert result.stdout == ""
-    assert "'default' has no version 2" in result.stderr
+    assert "the default constitution has no version 2" in result.stderr
     assert fake_dial.closed
 
 

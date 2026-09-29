@@ -98,6 +98,10 @@ direction. When a record was saved, `binding.recording.record_id` identifies it.
   `recording=None`. Direction received without recording information also has
   `recording=None`.
 
+`binding.direction` contains the constitution key, version, mission, declaration,
+principles, and detail level. For the same constitution version and detail,
+`render()` and `to_dict()` produce the same content across delivery histories.
+
 `binding.change_notes` contains the notes for versions crossed by the read.
 `binding.delta` describes the change from the requested version to the returned
 version. Both are tuples. A cached binding keeps the metadata from the same read

@@ -18,7 +18,7 @@ from kyno.wire.models import DetailLevel
     ],
 )
 @pytest.mark.parametrize("last_seen_version", [0, 1, 2])
-def test_given_rich_updates_when_changes_since_is_called_then_local_and_mcp_content_match(
+def test_given_same_read_parameters_when_changes_since_then_local_and_mcp_content_match(
     mcp_runner, detail, last_seen_version
 ):
     runner, control_plane = mcp_runner
@@ -59,8 +59,6 @@ def test_given_rich_updates_when_changes_since_is_called_then_local_and_mcp_cont
     selected_detail = DetailLevel.COMPACT if detail is None else detail
     rendered = Direction.from_changes(local.changes, "support", selected_detail).render()
     assert rendered == Direction.from_changes(remote.changes, "support", selected_detail).render()
-    for item in (*original.change_notes, *original.delta):
-        assert item in rendered
     assert control_plane.changes_since(last_seen_version, "support") == original
 
 

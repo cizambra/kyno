@@ -92,7 +92,8 @@ Each binding contains `direction`, `status`, `recording`, `change_notes`, and `d
 `BindingStatus` enum: `pulled`, `cached`, or `empty`, with the
 [shared meanings](adapters.md#inspecting-binding-status). Use
 `binding.direction.render()` for the exact direction block, including
-the selected compact/full detail, change notes, and delta. Later pulls
+the selected compact/full detail. Read `binding.change_notes` and
+`binding.delta` for delivery metadata. Later pulls
 do not change previously received bindings.
 
 Read transition metadata from the binding supplied to your observer. The notes

@@ -201,18 +201,16 @@ def test_given_default_detail_when_direction_node_runs_then_block_omits_declarat
     assert update["kyno_detail"] == DetailLevel.COMPACT
 
 
-def test_given_json_state_when_direction_from_state_runs_then_all_fields_are_restored():
+def test_given_json_direction_state_when_direction_from_state_then_direction_fields_are_restored():
     original = Direction(
         constitution_key="eu",
         version=4,
         mission="M",
         principles=("P",),
         declaration="Long form",
-        change_notes=("Changed support priority",),
-        delta=("Mission changed.",),
         detail=DetailLevel.FULL,
     )
-    update = direction_update(original, change_notes=original.change_notes, delta=original.delta)
+    update = direction_update(original)
 
     assert update["kyno_detail"] is DetailLevel.FULL
     assert direction_from_state(json.loads(json.dumps(update))) == original
@@ -242,14 +240,29 @@ def test_given_unknown_status_when_direction_update_runs_then_ValueError_is_rais
         direction_update(original, status="unknown-status")
 
 
-def test_given_change_notes_when_direction_node_runs_then_consumer_receives_notes(
+def test_given_unread_change_note_when_graph_invoke_runs_direction_node_then_next_node_gets_note(
     binder,
 ):
     bind, _ = binder
     captured = []
-    graph = _capture_graph(bind, captured)
-    graph.invoke({}, {"configurable": {"thread_id": "notes"}})
-    assert captured[0].change_notes == ("init",)
+
+    def capture_notes(state):
+        captured.append(state["kyno_change_notes"])
+        return {}
+
+    graph = (
+        StateGraph(GraphState)
+        .add_node("pull", direction_node(bind))
+        .add_node("capture", capture_notes)
+        .add_edge(START, "pull")
+        .add_edge("pull", "capture")
+        .add_edge("capture", END)
+        .compile()
+    )
+
+    graph.invoke({})
+
+    assert captured == [["init"]]
 
 
 def test_given_intervening_work_when_direction_node_runs_then_consumer_receives_direction(binder):
@@ -276,7 +289,7 @@ def test_given_schema_without_KynoState_when_direction_node_runs_then_graph_drop
 
 
 @pytest.mark.parametrize("detail", [DetailLevel.COMPACT, DetailLevel.FULL])
-def test_given_direction_node_refresh_when_review_resumes_then_saved_answer_keeps_prior_direction(
+def test_given_saved_answer_and_new_direction_when_graph_invoke_resumes_then_answer_is_unchanged(
     binder,
     detail,
 ):
@@ -304,6 +317,8 @@ def test_given_direction_node_refresh_when_review_resumes_then_saved_answer_keep
                 "direction": direction,
                 "supplied_message": supplied_message,
                 "binding_status": state["kyno_binding_status"],
+                "change_notes": state["kyno_change_notes"],
+                "delta": state["kyno_delta"],
                 "output": output,
             }
         }
@@ -344,8 +359,8 @@ def test_given_direction_node_refresh_when_review_resumes_then_saved_answer_keep
     assert reviewed[0]["direction"].declaration == (
         "Explain the support decision." if detail is DetailLevel.FULL else ""
     )
-    assert tuple(reviewed[0]["direction"].change_notes) == ("Add explanation",)
-    assert reviewed[0]["direction"].delta
+    assert tuple(reviewed[0]["change_notes"]) == ("Add explanation",)
+    assert reviewed[0]["delta"]
     assert reviewed[0]["direction"].detail == detail
     assert reviewed[0]["supplied_message"] == reviewed[0]["direction"].render()
     assert reviewed[0]["output"] == "Answer for M1"

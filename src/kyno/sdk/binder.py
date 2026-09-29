@@ -5,7 +5,7 @@ import logging
 from threading import Lock
 
 from kyno.sdk.binding import BindingStatus, DirectionBinding
-from kyno.sdk.cell import Direction, DirectionCell
+from kyno.sdk.cell import Direction, DirectionCell, DirectionSnapshot
 from kyno.sdk.client import DirectionSource
 from kyno.sdk.errors import KynoUnavailableError
 from kyno.sdk.policy import PullPolicy
@@ -87,10 +87,10 @@ class DirectionBinder:
             # CoherenceError covers everything kyno raises, including the
             # adapters' KynoUnavailableError.
             return self._degrade(constitution_key, exc)
-        direction, recording = self._cell.update_with_recording(
-            received,
-            response.recording,
+        snapshot = self._cell.update(
+            DirectionSnapshot(received, response.recording, changes.change_notes, changes.delta)
         )
+        direction = snapshot.direction
         self._constitution_key = direction.constitution_key
         status = (
             BindingStatus.CACHED
@@ -98,17 +98,17 @@ class DirectionBinder:
             else BindingStatus.PULLED
         )
         return DirectionBinding(
-            direction, status, recording, direction.change_notes, direction.delta
+            direction, status, snapshot.recording, snapshot.change_notes, snapshot.delta
         )
 
     def _degrade(self, constitution_key: str | None, exc: Exception) -> DirectionBinding:
-        snapshot = self._cell.get_with_recording()
+        snapshot = self._cell.get()
         if self._policy.fail_closed:
             raise KynoUnavailableError(
                 f"cannot reach kyno for '{constitution_key}': {exc}"
             ) from exc
         if snapshot is not None:
-            last, recording = snapshot
+            last = snapshot.direction
             logger.warning(
                 "kyno pull_failed_cached constitution_key=%s version=%s %s",
                 constitution_key,
@@ -116,7 +116,11 @@ class DirectionBinder:
                 exc,
             )
             return DirectionBinding(
-                last, BindingStatus.CACHED, recording, last.change_notes, last.delta
+                last,
+                BindingStatus.CACHED,
+                snapshot.recording,
+                snapshot.change_notes,
+                snapshot.delta,
             )
         logger.warning(
             "kyno pull_failed_empty constitution_key=%s version=0 %s", constitution_key, exc

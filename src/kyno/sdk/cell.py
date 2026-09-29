@@ -40,8 +40,6 @@ class Direction(HoldsPrinciples):
     version: int
     mission: str
     principles: tuple[Principle, ...]
-    change_notes: tuple[str, ...] = ()
-    delta: tuple[str, ...] = ()
     declaration: str = ""
     detail: DetailLevel = DetailLevel.COMPACT
 
@@ -75,8 +73,6 @@ class Direction(HoldsPrinciples):
             version=changes.current_version,
             mission=changes.mission,
             principles=changes.principles,
-            change_notes=tuple(changes.change_notes),
-            delta=tuple(changes.delta),
             declaration=changes.declaration,
             detail=detail,
         )
@@ -108,12 +104,6 @@ class Direction(HoldsPrinciples):
                 lines.append(f"- {principle.title}")
                 if full and principle.description:
                     lines.append(f"  {principle.description}")
-        if self.change_notes:
-            lines.append("Recent changes:")
-            lines.extend(f"- {n}" for n in self.change_notes)
-        if self.delta:
-            lines.append("What changed:")
-            lines.extend(f"- {d}" for d in self.delta)
         return "\n".join(lines)
 
     def to_dict(self) -> dict:
@@ -123,40 +113,49 @@ class Direction(HoldsPrinciples):
             "mission": self.mission,
             "declaration": self.declaration,
             "principles": [p.to_dict() for p in self.principles],
-            "change_notes": list(self.change_notes),
-            "delta": list(self.delta),
             "detail": self.detail.value,
         }
 
 
+@dataclass(frozen=True)
+class DirectionSnapshot:
+    """Direction and delivery metadata accepted from one response."""
+
+    direction: Direction
+    recording: RecordingReceipt | None = None
+    change_notes: tuple[str, ...] = ()
+    delta: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "change_notes", tuple(self.change_notes))
+        object.__setattr__(self, "delta", tuple(self.delta))
+
+
 class DirectionCell:
-    """One binder's process-local latest-known direction and receipt.
+    """One binder's process-local latest-known direction and delivery metadata.
 
     Updates are monotonic so overlapping pulls can finish out of order
-    without an older response replacing a newer direction.
+    without an older response replacing a newer snapshot.
     """
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._held: tuple[Direction, RecordingReceipt | None] | None = None
+        self._held: DirectionSnapshot | None = None
 
-    def get_with_recording(self) -> tuple[Direction, RecordingReceipt | None] | None:
-        """Return the cached direction and its origin receipt as one snapshot."""
+    def get(self) -> DirectionSnapshot | None:
+        """Return direction, receipt, and transition metadata as one snapshot."""
         with self._lock:
             return self._held
 
     def last_seen_version(self) -> int:
-        held = self.get_with_recording()
-        return held[0].version if held is not None else 0
+        held = self.get()
+        return held.direction.version if held is not None else 0
 
-    def update_with_recording(
-        self, direction: Direction, recording: RecordingReceipt | None = None
-    ) -> tuple[Direction, RecordingReceipt | None]:
-        """Retain direction and receipt together unless a newer version is held."""
+    def update(self, snapshot: DirectionSnapshot) -> DirectionSnapshot:
+        """Accept a response snapshot unless a newer version is already held."""
         with self._lock:
             held = self._held
-            if held is not None and held[0].version > direction.version:
+            if held is not None and held.direction.version > snapshot.direction.version:
                 return held
-            snapshot = (direction, recording)
             self._held = snapshot
             return snapshot

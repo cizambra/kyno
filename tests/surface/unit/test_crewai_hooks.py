@@ -264,7 +264,7 @@ def test_given_same_version_when_before_llm_call_runs_twice_then_observer_is_not
     assert first.status is second.status is BindingStatus.PULLED
     assert first.direction.render() == first_block
     assert second.direction.render() == ctx.messages[0]["content"]
-    assert second.direction.change_notes == ()
+    assert second.change_notes == ()
     assert scripted_source.calls == [(0, None), (2, "default")]
 
 

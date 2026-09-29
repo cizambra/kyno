@@ -10,5 +10,3 @@ Principles:
   A rejected applicant is told which requirement was not met, in plain language, in the rejection message itself.
 - Never lend what someone cannot repay
   Affordability is checked against verified income, not stated income.
-Recent changes:
-- initial constitution

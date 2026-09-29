@@ -45,6 +45,13 @@ def test_given_invalid_key_when_render_constitution_yaml_runs_then_value_error_i
         render_constitution_yaml(ControlPlane(memory_store).current(), key)
 
 
+def test_given_none_constitution_key_when_sql_store_export_versions_then_value_error_is_raised(
+    memory_store,
+):
+    with pytest.raises(ValueError, match="constitution key"):
+        memory_store.export_versions(None)
+
+
 @pytest.mark.parametrize("key", ["", " ", "Acme EU", "a" * 201])
 def test_given_invalid_yaml_key_when_read_constitution_file_runs_then_value_error_is_raised(
     tmp_path, key

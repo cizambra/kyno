@@ -4,12 +4,13 @@ This is everything an agent or client can ask Kyno, over MCP or Python.
 
 ## The tools
 
-- `get_constitution(version?, detail?)`: current direction by default, or the
-  exact nonnegative version requested. Version zero is empty direction; a
-  missing positive version returns an error. Compact detail includes the mission
+- `get_constitution(constitution_key?, version?, detail?)`:
+  current direction by default, or the exact nonnegative version requested.
+  Version zero is empty direction; a missing positive version returns an error. Compact detail includes the mission
   and principle titles; full adds the declaration and principle descriptions.
   Successful reads follow Core's delivery-recording policy.
-- `get_changes_since(last_seen_version)`: the pull an agent makes before a step.
+- `get_changes_since(last_seen_version, constitution_key?, detail?)`:
+  the pull an agent makes before a step.
   It returns the current direction plus the change notes since the version
   the agent last saw.
   Missing a notification causes no harm, because the next pull includes
@@ -20,19 +21,36 @@ This is everything an agent or client can ask Kyno, over MCP or Python.
   and delta for a recorded response. Requires read scope,
   returns an error for an unknown ID, and does not record another delivery.
   See [retrieving a recorded delivery](operating.md#retrieving-a-recorded-delivery).
-- `apply_direction(mission?, declaration?, principles?, change_note)`: append
+- `apply_direction(constitution_key?, mission?, declaration?, principles?, change_note)`: append
   the next version. Omitted fields carry forward; `""` clears mission or
   declaration, and `[]` clears principles. On HTTP this requires a `write` token.
 - `whoami`: the id, name and scope of the token this request authenticated
   with. Every field is null when the server checked no token, which is the
   case over stdio and on a server running with `allow_insecure`.
-- `list_delivery_records(correlation_id?, constitution?, since?, until?, after?, limit?)`:
+- `list_delivery_records(correlation_id?, constitution_key?, since?, until?, after?, limit?)`:
   recorded direction snapshots in insertion order. Requires a configured
   delivery store and a `read` token on HTTP. Omitted filters include all
   correlation IDs and constitutions. Time bounds are inclusive ISO timestamps
   with a timezone. Pages default to 50 items, with a maximum of 100;
   pass `next_cursor` as `after` with the same filters to continue, until
   `next_cursor` is null. Listing history does not record another delivery.
+
+Direction reads and `apply_direction` accept `constitution_key`. Omit it or
+pass `null` to let Core select `default`. Delivery-history queries use the
+same field as a filter; omitting it or passing `null` includes every
+constitution. For example, this MCP request reads the `support` constitution:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "get_constitution",
+    "arguments": {"constitution_key": "support"}
+  }
+}
+```
 
 Every tool declares the scope it needs. The reads above need `read`;
 `apply_direction` needs `write`; a tool the server does not declare is

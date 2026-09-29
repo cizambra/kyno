@@ -112,8 +112,8 @@ kyno current --constitution-key eu
 
 Reads accept a constitution key over MCP and on the CLI. When you omit
 `--constitution-key`, the CLI leaves selection to Core, which uses `default`.
-An explicit key selects only that constitution; invalid keys are rejected,
-not replaced by the default. For example:
+An explicit key selects that constitution. The CLI rejects invalid keys.
+For example:
 
 ```bash
 kyno current                          # Core selects its default constitution
@@ -167,9 +167,9 @@ Run `import` in a workspace whose database has been initialized with
 `--remote` option. An export can come from a remote instance:
 `kyno export --remote --constitution-key eu > eu-history.json`.
 
-The export contains versions with their source `constitution_key`, not database ids.
-`--as` chooses the destination key; without it, Core selects `default`.
-The source key does not override that destination:
+Each exported version includes its source `constitution_key`.
+On import, Kyno writes the versions under the destination key selected by
+`--as`, or by Core when you omit it. Core uses `default`:
 
 ```bash
 kyno import eu-history.json                   # Restore into Core's default constitution

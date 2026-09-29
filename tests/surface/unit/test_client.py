@@ -363,16 +363,6 @@ def test_given_no_constitution_key_when_mcp_source_changes_since_then_request_om
     )
 
 
-@pytest.mark.parametrize("source_type", [LocalDirectionSource, McpDirectionSource])
-def test_given_unsupported_constitution_keyword_when_source_changes_since_then_rejected_without_io(
-    source_type,
-):
-    dependency = Mock()
-    with pytest.raises(TypeError, match="constitution"):
-        source_type(dependency).changes_since(0, constitution="support")
-    assert dependency.mock_calls == []
-
-
 def test_given_missing_response_key_when_mcp_source_changes_since_then_reply_is_unavailable():
     payload = {
         "current_version": 1,

@@ -813,7 +813,7 @@ def test_given_mismatched_constitution_when_bind_with_status_then_cached_directi
     assert binder.constitution_key == "support"
 
 
-def test_given_unresolved_constitution_when_bind_overlaps_then_waiter_uses_selected_key(
+def test_given_no_constitution_key_when_bind_calls_overlap_then_second_call_uses_first_reply_key(
     resolved_source,
     observed_resolution_lock,
 ):

@@ -36,6 +36,8 @@ def direction_update(
     *,
     status: BindingStatus | str | None = None,
     recording: RecordingReceipt | None = None,
+    change_notes: tuple[str, ...] = (),
+    delta: tuple[str, ...] = (),
 ) -> dict:
     """Direction travels in graph state so a persisted checkpoint says which
     constitution and version a step served, without any other context.
@@ -46,8 +48,8 @@ def direction_update(
         "kyno_version": direction.version,
         "kyno_mission": direction.mission,
         "kyno_declaration": direction.declaration,
-        "kyno_change_notes": list(direction.change_notes),
-        "kyno_delta": list(direction.delta),
+        "kyno_change_notes": list(change_notes),
+        "kyno_delta": list(delta),
         "kyno_principles": [p.to_dict() for p in direction.principles],
         "kyno_direction": direction.render(),
         "kyno_detail": direction.detail,
@@ -82,7 +84,11 @@ def direction_node(binder: DirectionBinder) -> Callable:
     def node(state: dict) -> dict:
         binding = binder.bind_with_status()
         return direction_update(
-            binding.direction, status=binding.status, recording=binding.recording
+            binding.direction,
+            status=binding.status,
+            recording=binding.recording,
+            change_notes=binding.change_notes,
+            delta=binding.delta,
         )
 
     return node
@@ -94,7 +100,11 @@ def pull_before(binder: DirectionBinder) -> Callable:
         def wrapped(state: dict, *args: Any, **kwargs: Any) -> dict:
             binding = binder.bind_with_status()
             update = direction_update(
-                binding.direction, status=binding.status, recording=binding.recording
+                binding.direction,
+                status=binding.status,
+                recording=binding.recording,
+                change_notes=binding.change_notes,
+                delta=binding.delta,
             )
             result = node({**state, **update}, *args, **kwargs) or {}
             return {**update, **result}

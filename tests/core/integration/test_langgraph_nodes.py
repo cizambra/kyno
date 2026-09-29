@@ -212,7 +212,7 @@ def test_given_json_state_when_direction_from_state_runs_then_all_fields_are_res
         delta=("Mission changed.",),
         detail=DetailLevel.FULL,
     )
-    update = direction_update(original)
+    update = direction_update(original, change_notes=original.change_notes, delta=original.delta)
 
     assert update["kyno_detail"] is DetailLevel.FULL
     assert direction_from_state(json.loads(json.dumps(update))) == original

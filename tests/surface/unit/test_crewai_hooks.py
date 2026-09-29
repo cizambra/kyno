@@ -298,3 +298,21 @@ def test_given_user_message_when_before_llm_call_runs_then_direction_is_injected
 
     assert ctx.messages[0]["content"].startswith(DIRECTION_MARKER)
     assert ctx.messages[-1] == {"role": "user", "content": "go"}
+
+
+def test_given_response_metadata_when_before_llm_call_then_observer_receives_binding_metadata(
+    scripted_source,
+):
+    scripted_source.set("support", 3, "Help customers")
+    scripted_source.replies["support"] = replace(
+        scripted_source.replies["support"],
+        change_notes=("Support became the priority",),
+        delta=("Mission changed.",),
+    )
+    observed = []
+    adapter = CrewAiKyno(DirectionBinder(scripted_source, "support"), on_direction=observed.append)
+
+    adapter.before_llm_call(FakeCtx())
+
+    assert observed[0].change_notes == ("Support became the priority",)
+    assert observed[0].delta == ("Mission changed.",)

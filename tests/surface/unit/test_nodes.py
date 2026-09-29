@@ -1,6 +1,15 @@
+from unittest.mock import Mock
+
 import pytest
 
-from kyno.adapters.langgraph.nodes import direction_from_state
+from kyno.adapters.langgraph.nodes import (
+    direction_from_state,
+    direction_node,
+    direction_update,
+    pull_before,
+)
+from kyno.sdk.binding import BindingStatus, DirectionBinding
+from kyno.sdk.cell import Direction
 
 
 @pytest.mark.parametrize(
@@ -76,3 +85,128 @@ def test_given_empty_state_when_direction_from_state_then_version_zero_has_no_co
     assert direction.constitution_key is None
     assert direction.version == 0
     assert direction.mission == ""
+
+
+def test_given_transition_metadata_when_direction_update_then_state_contains_supplied_metadata():
+    direction = Direction.empty("support")
+
+    update = direction_update(
+        direction,
+        change_notes=("Support became the priority",),
+        delta=("Mission changed.",),
+    )
+
+    assert update["kyno_change_notes"] == ["Support became the priority"]
+    assert update["kyno_delta"] == ["Mission changed."]
+
+
+def test_given_no_transition_metadata_when_direction_update_then_state_metadata_is_empty():
+    direction = Direction.empty("support")
+
+    update = direction_update(direction)
+
+    assert update["kyno_change_notes"] == []
+    assert update["kyno_delta"] == []
+
+
+def test_given_binding_metadata_when_direction_node_runs_then_state_contains_binding_metadata():
+    binding = DirectionBinding(
+        Direction.empty("support"),
+        BindingStatus.PULLED,
+        change_notes=("Support became the priority",),
+        delta=("Mission changed.",),
+    )
+    binder = Mock(bind_with_status=Mock(return_value=binding))
+    node = direction_node(binder)
+
+    update = node({})
+
+    assert update["kyno_change_notes"] == ["Support became the priority"]
+    assert update["kyno_delta"] == ["Mission changed."]
+
+
+def test_given_binding_metadata_when_pull_before_runs_then_wrapped_node_receives_binding_metadata():
+    binding = DirectionBinding(
+        Direction.empty("support"),
+        BindingStatus.PULLED,
+        change_notes=("Support became the priority",),
+        delta=("Mission changed.",),
+    )
+    binder = Mock(bind_with_status=Mock(return_value=binding))
+    work_node = Mock(return_value={})
+    wrapped = pull_before(binder)(work_node)
+
+    wrapped({})
+
+    received_state = work_node.call_args.args[0]
+    assert received_state["kyno_change_notes"] == ["Support became the priority"]
+    assert received_state["kyno_delta"] == ["Mission changed."]
+
+
+def test_given_binding_metadata_when_pull_before_runs_then_result_contains_binding_metadata():
+    binding = DirectionBinding(
+        Direction.empty("support"),
+        BindingStatus.PULLED,
+        change_notes=("Support became the priority",),
+        delta=("Mission changed.",),
+    )
+    binder = Mock(bind_with_status=Mock(return_value=binding))
+    wrapped = pull_before(binder)(lambda state: {})
+
+    update = wrapped({})
+
+    assert update["kyno_change_notes"] == ["Support became the priority"]
+    assert update["kyno_delta"] == ["Mission changed."]
+
+
+@pytest.mark.parametrize("status", [BindingStatus.PULLED, BindingStatus.EMPTY])
+def test_given_old_state_metadata_when_direction_node_runs_then_empty_binding_clears_metadata(
+    status,
+):
+    binding = DirectionBinding(Direction.empty("support"), status)
+    binder = Mock(bind_with_status=Mock(return_value=binding))
+    node = direction_node(binder)
+    state = {
+        "kyno_change_notes": ["Prioritize customer support"],
+        "kyno_delta": ["Mission changed."],
+    }
+
+    update = node(state)
+
+    assert update["kyno_change_notes"] == []
+    assert update["kyno_delta"] == []
+
+
+@pytest.mark.parametrize("status", [BindingStatus.PULLED, BindingStatus.EMPTY])
+def test_given_old_state_metadata_when_pull_before_runs_then_work_receives_empty_metadata(status):
+    binding = DirectionBinding(Direction.empty("support"), status)
+    binder = Mock(bind_with_status=Mock(return_value=binding))
+    work_node = Mock(return_value={})
+    wrapped = pull_before(binder)(work_node)
+    state = {
+        "kyno_change_notes": ["Prioritize customer support"],
+        "kyno_delta": ["Mission changed."],
+    }
+
+    wrapped(state)
+
+    received_state = work_node.call_args.args[0]
+    assert received_state["kyno_change_notes"] == []
+    assert received_state["kyno_delta"] == []
+
+
+def test_given_binding_metadata_when_state_lists_are_edited_then_binding_metadata_is_unchanged():
+    binding = DirectionBinding(
+        Direction.empty("support"),
+        BindingStatus.PULLED,
+        change_notes=("Prioritize customer support",),
+        delta=("Mission changed.",),
+    )
+    binder = Mock(bind_with_status=Mock(return_value=binding))
+    state = direction_node(binder)({})
+
+    state["kyno_change_notes"].append("Caller annotation")
+    state["kyno_delta"].clear()
+
+    assert binding.change_notes == ("Prioritize customer support",)
+    assert binding.delta == ("Mission changed.",)

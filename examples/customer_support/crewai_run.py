@@ -146,7 +146,7 @@ def run_example(model, binder, *, model_name, wait_for_operator, emit):
     require_current_direction(binding)
     direction = binding.direction
     state["replan_needed"] = direction.version > state["plan_version"]
-    state["plan_change_summary"] = "\n".join(direction.change_notes + direction.delta)
+    state["plan_change_summary"] = "\n".join(binding.change_notes + binding.delta)
     if state["replan_needed"]:
         run_stage(model, binder, state, "replan", model_name=model_name, emit=emit)
     run_stage(model, binder, state, "second_answer", model_name=model_name, emit=emit)

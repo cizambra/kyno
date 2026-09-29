@@ -1216,7 +1216,7 @@ def test_given_prior_binding_when_bind_with_status_pulls_again_then_prior_metada
     assert prior_binding.delta == ("Mission changed.",)
 
 
-def test_given_reply_without_constitution_key_when_bind_with_status_then_cached_metadata_returns(
+def test_given_fail_open_and_cache_when_bind_with_status_rejects_reply_then_cached_metadata_returns(
     scripted_source,
 ):
     scripted_source.set("support", 3, "Help customers")
@@ -1232,7 +1232,7 @@ def test_given_reply_without_constitution_key_when_bind_with_status_then_cached_
             )
         )
     )
-    binder = DirectionBinder(source, "support")
+    binder = DirectionBinder(source, "support", policy=PullPolicy(fail_closed=False))
     binder.bind_with_status()
     source.changes_since.return_value = DirectionResponse(
         replace(valid_changes, constitution_key=None, change_notes=("Invalid reply",), delta=())

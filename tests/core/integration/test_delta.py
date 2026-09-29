@@ -104,7 +104,7 @@ def test_given_a_delta_and_a_note_when_reading_changes_then_they_stay_separate(p
     assert changes.delta and "Retainer outcomes come first" in changes.delta[0]
 
 
-def test_given_changed_principle_when_bind_with_status_then_binding_describes_the_replacement(
+def test_given_read_principle_when_bind_with_status_reads_replacement_then_delta_names_both(
     plane,
 ):
     from kyno.sdk.binder import DirectionBinder

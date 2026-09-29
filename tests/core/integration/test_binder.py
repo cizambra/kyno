@@ -76,7 +76,7 @@ def test_given_unchanged_version_when_bind_with_status_runs_again_then_status_is
     assert second.status is BindingStatus.PULLED
 
 
-def test_given_direction_update_when_bind_with_status_runs_again_then_prior_result_stays_unchanged(
+def test_given_prior_binding_when_bind_with_status_reads_update_then_prior_binding_is_unchanged(
     control_plane,
 ):
     control_plane.apply_direction(mission="Old", change_note="initial", constitution_key="sales")

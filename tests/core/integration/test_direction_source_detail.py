@@ -18,7 +18,7 @@ from kyno.wire.models import DetailLevel
     ],
 )
 @pytest.mark.parametrize("last_seen_version", [0, 1, 2])
-def test_given_rich_updates_when_changes_since_is_called_then_local_and_mcp_content_match(
+def test_given_same_read_parameters_when_changes_since_then_local_and_mcp_content_match(
     mcp_runner, detail, last_seen_version
 ):
     runner, control_plane = mcp_runner

@@ -212,7 +212,7 @@ def test_given_binding_metadata_when_state_lists_are_edited_then_binding_metadat
     assert binding.delta == ("Mission changed.",)
 
 
-def test_given_same_content_with_different_metadata_when_direction_from_state_then_equal():
+def test_given_same_direction_fields_when_direction_from_state_then_delivery_metadata_is_ignored():
     authoritative_state = {
         "kyno_constitution_key": "support",
         "kyno_version": 2,

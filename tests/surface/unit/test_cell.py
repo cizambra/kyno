@@ -84,7 +84,7 @@ def test_given_empty_cache_when_get_runs_then_no_snapshot_is_returned():
     assert cell.get() is None
 
 
-def test_given_older_version_when_cell_update_then_newer_direction_is_preserved():
+def test_given_cached_version_when_cell_update_receives_older_version_then_cache_is_unchanged():
     cell = DirectionCell()
     cell.update(DirectionSnapshot(_direction(5)))
     held = cell.update(DirectionSnapshot(_direction(2)))
@@ -222,7 +222,7 @@ def test_given_unknown_detail_when_direction_is_constructed_then_value_error_is_
         Direction(**RICH, detail="verbose")
 
 
-def test_given_cached_version_zero_when_get_runs_then_empty_direction_is_retained():
+def test_given_cached_version_zero_when_cell_get_then_empty_direction_and_receipt_return():
     cell = DirectionCell()
     direction = Direction.empty("support")
     receipt = RecordingReceipt("recorded", "empty-direction-record")
@@ -303,7 +303,7 @@ def test_given_direction_without_constitution_key_when_render_then_header_omits_
     assert block == "[kyno:direction version=0]\nNo direction has been received yet."
 
 
-def test_given_older_response_when_cell_update_then_newer_snapshot_metadata_is_preserved():
+def test_given_cached_snapshot_when_cell_update_receives_older_version_then_metadata_is_unchanged():
     cell = DirectionCell()
     newer = DirectionSnapshot(
         _direction(5), RecordingReceipt("recorded", "newer"), ("New intent",), ("New delta",)
@@ -319,7 +319,7 @@ def test_given_older_response_when_cell_update_then_newer_snapshot_metadata_is_p
     assert cell.get() is newer
 
 
-def test_given_equal_version_response_when_cell_update_then_latest_delivery_metadata_is_used():
+def test_given_cached_snapshot_when_cell_update_receives_same_version_then_metadata_is_replaced():
     cell = DirectionCell()
     cell.update(DirectionSnapshot(_direction(5), None, ("First intent",), ("First delta",)))
     latest = DirectionSnapshot(_direction(5), RecordingReceipt("recorded", "latest"))
@@ -342,7 +342,7 @@ def test_given_mutable_metadata_when_direction_snapshot_init_then_values_are_cop
     assert snapshot.delta == ("Mission changed.",)
 
 
-def test_given_direction_snapshot_when_assigning_delta_then_metadata_is_immutable():
+def test_given_frozen_snapshot_when_assigning_delta_then_frozen_instance_error_is_raised():
     snapshot = DirectionSnapshot(_direction(2), delta=("Mission changed.",))
 
     with pytest.raises(FrozenInstanceError):

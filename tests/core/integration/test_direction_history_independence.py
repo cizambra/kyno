@@ -73,7 +73,7 @@ def test_given_different_last_seen_versions_when_direction_to_dict_then_payloads
     assert returning_payload == first_visit_payload
 
 
-def test_given_different_last_seen_versions_when_bind_with_status_then_notes_match_each_history(
+def test_given_new_and_returning_consumers_when_bind_with_status_then_notes_cover_unseen_versions(
     same_constitution_binders_with_different_last_seen_versions,
 ):
     returning_binder, new_binder = same_constitution_binders_with_different_last_seen_versions
@@ -85,7 +85,7 @@ def test_given_different_last_seen_versions_when_bind_with_status_then_notes_mat
     assert first_visit.change_notes == ("Initial direction", "Prioritize resolution")
 
 
-def test_given_different_last_seen_versions_when_bind_with_status_then_delta_matches_each_history(
+def test_given_mission_update_when_bind_with_status_then_only_returning_consumer_gets_delta(
     same_constitution_binders_with_different_last_seen_versions,
 ):
     returning_binder, new_binder = same_constitution_binders_with_different_last_seen_versions

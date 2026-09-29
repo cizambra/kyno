@@ -201,7 +201,7 @@ def test_given_default_detail_when_direction_node_runs_then_block_omits_declarat
     assert update["kyno_detail"] == DetailLevel.COMPACT
 
 
-def test_given_json_state_when_direction_from_state_runs_then_all_fields_are_restored():
+def test_given_json_direction_state_when_direction_from_state_then_direction_fields_are_restored():
     original = Direction(
         constitution_key="eu",
         version=4,
@@ -240,7 +240,7 @@ def test_given_unknown_status_when_direction_update_runs_then_ValueError_is_rais
         direction_update(original, status="unknown-status")
 
 
-def test_given_change_notes_when_direction_node_runs_then_consumer_receives_notes(
+def test_given_unread_change_note_when_graph_invoke_runs_direction_node_then_next_node_gets_note(
     binder,
 ):
     bind, _ = binder
@@ -289,7 +289,7 @@ def test_given_schema_without_KynoState_when_direction_node_runs_then_graph_drop
 
 
 @pytest.mark.parametrize("detail", [DetailLevel.COMPACT, DetailLevel.FULL])
-def test_given_direction_node_refresh_when_review_resumes_then_saved_answer_keeps_prior_direction(
+def test_given_saved_answer_and_new_direction_when_graph_invoke_resumes_then_answer_is_unchanged(
     binder,
     detail,
 ):

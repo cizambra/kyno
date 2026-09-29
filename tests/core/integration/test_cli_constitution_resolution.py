@@ -197,7 +197,9 @@ def test_given_mixed_keys_when_cli_export_runs_then_error_prevents_output(
     remote.close.assert_called_once()
 
 
-def test_given_no_cli_key_when_cli_current_runs_then_core_receives_none(monkeypatch, memory_store):
+def test_given_no_constitution_key_when_cli_current_runs_then_core_receives_none(
+    monkeypatch, memory_store
+):
     plane = ControlPlane(memory_store)
     plane.apply_direction(mission="Default direction", change_note="Initial")
     observed = Mock(wraps=plane)
@@ -210,7 +212,7 @@ def test_given_no_cli_key_when_cli_current_runs_then_core_receives_none(monkeypa
     assert observed.current.call_args.args[0] is None
 
 
-def test_given_no_cli_key_when_cli_get_version_number_runs_then_core_receives_none(
+def test_given_no_constitution_key_when_cli_get_version_runs_then_core_receives_none(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -225,7 +227,9 @@ def test_given_no_cli_key_when_cli_get_version_number_runs_then_core_receives_no
     assert observed.export_versions.call_args.args[0] is None
 
 
-def test_given_no_cli_key_when_cli_history_runs_then_core_receives_none(monkeypatch, memory_store):
+def test_given_no_constitution_key_when_cli_history_runs_then_core_receives_none(
+    monkeypatch, memory_store
+):
     plane = ControlPlane(memory_store)
     plane.apply_direction(mission="Default direction", change_note="Initial")
     observed = Mock(wraps=plane)
@@ -238,7 +242,9 @@ def test_given_no_cli_key_when_cli_history_runs_then_core_receives_none(monkeypa
     assert observed.export_versions.call_args.args[0] is None
 
 
-def test_given_no_cli_key_when_cli_export_runs_then_core_receives_none(monkeypatch, memory_store):
+def test_given_no_constitution_key_when_cli_export_runs_then_core_receives_none(
+    monkeypatch, memory_store
+):
     plane = ControlPlane(memory_store)
     plane.apply_direction(mission="Default direction", change_note="Initial")
     observed = Mock(wraps=plane)
@@ -251,7 +257,9 @@ def test_given_no_cli_key_when_cli_export_runs_then_core_receives_none(monkeypat
     assert observed.export_versions.call_args.args[0] is None
 
 
-def test_given_no_cli_key_when_cli_publish_runs_then_core_receives_none(monkeypatch, memory_store):
+def test_given_no_constitution_key_when_cli_publish_runs_then_core_receives_none(
+    monkeypatch, memory_store
+):
     plane = ControlPlane(memory_store)
     plane.apply_direction(mission="Default direction", change_note="Initial")
     observed = Mock(wraps=plane)
@@ -264,7 +272,7 @@ def test_given_no_cli_key_when_cli_publish_runs_then_core_receives_none(monkeypa
     assert observed.publish.call_args.args[0] is None
 
 
-def test_given_no_cli_key_when_cli_unpublish_runs_then_core_receives_none(
+def test_given_no_constitution_key_when_cli_unpublish_runs_then_core_receives_none(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -279,7 +287,7 @@ def test_given_no_cli_key_when_cli_unpublish_runs_then_core_receives_none(
     assert observed.unpublish.call_args.args[0] is None
 
 
-def test_given_omitted_key_when_cli_current_runs_then_mcp_arguments_omit_the_key(
+def test_given_no_constitution_key_when_cli_current_runs_then_mcp_arguments_omit_the_key(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -295,7 +303,7 @@ def test_given_omitted_key_when_cli_current_runs_then_mcp_arguments_omit_the_key
     remote.close.assert_called_once()
 
 
-def test_given_omitted_key_when_cli_get_version_number_runs_then_mcp_arguments_omit_the_key(
+def test_given_no_constitution_key_when_cli_get_version_runs_then_mcp_omits_the_key(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -311,7 +319,7 @@ def test_given_omitted_key_when_cli_get_version_number_runs_then_mcp_arguments_o
     remote.close.assert_called_once()
 
 
-def test_given_omitted_key_when_cli_history_runs_then_mcp_arguments_omit_the_key(
+def test_given_no_constitution_key_when_cli_history_runs_then_mcp_arguments_omit_the_key(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -327,7 +335,7 @@ def test_given_omitted_key_when_cli_history_runs_then_mcp_arguments_omit_the_key
     remote.close.assert_called_once()
 
 
-def test_given_omitted_key_when_cli_export_runs_then_mcp_arguments_omit_the_key(
+def test_given_no_constitution_key_when_cli_export_runs_then_mcp_arguments_omit_the_key(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)
@@ -665,7 +673,7 @@ def test_given_omitted_destination_when_cli_import_then_data_is_written_to_core_
     assert "into 'selected-target'" in result.stdout
 
 
-def test_given_omitted_key_when_cli_current_yaml_runs_then_output_uses_core_selected_key(
+def test_given_no_constitution_key_when_cli_current_yaml_runs_then_yaml_uses_core_selected_key(
     monkeypatch, memory_store
 ):
     plane = ControlPlane(memory_store)

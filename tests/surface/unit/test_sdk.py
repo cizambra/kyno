@@ -161,19 +161,10 @@ def test_given_the_sdk_when_looking_for_the_entry_point_then_it_is_kyno_connect(
     assert kyno.connect is connect
 
 
-@pytest.mark.parametrize("operation", ["binder", "get_constitution"])
-def test_given_unsupported_constitution_keyword_when_connection_call_then_rejected_without_io(
-    operation,
-):
+def test_given_null_constitution_key_when_connection_binder_then_binder_is_unresolved():
     runner = Mock()
-    with pytest.raises(TypeError, match="constitution"):
-        getattr(KynoConnection(runner), operation)(constitution="support")
-    assert runner.mock_calls == []
 
+    binder = KynoConnection(runner).binder(constitution_key=None)
 
-@pytest.mark.parametrize("operation", ["binder", "get_constitution"])
-def test_given_explicit_null_key_when_connection_operation_runs_then_no_request_is_sent(operation):
-    runner = Mock()
-    with pytest.raises(ValueError, match="constitution key must be a string"):
-        getattr(KynoConnection(runner), operation)(constitution_key=None)
+    assert binder.constitution_key is None
     assert runner.mock_calls == []

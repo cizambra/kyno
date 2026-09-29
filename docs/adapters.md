@@ -260,6 +260,60 @@ flowchart TB
   end
 ```
 
+### Connection troubleshooting
+
+Connection setup and direction reads can fail separately. `kyno.connect()`
+resolves the profile and opens an MCP session before returning a connection.
+Missing configuration raises `ProfileError`; an unreachable server or rejected
+HTTP token raises `KynoUnavailableError`. The binder's `PullPolicy` applies to
+subsequent direction reads, so it cannot provide fallback during connection setup.
+
+Start by checking the profile and then making an authenticated request:
+
+```bash
+kyno remote show
+kyno whoami --remote
+```
+
+`remote show` checks the local URL and token configuration without contacting
+the server. If it reports an unset variable, set that variable in the same
+terminal as your application. `whoami --remote` checks connectivity and token
+acceptance. For a 401 response, provide a live token from that server's
+workspace. For a connection error, check that the server is running and the
+profile points to its reachable MCP endpoint.
+
+This example uses the default remote profile and stops with a diagnostic if
+setup or a direction read fails:
+
+```python
+import kyno
+from kyno.config.errors import ProfileError
+from kyno.sdk import PullPolicy
+from kyno.sdk.errors import KynoUnavailableError
+
+try:
+    with kyno.connect() as connection:
+        binder = connection.binder(policy=PullPolicy(fail_closed=True))
+        direction = binder.bind()
+        print(direction.version, direction.mission)
+except (ProfileError, KynoUnavailableError) as error:
+    raise SystemExit(f"Cannot read Kyno direction: {error}") from error
+```
+
+A valid key with no applied constitution returns version 0 after a successful
+read. This is different from a failed read. If your application requires
+written direction, check the version before proceeding:
+
+```python
+direction = binder.bind()
+if direction.version == 0:
+    raise ValueError("Apply a constitution before running this workflow")
+```
+
+Here `binder` belongs to an open connection. Without `fail_closed=True`, use
+[`bind_with_status()`](#inspecting-binding-status) to distinguish successful
+reads from cached or empty fallback.
+
 ## Acting on a change
 
 Kyno delivers the direction, the version, and what changed. What your

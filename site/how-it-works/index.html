@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How Kyno works — Kyno</title>
+  <meta name="description" content="How shared, versioned mission and principles support principled judgment and bottom-up agency, with or without AI governance tools.">
+  <link rel="canonical" href="https://cizambra.github.io/kyno/how-it-works/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kyno">
+  <meta property="og:title" content="How Kyno works — Kyno">
+  <meta property="og:description" content="How shared, versioned mission and principles support principled judgment and bottom-up agency, with or without AI governance tools.">
+  <meta property="og:url" content="https://cizambra.github.io/kyno/how-it-works/">
+  <meta property="og:image" content="https://cizambra.github.io/kyno/assets/social-preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Kyno 1.0: One direction. Every agent. Every step.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="icon" href="../mark.svg" type="image/svg+xml">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="1ac0032b-f63c-44fa-a68d-7ed07ecd34b6"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="page-grid" aria-hidden="true"></div>
+  <header class="topbar wrap">
+    <a class="brand" href="../" aria-label="Kyno home"><img src="../mark.svg" width="38" height="38" alt=""><span>Kyno</span></a>
+    <nav aria-label="Main navigation">
+      <a href="../how-it-works/" aria-current="page">How it works</a>
+      <a href="../#start">Quick start</a>
+      <a href="../faq/">FAQ</a>
+      <a href="https://github.com/cizambra/kyno/blob/main/docs/README.md">Documentation ↗</a>
+      <a href="https://github.com/cizambra/kyno">GitHub ↗</a>
+    </nav>
+  </header>
+  <main class="content-page wrap" id="main">
+    <a class="back-link" href="../">← Kyno home</a>
+    <h1>How Kyno works</h1>
+    <p class="page-intro">Shared, versioned direction gives agents a mission to pursue and principles to guide their judgment.</p>
+    <section class="reading-section" aria-labelledby="direction-heading">
+      <h2 id="direction-heading">A reasonable decision. Yesterday's goal.</h2>
+      <p>Suppose your sales agent is optimizing for new revenue. You change the priority to retaining existing customers, but its running workflow still carries the old instructions. The agent can execute its task correctly while working toward yesterday's goal.</p>
+      <p>A goal tells an agent what to optimize. Principles help it judge how: protect long-term trust over short-term metrics, for example. We want agent systems to optimize locally without losing coherence globally.</p>
+      <p>Kyno gives mission and principles one authoritative source. Adapters refresh the agent's context from it, whether direction changes or stays the same. The model still has to interpret that direction and make a sound decision.</p>
+      <h2>Direction as a runtime primitive</h2>
+      <p>A task says what to do next. A policy defines what is allowed. Direction supplies the mission and principles used to judge tradeoffs. It has its own identity, version history, and read interface, so an organization can update it while task instructions stay the same.</p>
+      <p>For example, an agent can keep the task “draft a reply to this cancellation request” while the mission changes from increasing renewals to making cancellation straightforward. The next successful pull supplies the revised mission and principles. <a href="https://github.com/cizambra/kyno/blob/main/docs/direction.md">See the runnable example</a>.</p>
+      <h2>Principled judgment and bottom-up agency</h2>
+      <p>Principled judgment means weighing choices and tradeoffs against a shared mission and principles. Humans define that direction; agents use it to choose how to pursue the intended outcome. Kyno supplies the current version before a step. This supports bottom-up agency, with or without a formal governance system.</p>
+      <p>Governance answers “What am I allowed to do?” Direction answers “What outcome am I working toward, and what principles should guide my choices?” When your system has policies, permissions, or approval requirements, agents exercise judgment within them. Your application and governance tools enforce those boundaries. Kyno complements them by supplying direction; principles do not grant permissions or override enforced controls. Your application can also verify outputs and decide whether to continue, retry, or request human review.</p>
+      <p>Your integration defines which decisions agents may make, how to handle conflicting principles, and how proposals and outputs are reviewed. <a href="https://github.com/cizambra/kyno/blob/main/docs/agency.md">Read the agency model</a>.</p>
+      <p>In the <a href="../#how">homepage animation</a>, the workflow continues after an operator publishes a new version. Each successful pull supplies it at that agent's next step. The final state shows delivery, not proof that the agents followed it.</p>
+
+    </section>
+    <div class="page-next"><a href="../#start">Try the quick start →</a><a href="../faq/">Read the FAQ →</a></div>
+  </main>
+  <footer class="wrap">
+    <a class="brand mini" href="../"><img src="../mark.svg" width="25" height="25" alt=""><span>Kyno</span></a>
+    <span>Coherence as infrastructure.</span>
+    <nav aria-label="Project links"><a href="https://github.com/cizambra/kyno">GitHub</a><a href="../how-it-works/">How it works</a><a href="../faq/">FAQ</a><a href="../constitution/">Constitution</a><a href="https://github.com/cizambra/kyno/blob/main/LICENSE">Licensing: MIT integrations · Elastic 2.0 core</a></nav>
+  </footer>
+</body>
+</html>

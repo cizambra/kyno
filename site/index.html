@@ -5,10 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kyno — one direction, every agent, every step</title>
   <meta name="description" content="Kyno makes direction a first-class runtime primitive: shared, versioned mission and principles that agents pull before their next step.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kyno">
+  <meta property="og:title" content="Kyno 1.0 — one direction, every agent, every step">
+  <meta property="og:description" content="Shared, versioned mission and principles for running agents. Stable interfaces. CrewAI and LangGraph adapters. Install from PyPI.">
+  <meta property="og:url" content="https://cizambra.github.io/kyno/">
+  <meta property="og:image" content="https://cizambra.github.io/kyno/assets/social-preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Kyno 1.0: One direction. Every agent. Every step.">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
   <div class="page-grid" aria-hidden="true"></div>
 
   <header class="topbar wrap">
@@ -16,7 +27,7 @@
       <img src="mark.svg" width="34" height="34" alt="">
       <span>Kyno</span>
     </a>
-    <nav>
+    <nav aria-label="Main navigation">
       <a href="#how">How it works</a>
       <a href="#start">Quick start</a>
       <a href="#faq">FAQ</a>
@@ -25,20 +36,23 @@
     </nav>
   </header>
 
-  <main>
+  <main id="main">
     <section class="hero wrap">
       <div class="hero-copy">
+        <div class="release-note"><span>1.0 is available</span><a href="https://github.com/cizambra/kyno/releases/tag/v1.0.0">Release notes ↗</a></div>
         <h1><span class="headline-line headline-plain">One direction.</span><span class="headline-line">Every agent.</span><span class="headline-line violet">Every step.</span></h1>
         <p>Kyno makes direction a first-class runtime primitive. Your mission and principles have their own current version, history, and interface. Adapters fetch them and supply them to running agents before their next step.</p>
         <div class="actions">
           <button class="install" data-copy="pip install kyno" aria-label="Copy pip install kyno">
             <span class="prompt">›_</span><code>pip install kyno</code><span class="copy-label">copy</span>
           </button>
-          <a class="secondary" href="https://github.com/cizambra/kyno">GitHub / Docs ↗</a>
+          <a class="secondary" href="https://github.com/cizambra/kyno/blob/main/docs/README.md">Documentation ↗</a>
         </div>
+        <div class="install-meta">Python 3.11+ · <a href="https://pypi.org/project/kyno/">Available on PyPI ↗</a></div>
       </div>
 
-      <figure class="lifecycle" aria-labelledby="lifecycle-title lifecycle-caption">
+      <div class="lifecycle-demo">
+      <figure class="lifecycle" aria-labelledby="lifecycle-caption">
         <div class="lifecycle-head">
           <div class="stage is-active" data-stage="1"><b>1</b><span>Direction changed</span></div>
           <div class="stage-line"><i></i></div>
@@ -112,6 +126,8 @@
           <strong id="flow-event">All four agents are on v7.</strong>
         </figcaption>
       </figure>
+      <button class="animation-toggle" aria-pressed="false" hidden>Pause animation</button>
+      </div>
     </section>
 
     <section class="status wrap" aria-label="Product properties">
@@ -153,21 +169,27 @@
       <div class="start-copy">
         <h2>Publish your first direction.</h2>
         <p>Start with SQLite and stdio. Add HTTP or your own adapter when the workflow needs it.</p>
-        <a href="https://github.com/cizambra/kyno#quick-start">Connect a shipped adapter →</a>
+        <nav class="integration-links" aria-label="Integration guides">
+          <a href="https://github.com/cizambra/kyno/blob/main/docs/crewai.md">CrewAI →</a>
+          <a href="https://github.com/cizambra/kyno/blob/main/docs/langgraph.md">LangGraph →</a>
+          <a href="https://github.com/cizambra/kyno/blob/main/docs/adapters.md">SDK / custom adapter →</a>
+        </nav>
       </div>
       <div class="terminal">
-        <header><span>~/acme</span><button data-copy-target="#quick-code">copy</button></header>
-        <pre id="quick-code"><code><b>$</b> pip install kyno
-<b>$</b> kyno new acme &amp;&amp; cd acme
-<b>$</b> kyno db init
-<b>$</b> printf 'constitution_key: default\nmission: Ship a lending product people trust\n' &gt; constitution.yaml
-<b>$</b> kyno apply constitution.yaml --note "initial constitution"
-<b>$</b> kyno serve --transport stdio</code></pre>
+        <header><span>~/acme</span><button data-copy-target="#quick-code" aria-label="Copy quick start commands">copy</button></header>
+        <pre id="quick-code"><code><b data-prompt aria-hidden="true">$ </b>pip install kyno
+<b data-prompt aria-hidden="true">$ </b>kyno new acme &amp;&amp; cd acme
+<b data-prompt aria-hidden="true">$ </b>kyno db init
+<b data-prompt aria-hidden="true">$ </b>printf 'constitution_key: default\nmission: Ship a lending product people trust\n' &gt; constitution.yaml
+<b data-prompt aria-hidden="true">$ </b>kyno apply constitution.yaml --note "initial constitution"
+<b data-prompt aria-hidden="true">$ </b>kyno serve --transport stdio</code></pre>
       </div>
     </section>
 
     <section class="explanation wrap" id="faq" aria-labelledby="faq-heading">
       <h2 id="faq-heading">Questions before you integrate</h2>
+      <h3>What does stable 1.0 mean?</h3>
+      <p>Kyno follows Semantic Versioning for its documented MCP tools and request and response formats, CLI commands and options, SDK and adapter interfaces, and HTTP endpoints. Bug fixes ship as patch releases; compatible additions ship in 1.x. Breaking changes require a new major version. <a href="https://github.com/cizambra/kyno#versioning">Read the compatibility promise</a>. Package versions are separate from the constitution versions your agents receive.</p>
       <h3>How does direction relate to a system prompt?</h3>
       <p>A system prompt can carry direction alongside instructions for a model call. Kyno manages the direction's identity, current version, and history independently. An adapter retrieves a version and supplies it in the model context; the prompt carries that copy. A fixed prompt may be sufficient for a short workflow with unchanging direction.</p>
       <h3>Can I keep my constitution in Git?</h3>
@@ -201,7 +223,7 @@
   <footer class="wrap">
     <div class="brand mini"><img src="mark.svg" width="25" height="25" alt=""><span>Kyno</span></div>
     <span>Coherence as infrastructure.</span>
-    <nav><a href="https://github.com/cizambra/kyno">GitHub</a><a href="constitution/">Constitution</a><a href="https://github.com/cizambra/kyno/blob/main/LICENSE">License</a></nav>
+    <nav aria-label="Project links"><a href="https://github.com/cizambra/kyno">GitHub</a><a href="constitution/">Constitution</a><a href="https://github.com/cizambra/kyno/blob/main/LICENSE">Licensing: MIT integrations · Elastic 2.0 core</a></nav>
   </footer>
 
   <script src="main.js"></script>

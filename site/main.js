@@ -2,13 +2,18 @@
   "use strict";
 
   function copy(text, button, reset){
-    if(!navigator.clipboard) return;
+    if(!navigator.clipboard){
+      button.title='Select and copy the command text manually.';
+      return;
+    }
     navigator.clipboard.writeText(text).then(function(){
       if(!button) return;
       var target=button.querySelector('.copy-label')||button;
       var before=target.textContent;
       target.textContent='copied';
       setTimeout(function(){target.textContent=reset||before;},1300);
+    }).catch(function(){
+      button.title='Copy failed. Select and copy the command text manually.';
     });
   }
 
@@ -18,7 +23,11 @@
   document.querySelectorAll('[data-copy-target]').forEach(function(btn){
     btn.addEventListener('click',function(){
       var el=document.querySelector(btn.dataset.copyTarget);
-      if(el) copy(el.innerText,btn,'copy');
+      if(el){
+        var commands=el.cloneNode(true);
+        commands.querySelectorAll('[data-prompt]').forEach(function(prompt){prompt.remove();});
+        copy(commands.textContent,btn,'copy');
+      }
     });
   });
 
@@ -139,5 +148,15 @@
     later(17700,function(){round(10);});
     later(25900,function(){play();});
   }
+  var toggle=document.querySelector('.animation-toggle');
+  toggle.hidden=false;
+  toggle.addEventListener('click',function(){
+    var paused=toggle.getAttribute('aria-pressed')!=='true';
+    toggle.setAttribute('aria-pressed',String(paused));
+    toggle.textContent=paused?'Resume animation':'Pause animation';
+    document.querySelector('.lifecycle').classList.toggle('is-paused',paused);
+    if(paused) clearTimers();
+    else play();
+  });
   play();
 })();

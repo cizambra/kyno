@@ -9,7 +9,7 @@
 **Kyno makes direction a first-class runtime primitive.** It gives running
 agents a shared, versioned source of mission and principles, with its own
 identity, current version, history, and interface for retrieving it.
-[Direction at runtime](docs/direction.md) explains the model and shows a task
+[Direction at runtime](https://github.com/cizambra/kyno/blob/main/docs/direction.md) explains the model and shows a task
 staying the same while its direction changes.
 
 Suppose your sales agent is optimizing for new revenue. You change the
@@ -131,7 +131,7 @@ Run your existing crew inside the `try` block, while the connection and
 hook are active. The example fetches direction without making a model call.
 
 The CrewAI hook pulls before each model call and refreshes the direction
-in its context. See the [CrewAI integration](docs/crewai.md) for setup
+in its context. See the [CrewAI integration](https://github.com/cizambra/kyno/blob/main/docs/crewai.md) for setup
 and optional recording and verification.
 
 For LangGraph instead, install its extra:
@@ -141,7 +141,7 @@ pip install "kyno[langgraph]"
 ```
 
 Place a `direction_node` before each work node that needs a refresh; see
-the [LangGraph integration](docs/langgraph.md). If you use both frameworks
+the [LangGraph integration](https://github.com/cizambra/kyno/blob/main/docs/langgraph.md). If you use both frameworks
 in one environment, install `pip install "kyno[crewai,langgraph]"`.
 Each integration can select a different named constitution from the same
 server. Shipped adapters are read-only and pull-only. They do not subscribe
@@ -151,55 +151,55 @@ to Core notifications.
 
 The SDK must establish a connection before it can read direction. If the
 initial connection fails, `kyno.connect()` raises `KynoUnavailableError`. See
-[connection troubleshooting](docs/adapters.md#connection-troubleshooting).
+[connection troubleshooting](https://github.com/cizambra/kyno/blob/main/docs/adapters.md#connection-troubleshooting).
 
 Once connected, current direction depends on a successful pull. By default, a failed pull
 is logged and the binder uses cached direction, or empty version 0 if it
 has never fetched direction. Set `PullPolicy(fail_closed=True)` on the
-binder to raise an error instead. See [adapter failure policies](docs/adapters.md)
+binder to raise an error instead. See [adapter failure policies](https://github.com/cizambra/kyno/blob/main/docs/adapters.md)
 before deploying.
 
 Receiving principles does not mean following them. Kyno does not establish
 that an action is aligned or safe, and a direction update does not rewrite
 an active task or replan the workflow. Your application owns optional
-[output verification](docs/adapters.md#application-owned-verification),
+[output verification](https://github.com/cizambra/kyno/blob/main/docs/adapters.md#application-owned-verification),
 including the choice of verifier and whether to continue, retry, or stop.
 
 ## Self-hosting
 
 Kyno runs locally with SQLite or uses PostgreSQL for production deployments.
 Serve it over stdio for a local process or HTTP with scoped, revocable
-bearer tokens. See [Operating Kyno](docs/operating.md) for configuration,
+bearer tokens. See [Operating Kyno](https://github.com/cizambra/kyno/blob/main/docs/operating.md) for configuration,
 authentication, and deployment.
 
 ## Documentation
 
 The [website FAQ](https://cizambra.github.io/kyno/#faq) covers Git and system
 prompts, when Kyno is useful, and its relationship to governance and verification.
-The [documentation index](docs/README.md) provides a reading order for integration:
+The [documentation index](https://github.com/cizambra/kyno/blob/main/docs/README.md) provides a reading order for integration:
 
-- [Writing constitutions](docs/constitutions.md): the file, its fields,
+- [Writing constitutions](https://github.com/cizambra/kyno/blob/main/docs/constitutions.md): the file, its fields,
   and multiple constitutions.
-- [The MCP contract](docs/contract.md): every tool, the compact and full
+- [The MCP contract](https://github.com/cizambra/kyno/blob/main/docs/contract.md): every tool, the compact and full
   reads, and subscriptions.
-- [The adapters in depth](docs/adapters.md): binder mechanics, failure
+- [The adapters in depth](https://github.com/cizambra/kyno/blob/main/docs/adapters.md): binder mechanics, failure
   postures, and application-owned verification.
-- [Build your own adapter](docs/integrating.md): how to build an adapter
+- [Build your own adapter](https://github.com/cizambra/kyno/blob/main/docs/integrating.md): how to build an adapter
   in any language.
-- [Publishing your constitution](docs/publishing.md): the public page,
+- [Publishing your constitution](https://github.com/cizambra/kyno/blob/main/docs/publishing.md): the public page,
   colors, and templates.
-- [Operating Kyno](docs/operating.md): storage, auth, deploying, and testing.
+- [Operating Kyno](https://github.com/cizambra/kyno/blob/main/docs/operating.md): storage, auth, deploying, and testing.
 
 ## License
 
 Two licenses, split by directory:
 
 - The control plane (the server, store, CLI) is source-available under
-  the [Elastic License 2.0](LICENSES/Elastic-2.0.txt).
+  the [Elastic License 2.0](https://github.com/cizambra/kyno/blob/main/LICENSES/Elastic-2.0.txt).
 - The SDK, the adapters, the conformance kit, and the integration guide
-  are [MIT](LICENSES/MIT.txt).
+  are [MIT](https://github.com/cizambra/kyno/blob/main/LICENSES/MIT.txt).
 
-[LICENSE](LICENSE) explains which license applies to each file.
+[LICENSE](https://github.com/cizambra/kyno/blob/main/LICENSE) explains which license applies to each file.
 You can build anything on the SDK, freely and commercially. What the
 Elastic License restricts is offering the control plane itself as a
 hosted service.
@@ -207,5 +207,5 @@ hosted service.
 ## Contributing
 
 Issues and PRs welcome on [GitHub](https://github.com/cizambra/kyno/issues).
-See [CONTRIBUTING.md](CONTRIBUTING.md) for style, test expectations, and
+See [CONTRIBUTING.md](https://github.com/cizambra/kyno/blob/main/CONTRIBUTING.md) for style, test expectations, and
 how licensing applies to new files.

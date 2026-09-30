@@ -47,7 +47,7 @@ h1{font-size:clamp(52px,5.1vw,78px);line-height:.97;letter-spacing:-.055em;font-
 footer{height:100px;display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:center;color:#616d81;font-size:10px}.brand.mini{font-size:12px;color:#dce3ed}footer nav{gap:22px}footer nav a{font-size:10px}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.route.is-flowing{animation:none}}
 @media(max-width:1040px){.hero{grid-template-columns:1fr;padding-top:52px}.hero-copy{max-width:680px}.hero-copy>p{max-width:600px}.lifecycle{width:100%}.start{grid-template-columns:1fr}.status{grid-template-columns:1.35fr repeat(3,1fr)}.pillars article{padding:0 22px}.constitution{grid-template-columns:1fr auto}.constitution>p{grid-column:1/2}.constitution>a{grid-column:2;grid-row:1/3}}
-@media(max-width:720px){.wrap{width:min(100% - 28px,1280px)}.topbar{height:70px}.topbar nav a:not(:last-child){display:none}.hero{padding-top:40px;gap:36px}.lifecycle-head{overflow-x:auto}.lifecycle-body{height:550px}.routes{display:none}.operator-card{left:18px;top:28px;width:calc(50% - 27px)}.store-card{left:auto;right:18px;top:28px;width:calc(50% - 27px);height:165px;padding:13px}.store-mark{width:48px;height:48px;margin:10px 0 7px}.store-card strong{font-size:21px}.agents{left:18px;right:18px;top:222px;width:auto}.agent-card{height:62px}.lifecycle figcaption{flex-wrap:wrap;justify-content:flex-start;padding:12px}.lifecycle figcaption strong{width:100%;max-width:none;text-align:left;margin-left:0}.status{height:auto;grid-template-columns:1fr 1fr}.status>div{min-height:70px;border-bottom:1px solid var(--line)}.status>div:nth-child(2){border-right:0}.status-label{grid-column:1/-1;border-right:0!important}.pillars{grid-template-columns:1fr;padding:36px 0}.pillars article,.pillars article:first-child,.pillars article:last-child{padding:25px 0;border-right:0;border-bottom:1px solid var(--line)}.pillars article:last-child{border-bottom:0}.start{padding:64px 0;gap:36px}.constitution{padding:55px 0;grid-template-columns:1fr}.constitution>p,.constitution>a{grid-column:1;grid-row:auto}.constitution>div{align-items:flex-start}footer{height:auto;padding:32px 0;grid-template-columns:1fr}footer nav{justify-content:flex-start}}
+@media(max-width:720px){.wrap{width:min(100% - 28px,1280px)}.topbar{height:70px}.hero{padding-top:40px;gap:36px}.lifecycle-head{overflow-x:auto}.lifecycle-body{height:550px}.routes{display:none}.operator-card{left:18px;top:28px;width:calc(50% - 27px)}.store-card{left:auto;right:18px;top:28px;width:calc(50% - 27px);height:165px;padding:13px}.store-mark{width:48px;height:48px;margin:10px 0 7px}.store-card strong{font-size:21px}.agents{left:18px;right:18px;top:222px;width:auto}.agent-card{height:62px}.lifecycle figcaption{flex-wrap:wrap;justify-content:flex-start;padding:12px}.lifecycle figcaption strong{width:100%;max-width:none;text-align:left;margin-left:0}.status{height:auto;grid-template-columns:1fr 1fr}.status>div{min-height:70px;border-bottom:1px solid var(--line)}.status>div:nth-child(2){border-right:0}.status-label{grid-column:1/-1;border-right:0!important}.pillars{grid-template-columns:1fr;padding:36px 0}.pillars article,.pillars article:first-child,.pillars article:last-child{padding:25px 0;border-right:0;border-bottom:1px solid var(--line)}.pillars article:last-child{border-bottom:0}.start{padding:64px 0;gap:36px}.constitution{padding:55px 0;grid-template-columns:1fr}.constitution>p,.constitution>a{grid-column:1;grid-row:auto}.constitution>div{align-items:flex-start}footer{height:auto;padding:32px 0;grid-template-columns:1fr}footer nav{justify-content:flex-start}}
 
 
 /* V4: quieter brand hierarchy — no marketing eyebrow pills */
@@ -119,11 +119,21 @@ body{min-width:0}
 .resource-card:hover .resource-cta,.resource-card:focus-visible .resource-cta{border-color:var(--cyan);color:var(--cyan)}
 .topbar nav a[aria-current="page"]{color:var(--ink);text-decoration:underline;text-underline-offset:6px}
 @media(max-width:720px){
-  .topbar{height:auto;min-height:70px;flex-wrap:wrap;gap:16px;padding-block:18px}
-  .topbar nav{width:100%;flex-wrap:wrap;gap:10px 20px}
-  .topbar nav a:not(:last-child){display:inline}
   .resource-grid,.question-index{grid-template-columns:1fr}
   .content-page{padding-block:32px 48px}
 }
 
 .explanation-links{display:flex;flex-wrap:wrap;align-items:center;gap:20px}
+
+.mobile-menu{display:none}
+@media(max-width:960px){
+  .topbar{height:70px;position:relative;gap:20px}
+  .topbar>nav{display:none}
+  .mobile-menu{display:block;position:relative}
+  .mobile-menu summary{display:flex;align-items:center;justify-content:center;gap:10px;min-height:44px;padding:0 14px;border:1px solid var(--line2);border-radius:8px;background:var(--panel);color:var(--ink);font-size:13px;cursor:pointer;list-style:none}
+  .mobile-menu summary::-webkit-details-marker{display:none}
+  .mobile-menu[open] summary{border-color:var(--cyan);color:var(--cyan)}
+  .topbar .mobile-menu nav{position:absolute;z-index:20;right:0;top:calc(100% + 12px);width:min(280px,calc(100vw - 28px));display:flex;flex-direction:column;align-items:stretch;gap:0;padding:8px;border:1px solid var(--line2);border-radius:12px;background:var(--panel);box-shadow:0 16px 40px rgba(0,0,0,.45)}
+  .topbar .mobile-menu nav a{display:flex;align-items:center;min-height:44px;padding:10px 14px;border-radius:6px;font-size:15px}
+  .topbar .mobile-menu nav a:hover{background:var(--panel2);color:var(--cyan)}
+}

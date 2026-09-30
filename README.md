@@ -190,6 +190,19 @@ The [documentation index](https://github.com/cizambra/kyno/blob/main/docs/README
   colors, and templates.
 - [Operating Kyno](https://github.com/cizambra/kyno/blob/main/docs/operating.md): storage, auth, deploying, and testing.
 
+## Versioning
+
+Starting with 1.0.0, Kyno follows [Semantic Versioning](https://semver.org/).
+The compatibility promise covers documented MCP tools and their request and
+response formats, CLI commands and options, SDK and adapter interfaces, and
+HTTP endpoints. Patch releases fix bugs; minor releases add compatible
+features. Breaking changes to these interfaces require a new major version.
+For example, a new optional MCP tool can ship in 1.1.0; removing an existing
+tool or a required response field requires 2.0.0.
+
+Package versions are separate from constitution versions: updating Kyno does
+not itself append a new version of your direction.
+
 ## License
 
 Two licenses, split by directory:

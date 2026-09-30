@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A direction change during a run — Kyno demo</title>
+  <meta name="description" content="Follow a recorded agent workflow as an operator updates its mission and principles. See the task, direction pulls, planning, and revised reply.">
+  <link rel="canonical" href="https://cizambra.github.io/kyno/demo/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kyno">
+  <meta property="og:title" content="A direction change during a run — Kyno demo">
+  <meta property="og:description" content="Follow a recorded agent workflow as an operator updates its mission and principles. See the task, direction pulls, planning, and revised reply.">
+  <meta property="og:url" content="https://cizambra.github.io/kyno/demo/">
+  <meta property="og:image" content="https://cizambra.github.io/kyno/assets/social-preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Kyno 1.0: One direction. Every agent. Every step.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="walkthrough.css">
+  <script defer src="walkthrough.js">
+</script>
+  <link rel="icon" href="../mark.svg" type="image/svg+xml">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="1ac0032b-f63c-44fa-a68d-7ed07ecd34b6">
+</script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="page-grid" aria-hidden="true">
+</div>
+  <header class="topbar wrap">
+    <a class="brand" href="../" aria-label="Kyno home">
+<img src="../mark.svg" width="38" height="38" alt="">
+<span>Kyno</span>
+</a>
+    <nav aria-label="Main navigation">
+      <a href="../how-it-works/">How it works</a>
+      <a href="../demo/" aria-current="page">Demo</a>
+      <a href="../#start">Quick start</a>
+      <a href="../faq/">FAQ</a>
+      <a href="https://github.com/cizambra/kyno/blob/main/docs/README.md">Documentation</a>
+      <a href="https://github.com/cizambra/kyno">GitHub</a>
+    </nav>
+  </header>
+  <main class="content-page walkthrough-page wrap" id="main">
+    <a class="back-link" href="../">Kyno home</a>
+    <h1>A direction change during a run</h1>
+    <p class="page-intro">Follow one customer complaint through planning, drafting, a direction update, and a revised reply. Each step shows who acts, what happens, and the result.</p>
+<section class="walkthrough" id="walkthrough" aria-label="Recorded support workflow">
+<section class="walkthrough-task" aria-labelledby="walkthrough-task-title">
+<h2 id="walkthrough-task-title">Task</h2>
+<p>Draft a reply to the delivery complaint and recommend next steps.</p>
+<p>
+<strong>Allowed actions:</strong> The agent may propose a refund of up to $40 and human investigation. It can draft a reply; it cannot execute either action.</p>
+</section>
+<label class="walkthrough-mobile" data-walkthrough-controls hidden>
+<span class="walkthrough-caption">Jump to a step</span>
+<select id="walkthrough-picker" aria-label="Workflow step">
+<option value="0">1. Receive request</option>
+<option value="1">2. Pull direction v1</option>
+<option value="2">3. Create plan</option>
+<option value="3">4. Create draft</option>
+<option value="4">5. Update direction</option>
+<option value="5">6. Check version</option>
+<option value="6">7. Revise plan</option>
+<option value="7">8. Finalize reply</option>
+</select>
+</label>
+<div class="walkthrough-layout">
+<nav class="walkthrough-rail" aria-label="Workflow sequence" data-walkthrough-controls hidden>
+<button type="button" data-walkthrough-step="0">
+<span class="walkthrough-index">1</span>Receive request</button>
+<button type="button" data-walkthrough-step="1">
+<span class="walkthrough-index">2</span>Pull direction v1</button>
+<button type="button" data-walkthrough-step="2">
+<span class="walkthrough-index">3</span>Create plan</button>
+<button type="button" data-walkthrough-step="3">
+<span class="walkthrough-index">4</span>Create draft</button>
+<button type="button" data-walkthrough-step="4">
+<span class="walkthrough-index">5</span>Update direction</button>
+<button type="button" data-walkthrough-step="5">
+<span class="walkthrough-index">6</span>Check version</button>
+<button type="button" data-walkthrough-step="6">
+<span class="walkthrough-index">7</span>Revise plan</button>
+<button type="button" data-walkthrough-step="7">
+<span class="walkthrough-index">8</span>Finalize reply</button>
+</nav>
+<div class="walkthrough-screens">
+<section class="walkthrough-screen" data-walkthrough-screen="0" data-next-label="receive request" aria-labelledby="walkthrough-title-0">
+<span class="walkthrough-actor">Application · step 1</span>
+<h2 id="walkthrough-title-0">Receives the customer’s request</h2>
+<p class="walkthrough-input">Incoming support ticket and supplied order facts. The ticket is an illustration of the recorded scenario.</p>
+<pre class="walkthrough-output">Customer request
+“I paid $40 for express delivery, but my package arrived two days late. This is the second late express delivery this month. Please refund the fee and explain what happened.”
+
+Order context
+$40 express fee; both late deliveries confirmed; causes unknown.</pre>
+<div class="walkthrough-result">
+<h3>Result</h3>
+<p>The task and customer context are ready for planning.</p>
+<p class="walkthrough-state">No plan or draft yet.</p>
+</div>
+<details>
+<summary>Inspect the actual model input</summary>
+<p>Corresponding recorded input for the first planning call</p>
+<pre>SYSTEM
+[kyno:direction constitution_key=customer-support version=1]
+Mission: Resolve delivery complaints promptly while treating customers fairly.
+Declaration:
+A support answer should make the next step clear without unnecessary back-and-forth.
+Principles:
+- Make straightforward remedies easy
+  When a paid delivery promise was missed, propose refunding the delivery fee within the $40 limit.
+- Be accurate
+  Explain what is known and never claim an action was completed when it was only proposed.
+
+USER
+A customer paid $40 for express delivery. Their package arrived two days late. They ask for the delivery fee back and an explanation. Tracking confirms the delay. Order history also confirms that another express delivery to this customer was late earlier this month. The cause of either delay is unknown. You may draft a reply, propose a refund of up to $40 for this delivery, or propose escalation to a person. Do not execute any action or claim a refund has already been issued. Choose a response and explain the tradeoff using the supplied mission and principles.
+
+Create a short plan with two stages: draft a response, then finalize it. Use the supplied direction to explain the tradeoffs. Do not draft the response yet.</pre>
+</details>
+</section>
+<section class="walkthrough-screen" data-walkthrough-screen="1" data-next-label="pull direction v1" aria-labelledby="walkthrough-title-1">
+<span class="walkthrough-actor">Kyno · step 2</span>
+<h2 id="walkthrough-title-1">Supplies direction v1</h2>
+<p class="walkthrough-input">The application pulls current direction before the planning call.</p>
+<div class="walkthrough-direction">
+<h3>Mission</h3>
+<p>Resolve delivery complaints promptly while treating customers fairly.</p>
+<h3>Principles</h3>
+<ul>
+<li>
+<strong>Make straightforward remedies easy</strong>
+<br>When a paid delivery promise was missed, propose refunding the delivery fee within the $40 limit.</li>
+<li>
+<strong>Be accurate</strong>
+<br>Explain what is known and never claim an action was completed when it was only proposed.</li>
+</ul>
+</div>
+<div class="walkthrough-result">
+<h3>Result</h3>
+<p>Mission and principles are available to guide the agent’s plan.</p>
+<p class="walkthrough-state">Fetched direction: v1. No plan yet.</p>
+</div>
+<details>
+<summary>Inspect the actual model input</summary>
+<p>Direction appears in the SYSTEM message; the task and context appear in USER.</p>
+<pre>SYSTEM
+[kyno:direction constitution_key=customer-support version=1]
+Mission: Resolve delivery complaints promptly while treating customers fairly.
+Declaration:
+A support answer should make the next step clear without unnecessary back-and-forth.
+Principles:
+- Make straightforward remedies easy
+  When a paid delivery promise was missed, propose refunding the delivery fee within the $40 limit.
+- Be accurate
+  Explain what is known and never claim an action was completed when it was only proposed.
+
+USER
+A customer paid $40 for express delivery. Their package arrived two days late. They ask for the delivery fee back and an explanation. Tracking confirms the delay. Order history also confirms that another express delivery to this customer was late earlier this month. The cause of either delay is unknown. You may draft a reply, propose a refund of up to $40 for this delivery, or propose escalation to a person. Do not execute any action or claim a refund has already been issued. Choose a response and explain the tradeoff using the supplied mission and principles.
+
+Create a short plan with two stages: draft a response, then finalize it. Use the supplied direction to explain the tradeoffs. Do not draft the response yet.</pre>
+</details>
+</section>
+<section class="walkthrough-screen" data-walkthrough-screen="2" data-next-label="create a plan" aria-labelledby="walkthrough-title-2">
+<span class="walkthrough-actor">Agent · step 3</span>
+<h2 id="walkthrough-title-2">Creates a response plan</h2>
+<p class="walkthrough-input">Receives direction v1, the task, and the same customer context.</p>
+<pre class="walkthrough-output">1. Draft a response: Plan to acknowledge the confirmed two-day delay and the earlier late express delivery, propose refunding this delivery’s $40 fee, and explain that the causes are unknown. Propose escalation to a person to investigate the repeated delays without making the straightforward refund depend on that investigation. This balances prompt, fair resolution with attention to the recurring problem.
+2. Finalize it: Check that the reply states the proposed refund and investigation clearly, requests no information already confirmed, and makes no claim that either action has happened. This follows the principles of making remedies easy and being accurate while avoiding unnecessary back-and-forth.</pre>
+<div class="walkthrough-result">
+<h3>Result</h3>
+<p>The application saves this plan with the direction version used.</p>
+<p class="walkthrough-state">Saved plan: v1. No draft yet.</p>
+</div>
+<details>
+<summary>Inspect the actual model input</summary>
+<p>Actual recorded input for planning</p>
+<pre>SYSTEM
+[kyno:direction constitution_key=customer-support version=1]
+Mission: Resolve delivery complaints promptly while treating customers fairly.
+Declaration:
+A support answer should make the next step clear without unnecessary back-and-forth.
+Principles:
+- Make straightforward remedies easy
+  When a paid delivery promise was missed, propose refunding the delivery fee within the $40 limit.
+- Be accurate
+  Explain what is known and never claim an action was completed when it was only proposed.
+
+USER
+A customer paid $40 for express delivery. Their package arrived two days late. They ask for the delivery fee back and an explanation. Tracking confirms the delay. Order history also confirms that another express delivery to this customer was late earlier this month. The cause of either delay is unknown. You may draft a reply, propose a refund of up to $40 for this delivery, or propose escalation to a person. Do not execute any action or claim a refund has already been issued. Choose a response and explain the tradeoff using the supplied mission and principles.
+
+Create a short plan with two stages: draft a response, then finalize it. Use the supplied direction to explain the tradeoffs. Do not draft the response yet.</pre>
+</details>
+<details>
+<summary>Inspect the full recorded response</summary>
+<pre>1. Draft a response: Plan to acknowledge the confirmed two-day delay and the earlier late express delivery, propose refunding this delivery’s $40 fee, and explain that the causes are unknown. Propose escalation to a person to investigate the repeated delays without making the straightforward refund depend on that investigation. This balances prompt, fair resolution with attention to the recurring problem.
+2. Finalize it: Check that the reply states the proposed refund and investigation clearly, requests no information already confirmed, and makes no claim that either action has happened. This follows the principles of making remedies easy and being accurate while avoiding unnecessary back-and-forth.</pre>
+</details>
+</section>
+<section class="walkthrough-screen" data-walkthrough-screen="3" data-next-label="create the first draft" aria-labelledby="walkthrough-title-3">
+<span class="walkthrough-actor">Agent · step 4</span>
+<h2 id="walkthrough-title-3">Creates the first draft</h2>
+<p class="walkthrough-input">Receives freshly pulled direction v1, the customer context, and its saved plan.</p>
+<pre class="walkthrough-output">I&#x27;m sorry your express delivery arrived two days late, especially after another late express delivery earlier this month. Tracking confirms this delivery&#x27;s delay, and your order history confirms the earlier delay.
+
+I propose refunding the full $40 express delivery fee for this delivery. <mark>I also recommend escalating the repeated delays to a person for investigation.</mark> We don&#x27;t yet know what caused either delay, so I can&#x27;t give you a confirmed explanation. The proposed refund should proceed independently of that investigation. Neither the refund nor the escalation has been carried out.</pre>
+<div class="walkthrough-result">
+<h3>Result</h3>
+<p>The application keeps the completed draft. No message is sent.</p>
+<p class="walkthrough-state">Saved plan: v1. First draft retained.</p>
+</div>
+<details>
+<summary>Inspect the actual model input</summary>
+<p>Actual recorded input for the first draft</p>
+<pre>SYSTEM
+[kyno:direction constitution_key=customer-support version=1]
+Mission: Resolve delivery complaints promptly while treating customers fairly.
+Declaration:
+A support answer should make the next step clear without unnecessary back-and-forth.
+Principles:
+- Make straightforward remedies easy
+  When a paid delivery promise was missed, propose refunding the delivery fee within the $40 limit.
+- Be accurate
+  Explain what is known and never claim an action was completed when it was only proposed.
+
+USER
+A customer paid $40 for express delivery. Their package arrived two days late. They ask for the delivery fee back and an explanation. Tracking confirms the delay. Order history also confirms that another express delivery to this customer was late earlier this month. The cause of either delay is unknown. You may draft a reply, propose a refund of up to $40 for this delivery, or propose escalation to a person. Do not execute any action or claim a refund has already been issued. Choose a response and explain the tradeoff using the supplied mission and principles.
+
+Current plan:
+1. Draft a response: Plan to acknowledge the confirmed two-day delay and the earlier late express delivery, propose refunding this delivery’s $40 fee, and explain that the causes are unknown. Propose escalation to a person to investigate the repeated delays without making the straightforward refund depend on that investigation. This balances prompt, fair resolution with attention to the recurring problem.
+2. Finalize it: Check that the reply states the proposed refund and investigation clearly, requests no information already confirmed, and makes no claim that either action has happened. This follows the principles of making remedies easy and being accurate while avoiding unnecessary back-and-forth.
+
+Carry out the drafting stage. Produce a draft, not a sent message.</pre>
+</details>
+<details>
+<summary>Inspect the full recorded response</summary>
+<pre>Draft reply:
+
+“I&#x27;m sorry your express delivery arrived two days late, especially after another late express delivery earlier this month. Tracking confirms this delivery&#x27;s delay, and your order history confirms the earlier delay.
+
+I propose refunding the full $40 express delivery fee for this delivery. I also recommend escalating the repeated delays to a person for investigation. We don&#x27;t yet know what caused either delay, so I can&#x27;t give you a confirmed explanation. The proposed refund should proceed independently of that investigation. Neither the refund nor the escalation has been carried out.”
+
+Tradeoff: The $40 refund offers a prompt, fair remedy for the missed paid delivery promise, within the allowed limit. A separate escalation addresses the recurring problem without delaying the straightforward remedy or requesting information already confirmed. Stating that both causes are unknown and both actions are proposed follows the accuracy principle, while keeping the next steps clear and avoiding unnecessary back-and-forth.</pre>
+</details>
+</section>
+<section class="walkthrough-screen" data-walkthrough-screen="4" data-next-label="update direction" aria-labelledby="walkthrough-title-4">
+<span class="walkthrough-actor">Operator · step 5</span>
+<h2 id="walkthrough-title-4">Updates mission and principles</h2>
+<p class="walkthrough-input">The workflow pauses after the first draft. The operator commits new direction in Kyno.</p>
+<div class="walkthrough-direction">
+<h3>Mission</h3>
+<p>Resolve delivery complaints fairly while reducing recurring delivery failures.</p>
+<h3>Principles</h3>
+<ul>
+<li>
+<strong>Address immediate harm</strong>
+<br>Make proportionate remedies straightforward when a paid delivery promise was missed.</li>
+<li>
+<strong>Look beyond individual complaints</strong>
+<br>Use recurring complaints to identify problems that may affect other customers. Choose proportionate follow-up without delaying an appropriate individual remedy.</li>
+<li>
+<strong>Be accurate</strong>
+<br>Explain what is known and never claim an action was completed when it was only proposed.</li>
+</ul>
+</div>
+<div class="walkthrough-result">
+<h3>Result</h3>
+<p>Kyno now stores v2. The existing plan and draft stay intact.</p>
+<p class="walkthrough-state">Direction in Kyno: v2. Saved plan: v1. Draft retained.</p>
+</div>
+</section>
+<section class="walkthrough-screen" data-walkthrough-screen="5" data-next-label="check the direction version" aria-labelledby="walkthrough-title-5">
+<span class="walkthrough-actor">Application / LangGraph · step 6</span>
+<h2 id="walkthrough-title-5">Checks whether the plan is current</h2>
+<p class="walkthrough-input">At the review boundary, the application pulls current direction from Kyno.</p>
+<pre class="walkthrough-output">The saved plan used v1.
+The current direction is v2.
+
+v2 is newer than v1, so this workflow selects its replanning branch.</pre>
+<div class="walkthrough-result">
+<h3>Result</h3>
+<p>The application chooses to revise the remaining work. Kyno supplies direction; it does not choose the workflow branch.</p>
+<p class="walkthrough-state">Current direction: v2. Saved plan: v1. Replanning selected.</p>
+</div>
+</section>
+<section class="walkthrough-screen" data-walkthrough-screen="6" data-next-label="revise the remaining plan" aria-labelledby="walkthrough-title-6">
+<span class="walkthrough-actor">Agent · step 7</span>
+<h2 id="walkthrough-title-6">Revises only the remaining plan</h2>
+<p class="walkthrough-input">Receives freshly pulled v2, the earlier plan, and the completed draft.</p>
+<pre class="walkthrough-output">2. Finalize the existing, unsent draft: Check that it acknowledges both confirmed delays, proposes the full $40 refund for this delivery, states that both causes are unknown, and makes no claim that a refund or escalation has occurred. Keep the refund independent of investigation and request no information already confirmed. In the proposed human escalation, include both late express deliveries and ask for a proportionate review of whether a shared delivery problem could affect other customers and what follow-up could reduce recurrence. Preserve the completed draft as existing work; do not repeat the drafting stage or execute either action.
+
+Tradeoff: The full $40 refund addresses the immediate harm from the missed paid promise. A separate, proportionate investigation uses the repeated complaints to identify possible wider failures without delaying the customer&#x27;s remedy. Keeping causes unknown and actions explicitly proposed preserves accuracy.</pre>
+<div class="walkthrough-result">
+<h3>Result</h3>
+<p>The revised plan is saved with v2. The drafting stage is not repeated.</p>
+<p class="walkthrough-state">Saved plan: v2. First draft retained.</p>
+</div>
+<details>
+<summary>Inspect the actual model input</summary>
+<p>Actual recorded input for replanning</p>
+<pre>SYSTEM
+[kyno:direction constitution_key=customer-support version=2]
+Mission: Resolve delivery complaints fairly while reducing recurring delivery failures.
+Declaration:
+Resolve the customer&#x27;s immediate issue while attending to recurring failures.
+Principles:
+- Address immediate harm
+  Make proportionate remedies straightforward when a paid delivery promise was missed.
+- Look beyond individual complaints
+  Use recurring complaints to identify problems that may affect other customers. Choose proportionate follow-up without delaying an appropriate individual remedy.
+- Be accurate
+  Explain what is known and never claim an action was completed when it was only proposed.
+
+USER
+A customer paid $40 for express delivery. Their package arrived two days late. They ask for the delivery fee back and an explanation. Tracking confirms the delay. Order history also confirms that another express delivery to this customer was late earlier this month. The cause of either delay is unknown. You may draft a reply, propose a refund of up to $40 for this delivery, or propose escalation to a person. Do not execute any action or claim a refund has already been issued. Choose a response and explain the tradeoff using the supplied mission and principles.
+
+Current plan:
+1. Draft a response: Plan to acknowledge the confirmed two-day delay and the earlier late express delivery, propose refunding this delivery’s $40 fee, and explain that the causes are unknown. Propose escalation to a person to investigate the repeated delays without making the straightforward refund depend on that investigation. This balances prompt, fair resolution with attention to the recurring problem.
+2. Finalize it: Check that the reply states the proposed refund and investigation clearly, requests no information already confirmed, and makes no claim that either action has happened. This follows the principles of making remedies easy and being accurate while avoiding unnecessary back-and-forth.
+
+Completed draft (not sent):
+Draft reply:
+
+“I&#x27;m sorry your express delivery arrived two days late, especially after another late express delivery earlier this month. Tracking confirms this delivery&#x27;s delay, and your order history confirms the earlier delay.
+
+I propose refunding the full $40 express delivery fee for this delivery. I also recommend escalating the repeated delays to a person for investigation. We don&#x27;t yet know what caused either delay, so I can&#x27;t give you a confirmed explanation. The proposed refund should proceed independently of that investigation. Neither the refund nor the escalation has been carried out.”
+
+Tradeoff: The $40 refund offers a prompt, fair remedy for the missed paid delivery promise, within the allowed limit. A separate escalation addresses the recurring problem without delaying the straightforward remedy or requesting information already confirmed. Stating that both causes are unknown and both actions are proposed follows the accuracy principle, while keeping the next steps clear and avoiding unnecessary back-and-forth.
+
+Changes observed:
+Resolve complaints and address recurring delivery failures
+The mission was &quot;Resolve delivery complaints promptly while treating customers fairly.&quot; and is now &quot;Resolve delivery complaints fairly while reducing recurring delivery failures.&quot;.
+Principle 1 was &quot;Make straightforward remedies easy&quot; and is now &quot;Address immediate harm&quot;.
+Principle 2 was &quot;Be accurate&quot; and is now &quot;Look beyond individual complaints&quot;.
+Principle 3 was added: &quot;Be accurate&quot;.
+
+Direction changed. Revise only the remaining finalization plan. Use the completed draft as existing work; do not redo the drafting stage.</pre>
+</details>
+<details>
+<summary>Inspect the full recorded response</summary>
+<pre>2. Finalize the existing, unsent draft: Check that it acknowledges both confirmed delays, proposes the full $40 refund for this delivery, states that both causes are unknown, and makes no claim that a refund or escalation has occurred. Keep the refund independent of investigation and request no information already confirmed. In the proposed human escalation, include both late express deliveries and ask for a proportionate review of whether a shared delivery problem could affect other customers and what follow-up could reduce recurrence. Preserve the completed draft as existing work; do not repeat the drafting stage or execute either action.
+
+Tradeoff: The full $40 refund addresses the immediate harm from the missed paid promise. A separate, proportionate investigation uses the repeated complaints to identify possible wider failures without delaying the customer&#x27;s remedy. Keeping causes unknown and actions explicitly proposed preserves accuracy.</pre>
+</details>
+</section>
+<section class="walkthrough-screen" data-walkthrough-screen="7" data-next-label="finalize the reply" aria-labelledby="walkthrough-title-7">
+<span class="walkthrough-actor">Agent · step 8</span>
+<h2 id="walkthrough-title-7">Produces the final proposed reply</h2>
+<p class="walkthrough-input">Receives freshly pulled v2, the revised plan, and the completed draft.</p>
+<pre class="walkthrough-output">I&#x27;m sorry your express delivery arrived two days late, especially after another late express delivery earlier this month. Tracking confirms this delivery&#x27;s delay, and your order history confirms the earlier delay.
+
+I propose refunding the full $40 express delivery fee for this delivery. We don&#x27;t yet know what caused either delay, so I can&#x27;t give you a confirmed explanation.
+
+<mark>I also recommend escalating both late express deliveries to a person for a proportionate review of whether a shared delivery problem could affect other customers and what follow-up could reduce recurrence.</mark> The proposed refund should proceed independently of that investigation. Neither the refund nor the escalation has been carried out.</pre>
+<div class="walkthrough-result">
+<h3>Result</h3>
+<p>The workflow ends with a proposed reply. No refund, escalation, or customer message is executed.</p>
+<p class="walkthrough-state">Saved plan: v2. Final proposed reply ready.</p>
+</div>
+<details>
+<summary>Inspect the actual model input</summary>
+<p>Actual recorded input for the final response</p>
+<pre>SYSTEM
+[kyno:direction constitution_key=customer-support version=2]
+Mission: Resolve delivery complaints fairly while reducing recurring delivery failures.
+Declaration:
+Resolve the customer&#x27;s immediate issue while attending to recurring failures.
+Principles:
+- Address immediate harm
+  Make proportionate remedies straightforward when a paid delivery promise was missed.
+- Look beyond individual complaints
+  Use recurring complaints to identify problems that may affect other customers. Choose proportionate follow-up without delaying an appropriate individual remedy.
+- Be accurate
+  Explain what is known and never claim an action was completed when it was only proposed.
+
+USER
+A customer paid $40 for express delivery. Their package arrived two days late. They ask for the delivery fee back and an explanation. Tracking confirms the delay. Order history also confirms that another express delivery to this customer was late earlier this month. The cause of either delay is unknown. You may draft a reply, propose a refund of up to $40 for this delivery, or propose escalation to a person. Do not execute any action or claim a refund has already been issued. Choose a response and explain the tradeoff using the supplied mission and principles.
+
+Current plan:
+2. Finalize the existing, unsent draft: Check that it acknowledges both confirmed delays, proposes the full $40 refund for this delivery, states that both causes are unknown, and makes no claim that a refund or escalation has occurred. Keep the refund independent of investigation and request no information already confirmed. In the proposed human escalation, include both late express deliveries and ask for a proportionate review of whether a shared delivery problem could affect other customers and what follow-up could reduce recurrence. Preserve the completed draft as existing work; do not repeat the drafting stage or execute either action.
+
+Tradeoff: The full $40 refund addresses the immediate harm from the missed paid promise. A separate, proportionate investigation uses the repeated complaints to identify possible wider failures without delaying the customer&#x27;s remedy. Keeping causes unknown and actions explicitly proposed preserves accuracy.
+
+Completed draft (not sent):
+Draft reply:
+
+“I&#x27;m sorry your express delivery arrived two days late, especially after another late express delivery earlier this month. Tracking confirms this delivery&#x27;s delay, and your order history confirms the earlier delay.
+
+I propose refunding the full $40 express delivery fee for this delivery. I also recommend escalating the repeated delays to a person for investigation. We don&#x27;t yet know what caused either delay, so I can&#x27;t give you a confirmed explanation. The proposed refund should proceed independently of that investigation. Neither the refund nor the escalation has been carried out.”
+
+Tradeoff: The $40 refund offers a prompt, fair remedy for the missed paid delivery promise, within the allowed limit. A separate escalation addresses the recurring problem without delaying the straightforward remedy or requesting information already confirmed. Stating that both causes are unknown and both actions are proposed follows the accuracy principle, while keeping the next steps clear and avoiding unnecessary back-and-forth.
+
+Carry out the remaining plan and produce the final proposed response.</pre>
+</details>
+<details>
+<summary>Inspect the full recorded response</summary>
+<pre>Final proposed response (not sent):
+
+“I&#x27;m sorry your express delivery arrived two days late, especially after another late express delivery earlier this month. Tracking confirms this delivery&#x27;s delay, and your order history confirms the earlier delay.
+
+I propose refunding the full $40 express delivery fee for this delivery. We don&#x27;t yet know what caused either delay, so I can&#x27;t give you a confirmed explanation.
+
+I also recommend escalating both late express deliveries to a person for a proportionate review of whether a shared delivery problem could affect other customers and what follow-up could reduce recurrence. The proposed refund should proceed independently of that investigation. Neither the refund nor the escalation has been carried out.”
+
+Tradeoff: The full $40 refund addresses the immediate harm from the missed paid delivery promise, within the allowed limit. Separately reviewing both confirmed delays serves the mission of reducing recurring failures and may reveal a problem affecting other customers. Keeping that review proportionate and independent of the refund avoids delaying the customer&#x27;s remedy or requesting information already confirmed. Stating that both causes are unknown and both actions remain proposals preserves accuracy.</pre>
+</details>
+</section>
+<div class="walkthrough-controls" data-walkthrough-controls hidden>
+<button type="button" id="walkthrough-back">Back</button>
+<span class="walkthrough-counter" id="walkthrough-counter" aria-live="polite" aria-atomic="true">Step 1 of 8</span>
+<button type="button" class="walkthrough-next" id="walkthrough-next">Next: pull direction v1</button>
+</div>
+</div>
+</div>
+</section>
+<section class="walkthrough-notes" aria-labelledby="recording-heading">
+<h2 id="recording-heading">About this recording</h2>
+<p>The first draft already proposes a refund and an investigation. After the direction update, the remaining plan expands the investigation to possible shared delivery problems and ways to reduce recurrence. Refund and investigation remain compatible throughout.</p>
+<p>This is a real Kyno and LangGraph run using Codex agents through a temporary bridge. The customer scenario is fictional, and the ticket view illustrates input supplied as text. No customer messages, refunds, or escalations were executed. Each model call used a fresh direction pull. This single run illustrates delivery and interpretation; later calls also receive the existing plan and draft.</p>
+<p>
+<a href="recording.json" download>Download the complete recording</a> for exact inputs, outputs, versions, and execution details. The provider model identifier was not exposed by the session agent interface.</p>
+<p>
+<a href="https://github.com/cizambra/kyno/tree/main/examples/customer_support">Run the customer-support integration example</a> with your own model. This recording uses its graph with a revised repeated-delay scenario and v2 direction, both included in the recording.</p>
+</section>
+    <div class="page-next">
+<a href="../#start">Try the quick start</a>
+<a href="../how-it-works/">How Kyno works</a>
+<a href="../faq/">Read the FAQ</a>
+</div>
+  </main>
+  <footer class="wrap">
+    <a class="brand mini" href="../">
+<img src="../mark.svg" width="25" height="25" alt="">
+<span>Kyno</span>
+</a>
+    <span>Coherence as infrastructure.</span>
+    <nav aria-label="Project links">
+<a href="https://github.com/cizambra/kyno">GitHub</a>
+<a href="../how-it-works/">How it works</a>
+<a href="../faq/">FAQ</a>
+<a href="../constitution/">Constitution</a>
+<a href="https://github.com/cizambra/kyno/blob/main/LICENSE">Licensing: MIT integrations · Elastic 2.0 core</a>
+</nav>
+  </footer>
+</body>
+</html>

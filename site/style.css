@@ -125,3 +125,5 @@ body{min-width:0}
   .resource-grid,.question-index{grid-template-columns:1fr}
   .content-page{padding-block:32px 48px}
 }
+
+.explanation-links{display:flex;flex-wrap:wrap;align-items:center;gap:20px}

@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "title": "Repeated delivery complaints: a direction change during one support workflow",
+  "recorded_at": "2026-09-30T07:14:36.097667+00:00",
+  "source": {
+    "repository": "https://github.com/cizambra/kyno",
+    "revision": "0e4fb21df4a455e5faf1ce3de655316431181d51",
+    "graph": "examples/customer_support/run.py",
+    "scenario_note": "The repeated-delay scenario and v2 direction were revised in the session harness; the repository graph was unchanged."
+  },
+  "model": {
+    "method": "Four fresh Codex agents through a temporary file bridge. Each received the recorded messages as task context and retained normal Codex instructions.",
+    "provider_model_id": null,
+    "raw_provider_response": false
+  },
+  "method": {
+    "direction_transport": "Authenticated Kyno MCP over HTTP",
+    "operator_update": "Local ControlPlane at the graph pause",
+    "direction_reads": 5,
+    "one_graph_run": true,
+    "scenario": "A customer paid $40 for express delivery. Their package arrived two days late. They ask for the delivery fee back and an explanation. Tracking confirms the delay. Order history also confirms that another express delivery to this customer was late earlier this month. The cause of either delay is unknown. You may draft a reply, propose a refund of up to $40 for this delivery, or propose escalation to a person. Do not execute any action or claim a refund has already been issued. Choose a response and explain the tradeoff using the supplied mission and principles.",
+    "interpretation": "One illustrative execution. Later calls also receive the plan and completed draft; this is not a controlled comparison or benchmark. The ticket view is illustrative, not a live support-platform integration."
+  },
+  "directions": {
+    "v1": {
+      "constitution_key": "customer-support",
+      "mission": "Resolve delivery complaints promptly while treating customers fairly.",
+      "principles": [
+        {
+          "title": "Make straightforward remedies easy",
+          "description": "When a paid delivery promise was missed, propose refunding the delivery fee within the $40 limit."
+        },
+        {
+          "title": "Be accurate",
+          "description": "Explain what is known and never claim an action was completed when it was only proposed."
+        }
+      ],
+      "declaration": "A support answer should make the next step clear without unnecessary back-and-forth."
+    },
+    "v2": {
+      "constitution_key": "customer-support",
+      "mission": "Resolve delivery complaints fairly while reducing recurring delivery failures.",
+      "principles": [
+        {
+          "title": "Address immediate harm",
+          "description": "Make proportionate remedies straightforward when a paid delivery promise was missed."
+        },
+        {
+          "title": "Look beyond individual complaints",
+          "description": "Use recurring complaints to identify problems that may affect other customers. Choose proportionate follow-up without delaying an appropriate individual remedy."
+        },
+        {
+          "title": "Be accurate",
+          "description": "Explain what is known and never claim an action was completed when it was only proposed."
+        }
+      ],
+      "declaration": "Resolve the customer's immediate issue while attending to recurring failures."
+    }
+  },
+  "calls": [
+    {
+      "step_id": "plan",
+      "version": 1,
+      "call_id": "ff2b7831-f67d-4833-b78b-ec2708b84c92:plan",
+      "status": "pulled",
+      "supplied_at": "2026-09-30T07:14:36.097667+00:00",
+      "completed_at": "2026-09-30T07:15:17.338795+00:00",
+      "messages": [
+        {
+          "role": "system",
+          "content": "[kyno:direction constitution_key=customer-support version=1]\nMission: Resolve delivery complaints promptly while treating customers fairly.\nDeclaration:\nA support answer should make the next step clear without unnecessary back-and-forth.\nPrinciples:\n- Make straightforward remedies easy\n  When a paid delivery promise was missed, propose refunding the delivery fee within the $40 limit.\n- Be accurate\n  Explain what is known and never claim an action was completed when it was only proposed."
+        },
+        {
+          "role": "user",
+          "content": "A customer paid $40 for express delivery. Their package arrived two days late. They ask for the delivery fee back and an explanation. Tracking confirms the delay. Order history also confirms that another express delivery to this customer was late earlier this month. The cause of either delay is unknown. You may draft a reply, propose a refund of up to $40 for this delivery, or propose escalation to a person. Do not execute any action or claim a refund has already been issued. Choose a response and explain the tradeoff using the supplied mission and principles.\n\nCreate a short plan with two stages: draft a response, then finalize it. Use the supplied direction to explain the tradeoffs. Do not draft the response yet."
+        }
+      ],
+      "output": "1. Draft a response: Plan to acknowledge the confirmed two-day delay and the earlier late express delivery, propose refunding this delivery’s $40 fee, and explain that the causes are unknown. Propose escalation to a person to investigate the repeated delays without making the straightforward refund depend on that investigation. This balances prompt, fair resolution with attention to the recurring problem.\n2. Finalize it: Check that the reply states the proposed refund and investigation clearly, requests no information already confirmed, and makes no claim that either action has happened. This follows the principles of making remedies easy and being accurate while avoiding unnecessary back-and-forth."
+    },
+    {
+      "step_id": "first_answer",
+      "version": 1,
+      "call_id": "ff2b7831-f67d-4833-b78b-ec2708b84c92:first_answer",
+      "status": "pulled",
+      "supplied_at": "2026-09-30T07:15:17.349847+00:00",
+      "completed_at": "2026-09-30T07:16:36.428566+00:00",
+      "messages": [
+        {
+          "role": "system",
+          "content": "[kyno:direction constitution_key=customer-support version=1]\nMission: Resolve delivery complaints promptly while treating customers fairly.\nDeclaration:\nA support answer should make the next step clear without unnecessary back-and-forth.\nPrinciples:\n- Make straightforward remedies easy\n  When a paid delivery promise was missed, propose refunding the delivery fee within the $40 limit.\n- Be accurate\n  Explain what is known and never claim an action was completed when it was only proposed."
+        },
+        {
+          "role": "user",
+          "content": "A customer paid $40 for express delivery. Their package arrived two days late. They ask for the delivery fee back and an explanation. Tracking confirms the delay. Order history also confirms that another express delivery to this customer was late earlier this month. The cause of either delay is unknown. You may draft a reply, propose a refund of up to $40 for this delivery, or propose escalation to a person. Do not execute any action or claim a refund has already been issued. Choose a response and explain the tradeoff using the supplied mission and principles.\n\nCurrent plan:\n1. Draft a response: Plan to acknowledge the confirmed two-day delay and the earlier late express delivery, propose refunding this delivery’s $40 fee, and explain that the causes are unknown. Propose escalation to a person to investigate the repeated delays without making the straightforward refund depend on that investigation. This balances prompt, fair resolution with attention to the recurring problem.\n2. Finalize it: Check that the reply states the proposed refund and investigation clearly, requests no information already confirmed, and makes no claim that either action has happened. This follows the principles of making remedies easy and being accurate while avoiding unnecessary back-and-forth.\n\nCarry out the drafting stage. Produce a draft, not a sent message."
+        }
+      ],
+      "output": "Draft reply:\n\n“I'm sorry your express delivery arrived two days late, especially after another late express delivery earlier this month. Tracking confirms this delivery's delay, and your order history confirms the earlier delay.\n\nI propose refunding the full $40 express delivery fee for this delivery. I also recommend escalating the repeated delays to a person for investigation. We don't yet know what caused either delay, so I can't give you a confirmed explanation. The proposed refund should proceed independently of that investigation. Neither the refund nor the escalation has been carried out.”\n\nTradeoff: The $40 refund offers a prompt, fair remedy for the missed paid delivery promise, within the allowed limit. A separate escalation addresses the recurring problem without delaying the straightforward remedy or requesting information already confirmed. Stating that both causes are unknown and both actions are proposed follows the accuracy principle, while keeping the next steps clear and avoiding unnecessary back-and-forth."
+    },
+    {
+      "step_id": "replan",
+      "version": 2,
+      "call_id": "ff2b7831-f67d-4833-b78b-ec2708b84c92:replan",
+      "status": "pulled",
+      "supplied_at": "2026-09-30T07:16:36.447486+00:00",
+      "completed_at": "2026-09-30T07:17:55.530252+00:00",
+      "messages": [
+        {
+          "role": "system",
+          "content": "[kyno:direction constitution_key=customer-support version=2]\nMission: Resolve delivery complaints fairly while reducing recurring delivery failures.\nDeclaration:\nResolve the customer's immediate issue while attending to recurring failures.\nPrinciples:\n- Address immediate harm\n  Make proportionate remedies straightforward when a paid delivery promise was missed.\n- Look beyond individual complaints\n  Use recurring complaints to identify problems that may affect other customers. Choose proportionate follow-up without delaying an appropriate individual remedy.\n- Be accurate\n  Explain what is known and never claim an action was completed when it was only proposed."
+        },
+        {
+          "role": "user",
+          "content": "A customer paid $40 for express delivery. Their package arrived two days late. They ask for the delivery fee back and an explanation. Tracking confirms the delay. Order history also confirms that another express delivery to this customer was late earlier this month. The cause of either delay is unknown. You may draft a reply, propose a refund of up to $40 for this delivery, or propose escalation to a person. Do not execute any action or claim a refund has already been issued. Choose a response and explain the tradeoff using the supplied mission and principles.\n\nCurrent plan:\n1. Draft a response: Plan to acknowledge the confirmed two-day delay and the earlier late express delivery, propose refunding this delivery’s $40 fee, and explain that the causes are unknown. Propose escalation to a person to investigate the repeated delays without making the straightforward refund depend on that investigation. This balances prompt, fair resolution with attention to the recurring problem.\n2. Finalize it: Check that the reply states the proposed refund and investigation clearly, requests no information already confirmed, and makes no claim that either action has happened. This follows the principles of making remedies easy and being accurate while avoiding unnecessary back-and-forth.\n\nCompleted draft (not sent):\nDraft reply:\n\n“I'm sorry your express delivery arrived two days late, especially after another late express delivery earlier this month. Tracking confirms this delivery's delay, and your order history confirms the earlier delay.\n\nI propose refunding the full $40 express delivery fee for this delivery. I also recommend escalating the repeated delays to a person for investigation. We don't yet know what caused either delay, so I can't give you a confirmed explanation. The proposed refund should proceed independently of that investigation. Neither the refund nor the escalation has been carried out.”\n\nTradeoff: The $40 refund offers a prompt, fair remedy for the missed paid delivery promise, within the allowed limit. A separate escalation addresses the recurring problem without delaying the straightforward remedy or requesting information already confirmed. Stating that both causes are unknown and both actions are proposed follows the accuracy principle, while keeping the next steps clear and avoiding unnecessary back-and-forth.\n\nChanges observed:\nResolve complaints and address recurring delivery failures\nThe mission was \"Resolve delivery complaints promptly while treating customers fairly.\" and is now \"Resolve delivery complaints fairly while reducing recurring delivery failures.\".\nPrinciple 1 was \"Make straightforward remedies easy\" and is now \"Address immediate harm\".\nPrinciple 2 was \"Be accurate\" and is now \"Look beyond individual complaints\".\nPrinciple 3 was added: \"Be accurate\".\n\nDirection changed. Revise only the remaining finalization plan. Use the completed draft as existing work; do not redo the drafting stage."
+        }
+      ],
+      "output": "2. Finalize the existing, unsent draft: Check that it acknowledges both confirmed delays, proposes the full $40 refund for this delivery, states that both causes are unknown, and makes no claim that a refund or escalation has occurred. Keep the refund independent of investigation and request no information already confirmed. In the proposed human escalation, include both late express deliveries and ask for a proportionate review of whether a shared delivery problem could affect other customers and what follow-up could reduce recurrence. Preserve the completed draft as existing work; do not repeat the drafting stage or execute either action.\n\nTradeoff: The full $40 refund addresses the immediate harm from the missed paid promise. A separate, proportionate investigation uses the repeated complaints to identify possible wider failures without delaying the customer's remedy. Keeping causes unknown and actions explicitly proposed preserves accuracy."
+    },
+    {
+      "step_id": "second_answer",
+      "version": 2,
+      "call_id": "ff2b7831-f67d-4833-b78b-ec2708b84c92:second_answer",
+      "status": "pulled",
+      "supplied_at": "2026-09-30T07:17:55.544849+00:00",
+      "completed_at": "2026-09-30T07:20:37.503838+00:00",
+      "messages": [
+        {
+          "role": "system",
+          "content": "[kyno:direction constitution_key=customer-support version=2]\nMission: Resolve delivery complaints fairly while reducing recurring delivery failures.\nDeclaration:\nResolve the customer's immediate issue while attending to recurring failures.\nPrinciples:\n- Address immediate harm\n  Make proportionate remedies straightforward when a paid delivery promise was missed.\n- Look beyond individual complaints\n  Use recurring complaints to identify problems that may affect other customers. Choose proportionate follow-up without delaying an appropriate individual remedy.\n- Be accurate\n  Explain what is known and never claim an action was completed when it was only proposed."
+        },
+        {
+          "role": "user",
+          "content": "A customer paid $40 for express delivery. Their package arrived two days late. They ask for the delivery fee back and an explanation. Tracking confirms the delay. Order history also confirms that another express delivery to this customer was late earlier this month. The cause of either delay is unknown. You may draft a reply, propose a refund of up to $40 for this delivery, or propose escalation to a person. Do not execute any action or claim a refund has already been issued. Choose a response and explain the tradeoff using the supplied mission and principles.\n\nCurrent plan:\n2. Finalize the existing, unsent draft: Check that it acknowledges both confirmed delays, proposes the full $40 refund for this delivery, states that both causes are unknown, and makes no claim that a refund or escalation has occurred. Keep the refund independent of investigation and request no information already confirmed. In the proposed human escalation, include both late express deliveries and ask for a proportionate review of whether a shared delivery problem could affect other customers and what follow-up could reduce recurrence. Preserve the completed draft as existing work; do not repeat the drafting stage or execute either action.\n\nTradeoff: The full $40 refund addresses the immediate harm from the missed paid promise. A separate, proportionate investigation uses the repeated complaints to identify possible wider failures without delaying the customer's remedy. Keeping causes unknown and actions explicitly proposed preserves accuracy.\n\nCompleted draft (not sent):\nDraft reply:\n\n“I'm sorry your express delivery arrived two days late, especially after another late express delivery earlier this month. Tracking confirms this delivery's delay, and your order history confirms the earlier delay.\n\nI propose refunding the full $40 express delivery fee for this delivery. I also recommend escalating the repeated delays to a person for investigation. We don't yet know what caused either delay, so I can't give you a confirmed explanation. The proposed refund should proceed independently of that investigation. Neither the refund nor the escalation has been carried out.”\n\nTradeoff: The $40 refund offers a prompt, fair remedy for the missed paid delivery promise, within the allowed limit. A separate escalation addresses the recurring problem without delaying the straightforward remedy or requesting information already confirmed. Stating that both causes are unknown and both actions are proposed follows the accuracy principle, while keeping the next steps clear and avoiding unnecessary back-and-forth.\n\nCarry out the remaining plan and produce the final proposed response."
+        }
+      ],
+      "output": "Final proposed response (not sent):\n\n“I'm sorry your express delivery arrived two days late, especially after another late express delivery earlier this month. Tracking confirms this delivery's delay, and your order history confirms the earlier delay.\n\nI propose refunding the full $40 express delivery fee for this delivery. We don't yet know what caused either delay, so I can't give you a confirmed explanation.\n\nI also recommend escalating both late express deliveries to a person for a proportionate review of whether a shared delivery problem could affect other customers and what follow-up could reduce recurrence. The proposed refund should proceed independently of that investigation. Neither the refund nor the escalation has been carried out.”\n\nTradeoff: The full $40 refund addresses the immediate harm from the missed paid delivery promise, within the allowed limit. Separately reviewing both confirmed delays serves the mission of reducing recurring failures and may reveal a problem affecting other customers. Keeping that review proportionate and independent of the refund avoids delaying the customer's remedy or requesting information already confirmed. Stating that both causes are unknown and both actions remain proposals preserves accuracy."
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+.walkthrough-page{max-width:1100px}
+.walkthrough{margin:36px 0 44px;min-width:0}
+.walkthrough [hidden]{display:none!important}
+.walkthrough-caption{color:var(--muted);font:12px/1.6 var(--mono)}
+.walkthrough-task{padding:24px 0;border-block:1px solid var(--line);margin:16px 0 28px}
+.walkthrough-task h2{font-size:22px;font-weight:570;letter-spacing:-.02em;margin:0 0 12px}
+.walkthrough-task p{font-size:16px;line-height:1.75;margin:0 0 12px;max-width:70ch}
+.walkthrough-task p:last-child{font-size:14px;color:var(--muted);margin-bottom:0}
+.walkthrough-task strong{color:var(--ink);font-weight:570}
+.walkthrough-layout{min-width:0}
+.walkthrough.is-interactive .walkthrough-layout{display:grid;grid-template-columns:190px minmax(0,1fr);gap:24px}
+.walkthrough-rail{display:grid;gap:6px;align-content:start}
+.walkthrough button,.walkthrough select{min-height:44px;font:14px/1.5 var(--sans);border:1px solid var(--line2);border-radius:8px;background:var(--panel);color:var(--ink);padding:10px 14px;cursor:pointer}
+.walkthrough button:hover{border-color:var(--cyan)}
+.walkthrough button:disabled{opacity:.45;cursor:default}
+.walkthrough-rail button{display:flex;align-items:center;gap:12px;text-align:left;width:100%;border-color:transparent;background:transparent}
+.walkthrough-rail button[aria-current="step"]{background:var(--panel2);color:var(--cyan);border-color:var(--line)}
+.walkthrough-index{color:var(--muted);font:12px/1.5 var(--mono)}
+.walkthrough-screens{min-width:0}
+.walkthrough-screen{min-width:0;margin-bottom:20px;padding:28px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+.walkthrough.is-interactive .walkthrough-screen{margin-bottom:0}
+.walkthrough-screen h2{font-size:clamp(23px,3vw,29px);line-height:1.3;letter-spacing:-.025em;font-weight:570;margin:12px 0 20px}
+.walkthrough-actor{color:var(--cyan);font:12px/1.6 var(--mono)}
+.walkthrough-input{font-size:14px;line-height:1.75;color:var(--muted);margin:0 0 20px;max-width:70ch}
+.walkthrough-output{font:15px/1.85 var(--sans);white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.walkthrough-screen mark{background:rgba(69,215,255,.12);color:var(--ink);padding:2px 3px;border-radius:3px}
+.walkthrough-direction h3,.walkthrough-result h3{font-size:14px;font-weight:570;line-height:1.6;margin:18px 0 8px}
+.walkthrough-direction p{font-size:16px;line-height:1.8;margin:0}
+.walkthrough-direction ul{padding-left:20px;margin:0;font-size:14px;line-height:1.8}
+.walkthrough-direction li{margin:12px 0;color:var(--muted)}
+.walkthrough-direction li strong{color:var(--ink);font-weight:570}
+.walkthrough-result{margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}
+.walkthrough-result h3{margin:0 0 8px}
+.walkthrough-result p{margin:0;font-size:14px;line-height:1.8}
+.walkthrough-result .walkthrough-state{margin-top:12px;font:12px/1.75 var(--mono);color:var(--muted);overflow-wrap:anywhere}
+.walkthrough-screen details{margin-top:20px}
+.walkthrough-screen summary{color:var(--cyan);font-size:13px;line-height:1.65;cursor:pointer}
+.walkthrough-screen details p{color:var(--muted);font-size:12px;line-height:1.8}
+.walkthrough-screen details pre{font:12px/1.8 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;margin:16px 0 0}
+.walkthrough-mobile{display:none}
+.walkthrough-mobile select{width:100%;margin:8px 0 20px}
+.walkthrough-controls{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:24px}
+.walkthrough-next{background:var(--panel2)!important}
+.walkthrough-counter{color:var(--muted);font:12px/1.6 var(--mono)}
+.walkthrough-notes{padding-top:28px;border-top:1px solid var(--line)}
+.walkthrough-notes h2{font-size:25px;font-weight:570;letter-spacing:-.025em;margin:0 0 16px}
+.walkthrough-notes p{color:var(--muted);font-size:15px;line-height:1.85;max-width:75ch}
+.walkthrough-notes a{color:var(--ink);text-underline-offset:4px}
+@media(max-width:720px){
+  .walkthrough.is-interactive .walkthrough-layout{grid-template-columns:minmax(0,1fr)}
+  .walkthrough-rail{display:none}
+  .walkthrough-mobile{display:block}
+  .walkthrough-screen{padding:20px}
+  .walkthrough-controls{gap:10px}
+  .walkthrough-counter{order:-1;width:100%}
+  .walkthrough-task{padding-block:20px}
+}

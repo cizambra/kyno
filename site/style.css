@@ -96,6 +96,7 @@ footer{height:100px;display:grid;grid-template-columns:auto 1fr auto;gap:22px;al
 }
 
 /* Supporting pages share the landing page's visual language at reading width. */
+body{min-width:0}
 .content-page{max-width:860px;padding-block:48px 64px}
 .content-page h1{max-width:none;font-size:clamp(36px,5vw,60px);line-height:1.12;margin:24px 0}
 .back-link,.text-link{color:var(--blue)}

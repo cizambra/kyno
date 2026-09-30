@@ -21,9 +21,11 @@ These concerns answer different questions in an agent system:
 | Policy or permission | What actions are allowed? | Refunds above $100 require human approval. |
 | Direction | What outcome matters, and how should tradeoffs be judged? | Preserve customer trust; respect a customer's decision to leave. |
 
-The orchestrator owns task execution. Permissions and approval mechanisms
-limit available actions. Direction guides judgment within those boundaries.
-The application owns verification and decides what to do with its results.
+The orchestrator owns task execution. Direction guides judgment about how to
+pursue the intended outcome. If the system uses permissions and approval
+mechanisms, they limit available actions and direction guides judgment within
+those boundaries. The application owns verification and decides what to do
+with its results.
 
 ## One task, updated direction
 
@@ -107,13 +109,15 @@ even when their last-seen versions differ. Their binding metadata can differ.
 Principled judgment means weighing choices and tradeoffs against a shared
 mission and principles. Kyno provides the versioned direction agents use for
 that judgment. This supports bottom-up agency: humans set direction, and agents
-choose how to carry out their tasks within top-down governance boundaries.
+choose how to carry out their tasks to pursue the mission.
 
-Your organization defines those boundaries through policies, permissions,
-and approval requirements. Your application and AI governance tools enforce
-them. Kyno complements those tools; it does not replace them. A principle in
-a constitution guides judgment, but writing it down does not enforce a policy
-or grant permission to act.
+Kyno works with or without a formal governance system. Governance defines what
+an agent is allowed to do; direction supplies the outcome and principles for
+judging how to act. When your organization defines policies, permissions, or
+approval requirements, your application and governance tools enforce them and
+agent judgment operates within them. Kyno complements those tools; it does not
+replace them. A principle in a constitution guides judgment, but writing it down
+does not enforce a policy or grant permission to act.
 
 For example, an agent can use “preserve customer trust” to choose how to explain
 a refund decision. If refunds above $100 require human approval, that

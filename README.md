@@ -24,17 +24,18 @@ example, protecting long-term trust over short-term revenue. The aim is to
 **optimize locally without losing coherence globally**, not to promise that
 supplying principles makes every decision correct.
 
-Kyno is a coherence control plane that supports **bottom-up agency within
-top-down governance boundaries**. Humans define mission and principles;
-agents use them to judge tradeoffs and choose how to carry out their tasks.
-Your organization sets policies, permissions, and approval requirements;
-your application and AI governance tools enforce those boundaries. Your
-framework continues to run the workflow.
+Kyno is a coherence control plane that supports **bottom-up agency**. Humans
+define mission and principles; agents use them to judge tradeoffs and choose
+how to pursue the intended outcome. Kyno works on its own or alongside AI
+governance tools. A formal governance system is not a prerequisite.
 
-Kyno complements existing AI governance tools; it does not replace them.
-Principles guide judgment among permitted actions. They do not grant
-permissions, bypass required approvals, or override enforced controls.
-Kyno supplies versioned direction, while the agent makes the decision.
+Governance answers “What am I allowed to do?” Direction answers “What outcome
+am I working toward, and what principles should guide my choices?” When your
+system has policies, permissions, or approval requirements, agent judgment
+operates within those boundaries. Your application and governance tools enforce
+them; Kyno supplies versioned direction. Kyno complements those governance
+tools; it does not replace them. Principles do not grant permissions or override
+enforced controls.
 The [agency model](https://github.com/cizambra/kyno/blob/main/docs/agency.md) makes delegation,
 principle conflicts, agent proposals, adoption, and output review explicit.
 

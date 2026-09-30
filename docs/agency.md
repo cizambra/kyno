@@ -1,9 +1,16 @@
 # The agency model
 
 Kyno supplies shared, versioned mission and principles for agents to use in
-judgment. The integrating application decides which choices to delegate,
-enforces governance boundaries, and evaluates the result. Bottom-up agency
-comes from agents exercising that delegated judgment within those boundaries.
+judgment. The integrating application decides which choices to delegate and
+evaluates the result. Bottom-up agency comes from agents using that direction
+to choose how to pursue the intended outcome.
+
+Kyno works with or without AI governance tools or a formal top-down governance
+system. Governance answers “What am I allowed to do?” Direction answers “What
+outcome am I working toward, and what principles should guide my choices?”
+Where the application has policies, permissions, or approval requirements,
+agent judgment operates within them. The application and its governance tools
+are responsible for enforcing those boundaries.
 
 Runtime direction has an authoritative source. That alone does not establish
 agency: if an integration prescribes every decision, it is using Kyno to
@@ -52,9 +59,9 @@ not an algorithm Core executes.
 
 Define a conflict procedure in your integration. A useful starting procedure is:
 
-1. Check the action against enforced permissions and approval requirements.
+1. Check the action against any applicable permissions and approval requirements.
 2. Identify the relevant principles and the evidence available for the decision.
-3. Use the mission and any authored precedence guidance to compare permitted
+3. Use the mission and any authored precedence guidance to compare available
    choices. Principle descriptions can explain when a principle applies and
    what costs the organization accepts.
 4. If the conflict remains unresolved or exceeds the delegated authority,
@@ -100,8 +107,9 @@ the existing authoring workflow is:
 1. Record the proposed edit, the constitution version it addresses, the
    observed problem, supporting examples, and expected consequences.
 2. Have an authorized reviewer evaluate the edit against the mission and
-   governance boundaries. Rehearse it against representative cases, including
-   cases where the changed principle could lead to a worse decision.
+   any applicable governance boundaries. Rehearse it against representative
+   cases, including cases where the changed principle could lead to a worse
+   decision.
 3. If accepted, apply the reviewed content through the operator or deployment
    workflow, with a change note linking to the review.
 4. Check the resulting version and observe subsequent work. A later successful

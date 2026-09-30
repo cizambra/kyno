@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kyno — versioned direction for AI agents</title>
-  <meta name="description" content="Versioned mission and principles for principled judgment in AI agents. Kyno supports bottom-up agency within your existing AI governance boundaries.">
+  <meta name="description" content="Shared, versioned mission and principles for principled judgment and bottom-up agency in AI agents. Works with or without AI governance tools.">
   <link rel="canonical" href="https://cizambra.github.io/kyno/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Kyno">
   <meta property="og:title" content="Kyno 1.0 — one direction, every agent, every step">
-  <meta property="og:description" content="Versioned direction for principled judgment in AI agents. Bottom-up agency within top-down governance boundaries. Complements existing governance tools.">
+  <meta property="og:description" content="Versioned direction for principled judgment and bottom-up agency in AI agents. Use Kyno on its own or alongside existing AI governance tools.">
   <meta property="og:url" content="https://cizambra.github.io/kyno/">
   <meta property="og:image" content="https://cizambra.github.io/kyno/assets/social-preview.png">
   <meta property="og:image:width" content="1200">
@@ -21,7 +21,7 @@
     "@context": "https://schema.org",
     "@type": "SoftwareSourceCode",
     "name": "Kyno",
-    "description": "Versioned mission and principles for principled judgment in AI agents, supporting bottom-up agency within top-down governance boundaries. Delivered through MCP with Python SDK, CrewAI and LangGraph adapters.",
+    "description": "Versioned mission and principles for principled judgment and bottom-up agency in AI agents, usable with or without AI governance tools. Delivered through MCP with Python SDK, CrewAI and LangGraph adapters.",
     "url": "https://cizambra.github.io/kyno/",
     "codeRepository": "https://github.com/cizambra/kyno",
     "programmingLanguage": "Python",
@@ -58,7 +58,7 @@
       <div class="hero-copy">
         <div class="release-note"><span>1.0 is available</span><a href="https://github.com/cizambra/kyno/releases/tag/v1.0.0">Release notes ↗</a></div>
         <h1><span class="headline-line headline-plain">One direction.</span><span class="headline-line">Every agent.</span><span class="headline-line violet">Every step.</span></h1>
-        <p>Kyno makes direction a first-class runtime primitive for principled judgment in AI agents. Humans set mission and principles; agents decide how to act within the boundaries your governance systems enforce. Adapters fetch current direction through MCP and supply it before the next step.</p>
+        <p>Kyno makes direction a first-class runtime primitive for principled judgment in AI agents. Humans set mission and principles; agents use them to judge tradeoffs and pursue the intended outcome. Adapters fetch current direction through MCP before the next step. Kyno works with or without AI governance tools.</p>
         <div class="actions">
           <button class="install" data-copy="pip install kyno" aria-label="Copy pip install kyno">
             <span class="prompt">›_</span><code>pip install kyno</code><span class="copy-label">copy</span>
@@ -178,8 +178,8 @@
       <p>A task says what to do next. A policy defines what is allowed. Direction supplies the mission and principles used to judge tradeoffs. It has its own identity, version history, and read interface, so an organization can update it while task instructions stay the same.</p>
       <p>For example, an agent can keep the task “draft a reply to this cancellation request” while the mission changes from increasing renewals to making cancellation straightforward. The next successful pull supplies the revised mission and principles. <a href="https://github.com/cizambra/kyno/blob/main/docs/direction.md">See the runnable example</a>.</p>
       <h3>Principled judgment and bottom-up agency</h3>
-      <p>Principled judgment means weighing choices and tradeoffs against a shared mission and principles. Humans define that direction; agents use it to choose how to carry out their tasks. Kyno supplies the current version before a step. This supports bottom-up agency within top-down governance boundaries.</p>
-      <p>Your organization sets policies, permissions, and approval requirements. Your application and AI governance tools enforce them; your framework schedules tasks and runs agents. Kyno complements existing governance tools and does not replace them. Principles guide judgment among permitted actions; they do not grant permissions or override enforced controls. Your application can also verify outputs and decide whether to continue, retry, or request human review.</p>
+      <p>Principled judgment means weighing choices and tradeoffs against a shared mission and principles. Humans define that direction; agents use it to choose how to pursue the intended outcome. Kyno supplies the current version before a step. This supports bottom-up agency, with or without a formal governance system.</p>
+      <p>Governance answers “What am I allowed to do?” Direction answers “What outcome am I working toward, and what principles should guide my choices?” When your system has policies, permissions, or approval requirements, agents exercise judgment within them. Your application and governance tools enforce those boundaries. Kyno complements them by supplying direction; principles do not grant permissions or override enforced controls. Your application can also verify outputs and decide whether to continue, retry, or request human review.</p>
       <p>Your integration defines which decisions agents may make, how to handle conflicting principles, and how proposals and outputs are reviewed. <a href="https://github.com/cizambra/kyno/blob/main/docs/agency.md">Read the agency model</a>.</p>
       <p>In the animation, the workflow continues after an operator publishes a new version. Each successful pull supplies it at that agent's next step. The final state shows delivery, not proof that the agents followed it.</p>
     </section>
@@ -228,7 +228,7 @@
       <h3 id="faq-orchestration">Is Kyno an orchestrator?</h3>
       <p>No. Your framework continues scheduling tasks, invoking tools, and running agents. Kyno stores and delivers direction through MCP. Its adapters connect that direction to the workflow you already have; updates do not rewrite tasks or replan the workflow.</p>
       <h3 id="faq-governance">Is Kyno an AI governance system?</h3>
-      <p>No. Kyno complements existing AI governance tools by supplying versioned mission and principles for agents to exercise judgment. Your organization still sets top-down policies, permissions, and approval requirements, and your application and governance tools enforce them. Bottom-up agency operates within those boundaries. Kyno does not replace governance tools or establish that an agent's decisions are safe or aligned.</p>
+      <p>No. Kyno supplies versioned mission and principles for agents to exercise judgment. You can use it with or without AI governance tools. When governance boundaries are present, they define what an agent may do; Kyno supplies direction for judging how to pursue the intended outcome within those boundaries. It complements governance tools and does not replace them or establish that an agent's decisions are safe or aligned.</p>
       <h3 id="faq-alignment">Does Kyno prevent drift or guarantee alignment?</h3>
       <p>No. Kyno stores versioned direction and its adapters pull it before work proceeds. Pulls can fail, and an agent can receive the right principles and still misinterpret them or make a bad decision. Claims about improved behavior require evidence from the actual integration and task.</p>
       <h3 id="faq-pull-failures">What happens if a pull fails?</h3>

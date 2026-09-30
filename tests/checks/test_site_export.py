@@ -34,6 +34,9 @@ def test_given_the_landing_page_when_scanning_its_requests_then_nothing_is_exter
     # A data: URI is inline content, not a request, wherever it points inside.
     allowed = {"https://cloud.umami.is/script.js"}
     for tag in re.findall(r"<(?:script|link|img)\b[^>]*>", html):
+        # A canonical link identifies the page; it does not load an asset.
+        if tag.startswith("<link") and re.search(r'\brel="canonical"', tag):
+            continue
         for url in re.findall(r"(?:src|href)=\"([^\"]*)\"", tag):
             if url in allowed:
                 continue

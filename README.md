@@ -35,6 +35,8 @@ Kyno complements existing AI governance tools; it does not replace them.
 Principles guide judgment among permitted actions. They do not grant
 permissions, bypass required approvals, or override enforced controls.
 Kyno supplies versioned direction, while the agent makes the decision.
+The [agency model](https://github.com/cizambra/kyno/blob/main/docs/agency.md) makes delegation,
+principle conflicts, agent proposals, adoption, and output review explicit.
 
 ![An operator changes direction while a four-agent workflow continues; agents fetch the new version at their next steps.](https://raw.githubusercontent.com/cizambra/kyno/main/docs/media/demo.gif)
 

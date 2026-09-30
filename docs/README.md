@@ -7,6 +7,8 @@ but each one stands alone.
 
 1. [Direction at runtime](direction.md). The primitive, its relationship to
    tasks and policies, and an example of direction changing independently.
+   The [agency model](agency.md) explains delegated decisions, principle conflicts,
+   agent proposals, adoption, and evaluation.
 2. [Writing constitutions](constitutions.md). The file, its fields, how
    edits carry forward, and running several constitutions side by side.
 3. [The MCP contract](contract.md). Every tool Kyno serves, the compact

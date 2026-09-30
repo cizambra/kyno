@@ -125,5 +125,7 @@ retry, or request human review. Kyno supplies direction and records delivery
 when configured; it does not observe or certify the agent's reasoning or
 actions.
 
+Read [the agency model](agency.md) to define delegated decisions, principle
+conflicts, agent proposals, and how your application evaluates judgment.
 Start with [writing constitutions](constitutions.md) to define direction,
 then use the [adapter guide](adapters.md) to supply it at execution boundaries.

@@ -180,6 +180,7 @@
       <h3>Principled judgment and bottom-up agency</h3>
       <p>Principled judgment means weighing choices and tradeoffs against a shared mission and principles. Humans define that direction; agents use it to choose how to carry out their tasks. Kyno supplies the current version before a step. This supports bottom-up agency within top-down governance boundaries.</p>
       <p>Your organization sets policies, permissions, and approval requirements. Your application and AI governance tools enforce them; your framework schedules tasks and runs agents. Kyno complements existing governance tools and does not replace them. Principles guide judgment among permitted actions; they do not grant permissions or override enforced controls. Your application can also verify outputs and decide whether to continue, retry, or request human review.</p>
+      <p>Your integration defines which decisions agents may make, how to handle conflicting principles, and how proposals and outputs are reviewed. <a href="https://github.com/cizambra/kyno/blob/main/docs/agency.md">Read the agency model</a>.</p>
       <p>In the animation, the workflow continues after an operator publishes a new version. Each successful pull supplies it at that agent's next step. The final state shows delivery, not proof that the agents followed it.</p>
     </section>
 
@@ -223,6 +224,7 @@
       <p>Kyno does not synchronize Git changes automatically. See <a href="https://github.com/cizambra/kyno/blob/main/docs/best-practices.md#keep-the-constitution-in-version-control">the Git review and apply workflow</a>.</p>
       <h3 id="faq-write-access">Can agents change the mission or principles?</h3>
       <p>Only if their application has write access. The shipped adapters only read direction. Give agent applications read-only HTTP tokens, and keep write credentials with operators or trusted deployment jobs. Local CLI, stdio, and embedded access use the host process's permissions. See <a href="https://github.com/cizambra/kyno/blob/main/docs/operating.md#who-should-hold-write-access">who should hold write access</a>.</p>
+      <p>Agents can propose changes if your application provides a review channel. A proposal does not change active direction; an authorized operator or deployment job must apply an accepted edit. Kyno does not manage proposal review. See <a href="https://github.com/cizambra/kyno/blob/main/docs/agency.md#may-agents-propose-constitutional-changes">proposing constitutional changes</a>.</p>
       <h3 id="faq-orchestration">Is Kyno an orchestrator?</h3>
       <p>No. Your framework continues scheduling tasks, invoking tools, and running agents. Kyno stores and delivers direction through MCP. Its adapters connect that direction to the workflow you already have; updates do not rewrite tasks or replan the workflow.</p>
       <h3 id="faq-governance">Is Kyno an AI governance system?</h3>

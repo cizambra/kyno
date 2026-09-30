@@ -104,12 +104,26 @@ even when their last-seen versions differ. Their binding metadata can differ.
 
 ## Agentic self-governance
 
-Shared direction lets agents make local decisions with a common mission and
-principles. This supports bottom-up agency: humans set direction and boundaries,
-and agents choose how to carry out their tasks within them. Applications can
-verify the resulting work and choose whether to continue, retry, or request
-human review. Kyno supplies the direction and records delivery when configured;
-it does not observe or certify the agent's reasoning or actions.
+Principled judgment means weighing choices and tradeoffs against a shared
+mission and principles. Kyno provides the versioned direction agents use for
+that judgment. This supports bottom-up agency: humans set direction, and agents
+choose how to carry out their tasks within top-down governance boundaries.
+
+Your organization defines those boundaries through policies, permissions,
+and approval requirements. Your application and AI governance tools enforce
+them. Kyno complements those tools; it does not replace them. A principle in
+a constitution guides judgment, but writing it down does not enforce a policy
+or grant permission to act.
+
+For example, an agent can use “preserve customer trust” to choose how to explain
+a refund decision. If refunds above $100 require human approval, that
+requirement still applies. Changing the mission or principles does not give
+the agent authority to bypass the approval.
+
+Applications can verify the resulting work and choose whether to continue,
+retry, or request human review. Kyno supplies direction and records delivery
+when configured; it does not observe or certify the agent's reasoning or
+actions.
 
 Start with [writing constitutions](constitutions.md) to define direction,
 then use the [adapter guide](adapters.md) to supply it at execution boundaries.

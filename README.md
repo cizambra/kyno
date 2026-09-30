@@ -6,9 +6,10 @@
 [![License](https://img.shields.io/badge/license-MIT%20%2B%20ELv2-blue)](https://github.com/cizambra/kyno/blob/main/LICENSE)
 [![Site](https://img.shields.io/badge/site-cizambra.github.io%2Fkyno-blue)](https://cizambra.github.io/kyno/)
 
-**Kyno makes direction a first-class runtime primitive.** It gives running
-agents a shared, versioned source of mission and principles, with its own
-identity, current version, history, and interface for retrieving it.
+**Kyno makes direction a first-class runtime primitive for principled
+judgment in agents.** It gives running agents a shared, versioned source of
+mission and principles, with its own identity, current version, history,
+and interface for retrieving it.
 [Direction at runtime](https://github.com/cizambra/kyno/blob/main/docs/direction.md) explains the model and shows a task
 staying the same while its direction changes.
 
@@ -23,11 +24,17 @@ example, protecting long-term trust over short-term revenue. The aim is to
 **optimize locally without losing coherence globally**, not to promise that
 supplying principles makes every decision correct.
 
-Kyno is a coherence control plane, not an orchestrator or a general AI
-governance system. Your framework runs the workflow, permissions restrict
-available actions, and the model reasons. Humans define mission and principles;
-agents decide how to apply them within those boundaries. This is bottom-up
-agency. Kyno supplies the direction, not a prescribed decision.
+Kyno is a coherence control plane that supports **bottom-up agency within
+top-down governance boundaries**. Humans define mission and principles;
+agents use them to judge tradeoffs and choose how to carry out their tasks.
+Your organization sets policies, permissions, and approval requirements;
+your application and AI governance tools enforce those boundaries. Your
+framework continues to run the workflow.
+
+Kyno complements existing AI governance tools; it does not replace them.
+Principles guide judgment among permitted actions. They do not grant
+permissions, bypass required approvals, or override enforced controls.
+Kyno supplies versioned direction, while the agent makes the decision.
 
 ![An operator changes direction while a four-agent workflow continues; agents fetch the new version at their next steps.](https://raw.githubusercontent.com/cizambra/kyno/main/docs/media/demo.gif)
 

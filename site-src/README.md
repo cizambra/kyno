@@ -5,7 +5,7 @@ deploy automatically after they merge into `main` through
 `.github/workflows/pages.yml`.
 
 The homepage introduces Kyno and provides the quick start. `site/how-it-works/`
-explains direction and the agency model; `site/walkthrough/` replays a recorded
+explains direction and the agency model; `site/demo/` replays a recorded
 support workflow; `site/faq/` covers integration questions.
 Keep these pages linked through navigation on desktop and mobile. Older homepage
 question fragments (`/#faq-*`) redirect to the corresponding FAQ answer.
@@ -18,7 +18,7 @@ From the repository root:
 python -m http.server --directory site 8000
 ```
 
-Open `http://localhost:8000/`, `/how-it-works/`, `/faq/`, and `/walkthrough/`. Check desktop and mobile widths, keyboard
+Open `http://localhost:8000/`, `/how-it-works/`, `/faq/`, and `/demo/`. Check desktop and mobile widths, keyboard
 navigation, both copy buttons, pause/resume, and reduced-motion behavior.
 The canonical URLs deliberately identify the public website.
 
@@ -82,10 +82,10 @@ References: [Google's sitemap guide](https://developers.google.com/search/docs/c
 [requesting a recrawl](https://developers.google.com/search/docs/crawling-indexing/ask-google-to-recrawl),
 and [robots.txt location rules](https://developers.google.com/crawling/docs/robots-txt/create-robots-txt).
 
-## Maintaining the recorded walkthrough
+## Maintaining the recorded demo
 
 The page is committed HTML, styled by the shared site stylesheet and
-`site/walkthrough/walkthrough.css`. Its local script shows one event at a time;
+`site/demo/walkthrough.css`. Its local script shows one event at a time;
 without JavaScript all eight steps remain readable in order. Keep every actor,
 input, result, and response in order when updating it. The public
 `recording.json` preserves exact model message text and output content with

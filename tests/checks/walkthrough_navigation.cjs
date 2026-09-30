@@ -5,8 +5,8 @@ const path = require("node:path");
 
 const rootPath = process.argv[2];
 const scenario = process.argv[3];
-const html = fs.readFileSync(path.join(rootPath, "site/walkthrough/index.html"), "utf8");
-const script = fs.readFileSync(path.join(rootPath, "site/walkthrough/walkthrough.js"), "utf8");
+const html = fs.readFileSync(path.join(rootPath, "site/demo/index.html"), "utf8");
+const script = fs.readFileSync(path.join(rootPath, "site/demo/walkthrough.js"), "utf8");
 class Element {
   constructor() {
     this.hidden = false;

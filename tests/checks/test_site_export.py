@@ -31,7 +31,7 @@ def test_given_the_committed_constitution_when_exporting_the_site_then_the_page_
 
 
 @pytest.mark.parametrize(
-    "page", ["index.html", "how-it-works/index.html", "faq/index.html", "walkthrough/index.html"]
+    "page", ["index.html", "how-it-works/index.html", "faq/index.html", "demo/index.html"]
 )
 def test_given_a_marketing_page_when_scanning_requests_then_only_analytics_is_external(page):
     html = (SITE / page).read_text()

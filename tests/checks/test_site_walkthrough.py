@@ -10,7 +10,7 @@ import pytest
 
 from tests.paths import REPO_ROOT
 
-WALKTHROUGH = REPO_ROOT / "site" / "walkthrough"
+WALKTHROUGH = REPO_ROOT / "site" / "demo"
 
 
 def _run_script(scenario):

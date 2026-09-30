@@ -1,7 +1,11 @@
 # Writing constitutions
 
 A constitution is a mission plus ordered principles. The mission is the
-overarching purpose, and the tie-breaker when principles conflict.
+overarching purpose and guides tie-breaking when principles conflict. Any
+governance boundaries the system defines still apply. Kyno delivers this
+guidance; it does not resolve conflicts or enforce the meaning of a principle.
+The [agency model](agency.md#how-should-agents-handle-conflicting-principles) describes
+how an integration can handle those conflicts.
 A constitution isn't limited to strategy; operational principles are
 just as good a use case.
 
@@ -27,7 +31,8 @@ The constitution is represented in a YAML file that contains three main
 elements:
 
 - A **mission**: The ultimate goal the system is intended to achieve. The
-  mission is the tie-breaker when principles conflict.
+  mission guides the agent when principles conflict; it does not override
+  permissions or required approvals.
 - A set of **principles**: Each principle is defined by two parts. The
   principle itself (e.g. _Customer comes First_), and a description (e.g.
   "We always put the customer first and work backwards from their needs").

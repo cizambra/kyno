@@ -2,13 +2,13 @@
 name = "kyno"
 license = "MIT AND Elastic-2.0"
 license-files = ["LICENSE", "LICENSES/*"]
-version = "0.2.0"
+version = "1.0.0"
 description = "Versioned runtime direction for AI agents: shared mission and principles through MCP."
 readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["ai-agents", "runtime-direction", "mcp", "coherence", "constitution", "self-governance"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",

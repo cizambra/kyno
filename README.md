@@ -184,7 +184,7 @@ authentication, and deployment.
 
 ## Documentation
 
-The [website FAQ](https://cizambra.github.io/kyno/#faq) covers Git and system
+The [website FAQ](https://cizambra.github.io/kyno/faq/) covers Git and system
 prompts, when Kyno is useful, and its relationship to governance and verification.
 The [documentation index](https://github.com/cizambra/kyno/blob/main/docs/README.md) provides a reading order for integration:
 

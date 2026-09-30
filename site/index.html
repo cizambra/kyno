@@ -45,10 +45,10 @@
       <span>Kyno</span>
     </a>
     <nav aria-label="Main navigation">
-      <a href="#how">How it works</a>
+      <a href="how-it-works/">How it works</a>
       <a href="#start">Quick start</a>
-      <a href="#faq">FAQ</a>
-      <a href="constitution/">Constitution</a>
+      <a href="faq/">FAQ</a>
+      <a href="https://github.com/cizambra/kyno/blob/main/docs/README.md">Documentation ↗</a>
       <a href="https://github.com/cizambra/kyno">GitHub ↗</a>
     </nav>
   </header>
@@ -171,17 +171,8 @@
 
     <section class="explanation wrap" aria-labelledby="direction-heading">
       <h2 id="direction-heading">A reasonable decision. Yesterday's goal.</h2>
-      <p>Suppose your sales agent is optimizing for new revenue. You change the priority to retaining existing customers, but its running workflow still carries the old instructions. The agent can execute its task correctly while working toward yesterday's goal.</p>
-      <p>A goal tells an agent what to optimize. Principles help it judge how: protect long-term trust over short-term metrics, for example. We want agent systems to optimize locally without losing coherence globally.</p>
-      <p>Kyno gives mission and principles one authoritative source. Adapters refresh the agent's context from it, whether direction changes or stays the same. The model still has to interpret that direction and make a sound decision.</p>
-      <h3>Direction as a runtime primitive</h3>
-      <p>A task says what to do next. A policy defines what is allowed. Direction supplies the mission and principles used to judge tradeoffs. It has its own identity, version history, and read interface, so an organization can update it while task instructions stay the same.</p>
-      <p>For example, an agent can keep the task “draft a reply to this cancellation request” while the mission changes from increasing renewals to making cancellation straightforward. The next successful pull supplies the revised mission and principles. <a href="https://github.com/cizambra/kyno/blob/main/docs/direction.md">See the runnable example</a>.</p>
-      <h3>Principled judgment and bottom-up agency</h3>
-      <p>Principled judgment means weighing choices and tradeoffs against a shared mission and principles. Humans define that direction; agents use it to choose how to pursue the intended outcome. Kyno supplies the current version before a step. This supports bottom-up agency, with or without a formal governance system.</p>
-      <p>Governance answers “What am I allowed to do?” Direction answers “What outcome am I working toward, and what principles should guide my choices?” When your system has policies, permissions, or approval requirements, agents exercise judgment within them. Your application and governance tools enforce those boundaries. Kyno complements them by supplying direction; principles do not grant permissions or override enforced controls. Your application can also verify outputs and decide whether to continue, retry, or request human review.</p>
-      <p>Your integration defines which decisions agents may make, how to handle conflicting principles, and how proposals and outputs are reviewed. <a href="https://github.com/cizambra/kyno/blob/main/docs/agency.md">Read the agency model</a>.</p>
-      <p>In the animation, the workflow continues after an operator publishes a new version. Each successful pull supplies it at that agent's next step. The final state shows delivery, not proof that the agents followed it.</p>
+      <p>Your sales agent is pursuing new revenue. You change the priority to retaining customers. Kyno lets you publish that mission and its principles while the workflow continues; the next successful pull supplies the revised direction before the agent's next step.</p>
+      <a class="text-link" href="how-it-works/">How direction supports principled judgment →</a>
     </section>
 
     <section class="start wrap" id="start">
@@ -205,38 +196,13 @@
       </div>
     </section>
 
-    <section class="explanation wrap" id="faq" aria-labelledby="faq-heading">
-      <h2 id="faq-heading">Questions before you integrate</h2>
-      <h3 id="faq-use-cases">When is Kyno useful?</h3>
-      <p>When several agents need shared direction, when priorities change during a run, or when your integration needs to record which direction a step received. For a short workflow whose direction is fixed, an existing prompt or file may meet your needs.</p>
-      <h3 id="faq-system-prompts">How does direction relate to a system prompt?</h3>
-      <p>A system prompt can carry direction alongside instructions for a model call. Kyno manages the direction's identity, current version, and history independently. An adapter retrieves a version and supplies it in the model context; the prompt carries that copy. A fixed prompt may be sufficient for a short workflow with unchanging direction.</p>
-      <h3 id="faq-frameworks">Which frameworks does Kyno support?</h3>
-      <p>Kyno ships integrations for <a href="https://github.com/cizambra/kyno/blob/main/docs/crewai.md">CrewAI</a> and <a href="https://github.com/cizambra/kyno/blob/main/docs/langgraph.md">LangGraph</a>. CrewAI receives direction through a before-model-call hook. LangGraph receives it in graph state; your model-calling node includes it in the model input. For other frameworks or languages, use the <a href="https://github.com/cizambra/kyno/blob/main/docs/adapters.md">Python SDK</a> or <a href="https://github.com/cizambra/kyno/blob/main/docs/integrating.md">build an adapter through MCP</a>.</p>
-      <h3 id="faq-deployment">Do I need to run a separate server?</h3>
-      <p>No. Kyno can run embedded in your Python application or as a separate service over stdio or HTTP. Start with SQLite; PostgreSQL and MySQL are also supported. See <a href="https://github.com/cizambra/kyno/blob/main/docs/operating.md#running-kyno-embedded">the embedded setup</a> and <a href="https://github.com/cizambra/kyno/blob/main/docs/operating.md#deploying">deployment guidance</a>.</p>
-      <h3 id="faq-git">Can I keep my constitution in Git?</h3>
-      <p>Yes. Git provides authoring, review, and file history. Kyno provides the runtime read interface and versioned direction that integrations consume. After review, apply the approved file from your Kyno workspace:</p>
-      <pre><code>kyno apply constitution.yaml --note "Reviewed support priorities"</code></pre>
-      <p>To apply through a configured remote profile, add <code>--remote</code>:</p>
-      <pre><code>kyno apply constitution.yaml --remote \
-  --note "Reviewed support priorities"</code></pre>
-      <p>Kyno does not synchronize Git changes automatically. See <a href="https://github.com/cizambra/kyno/blob/main/docs/best-practices.md#keep-the-constitution-in-version-control">the Git review and apply workflow</a>.</p>
-      <h3 id="faq-write-access">Can agents change the mission or principles?</h3>
-      <p>Only if their application has write access. The shipped adapters only read direction. Give agent applications read-only HTTP tokens, and keep write credentials with operators or trusted deployment jobs. Local CLI, stdio, and embedded access use the host process's permissions. See <a href="https://github.com/cizambra/kyno/blob/main/docs/operating.md#who-should-hold-write-access">who should hold write access</a>.</p>
-      <p>Agents can propose changes if your application provides a review channel. A proposal does not change active direction; an authorized operator or deployment job must apply an accepted edit. Kyno does not manage proposal review. See <a href="https://github.com/cizambra/kyno/blob/main/docs/agency.md#may-agents-propose-constitutional-changes">proposing constitutional changes</a>.</p>
-      <h3 id="faq-orchestration">Is Kyno an orchestrator?</h3>
-      <p>No. Your framework continues scheduling tasks, invoking tools, and running agents. Kyno stores and delivers direction through MCP. Its adapters connect that direction to the workflow you already have; updates do not rewrite tasks or replan the workflow.</p>
-      <h3 id="faq-governance">Is Kyno an AI governance system?</h3>
-      <p>No. Kyno supplies versioned mission and principles for agents to exercise judgment. You can use it with or without AI governance tools. When governance boundaries are present, they define what an agent may do; Kyno supplies direction for judging how to pursue the intended outcome within those boundaries. It complements governance tools and does not replace them or establish that an agent's decisions are safe or aligned.</p>
-      <h3 id="faq-alignment">Does Kyno prevent drift or guarantee alignment?</h3>
-      <p>No. Kyno stores versioned direction and its adapters pull it before work proceeds. Pulls can fail, and an agent can receive the right principles and still misinterpret them or make a bad decision. Claims about improved behavior require evidence from the actual integration and task.</p>
-      <h3 id="faq-pull-failures">What happens if a pull fails?</h3>
-      <p>By default, the binder logs the failure and uses cached direction. If it has never fetched direction, it supplies empty version 0. Configure <code>PullPolicy(fail_closed=True)</code> to raise an error instead. This policy applies to direction reads: an initial <code>kyno.connect()</code> failure raises an error before a binder is available. See <a href="https://github.com/cizambra/kyno/blob/main/docs/adapters.md#connection-troubleshooting">connection troubleshooting</a>.</p>
-      <p>Current direction depends on a successful pull; an update committed after that read becomes available on a later pull.</p>
-      <h3 id="faq-verification">Do I need a verifier?</h3>
-      <p>Verification is optional, but recommended. Your application can check outputs against their supplied direction using its own checks or an independent verifier. Those assessments can feed back into the running workflow, giving your application a chance to correct course and improve outcomes before the run ends. Your application chooses whether to continue, retry, or ask a person to review the result. Kyno supplies direction; it does not run verification or decide what happens next.</p>
-      <p>Still have a question? <a href="https://github.com/cizambra/kyno/issues/new?template=question.yml">Ask on GitHub</a>.</p>
+    <section class="resources wrap" id="faq" aria-labelledby="resources-heading">
+      <h2 id="resources-heading">Explore Kyno</h2>
+      <div class="resource-grid">
+        <a class="resource-card" href="how-it-works/"><h3>How it works <span aria-hidden="true">→</span></h3><p>Direction, principled judgment, and bottom-up agency.</p></a>
+        <a class="resource-card" href="faq/" data-faq-page><h3>Frequently asked questions <span aria-hidden="true">→</span></h3><p>Fit, setup, governance, and what happens when a pull fails.</p></a>
+        <a class="resource-card" href="https://github.com/cizambra/kyno/blob/main/docs/README.md"><h3>Documentation <span aria-hidden="true">↗</span></h3><p>Integration guides, operations, and runnable examples.</p></a>
+      </div>
     </section>
 
     <section class="constitution wrap">
@@ -252,7 +218,7 @@
   <footer class="wrap">
     <div class="brand mini"><img src="mark.svg" width="25" height="25" alt=""><span>Kyno</span></div>
     <span>Coherence as infrastructure.</span>
-    <nav aria-label="Project links"><a href="https://github.com/cizambra/kyno">GitHub</a><a href="#faq">FAQ</a><a href="constitution/">Constitution</a><a href="https://github.com/cizambra/kyno/blob/main/LICENSE">Licensing: MIT integrations · Elastic 2.0 core</a></nav>
+    <nav aria-label="Project links"><a href="https://github.com/cizambra/kyno">GitHub</a><a href="faq/">FAQ</a><a href="constitution/">Constitution</a><a href="https://github.com/cizambra/kyno/blob/main/LICENSE">Licensing: MIT integrations · Elastic 2.0 core</a></nav>
   </footer>
 
   <script src="main.js"></script>

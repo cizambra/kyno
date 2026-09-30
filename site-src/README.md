@@ -4,6 +4,11 @@ GitHub Pages serves the committed `site/` directory. Changes under `site/`
 deploy automatically after they merge into `main` through
 `.github/workflows/pages.yml`.
 
+The homepage introduces Kyno and provides the quick start. `site/how-it-works/`
+explains direction and the agency model; `site/faq/` covers integration questions.
+Keep these pages linked through navigation on desktop and mobile. Older homepage
+question fragments (`/#faq-*`) redirect to the corresponding FAQ answer.
+
 ## Preview before merging
 
 From the repository root:
@@ -12,7 +17,7 @@ From the repository root:
 python -m http.server --directory site 8000
 ```
 
-Open `http://localhost:8000/`. Check desktop and mobile widths, keyboard
+Open `http://localhost:8000/`, `/how-it-works/`, and `/faq/`. Check desktop and mobile widths, keyboard
 navigation, both copy buttons, pause/resume, and reduced-motion behavior.
 The canonical URLs deliberately identify the public website.
 
@@ -22,7 +27,7 @@ rebuilding; see `build-constitution.py` for the command.
 
 ## Keeping integration questions useful
 
-The homepage's “Questions before you integrate” section helps visitors decide
+The FAQ page (`site/faq/index.html`) helps visitors decide
 whether Kyno fits their workflow. Keep detailed setup and troubleshooting in
 `docs/`, and link each practical answer to the relevant guide.
 
@@ -50,7 +55,7 @@ whether Kyno fits their workflow. Keep detailed setup and troubleshooting in
    Follow its ownership-verification instructions; keep verification files
    or metadata committed if that method requires them.
 2. Submit `https://cizambra.github.io/kyno/sitemap.xml` through the Sitemaps
-   report. Check that both listed pages return HTTP 200 and identify the
+   report. Check that all listed pages return HTTP 200 and identify the
    same URLs with their canonical links.
 3. Inspect the homepage with URL Inspection and request indexing. Check the
    indexing report after Google has crawled the pages. Submission does not

@@ -1,6 +1,13 @@
 (function(){
   "use strict";
 
+  // Preserve links to questions that previously lived on the homepage.
+  var faqPage=document.querySelector("[data-faq-page]");
+  if(faqPage && /^#faq-/.test(window.location.hash)){
+    window.location.replace(faqPage.getAttribute("href")+window.location.hash);
+    return;
+  }
+
   function copy(text, button, reset){
     if(!navigator.clipboard){
       button.title='Select and copy the command text manually.';

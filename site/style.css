@@ -94,3 +94,33 @@ footer{height:100px;display:grid;grid-template-columns:auto 1fr auto;gap:22px;al
     white-space:normal;
   }
 }
+
+/* Supporting pages share the landing page's visual language at reading width. */
+body{min-width:0}
+.content-page{max-width:860px;padding-block:48px 64px}
+.content-page h1{max-width:none;font-size:clamp(36px,5vw,60px);line-height:1.12;margin:24px 0}
+.back-link,.text-link{color:var(--blue)}
+.page-intro{font-size:19px;line-height:1.7;color:var(--muted);max-width:65ch}
+.reading-section h2{font-size:clamp(23px,3vw,30px);line-height:1.3;margin:44px 0 16px;scroll-margin-top:24px}
+.reading-section p{font-size:16px;line-height:1.85;color:var(--muted)}
+.reading-section a,.page-next a,.question-index a{color:var(--ink);text-decoration:underline;text-underline-offset:4px}
+.reading-section pre{max-width:100%;overflow-x:auto;padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.question-index{display:grid;grid-template-columns:1fr 1fr;gap:16px 28px;padding:28px 0;border-block:1px solid var(--line);margin:32px 0}
+.question-index a{font-size:15px;line-height:1.5}
+.page-next{display:flex;flex-wrap:wrap;gap:24px;margin-top:44px;padding-top:28px;border-top:1px solid var(--line)}
+.resources{padding-block:48px 56px;border-bottom:1px solid var(--line)}
+.resources>h2{font-size:clamp(28px,4vw,42px);margin:0 0 24px}
+.resource-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.resource-card{display:block;padding:24px;border:1px solid var(--line);border-radius:14px;background:var(--panel);text-decoration:none}
+.resource-card:hover{border-color:var(--blue)}
+.resource-card h3{font-size:18px;line-height:1.4;margin:0 0 12px}
+.resource-card h3 span{color:var(--blue)}
+.resource-card p{font-size:15px;line-height:1.65;color:var(--muted);margin:0}
+.topbar nav a[aria-current="page"]{color:var(--ink);text-decoration:underline;text-underline-offset:6px}
+@media(max-width:720px){
+  .topbar{height:auto;min-height:70px;flex-wrap:wrap;gap:16px;padding-block:18px}
+  .topbar nav{width:100%;flex-wrap:wrap;gap:10px 20px}
+  .topbar nav a:not(:last-child){display:inline}
+  .resource-grid,.question-index{grid-template-columns:1fr}
+  .content-page{padding-block:32px 48px}
+}

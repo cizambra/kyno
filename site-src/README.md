@@ -5,7 +5,8 @@ deploy automatically after they merge into `main` through
 `.github/workflows/pages.yml`.
 
 The homepage introduces Kyno and provides the quick start. `site/how-it-works/`
-explains direction and the agency model; `site/faq/` covers integration questions.
+explains direction and the agency model; `site/walkthrough/` replays a recorded
+support workflow; `site/faq/` covers integration questions.
 Keep these pages linked through navigation on desktop and mobile. Older homepage
 question fragments (`/#faq-*`) redirect to the corresponding FAQ answer.
 
@@ -17,7 +18,7 @@ From the repository root:
 python -m http.server --directory site 8000
 ```
 
-Open `http://localhost:8000/`, `/how-it-works/`, and `/faq/`. Check desktop and mobile widths, keyboard
+Open `http://localhost:8000/`, `/how-it-works/`, `/faq/`, and `/walkthrough/`. Check desktop and mobile widths, keyboard
 navigation, both copy buttons, pause/resume, and reduced-motion behavior.
 The canonical URLs deliberately identify the public website.
 
@@ -80,3 +81,24 @@ consistent with the visible release content. Share previews use
 References: [Google's sitemap guide](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap),
 [requesting a recrawl](https://developers.google.com/search/docs/crawling-indexing/ask-google-to-recrawl),
 and [robots.txt location rules](https://developers.google.com/crawling/docs/robots-txt/create-robots-txt).
+
+## Maintaining the recorded walkthrough
+
+The page is committed HTML, styled by the shared site stylesheet and
+`site/walkthrough/walkthrough.css`. Its local script shows one event at a time;
+without JavaScript all eight steps remain readable in order. Keep every actor,
+input, result, and response in order when updating it. The public
+`recording.json` preserves exact model message text and output content with
+version attribution. The ticket view is illustrative; do not describe it as a
+live support-platform integration.
+
+The recording came from the existing LangGraph customer-support graph with a
+revised repeated-delay scenario and v2 direction, both in the JSON. Responses
+came from fresh Codex agents through a temporary bridge; the provider model ID
+and native API response are unavailable. Never replace recorded responses with
+expected answers, publish credentials or private workspace paths, or claim
+this single execution proves alignment or improved outcomes.
+
+Before merging, test Back, Next, restart, keyboard navigation, the mobile step
+picker, and the page with JavaScript disabled. Check widths from 320px upwards,
+including the homepage navigation after adding a new link.

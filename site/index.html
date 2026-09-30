@@ -204,8 +204,6 @@
 
     <section class="explanation wrap" id="faq" aria-labelledby="faq-heading">
       <h2 id="faq-heading">Questions before you integrate</h2>
-      <h3>What does stable 1.0 mean?</h3>
-      <p>Kyno follows Semantic Versioning for its documented MCP tools and request and response formats, CLI commands and options, SDK and adapter interfaces, and HTTP endpoints. Bug fixes ship as patch releases; compatible additions ship in 1.x. Breaking changes require a new major version. <a href="https://github.com/cizambra/kyno#versioning">Read the compatibility promise</a>. Package versions are separate from the constitution versions your agents receive.</p>
       <h3>How does direction relate to a system prompt?</h3>
       <p>A system prompt can carry direction alongside instructions for a model call. Kyno manages the direction's identity, current version, and history independently. An adapter retrieves a version and supplies it in the model context; the prompt carries that copy. A fixed prompt may be sufficient for a short workflow with unchanging direction.</p>
       <h3>Can I keep my constitution in Git?</h3>
@@ -213,7 +211,7 @@
       <pre><code>kyno apply constitution.yaml --note "Reviewed support priorities"</code></pre>
       <p>Run this command in the Kyno workspace, or with a configured remote profile. Automatic Git synchronization is deferred.</p>
       <h3>Is Kyno an orchestrator?</h3>
-      <p>Your framework continues scheduling tasks, invoking tools, and running agents. Kyno stores and delivers direction through MCP. Its adapters connect that direction to the workflow you already have; updates do not rewrite tasks or replan the workflow.</p>
+      <p>No. Your framework continues scheduling tasks, invoking tools, and running agents. Kyno stores and delivers direction through MCP. Its adapters connect that direction to the workflow you already have; updates do not rewrite tasks or replan the workflow.</p>
       <h3>Is Kyno an AI governance system?</h3>
       <p>Kyno supplies runtime organizational direction: your current mission and principles. Principles can describe how to judge tradeoffs; tradeoffs are not a separate field in Kyno. Permissions, approval processes, and enforcement belong to the surrounding system. Model training and alignment remain separate too; even a well-trained model needs your organization's current direction.</p>
       <h3>Does Kyno prevent drift or guarantee alignment?</h3>

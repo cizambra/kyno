@@ -1,5 +1,7 @@
 # Kyno
 
+<!-- mcp-name: io.github.cizambra/kyno -->
+
 [![PyPI](https://img.shields.io/pypi/v/kyno)](https://pypi.org/project/kyno/)
 [![Tests](https://github.com/cizambra/kyno/actions/workflows/ci.yml/badge.svg)](https://github.com/cizambra/kyno/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/pypi/pyversions/kyno)](https://pypi.org/project/kyno/)

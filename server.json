@@ -1,0 +1,51 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.cizambra/kyno",
+  "title": "Kyno",
+  "description": "Versioned mission and principles for principled judgment and bottom-up agency in AI agents.",
+  "websiteUrl": "https://cizambra.github.io/kyno/",
+  "repository": {
+    "url": "https://github.com/cizambra/kyno",
+    "source": "github"
+  },
+  "version": "1.0.1",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "kyno",
+      "version": "1.0.1",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--directory",
+          "value": "{workspace}",
+          "description": "Run from an existing Kyno workspace after creating it and initializing its database.",
+          "isRequired": true,
+          "variables": {
+            "workspace": {
+              "description": "Absolute path to an initialized Kyno workspace.",
+              "format": "filepath",
+              "isRequired": true
+            }
+          }
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "serve"
+        },
+        {
+          "type": "named",
+          "name": "--transport",
+          "value": "stdio"
+        }
+      ]
+    }
+  ]
+}

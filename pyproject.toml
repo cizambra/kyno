@@ -2,7 +2,7 @@
 name = "kyno"
 license = "MIT AND Elastic-2.0"
 license-files = ["LICENSE", "LICENSES/*"]
-version = "1.0.0"
+version = "1.0.1"
 description = "Versioned runtime direction for AI agents: shared mission and principles through MCP."
 readme = "README.md"
 requires-python = ">=3.11"

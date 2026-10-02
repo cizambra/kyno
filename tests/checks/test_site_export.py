@@ -1,5 +1,5 @@
 """The committed site is a genuine export: its constitution page must match
-constitution.yaml. Marketing pages use local assets except for Umami analytics."""
+constitution.yaml. Marketing pages use local assets except for approved analytics and listing badges."""
 
 import html
 import json
@@ -33,18 +33,21 @@ def test_given_the_committed_constitution_when_exporting_the_site_then_the_page_
 @pytest.mark.parametrize(
     "page", ["index.html", "how-it-works/index.html", "faq/index.html", "demo/index.html"]
 )
-def test_given_a_marketing_page_when_scanning_requests_then_only_analytics_is_external(page):
-    html = (SITE / page).read_text()
-    # Anchors may leave the site; assets (scripts, styles, images) may not,
-    # with one deliberate exception: the cookieless Umami analytics script.
-    # A data: URI is inline content, not a request, wherever it points inside.
+def test_given_a_marketing_page_when_scanning_requests_then_external_assets_are_approved(page):
+    page_html = (SITE / page).read_text()
+    # External assets are limited to analytics and the homepage listing badge.
     allowed = {"https://cloud.umami.is/script.js"}
-    for tag in re.findall(r"<(?:script|link|img)\b[^>]*>", html):
+    if page == "index.html":
+        allowed.add(
+            "https://launchnest.io/api/badge/dr?domain=cizambra.github.io"
+            "&style=normal&shape=rect&color=dark"
+        )
+    for tag in re.findall(r"<(?:script|link|img)\b[^>]*>", page_html):
         # A canonical link identifies the page; it does not load an asset.
         if tag.startswith("<link") and re.search(r'\brel="canonical"', tag):
             continue
         for url in re.findall(r"(?:src|href)=\"([^\"]*)\"", tag):
-            if url in allowed:
+            if html.unescape(url) in allowed:
                 continue
             assert not url.startswith(("http://", "https://", "//")), tag
 

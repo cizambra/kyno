@@ -1,5 +1,5 @@
 """The committed site is a genuine export: its constitution page must match
-constitution.yaml. Marketing pages use local assets except for approved analytics and listing badges."""
+constitution.yaml. External marketing assets are limited to analytics and listing badges."""
 
 import html
 import json

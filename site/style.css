@@ -138,3 +138,13 @@ body{min-width:0}
   .topbar .mobile-menu nav a{display:flex;align-items:center;min-height:44px;padding:10px 14px;border-radius:6px;font-size:15px}
   .topbar .mobile-menu nav a:hover{background:var(--panel2);color:var(--cyan)}
 }
+
+.docs-page{min-width:0}
+.docs-page .reading-section{overflow-wrap:anywhere}
+.docs-page pre{font:13px/1.7 var(--mono);overflow-wrap:normal;white-space:pre}
+.docs-page :not(pre)>code{font-family:var(--mono);font-size:.9em;color:#c5cfdd}
+.docs-page li{color:var(--muted);margin-block:8px;line-height:1.8}
+.docs-page table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse}
+.docs-page th,.docs-page td{border:1px solid var(--line);padding:10px;text-align:left}
+.docs-page .back-link{line-height:1.9}
+.docs-source{margin-top:40px;color:var(--muted);font-size:13px}

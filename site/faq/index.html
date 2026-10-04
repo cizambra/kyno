@@ -30,7 +30,7 @@
       <a href="../demo/">Demo</a>
       <a href="../#start">Quick start</a>
       <a href="../faq/" aria-current="page">FAQ</a>
-      <a href="https://github.com/cizambra/kyno/blob/main/docs/README.md">Documentation</a>
+      <a href="/kyno/docs/">Documentation</a>
       <a href="https://github.com/cizambra/kyno">GitHub</a>
     </nav>
     <details class="mobile-menu">
@@ -40,7 +40,7 @@
       <a href="../demo/">Demo</a>
       <a href="../#start">Quick start</a>
       <a href="../faq/" aria-current="page">FAQ</a>
-      <a href="https://github.com/cizambra/kyno/blob/main/docs/README.md">Documentation</a>
+      <a href="/kyno/docs/">Documentation</a>
       <a href="https://github.com/cizambra/kyno">GitHub</a>
     </nav>
     </details>
@@ -68,7 +68,7 @@
       <h2 id="faq-system-prompts">How does direction relate to a system prompt?</h2>
       <p>A system prompt can carry direction alongside instructions for a model call. Kyno manages the direction's identity, current version, and history independently. An adapter retrieves a version and supplies it in the model context; the prompt carries that copy. A fixed prompt may be sufficient for a short workflow with unchanging direction.</p>
       <h2 id="faq-frameworks">Which frameworks does Kyno support?</h2>
-      <p>Kyno ships integrations for <a href="https://github.com/cizambra/kyno/blob/main/docs/crewai.md">CrewAI</a> and <a href="https://github.com/cizambra/kyno/blob/main/docs/langgraph.md">LangGraph</a>. CrewAI receives direction through a before-model-call hook. LangGraph receives it in graph state; your model-calling node includes it in the model input. For other frameworks or languages, use the <a href="https://github.com/cizambra/kyno/blob/main/docs/adapters.md">Python SDK</a> or <a href="https://github.com/cizambra/kyno/blob/main/docs/integrating.md">build an adapter through MCP</a>.</p>
+      <p>Kyno ships integrations for <a href="/kyno/docs/crewai/">CrewAI</a> and <a href="/kyno/docs/langgraph/">LangGraph</a>. CrewAI receives direction through a before-model-call hook. LangGraph receives it in graph state; your model-calling node includes it in the model input. For other frameworks or languages, use the <a href="https://github.com/cizambra/kyno/blob/main/docs/adapters.md">Python SDK</a> or <a href="https://github.com/cizambra/kyno/blob/main/docs/integrating.md">build an adapter through MCP</a>.</p>
       <h2 id="faq-deployment">Do I need to run a separate server?</h2>
       <p>No. Kyno can run embedded in your Python application or as a separate service over stdio or HTTP. Start with SQLite; PostgreSQL and MySQL are also supported. See <a href="https://github.com/cizambra/kyno/blob/main/docs/operating.md#running-kyno-embedded">the embedded setup</a> and <a href="https://github.com/cizambra/kyno/blob/main/docs/operating.md#deploying">deployment guidance</a>.</p>
       <h2 id="faq-git">Can I keep my constitution in Git?</h2>

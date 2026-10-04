@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kyno + CrewAI — shared mission and principles for AI agents</title>
+  <meta name="description" content="Integrate Kyno with CrewAI to refresh versioned mission and principles before model calls. Includes setup, failure policies and optional recording.">
+  <link rel="canonical" href="https://cizambra.github.io/kyno/docs/crewai/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kyno">
+  <meta property="og:title" content="Kyno + CrewAI — shared mission and principles for AI agents">
+  <meta property="og:description" content="Integrate Kyno with CrewAI to refresh versioned mission and principles before model calls. Includes setup, failure policies and optional recording.">
+  <meta property="og:url" content="https://cizambra.github.io/kyno/docs/crewai/">
+  <meta property="og:image" content="https://cizambra.github.io/kyno/assets/social-preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Kyno 1.0: One direction. Every agent. Every step.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="/kyno/style.css">
+  <link rel="icon" href="/kyno/mark.svg" type="image/svg+xml">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="1ac0032b-f63c-44fa-a68d-7ed07ecd34b6"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="page-grid" aria-hidden="true"></div>
+  <header class="topbar wrap">
+    <a class="brand" href="/kyno/" aria-label="Kyno home"><img src="/kyno/mark.svg" width="38" height="38" alt=""><span>Kyno</span></a>
+    <nav aria-label="Main navigation">
+      <a href="/kyno/how-it-works/">How it works</a>
+      <a href="/kyno/demo/">Demo</a>
+      <a href="/kyno/#start">Quick start</a>
+      <a href="/kyno/faq/">FAQ</a>
+      <a href="/kyno/docs/">Documentation</a>
+      <a href="https://github.com/cizambra/kyno">GitHub</a>
+    </nav>
+    <details class="mobile-menu">
+      <summary>Menu <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 5h14M2 9h14M2 13h14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></summary>
+    <nav aria-label="Mobile navigation">
+      <a href="/kyno/how-it-works/">How it works</a>
+      <a href="/kyno/demo/">Demo</a>
+      <a href="/kyno/#start">Quick start</a>
+      <a href="/kyno/faq/">FAQ</a>
+      <a href="/kyno/docs/">Documentation</a>
+      <a href="https://github.com/cizambra/kyno">GitHub</a>
+    </nav>
+    </details>
+  </header>
+  <main class="content-page docs-page wrap" id="main"><p class="back-link"><a href="/kyno/docs/">Documentation</a> · <a href="/kyno/docs/quick-start/">Quick start</a> · <a href="/kyno/docs/crewai/">CrewAI</a> · <a href="/kyno/docs/langgraph/">LangGraph</a></p><article class="reading-section"><h1 id="integrating-kyno-with-crewai">Integrating Kyno with CrewAI</h1>
+<p><a href="https://github.com/cizambra/kyno/blob/main/docs/adapters.md">Adapter overview</a> · <a href="/kyno/docs/langgraph/">LangGraph guide</a></p>
+<p>Kyno refreshes direction in CrewAI's model messages before each model
+call. You keep your existing agents, tasks, and crew.</p>
+<h2 id="install-and-connect">Install and connect</h2>
+<pre><code class="language-bash">pip install &quot;kyno[crewai]&quot;
+</code></pre>
+<p>The example below uses your default remote profile. See
+<a href="https://github.com/cizambra/kyno/blob/main/docs/adapters.md#the-integration">connection configuration</a> for named profiles
+and explicit credentials.</p>
+<h2 id="required-integration">Required integration</h2>
+<p>Create a <code>CrewAiKyno</code> adapter and register its hook while your crew runs:</p>
+<pre><code class="language-python">import kyno
+from kyno.adapters.crewai import CrewAiKyno
+
+with kyno.connect() as connection:
+    binder = connection.binder(&quot;customer-support&quot;)
+    adapter = CrewAiKyno(binder)
+    adapter.register()
+    try:
+        result = crew.kickoff()
+    finally:
+        adapter.unregister()
+</code></pre>
+<p><code>crew</code> is your application's configured CrewAI crew, not an object Kyno
+creates. You do not need to override a method, write a model-calling
+wrapper, or manually insert direction into its messages.</p>
+<p>Registration uses CrewAI's global before-call hook registry. Keep its
+lifetime limited to the calls you intend to bind to this constitution;
+it is not scoped to the <code>crew</code> variable. Unregistering removes this
+adapter's hook without clearing unrelated hooks.</p>
+<h2 id="what-kyno-provides">What Kyno provides</h2>
+<p>Before each model call, the hook pulls direction, applies the binder's
+failure policy, and replaces the previous Kyno direction block in the
+messages. The block names the constitution and version and includes the
+mission and principles. Other messages are preserved. Read change notes and
+deltas through the <a href="#optional-recording">binding callback</a>.</p>
+<p>Use <code>connection.binder(&quot;customer-support&quot;, detail=&quot;full&quot;)</code> if the model also needs the
+declaration and principle descriptions. No callback, receipt storage,
+run ID, or step ID is required for direction injection.</p>
+<h2 id="failure-behavior">Failure behavior</h2>
+<p>By default, a failed pull uses cached direction, or empty version-0
+direction if no value was cached. The binder logs a warning through Python's
+<code>kyno.sdk.binder</code> logger. To raise instead of supplying fallback direction:</p>
+<pre><code class="language-python">from kyno.sdk import PullPolicy
+
+binder = connection.binder(&quot;customer-support&quot;, policy=PullPolicy(fail_closed=True))
+</code></pre>
+<p>Pass this binder to <code>CrewAiKyno</code> before registering the hook. See the
+<a href="https://github.com/cizambra/kyno/blob/main/docs/adapters.md#inspecting-binding-status">shared failure and status reference</a>.</p>
+<h2 id="optional-recording">Optional recording</h2>
+<p>Pass <code>on_direction</code> only if you want to observe the direction supplied
+before each model call. The callback receives an immutable
+<code>DirectionBinding</code> after the hook has inserted its rendered direction
+into the messages:</p>
+<pre><code class="language-python">observed_bindings = []
+adapter = CrewAiKyno(
+    binder,
+    on_direction=observed_bindings.append,
+)
+</code></pre>
+<p>Register and unregister this adapter around your crew's execution as in
+the required integration. In this example, <code>observed_bindings</code> is an
+application-owned list, not storage Kyno creates. Its <code>append</code> method
+is the observer; you do not need to override an adapter method.</p>
+<p>Each binding contains <code>direction</code>, <code>status</code>, <code>recording</code>, <code>change_notes</code>, and <code>delta</code>. The status is a
+<code>BindingStatus</code> enum: <code>pulled</code>, <code>cached</code>, or <code>empty</code>, with the
+<a href="https://github.com/cizambra/kyno/blob/main/docs/adapters.md#inspecting-binding-status">shared meanings</a>. Use
+<code>binding.direction.render()</code> for the exact direction block, including
+the selected compact/full detail. Read <code>binding.change_notes</code> and
+<code>binding.delta</code> for delivery metadata. Later pulls
+do not change previously received bindings.</p>
+<p>Read transition metadata from the binding supplied to your observer. The notes
+cover versions crossed by that read; the delta compares its requested and
+returned versions. For example:</p>
+<pre><code class="language-python">def observe(binding):
+    for note in binding.change_notes:
+        print(note)
+    for change in binding.delta:
+        print(change)
+</code></pre>
+<p>Read <code>binding.direction.constitution_key</code> and <code>binding.direction.version</code>
+to identify the direction supplied to that call. For example, an observer can
+append <code>(binding.direction.constitution_key, binding.direction.version)</code>
+to an application-owned list.</p>
+<p><code>binding.recording</code> is the server's immutable recording receipt, or <code>None</code>
+when the source supplied no receipt. Its <code>status</code> is a <code>RecordingStatus</code>:
+<code>recorded</code>, <code>disabled</code>, or <code>failed</code>. A recorded receipt has a <code>record_id</code>
+identifying a stored Kyno delivery record; the other statuses have no ID.
+These statuses describe server recording, separately from how direction
+was obtained. A failed pull using cached direction preserves the original
+receipt rather than creating a new record ID.</p>
+<p>Recording is disabled by default. When recording succeeds, the record
+describes Core's direction response before the adapter injects it.
+Its receipt does not prove injection, model completion, or that an answer
+followed direction. The observer runs after injection, but still before
+the model call.</p>
+<p>If you need durable per-call receipts, replace <code>append</code> with your own
+synchronous recording function. Your application assigns run/call IDs,
+captures the time, and chooses storage. The observer receives no task
+output or framework call ID; it reports supplied context before the model
+call, not completion or proof that the model followed direction. Do not
+infer a task/output association from callback order in parallel work.</p>
+<p>The observer runs once per successful injection and adds no pull. A failed
+injection or a fail-closed pull emits no observer callback. If the observer
+raises an ordinary exception, Kyno logs it and leaves the injected
+direction in place. Its return value is ignored: it is not an approval
+gate. This is best-effort observation, not mandatory durable auditing.
+The callback runs synchronously, so slow recording delays the model call.</p>
+<p>To record which direction accompanied a model output, your application
+must capture that call's input messages and output together. <code>on_direction</code>
+cannot do this by itself: it runs before the call and receives neither
+the output nor an ID identifying the call. Once your application has
+matched an output to its supplied binding, store the output together with
+<code>binding.recording.record_id</code> when a receipt is available. Kyno stores
+direction delivery history; your application owns output storage and the
+association between each call and its receipt. A record ID identifies a
+server read, not a CrewAI task or model call; cached uses can share an ID.
+For later inspection, you can use the saved delivery ID to
+<a href="https://github.com/cizambra/kyno/blob/main/docs/integrating.md#current-and-historical-direction">retrieve the served direction version</a>.</p>
+<p>You can group delivery reads with an application-chosen
+<a href="https://github.com/cizambra/kyno/blob/main/docs/integrating.md#associating-delivery-history-with-application-work">correlation ID</a>.
+For example, replace the binder setup in the required integration with:</p>
+<pre><code class="language-python">binder = connection.binder(&quot;customer-support&quot;, correlation_id=&quot;support-run-123&quot;)
+</code></pre>
+<p>Every pull through this binder carries the same correlation ID. It groups
+recorded reads; it does not identify a model call or its output. The global hook
+registry still requires the registration scope described above.</p>
+<p>Separate application receipt storage is optional. Keep any retained
+prompts, direction, and outputs in storage
+appropriate for potentially sensitive content.</p>
+<h2 id="optional-verification">Optional verification</h2>
+<p>Verification belongs to your application. You choose whether to verify, which
+direction version to assess against, when to run the check, and what to do with
+its result. Kyno supplies direction and delivery history; it does not call a
+verifier or control the crew's next action.</p>
+<p>For example, suppose you want to review the final answer against the
+direction you read before starting the crew. Save that <code>Direction</code> object,
+run the crew, then pass the answer and saved direction to your verifier.</p>
+<p>This is an illustrative extension of the required integration, not a prescribed
+verification workflow. As before, <code>crew</code> is your configured CrewAI crew.
+Two functions below belong to your application; neither is provided by Kyno:</p>
+<ul>
+<li><code>assess_output</code> calls your chosen verifier with the output and direction.</li>
+<li><code>handle_assessment</code> reads its result and decides what to do next.</li>
+</ul>
+<p>Replace these placeholders with your own functions to run this example.</p>
+<pre><code class="language-python">with kyno.connect() as connection:
+    binder = connection.binder(&quot;customer-support&quot;)
+    assessment_direction = binder.bind()
+    adapter = CrewAiKyno(binder)
+    adapter.register()
+    try:
+        result = crew.kickoff()
+    finally:
+        adapter.unregister()
+
+    assessment = assess_output(
+        output=result.raw,
+        direction=assessment_direction,
+    )
+    handle_assessment(result, assessment)
+</code></pre>
+<p><code>result.raw</code> is the final answer's text. Review runs after the crew
+finishes, not after every model call. If you keep review records, save
+the answer, <code>assessment_direction</code>, and the assessment together.</p>
+<p>The saved direction does not change when the adapter pulls again. If you
+save version 1 and an operator publishes version 2 while the crew runs,
+later model calls can receive version 2. This example still reviews the
+final answer against version 1. It does not claim every call used that
+version. Your application chooses which version is relevant to its assessment.</p>
+<p>The initial <code>binder.bind()</code> uses the same failure policy as other reads.
+By default, a failed read returns cached direction, or empty version-0
+direction if nothing was cached. If your review requires a successful
+read, configure the binder as shown in <a href="#failure-behavior">Failure behavior</a>.
+Also reject version 0 if your application requires a written constitution.</p>
+<p>To review individual model calls instead, record each call's input and
+output under the same ID in your application. Do not match outputs to
+<code>on_direction</code> callbacks by their order: when two calls run at the same
+time, the second can finish first. Reading the binder's cache afterward
+does not identify a call's direction either; another call may already
+have replaced it with a newer version.</p>
+</article><p class="docs-source">Maintained with Kyno 1.x documentation. <a href="https://github.com/cizambra/kyno/blob/main/docs/crewai.md">View Markdown source</a></p><div class="page-next"><a href="/kyno/demo/">View the demo</a><a href="/kyno/faq/">Read the FAQ</a></div></main>
+  <footer class="wrap">
+    <a class="brand mini" href="/kyno/"><img src="/kyno/mark.svg" width="25" height="25" alt=""><span>Kyno</span></a>
+    <span>Coherence as infrastructure.</span>
+    <nav aria-label="Project links"><a href="https://github.com/cizambra/kyno">GitHub</a><a href="/kyno/how-it-works/">How it works</a><a href="/kyno/faq/">FAQ</a><a href="/kyno/constitution/">Constitution</a><a href="https://github.com/cizambra/kyno/blob/main/LICENSE">Licensing: MIT integrations · Elastic 2.0 core</a></nav>
+  </footer>
+</body>
+</html>

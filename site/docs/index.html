@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kyno documentation — AI agent setup and integrations</title>
+  <meta name="description" content="Set up Kyno and integrate shared, versioned mission and principles with Python, CrewAI and LangGraph.">
+  <link rel="canonical" href="https://cizambra.github.io/kyno/docs/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kyno">
+  <meta property="og:title" content="Kyno documentation — AI agent setup and integrations">
+  <meta property="og:description" content="Set up Kyno and integrate shared, versioned mission and principles with Python, CrewAI and LangGraph.">
+  <meta property="og:url" content="https://cizambra.github.io/kyno/docs/">
+  <meta property="og:image" content="https://cizambra.github.io/kyno/assets/social-preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Kyno 1.0: One direction. Every agent. Every step.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="/kyno/style.css">
+  <link rel="icon" href="/kyno/mark.svg" type="image/svg+xml">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="1ac0032b-f63c-44fa-a68d-7ed07ecd34b6"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="page-grid" aria-hidden="true"></div>
+  <header class="topbar wrap">
+    <a class="brand" href="/kyno/" aria-label="Kyno home"><img src="/kyno/mark.svg" width="38" height="38" alt=""><span>Kyno</span></a>
+    <nav aria-label="Main navigation">
+      <a href="/kyno/how-it-works/">How it works</a>
+      <a href="/kyno/demo/">Demo</a>
+      <a href="/kyno/#start">Quick start</a>
+      <a href="/kyno/faq/">FAQ</a>
+      <a href="/kyno/docs/">Documentation</a>
+      <a href="https://github.com/cizambra/kyno">GitHub</a>
+    </nav>
+    <details class="mobile-menu">
+      <summary>Menu <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 5h14M2 9h14M2 13h14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></summary>
+    <nav aria-label="Mobile navigation">
+      <a href="/kyno/how-it-works/">How it works</a>
+      <a href="/kyno/demo/">Demo</a>
+      <a href="/kyno/#start">Quick start</a>
+      <a href="/kyno/faq/">FAQ</a>
+      <a href="/kyno/docs/">Documentation</a>
+      <a href="https://github.com/cizambra/kyno">GitHub</a>
+    </nav>
+    </details>
+  </header>
+  <main class="content-page docs-page wrap" id="main"><p class="back-link"><a href="/kyno/docs/">Documentation</a> · <a href="/kyno/docs/quick-start/">Quick start</a> · <a href="/kyno/docs/crewai/">CrewAI</a> · <a href="/kyno/docs/langgraph/">LangGraph</a></p><article class="reading-section"><h1 id="kyno-documentation">Kyno documentation</h1>
+<p>The <a href="https://github.com/cizambra/kyno/blob/main/README.md">project README</a> tells you what Kyno is and gets you running.
+These pages hold everything else, for when you're wiring Kyno into a real
+system and want the full detail. I ordered them the way I'd read them,
+but each one stands alone.</p>
+<ol>
+<li><a href="https://github.com/cizambra/kyno/blob/main/docs/direction.md">Direction at runtime</a>. The primitive, its relationship to
+tasks and policies, and an example of direction changing independently.
+The <a href="https://github.com/cizambra/kyno/blob/main/docs/agency.md">agency model</a> explains delegated decisions, principle conflicts,
+agent proposals, adoption, and evaluation.</li>
+<li><a href="https://github.com/cizambra/kyno/blob/main/docs/constitutions.md">Writing constitutions</a>. The file, its fields, how
+edits carry forward, and running several constitutions side by side.</li>
+<li><a href="https://github.com/cizambra/kyno/blob/main/docs/contract.md">The MCP contract</a>. Every tool Kyno serves, the compact
+and full reads, and subscriptions.</li>
+<li><a href="https://github.com/cizambra/kyno/blob/main/docs/adapters.md">The adapters in depth</a>. What the binder does on every
+pull, the failure postures, and application-owned verification. The
+<a href="/kyno/docs/crewai/">CrewAI</a> and <a href="/kyno/docs/langgraph/">LangGraph</a> guides cover framework-specific setup.</li>
+<li><a href="https://github.com/cizambra/kyno/blob/main/docs/integrating.md">Build your own adapter</a>. How to build one for any
+framework or language, in five stages with a checker.</li>
+<li><a href="https://github.com/cizambra/kyno/blob/main/docs/publishing.md">Publishing your constitution</a>. The public page, the
+colors, and your own templates.</li>
+<li><a href="https://github.com/cizambra/kyno/blob/main/docs/operating.md">Operating Kyno</a>. Storage, auth, remote mode, deploying,
+and testing.</li>
+<li><a href="https://github.com/cizambra/kyno/blob/main/docs/best-practices.md">Best practices</a>. The operating sequence once real
+agents depend on the store: review, CI, rehearsal, and repair.</li>
+<li><a href="https://github.com/cizambra/kyno/blob/main/docs/recovery.md">Recovering earlier direction</a>. Read reviewed content,
+apply it as a new version, and assess work done under incorrect direction.</li>
+</ol>
+<h2 id="-questions">💬 Questions?</h2>
+<p><a href="https://github.com/cizambra/kyno/issues/new?template=question.yml">Ask one</a>
+and I'll answer there, so the next person finds it too.</p>
+</article><p class="docs-source">Maintained with Kyno 1.x documentation. <a href="https://github.com/cizambra/kyno/blob/main/docs/README.md">View Markdown source</a></p><div class="page-next"><a href="/kyno/demo/">View the demo</a><a href="/kyno/faq/">Read the FAQ</a></div></main>
+  <footer class="wrap">
+    <a class="brand mini" href="/kyno/"><img src="/kyno/mark.svg" width="25" height="25" alt=""><span>Kyno</span></a>
+    <span>Coherence as infrastructure.</span>
+    <nav aria-label="Project links"><a href="https://github.com/cizambra/kyno">GitHub</a><a href="/kyno/how-it-works/">How it works</a><a href="/kyno/faq/">FAQ</a><a href="/kyno/constitution/">Constitution</a><a href="https://github.com/cizambra/kyno/blob/main/LICENSE">Licensing: MIT integrations · Elastic 2.0 core</a></nav>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kyno + LangGraph — versioned direction in agent workflows</title>
+  <meta name="description" content="Integrate Kyno with LangGraph using KynoState, pull_before and direction_node. Supply current mission and principles at graph decision boundaries.">
+  <link rel="canonical" href="https://cizambra.github.io/kyno/docs/langgraph/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kyno">
+  <meta property="og:title" content="Kyno + LangGraph — versioned direction in agent workflows">
+  <meta property="og:description" content="Integrate Kyno with LangGraph using KynoState, pull_before and direction_node. Supply current mission and principles at graph decision boundaries.">
+  <meta property="og:url" content="https://cizambra.github.io/kyno/docs/langgraph/">
+  <meta property="og:image" content="https://cizambra.github.io/kyno/assets/social-preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Kyno 1.0: One direction. Every agent. Every step.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="/kyno/style.css">
+  <link rel="icon" href="/kyno/mark.svg" type="image/svg+xml">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="1ac0032b-f63c-44fa-a68d-7ed07ecd34b6"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="page-grid" aria-hidden="true"></div>
+  <header class="topbar wrap">
+    <a class="brand" href="/kyno/" aria-label="Kyno home"><img src="/kyno/mark.svg" width="38" height="38" alt=""><span>Kyno</span></a>
+    <nav aria-label="Main navigation">
+      <a href="/kyno/how-it-works/">How it works</a>
+      <a href="/kyno/demo/">Demo</a>
+      <a href="/kyno/#start">Quick start</a>
+      <a href="/kyno/faq/">FAQ</a>
+      <a href="/kyno/docs/">Documentation</a>
+      <a href="https://github.com/cizambra/kyno">GitHub</a>
+    </nav>
+    <details class="mobile-menu">
+      <summary>Menu <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 5h14M2 9h14M2 13h14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></summary>
+    <nav aria-label="Mobile navigation">
+      <a href="/kyno/how-it-works/">How it works</a>
+      <a href="/kyno/demo/">Demo</a>
+      <a href="/kyno/#start">Quick start</a>
+      <a href="/kyno/faq/">FAQ</a>
+      <a href="/kyno/docs/">Documentation</a>
+      <a href="https://github.com/cizambra/kyno">GitHub</a>
+    </nav>
+    </details>
+  </header>
+  <main class="content-page docs-page wrap" id="main"><p class="back-link"><a href="/kyno/docs/">Documentation</a> · <a href="/kyno/docs/quick-start/">Quick start</a> · <a href="/kyno/docs/crewai/">CrewAI</a> · <a href="/kyno/docs/langgraph/">LangGraph</a></p><article class="reading-section"><h1 id="integrating-kyno-with-langgraph">Integrating Kyno with LangGraph</h1>
+<p><a href="https://github.com/cizambra/kyno/blob/main/docs/adapters.md">Adapter overview</a> · <a href="/kyno/docs/crewai/">CrewAI guide</a></p>
+<p>Kyno puts direction in graph state. Your model-calling node puts that
+direction into the model's input.</p>
+<p>For a complete run with an operator changing direction between model calls,
+see the <a href="https://github.com/cizambra/kyno/blob/main/examples/customer_support/README.md">customer-support example</a>.
+It includes optional recording; that recording code is not required by the adapter.</p>
+<h2 id="install-and-connect">Install and connect</h2>
+<pre><code class="language-bash">pip install &quot;kyno[langgraph]&quot;
+</code></pre>
+<pre><code class="language-python">import kyno
+from kyno.sdk import DetailLevel, PullPolicy
+
+connection = kyno.connect()
+binder = connection.binder(
+    &quot;customer-support&quot;,
+    detail=DetailLevel.FULL,
+    policy=PullPolicy(fail_closed=True),
+)
+</code></pre>
+<p>This uses your default remote profile. See <a href="https://github.com/cizambra/kyno/blob/main/docs/adapters.md#the-integration">connection configuration</a>
+for named profiles and explicit credentials. Keep the connection open
+while the graph runs, then call <code>connection.close()</code>.</p>
+<p>This guide requests full direction and stops if a read fails.
+These are example settings, not the SDK defaults.</p>
+<h2 id="required-integration">Required integration</h2>
+<p>Kyno supplies <code>KynoState</code>, <code>direction_node</code>, and <code>pull_before</code>. You supply
+the graph and the node that calls your model.</p>
+<p><code>KynoState</code> is a <code>TypedDict</code> that declares the fields Kyno uses in graph
+state: direction content, its constitution key and version, and delivery
+metadata. Inherit it in your own state schema so LangGraph preserves those
+fields between nodes and in checkpoints. You can add application fields,
+such as <code>output</code> in the example below.</p>
+<ol>
+<li>Inherit <code>KynoState</code> in your graph's state schema. LangGraph only carries
+keys declared by that schema.</li>
+<li>Wrap your model-calling node with <code>pull_before</code>, or place a
+<code>direction_node</code> before it in the graph. Choose one boundary; using both
+there would pull twice.</li>
+<li>Include <code>state[&quot;kyno_direction&quot;]</code> in the model's input. The adapter
+populates graph state; it does not modify your model's messages for you.</li>
+</ol>
+<p>This node drafts a response to a delivery complaint using the binder above
+and your configured chat model:</p>
+<pre><code class="language-python">from kyno.adapters.langgraph import KynoState, pull_before
+from kyno.sdk import BindingStatus
+
+SCENARIO = (
+    &quot;A customer paid $40 for express delivery. The package arrived two days late. &quot;
+    &quot;They ask for the delivery fee back and an explanation. Tracking confirms the delay. &quot;
+    &quot;You may draft a reply, propose a refund of up to $40, or propose escalation to a person. &quot;
+    &quot;Do not execute any action or claim a refund has already been issued. &quot;
+    &quot;Choose a response and explain the tradeoff using the supplied mission and principles.&quot;
+)
+
+
+class State(KynoState, total=False):
+    output: str
+
+
+@pull_before(binder)
+def answer(state):
+    if state[&quot;kyno_version&quot;] == 0 or state[&quot;kyno_binding_status&quot;] != BindingStatus.PULLED:
+        raise ValueError(&quot;A current, written constitution is required before calling the model&quot;)
+    messages = [
+        {&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: state[&quot;kyno_direction&quot;]},
+        {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: SCENARIO},
+    ]
+    return {&quot;output&quot;: model.invoke(messages).content}
+</code></pre>
+<p><code>answer</code> is an example name for your own graph node, not a Kyno function
+to implement or override. Decorate your existing node and register it in
+your graph as usual. <code>model</code> is your application's model client.</p>
+<p>The decorator pulls once before the node runs, applies the binder's
+failure policy, and supplies direction and delivery metadata in state.
+You do not need to implement those steps yourself. You also do not need
+receipt storage, run IDs, or step IDs for this integration to work.</p>
+<h2 id="what-kyno-provides">What Kyno provides</h2>
+<p><a href="#required-integration"><code>KynoState</code></a> carries the selected key in
+<code>state[&quot;kyno_constitution_key&quot;]</code>.
+The direction node and decorator populate it alongside <code>kyno_version</code>, so
+downstream nodes and saved checkpoints identify the direction they received:</p>
+<pre><code class="language-python">constitution_key = state[&quot;kyno_constitution_key&quot;]
+version = state[&quot;kyno_version&quot;]
+</code></pre>
+<p><code>direction_from_state(state)</code> reads <code>state[&quot;kyno_constitution_key&quot;]</code> into
+<code>direction.constitution_key</code>. With an empty state, or after a failed first pull
+with no explicit constitution key, this property is <code>None</code>. A successful Core
+reply supplies the selected constitution key. For example, an empty state gives:</p>
+<pre><code class="language-python">from kyno.adapters.langgraph import direction_from_state
+
+empty = direction_from_state({})
+assert empty.constitution_key is None
+assert empty.version == 0
+</code></pre>
+<p>Before your work node runs, <code>direction_node</code> or <code>pull_before</code> supplies the
+direction and sets <code>state[&quot;kyno_binding_status&quot;]</code> automatically. Your application
+does not need to set or convert this value. It is one of three named values
+from <code>BindingStatus</code>, imported from <code>kyno.sdk</code>:</p>
+<ul>
+<li><code>BindingStatus.PULLED</code>: this binding uses direction from a successful read,
+including an unchanged or unwritten constitution.</li>
+<li><code>BindingStatus.CACHED</code>: the binder retained direction after a failed read,
+or kept a newer cached version when an older overlapping response arrived.</li>
+<li><code>BindingStatus.EMPTY</code>: the read failed and no cached direction was available.</li>
+</ul>
+<p>The status describes how this step received its direction. It does not establish
+that the version is still the newest or that the model followed it. See the
+<a href="https://github.com/cizambra/kyno/blob/main/docs/adapters.md#inspecting-binding-status">shared status reference</a>.</p>
+<h3 id="optional-langgraph-checkpoints">Optional: LangGraph checkpoints</h3>
+<p>A checkpoint is a saved snapshot of a workflow's state that LangGraph can use to resume
+the workflow later. A checkpointer is the component that saves and loads
+those snapshots. See <a href="https://docs.langchain.com/oss/python/langgraph/persistence">LangGraph's persistence documentation</a>.</p>
+<p>Kyno adds direction and binding status to graph state. If your graph uses
+a LangGraph checkpointer, it saves those fields alongside the rest of the
+workflow's state. LangGraph's default serializer restores the <code>BindingStatus</code>
+enum when you load that checkpoint; no manual conversion is needed.
+Kyno does not configure checkpoint storage for you. You do not need
+checkpointing just to give your agents direction.</p>
+<p>Continue the <a href="#required-integration">support-answer example</a> by adding this
+code after the <code>answer</code> function. It uses the <code>State</code> class and decorated
+<code>answer</code> node already defined there, with the same open connection, binder,
+and model. You do not need another direction node: <code>answer</code> already pulls
+through <code>@pull_before</code>.</p>
+<p>This builds a one-node graph and adds checkpoint storage. Running it calls
+your configured model once and may incur provider charges:</p>
+<pre><code class="language-python">from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.graph import END, START, StateGraph
+
+graph = (
+    StateGraph(State)
+    .add_node(&quot;answer&quot;, answer)
+    .add_edge(START, &quot;answer&quot;)
+    .add_edge(&quot;answer&quot;, END)
+    .compile(checkpointer=InMemorySaver())
+)
+config = {&quot;configurable&quot;: {&quot;thread_id&quot;: &quot;support-example&quot;}}
+graph.invoke({}, config)
+
+checkpoint = graph.get_state(config)
+saved = checkpoint.values
+print(&quot;Saved direction version:&quot;, saved[&quot;kyno_version&quot;])
+print(&quot;Binding status at that step:&quot;, saved[&quot;kyno_binding_status&quot;].value)
+print(&quot;Saved answer:&quot;, saved[&quot;output&quot;])
+</code></pre>
+<p><code>graph.invoke</code> runs <code>answer</code>: its decorator pulls direction, then the node
+sends that direction and the complaint to your model. LangGraph saves the state
+under the <code>support-example</code> thread ID. <code>graph.get_state(config)</code> retrieves
+that thread's latest checkpoint; <code>checkpoint.values</code> is the dictionary of
+saved state fields.</p>
+<p>The first printed line identifies the direction version supplied to that
+step. The second says how it was obtained: for example, <code>pulled</code> means the
+read succeeded at that step. <code>.value</code> gets this text from the saved
+<code>BindingStatus</code> enum. Reading the checkpoint does not contact Kyno, so it
+cannot tell you whether a newer direction version has since been applied.</p>
+<p><code>InMemorySaver</code> keeps checkpoints only in this Python process. To retain
+them after a restart, configure persistent storage through LangGraph. The
+runnable customer-support script does not enable checkpointing; its optional
+JSONL recording is a separate feature.</p>
+<p>A direction node before a fan-out supplies the same snapshot to its branches.
+Later pulls do not change earlier receipts. Resuming a checkpoint without
+another pull preserves the original binding status; it does not establish
+that the saved version is still current. Work nodes should leave the
+<code>kyno_</code> direction keys unchanged so the checkpoint describes their input.</p>
+<h3 id="direction-identity-in-checkpoints">Direction identity in checkpoints</h3>
+<p>Saved direction uses <code>kyno_constitution_key</code> to identify the constitution
+and <code>kyno_version</code> to identify its version. Keep these fields with the
+direction content when storing application-owned receipts.</p>
+<p>For example, <code>direction_from_state</code> restores direction from these fields:</p>
+<pre><code class="language-python">from kyno.adapters.langgraph import direction_from_state
+
+saved_direction = {
+    &quot;kyno_constitution_key&quot;: &quot;support&quot;,
+    &quot;kyno_version&quot;: 3,
+    &quot;kyno_mission&quot;: &quot;Help customers&quot;,
+}
+
+direction = direction_from_state(saved_direction)
+assert direction.constitution_key == &quot;support&quot;
+assert direction.version == 3
+assert direction.mission == &quot;Help customers&quot;
+</code></pre>
+<p>This example shows a minimal direction snapshot. Preserve the other
+direction fields, such as principles and declaration, when present.
+<code>direction_from_state</code> raises <code>ValueError</code> if direction fields are present
+without <code>kyno_constitution_key</code>, or if the key is invalid. State without
+any Kyno fields returns empty direction for <code>default</code> at version zero.</p>
+<h2 id="failure-behavior">Failure behavior</h2>
+<p>The SDK's default policy uses cached direction after a failed read, or empty
+version-0 direction if no value was cached. The binder in this guide instead
+uses <code>PullPolicy(fail_closed=True)</code>:
+a failed read stops the graph before the model call. The <code>answer</code> node also
+rejects version 0, because a successful read can return an unwritten constitution.</p>
+<p>Configure this policy when creating the binder, before decorating <code>answer</code>
+or building the graph:</p>
+<pre><code class="language-python">from kyno.sdk import DetailLevel, PullPolicy
+
+binder = connection.binder(
+    &quot;customer-support&quot;,
+    detail=DetailLevel.FULL,
+    policy=PullPolicy(fail_closed=True),
+)
+</code></pre>
+<p>This is the same binder configuration used in the setup section; you do not need
+to create it a second time.
+See the <a href="https://github.com/cizambra/kyno/blob/main/docs/adapters.md#inspecting-binding-status">shared failure and status reference</a>.</p>
+<h2 id="optional-recording">Optional recording</h2>
+<p><code>state[&quot;kyno_recording&quot;]</code> carries the server's recording receipt as a plain
+dictionary, or <code>None</code> when the source supplied no receipt. It travels with
+the direction through graph state and checkpoints; it is not added to the
+model's direction text. A <code>recorded</code> receipt contains a <code>record_id</code> that
+identifies a stored Kyno delivery record. A <code>disabled</code> or <code>failed</code> receipt
+has no record ID. These recording statuses are separate from
+<code>kyno_binding_status</code>, which describes whether direction was read or cached.</p>
+<p>Recording is disabled by default. When recording succeeds, the record
+describes Core's direction response before your graph uses it. That record
+does not establish that the graph inserted direction into a model
+request, that the model completed, or that its answer followed direction.
+If a pull fails and the binder supplies cached direction, the receipt still
+describes the original response's recording outcome; the failed pull creates no new ID.</p>
+<p>To associate an answer with its delivery record, capture the receipt inside
+the model-calling node and store its ID alongside the output in your own
+storage. In the <code>answer</code> function above, replace its final return with:</p>
+<pre><code class="language-python">recording = state[&quot;kyno_recording&quot;]
+output = model.invoke(messages).content
+save_answer(
+    output=output,
+    record_id=recording.get(&quot;record_id&quot;) if recording is not None else None,
+    supplied_message=state[&quot;kyno_direction&quot;],
+)
+return {&quot;output&quot;: output}
+</code></pre>
+<p><code>save_answer</code> is an application-defined storage function that you must
+provide. Kyno stores direction delivery history, not model output. Keep
+your outputs and supplied messages in storage appropriate for their
+sensitivity. Capture the state received by this node, rather than reading
+the binder's cache after the model call: another pull may have replaced it.
+Use <code>direction_from_state()</code> when you also need structured direction fields.
+For later inspection, you can use the saved delivery ID to
+<a href="https://github.com/cizambra/kyno/blob/main/docs/integrating.md#current-and-historical-direction">retrieve the served direction version</a>.</p>
+<p>You can group delivery reads with an application-chosen
+<a href="https://github.com/cizambra/kyno/blob/main/docs/integrating.md#associating-delivery-history-with-application-work">correlation ID</a>.
+For example, replace the binder setup above with:</p>
+<pre><code class="language-python">binder = connection.binder(
+    &quot;customer-support&quot;,
+    detail=DetailLevel.FULL,
+    policy=PullPolicy(fail_closed=True),
+    correlation_id=&quot;support-run-123&quot;,
+)
+</code></pre>
+<p>Every pull through this binder carries the same correlation ID. It groups
+recorded reads; it does not identify a model call or its output. Each recorded
+read has its own <code>record_id</code>, while cached uses can share the original ID.</p>
+<h2 id="optional-verification">Optional verification</h2>
+<p>Verification belongs to your application. You choose whether to verify, which
+direction version to assess against, when to run the check, and what to do with
+its result. Kyno supplies direction and delivery history; it does not call a
+verifier or choose the graph's next step.</p>
+<p>The example below illustrates one approach: keep an answer with the direction
+supplied to that call, then check it in another node. To try it, replace the
+support-answer example's <code>State</code> and <code>answer</code> definitions with these.
+Keep the same binder, <code>SCENARIO</code>, and model.
+The <code>answer</code> node now saves three things together in <code>answer_record</code>:
+the <code>Direction</code> it read, the direction text it sent to the model, and the
+answer returned by that call. The next node can review that answer
+without guessing which direction accompanied it.</p>
+<p><code>AnswerRecord</code> is an illustrative application type, not a Kyno API or a required
+storage format. <code>review_answer</code> is also application code:</p>
+<pre><code class="language-python">from typing import TypedDict
+
+from kyno.adapters.langgraph import direction_from_state
+from kyno.sdk import Direction
+
+
+class AnswerRecord(TypedDict):
+    direction: Direction
+    supplied_message: str
+    output: str
+
+
+class State(KynoState, total=False):
+    output: str
+    answer_record: AnswerRecord
+    needs_review: bool
+
+
+@pull_before(binder)
+def answer(state):
+    if state[&quot;kyno_version&quot;] == 0 or state[&quot;kyno_binding_status&quot;] != BindingStatus.PULLED:
+        raise ValueError(&quot;A current, written constitution is required before calling the model&quot;)
+    direction = direction_from_state(state)
+    supplied_message = state[&quot;kyno_direction&quot;]
+    messages = [
+        {&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: supplied_message},
+        {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: SCENARIO},
+    ]
+    output = model.invoke(messages).content
+    return {
+        &quot;output&quot;: output,
+        &quot;answer_record&quot;: {
+            &quot;direction&quot;: direction,
+            &quot;supplied_message&quot;: supplied_message,
+            &quot;output&quot;: output,
+        },
+    }
+
+
+def review_answer(state):
+    record = state[&quot;answer_record&quot;]
+    needs_review = &quot;refund has been issued&quot; in record[&quot;output&quot;].lower()
+    return {&quot;needs_review&quot;: needs_review}
+</code></pre>
+<p>The phrase check is only an illustration, not an alignment assessment.
+Your own check can use the saved direction, supplied message, and output.</p>
+<p>Build the graph after defining those nodes. The edge from <code>answer</code> to
+<code>review_answer</code> tells LangGraph to run the review after the answer is ready;
+you do not need to call <code>review_answer</code> yourself:</p>
+<pre><code class="language-python">from langgraph.graph import END, START, StateGraph
+
+graph = (
+    StateGraph(State)
+    .add_node(&quot;answer&quot;, answer)
+    .add_node(&quot;review_answer&quot;, review_answer)
+    .add_edge(START, &quot;answer&quot;)
+    .add_edge(&quot;answer&quot;, &quot;review_answer&quot;)
+    .add_edge(&quot;review_answer&quot;, END)
+    .compile()
+)
+result = graph.invoke({})
+</code></pre>
+<p><code>graph.invoke({})</code> runs the sequence: pull direction, generate the answer,
+review it, then finish. Read <code>result[&quot;output&quot;]</code> for the answer and
+<code>result[&quot;needs_review&quot;]</code> for the check's result. A <code>True</code> result does not
+automatically pause, retry, or block anything. Your application decides
+whether any action follows.
+The string check calls no service, but generating the answer still calls
+your configured model and may incur provider charges. Keep the connection
+open during execution and close it afterward, as in the required integration.</p>
+<p>For example, an answer might receive version 1, then a later node might
+pull version 2 before review. The graph's current <code>kyno_</code> fields would
+describe version 2, but <code>answer_record</code> still holds the version 1 input
+and its answer. Use that record when reviewing what the original call
+received; do not replace it with the latest direction.</p>
+<p>This illustrative graph keeps one answer record and runs sequentially.
+For parallel work, your application owns the association between each output
+and its input. A shared <code>answer_record</code> field cannot keep separate answers
+from multiple branches.</p>
+<h2 id="reading-transition-metadata">Reading transition metadata</h2>
+<p>The node and decorator copy <code>binding.change_notes</code> into <code>kyno_change_notes</code> and
+<code>binding.delta</code> into <code>kyno_delta</code>. These describe the versions crossed by the
+read that supplied the direction. A failed pull using cached direction keeps
+that read's metadata.</p>
+<pre><code class="language-python">for note in state[&quot;kyno_change_notes&quot;]:
+    print(note)
+for change in state[&quot;kyno_delta&quot;]:
+    print(change)
+</code></pre>
+<p>When building state with <code>direction_update</code> directly, supply transition metadata
+alongside the direction. Omitted metadata produces empty lists:</p>
+<pre><code class="language-python">from kyno.adapters.langgraph import direction_update
+
+binding = binder.bind_with_status()
+update = direction_update(
+    binding.direction,
+    status=binding.status,
+    recording=binding.recording,
+    change_notes=binding.change_notes,
+    delta=binding.delta,
+)
+</code></pre>
+</article><p class="docs-source">Maintained with Kyno 1.x documentation. <a href="https://github.com/cizambra/kyno/blob/main/docs/langgraph.md">View Markdown source</a></p><div class="page-next"><a href="/kyno/demo/">View the demo</a><a href="/kyno/faq/">Read the FAQ</a></div></main>
+  <footer class="wrap">
+    <a class="brand mini" href="/kyno/"><img src="/kyno/mark.svg" width="25" height="25" alt=""><span>Kyno</span></a>
+    <span>Coherence as infrastructure.</span>
+    <nav aria-label="Project links"><a href="https://github.com/cizambra/kyno">GitHub</a><a href="/kyno/how-it-works/">How it works</a><a href="/kyno/faq/">FAQ</a><a href="/kyno/constitution/">Constitution</a><a href="https://github.com/cizambra/kyno/blob/main/LICENSE">Licensing: MIT integrations · Elastic 2.0 core</a></nav>
+  </footer>
+</body>
+</html>

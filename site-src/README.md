@@ -102,3 +102,16 @@ this single execution proves alignment or improved outcomes.
 Before merging, test Back, Next, restart, keyboard navigation, the mobile step
 picker, and the page with JavaScript disabled. Check widths from 320px upwards,
 including the homepage navigation after adding a new link.
+
+## Publishing integration documentation
+
+`docs/` remains the Markdown source for integration guides. Run
+`python site-src/build-docs.py` after editing the documentation index, CrewAI,
+LangGraph, or the README quick start and limits. The renderer writes the
+committed `site/docs/` pages using `site-src/docs.html`. It uses
+`markdown-it-py`, already a Kyno dependency. Published guides link to each
+other; other repository documents retain their GitHub links and anchors.
+
+Preview `/docs/`, `/docs/quick-start/`, `/docs/crewai/`, and `/docs/langgraph/`
+at desktop and mobile widths, including long code blocks and tables.
+Run the site checks and verify the generated files are current before merging.
